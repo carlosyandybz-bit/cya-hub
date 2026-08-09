@@ -139,7 +139,7 @@ export function TeachingContentCard({
           <div>
             <span className={styles.detailKind}>{kindLabel}</span>
             <h2>{title}</h2>
-            {subtitle ? <p>{subtitle}</p> : null}
+            {subtitle && !metadata.length ? <p>{subtitle}</p> : null}
           </div>
           <div className={styles.detailHeaderActions}>
             {statusLabel ? <span className={`${styles.status} ${statusTone === "success" ? styles.success : statusTone === "warning" ? styles.warning : ""}`}>{statusLabel}</span> : null}
