@@ -52,7 +52,7 @@ test("preserves critical CYA Hub product behaviour", async () => {
   assert.match(app, /Material para trabajar/);
   assert.match(app, /Ver información/);
   assert.doesNotMatch(app, /Ejercicios que encajan ahora/);
-  assert.doesNotMatch(css, /:hover/);
+  assert.match(css, /@media\(hover:hover\)/);
   assert.match(css, /grid-template-columns:1fr auto 1fr/);
   assert.match(manifest, /name:\s*"CYA Hub"/);
   assert.match(manifest, /display:\s*"standalone"/);
