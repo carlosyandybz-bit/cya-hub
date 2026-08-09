@@ -56,7 +56,7 @@ test("preserves critical CYA Hub product behaviour", async () => {
   assert.match(manifest, /display:\s*"standalone"/);
 });
 
-test("uses one reusable 4:3 teaching card across teacher, live-class, portal and student profile surfaces", async () => {
+test("uses one reusable 4:3 teaching card with a dedicated readable detail viewer", async () => {
   const [app, studentDetail, card, cardCss] = await Promise.all([
     source("../app/cya-app.tsx"),
     source("../app/student-detail.tsx"),
@@ -77,12 +77,30 @@ test("uses one reusable 4:3 teaching card across teacher, live-class, portal and
   assert.match(card, /group_label/);
   assert.match(card, /display_in_resources/);
   assert.match(card, /SecureDriveAsset/);
-  assert.match(card, /Ver información/);
+  assert.match(card, /Abrir contenido/);
+  assert.match(card, /role="dialog"/);
+  assert.match(card, /aria-modal="true"/);
+  assert.match(card, /document\.body\.style\.overflow = "hidden"/);
   assert.match(card, /resourceGroup/);
   assert.doesNotMatch(card, /<iframe/);
   assert.match(cardCss, /aspect-ratio:4\/3/);
-  assert.match(cardCss, /grid-template-columns:132px minmax\(0,1fr\)/);
+  assert.match(cardCss, /grid-template-columns:138px minmax\(0,1fr\)/);
+  assert.match(cardCss, /detailBackdrop/);
   assert.match(cardCss, /resourceGrid/);
+});
+
+test("applies an iPhone readability layer without making compact lists oversized", async () => {
+  const [layout, visualCss, mediaCss] = await Promise.all([
+    source("../app/layout.tsx"),
+    source("../app/visual-audit-v21.css"),
+    source("../app/teaching-media-editor.module.css"),
+  ]);
+  assert.match(layout, /visual-audit-v21\.css/);
+  assert.match(visualCss, /@media\(max-width:820px\)/);
+  assert.match(visualCss, /font-size:16px!important/);
+  assert.match(visualCss, /\.mobile-nav button\{font-size:11\.5px/);
+  assert.match(visualCss, /\.marketing-tabs button\{font-size:11\.5px!important/);
+  assert.match(mediaCss, /font-size:16px/);
 });
 
 test("supports gallery uploads, multiple resources, previews and video-frame covers", async () => {
