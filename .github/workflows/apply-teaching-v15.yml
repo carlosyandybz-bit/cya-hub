@@ -36,3 +36,5 @@ jobs:
           git add app/cya-app.tsx
           git commit -m "CYA Hub v15: teaching media and read-only details"
           git push origin HEAD:audit-teaching-media-v15
+
+# Triggered after workflow registration so the feature-branch patch runs exactly once.
