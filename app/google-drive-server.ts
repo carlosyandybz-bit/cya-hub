@@ -87,11 +87,33 @@ export async function userCanAccessTeachingMedia(accessToken: string, fileId: st
   return Boolean(await supabaseRpc<boolean>("can_access_teaching_media", { p_external_file_id: fileId }, accessToken));
 }
 
+function googleOAuthError(error?: string, description?: string, subtype?: string) {
+  if (error === "invalid_grant") {
+    return `Google rechazó el refresh token${subtype ? ` (${subtype})` : ""}. Genera uno nuevo con el mismo Client ID/secret y sustituye GOOGLE_DRIVE_REFRESH_TOKEN en Hostinger.`;
+  }
+  if (error === "invalid_client") {
+    return "Google rechazó el Client ID o Client secret. Comprueba que ambos pertenecen al mismo cliente OAuth de CYA Hub.";
+  }
+  if (error === "unauthorized_client") {
+    return "El cliente OAuth de CYA Hub no está autorizado para renovar tokens. Revisa que sea una Aplicación web.";
+  }
+  if (error === "invalid_request") {
+    return "Google recibió una solicitud OAuth incompleta o mal formada. Revisa las variables de Google Drive en Hostinger.";
+  }
+  return description || error || "No se pudo renovar el acceso a Google Drive.";
+}
+
 export async function googleAccessToken() {
+  const clientId = required("GOOGLE_DRIVE_CLIENT_ID");
+  const clientSecret = required("GOOGLE_DRIVE_CLIENT_SECRET");
+  const refreshToken = required("GOOGLE_DRIVE_REFRESH_TOKEN");
+  if (refreshToken.startsWith("ya29.")) {
+    throw new Error("GOOGLE_DRIVE_REFRESH_TOKEN contiene un access token temporal. Copia el campo Refresh token del OAuth Playground, no el Access token.");
+  }
   const body = new URLSearchParams({
-    client_id: required("GOOGLE_DRIVE_CLIENT_ID"),
-    client_secret: required("GOOGLE_DRIVE_CLIENT_SECRET"),
-    refresh_token: required("GOOGLE_DRIVE_REFRESH_TOKEN"),
+    client_id: clientId,
+    client_secret: clientSecret,
+    refresh_token: refreshToken,
     grant_type: "refresh_token",
   });
   const response = await fetch(GOOGLE_TOKEN_URL, {
@@ -100,8 +122,15 @@ export async function googleAccessToken() {
     body,
     cache: "no-store",
   });
-  const json = await response.json() as { access_token?: string; error?: string; error_description?: string };
-  if (!response.ok || !json.access_token) throw new Error(json.error_description || json.error || "No se pudo renovar el acceso a Google Drive.");
+  const json = await response.json().catch(() => ({})) as {
+    access_token?: string;
+    error?: string;
+    error_description?: string;
+    error_subtype?: string;
+  };
+  if (!response.ok || !json.access_token) {
+    throw new Error(googleOAuthError(json.error, json.error_description, json.error_subtype));
+  }
   return json.access_token;
 }
 
@@ -160,7 +189,10 @@ export async function createDriveResumableUpload(name: string, mimeType: string,
     body: JSON.stringify({ name, mimeType, parents: [folderId] }),
   });
   const location = response.headers.get("location");
-  if (!response.ok || !location) throw new Error(`No se pudo iniciar la subida a Drive (${response.status}).`);
+  if (!response.ok || !location) {
+    const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+    throw new Error(payload?.error?.message || `No se pudo iniciar la subida a Drive (${response.status}).`);
+  }
   return location;
 }
 
