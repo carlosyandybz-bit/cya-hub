@@ -55,6 +55,10 @@ export type CommunicationRecipient = {
   person: { display_name: string; country_code: string | null } | null;
   campaign: { title: string } | null;
 };
+type DispatchValidation = {
+  allowed: boolean; reason: string | null; channel: "whatsapp" | "email" | null; destination: string | null;
+  message_snapshot: string | null; campaign_title: string | null;
+};
 
 type Tab = "crm" | "content" | "campaigns" | "messages" | "events" | "rates" | "stats";
 
@@ -107,18 +111,17 @@ function newDriveMedia(form: FormData) {
   const references = form.getAll("media_reference").map((value) => String(value).trim());
   const types = form.getAll("media_type").map((value) => String(value));
   const titles = form.getAll("media_title").map((value) => String(value).trim());
-  return references.map((reference,index) => ({
+  return references.flatMap((reference,index) => reference ? [{
     external_file_id: driveId(reference),
-    media_type: types[index] === "video" ? "video" : "image",
+    media_type: types[index] === "video" ? "video" as const : "image" as const,
     title: titles[index] || null,
-    empty: reference.length === 0,
-  })).filter((media) => !media.empty);
+  }] : []);
 }
 
-function messageLink(recipient: CommunicationRecipient) {
-  if (!recipient.destination) return "#";
-  if (recipient.channel === "whatsapp") return `https://wa.me/${recipient.destination}?text=${encodeURIComponent(recipient.message_snapshot)}`;
-  return `mailto:${encodeURIComponent(recipient.destination)}?subject=${encodeURIComponent(recipient.campaign?.title ?? "Carlos & Andy")}&body=${encodeURIComponent(recipient.message_snapshot)}`;
+function messageLink(dispatch: DispatchValidation) {
+  if (!dispatch.destination || !dispatch.message_snapshot || !dispatch.channel) return "#";
+  if (dispatch.channel === "whatsapp") return `https://wa.me/${dispatch.destination}?text=${encodeURIComponent(dispatch.message_snapshot)}`;
+  return `mailto:${encodeURIComponent(dispatch.destination)}?subject=${encodeURIComponent(dispatch.campaign_title ?? "Carlos & Andy")}&body=${encodeURIComponent(dispatch.message_snapshot)}`;
 }
 
 function DriveMediaFields({ existing = [] }: { existing?: DriveMedia[] }) {
@@ -214,13 +217,8 @@ function ContentEditor({ db, item, close, saved }: { db: SupabaseClient; item: M
   const [busy,setBusy] = useState(false), [error,setError] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form = new FormData(event.currentTarget); setBusy(true); setError("");
-    const result = await db.rpc("save_marketing_content", { p_content_id: item?.id ?? null, p_title: String(form.get("title") || "").trim(), p_channel: String(form.get("channel") || "instagram"), p_content_type: String(form.get("content_type") || "post"), p_status: String(form.get("status") || "idea"), p_body: String(form.get("body") || "").trim() || null, p_planned_for: form.get("planned_for") ? new Date(String(form.get("planned_for"))).toISOString() : null });
+    const result = await db.rpc("save_marketing_content_with_media", { p_content_id: item?.id ?? null, p_title: String(form.get("title") || "").trim(), p_channel: String(form.get("channel") || "instagram"), p_content_type: String(form.get("content_type") || "post"), p_status: String(form.get("status") || "idea"), p_body: String(form.get("body") || "").trim() || null, p_planned_for: form.get("planned_for") ? new Date(String(form.get("planned_for"))).toISOString() : null, p_media: newDriveMedia(form) });
     if (result.error) { setError(result.error.message); setBusy(false); return; }
-    const data = Array.isArray(result.data) ? result.data[0] : result.data as { id?: number } | null; const contentId = Number(data?.id || item?.id || 0);
-    for (const media of newDriveMedia(form)) {
-      const mediaResult = await db.rpc("add_marketing_content_media", { p_content_id: contentId, p_media_type: media.media_type, p_external_file_id: media.external_file_id, p_title: media.title });
-      if (mediaResult.error) { setError(mediaResult.error.message); setBusy(false); return; }
-    }
     await saved(item ? "Contenido actualizado." : "Contenido creado."); setBusy(false); close();
   }
   return <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}><section className="modal" role="dialog" aria-modal="true"><header className="modal-head"><div><p className="eyebrow">Contenido</p><h2>{item ? "Editar pieza" : "Nueva pieza"}</h2></div><button className="icon-btn" onClick={close}><X /></button></header><form className="modal-body" onSubmit={submit}><div className="fields-2">
@@ -260,13 +258,8 @@ function CampaignEditor({ db, item, events, close, saved }: { db: SupabaseClient
   const [busy,setBusy]=useState(false),[error,setError]=useState("");
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault(); const f=new FormData(event.currentTarget); setBusy(true); setError(""); const scheduled=String(f.get("scheduled_at")||"");
-    const result=await db.rpc("save_marketing_campaign",{p_campaign_id:item?.id??null,p_title:String(f.get("title")||"").trim(),p_channel:String(f.get("channel")||"whatsapp"),p_objective:String(f.get("objective")||"").trim()||null,p_audience_scope:String(f.get("audience_scope")||"potential"),p_status:String(f.get("status")||"draft"),p_message:String(f.get("message")||"").trim()||null,p_event_id:Number(f.get("event_id")||0)||null,p_budget_cents:f.get("budget")===""?null:Math.round(Number(f.get("budget")||0)*100),p_scheduled_at:scheduled?new Date(scheduled).toISOString():null,p_starts_at:null,p_ends_at:null});
+    const result=await db.rpc("save_marketing_campaign_with_media",{p_campaign_id:item?.id??null,p_title:String(f.get("title")||"").trim(),p_channel:String(f.get("channel")||"whatsapp"),p_objective:String(f.get("objective")||"").trim()||null,p_audience_scope:String(f.get("audience_scope")||"potential"),p_status:String(f.get("status")||"draft"),p_message:String(f.get("message")||"").trim()||null,p_event_id:Number(f.get("event_id")||0)||null,p_budget_cents:f.get("budget")===""?null:Math.round(Number(f.get("budget")||0)*100),p_scheduled_at:scheduled?new Date(scheduled).toISOString():null,p_starts_at:null,p_ends_at:null,p_media:newDriveMedia(f)});
     if(result.error){setError(result.error.message);setBusy(false);return;}
-    const data=Array.isArray(result.data)?result.data[0]:result.data as {id?:number}|null; const id=Number(data?.id||item?.id||0);
-    for(const media of newDriveMedia(f)){
-      const mr=await db.rpc("add_marketing_campaign_media",{p_campaign_id:id,p_media_type:media.media_type,p_external_file_id:media.external_file_id,p_title:media.title});
-      if(mr.error){setError(mr.error.message);setBusy(false);return;}
-    }
     await saved(item?"Campaña actualizada.":"Campaña creada.");setBusy(false);close();
   }
   return <div className="backdrop" onMouseDown={(e)=>e.target===e.currentTarget&&close()}><section className="modal campaign-modal" role="dialog" aria-modal="true"><header className="modal-head"><div><p className="eyebrow">Campañas</p><h2>{item?"Editar campaña":"Nueva campaña"}</h2></div><button className="icon-btn" onClick={close} aria-label="Cerrar"><X/></button></header><form className="modal-body" onSubmit={submit}><div className="fields-2">
@@ -334,6 +327,14 @@ function CommunicationsView({db,contacts,campaigns,recipients,refresh,notify}:{d
   const [preparing,setPreparing]=useState<MarketingCampaign|null>(null),[busyId,setBusyId]=useState<number|null>(null);
   const direct=campaigns.filter((campaign)=>["whatsapp","email"].includes(campaign.channel)&&campaign.status!=="cancelled");
   const saved=async(message:string)=>{await refresh();notify(message);};
+  async function openMessage(recipient:CommunicationRecipient){
+    setBusyId(recipient.id);
+    const result=await db.rpc("validate_communication_dispatch",{p_recipient_id:recipient.id});
+    if(result.error){notify(result.error.message);setBusyId(null);return;}
+    const dispatch=(Array.isArray(result.data)?result.data[0]:result.data) as DispatchValidation|null;
+    if(!dispatch?.allowed){await refresh();notify(dispatch?.reason||"Revisa el permiso o los datos del contacto y prepara la lista de nuevo.");setBusyId(null);return;}
+    const href=messageLink(dispatch);setBusyId(null);window.location.assign(href);
+  }
   async function markSent(recipient:CommunicationRecipient){
     setBusyId(recipient.id);const result=await db.rpc("mark_communication_sent",{p_recipient_id:recipient.id});
     if(result.error) notify(result.error.message); else await saved(`${recipient.person?.display_name||"Contacto"}: mensaje registrado como enviado.`);
@@ -345,7 +346,7 @@ function CommunicationsView({db,contacts,campaigns,recipients,refresh,notify}:{d
       <header className="communication-batch-head"><span className="marketing-icon">{campaign.channel==="whatsapp"?<MessageCircle/>:<Mail/>}</span><div><span>{channelLabels[campaign.channel]}</span><h3>{campaign.title}</h3></div><button className="btn ghost" onClick={()=>setPreparing(campaign)}><UsersRound/> {own.length?"Actualizar lista":"Preparar lista"}</button></header>
       <div className="communication-stats"><span><strong>{ready}</strong> listos</span><span><strong>{sent}</strong> enviados</span><span className={skipped?"attention":""}><strong>{skipped}</strong> revisar</span>{campaign.marketing_campaign_media.length?<span><strong>{campaign.marketing_campaign_media.length}</strong> adjuntos</span>:null}</div>
       {own.length?<div className="communication-recipient-list">{[...own].sort((a,b)=>({ready:0,failed:1,skipped:2,sent:3}[a.status]-{ready:0,failed:1,skipped:2,sent:3}[b.status])).map((recipient)=><div className={`communication-recipient status-${recipient.status}`} key={recipient.id}><span className="avatar"><CircleUserRound/></span><div className="communication-recipient-main"><div><strong>{recipient.person?.display_name||"Contacto"}</strong><span className={`badge communication-${recipient.status}`}>{communicationStatusLabels[recipient.status]}</span></div><span>{recipient.destination||recipient.blocked_reason||"Sin destino"}</span><details><summary>Ver mensaje</summary><p>{recipient.message_snapshot}</p>{recipient.media_snapshot.length?<div className="communication-media"><span>Adjuntos de Drive</span><div>{recipient.media_snapshot.map((media)=><a key={`${recipient.id}-${media.id}`} href={driveFileUrl(media.external_file_id)} target="_blank" rel="noreferrer">{media.media_type==="video"?<Video/>:<ImageIcon/>}{media.title||"Abrir archivo"}<ExternalLink/></a>)}</div></div>:null}</details></div>
-        <div className="communication-recipient-actions">{recipient.status==="ready"?<><a className="btn" href={messageLink(recipient)} target="_blank" rel="noreferrer">{recipient.channel==="whatsapp"?<MessageCircle/>:<Mail/>} Abrir {channelLabels[recipient.channel]}</a><button className="btn ghost" disabled={busyId===recipient.id} onClick={()=>markSent(recipient)}><CheckCircle2/> {busyId===recipient.id?"Guardando…":"Ya enviado"}</button></>:recipient.status==="sent"?<span className="sent-stamp"><CheckCircle2/> {recipient.sent_at?shortDate(recipient.sent_at):"Enviado"}</span>:<span className="recipient-problem">{recipient.blocked_reason||"Revisa este contacto"}</span>}</div>
+        <div className="communication-recipient-actions">{recipient.status==="ready"?<><button className="btn" disabled={busyId===recipient.id} onClick={()=>openMessage(recipient)}>{recipient.channel==="whatsapp"?<MessageCircle/>:<Mail/>} {busyId===recipient.id?"Comprobando…":`Abrir ${channelLabels[recipient.channel]}`}</button><button className="btn ghost" disabled={busyId===recipient.id} onClick={()=>markSent(recipient)}><CheckCircle2/> {busyId===recipient.id?"Guardando…":"Ya enviado"}</button></>:recipient.status==="sent"?<span className="sent-stamp"><CheckCircle2/> {recipient.sent_at?shortDate(recipient.sent_at):"Enviado"}</span>:<span className="recipient-problem">{recipient.blocked_reason||"Revisa este contacto"}</span>}</div>
       </div>)}</div>:<div className="communication-empty"><MessageCircle/><span>Prepara la lista para ver aquí a cada destinatario.</span></div>}
     </article>;})}</div>:<Empty icon={MessageCircle} title="No hay campañas de mensajes" text="Crea una campaña por WhatsApp o email y aparecerá aquí para preparar su envío."/>}
     {preparing?<PrepareCampaignModal db={db} campaign={preparing} contacts={contacts} close={()=>setPreparing(null)} saved={saved}/>:null}

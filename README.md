@@ -1,4 +1,26 @@
-# vinext-starter
+# CYA Hub
+
+Aplicación web privada de Carlos & Andy. El código se ejecuta en Sites, la autenticación y los datos viven en Supabase y los archivos multimedia permanecen en Google Drive; el repositorio no contiene claves ni datos personales.
+
+## Esquema de Supabase
+
+Los SQL de `supabase/` documentan el esquema aplicado en producción. Para reconstruir una base vacía, se ejecutan en este orden:
+
+1. `foundation.sql`
+2. `classes-and-credits.sql`
+3. `live-class.sql`
+4. `teaching.sql`
+5. `teaching-measurement-adjustment-fix.sql`
+6. `marketing-crm.sql`
+7. `communications-outbox.sql`
+8. `communications-creator-indexes.sql`
+9. `v7-security-portal-media.sql`
+10. `v7-portal-projection-hardening.sql`
+11. `v7-communications-trigger-fix.sql`
+
+Las tres migraciones v7 aíslan el portal alumno, hacen atómico el guardado con referencias privadas de Drive y vuelven a validar el consentimiento justo antes de abrir o confirmar una comunicación.
+
+## Base técnica
 
 A clean full-stack starter running on
 [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and

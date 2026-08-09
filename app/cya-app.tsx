@@ -2,9 +2,10 @@
 
 import {
   Archive, ArrowRight, BookOpen, CalendarDays, CheckCircle2, ChevronRight, CircleUserRound,
-  Dumbbell, Eye, EyeOff, GitBranch, GraduationCap, House, LibraryBig, Link2, LockKeyhole,
-  LogOut, Megaphone, Menu, NotebookPen, Pencil, Play, Plus, Search, Settings, Sparkles, Tag,
-  UsersRound, Video, WalletCards, X,
+  Clock3, Dumbbell, ExternalLink, Eye, EyeOff, FolderOpen, GitBranch, GraduationCap, House,
+  Image as ImageIcon, LibraryBig, Link2, LockKeyhole, LogOut, Megaphone, Menu, NotebookPen,
+  Pencil, Play, Plus, Search, Settings, Sparkles, Tag, TrendingUp, UsersRound, Video,
+  WalletCards, X,
 } from "lucide-react";
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
@@ -65,9 +66,31 @@ type ContentAssignment = {
   snapshot_style_term_id: number | null; snapshot_role_term_id: number | null; snapshot_level_term_id: number | null;
   snapshot_measurement_mode: "frequency" | "importance" | "both" | "none"; updated_at: string; teaching_contents: TeachingContentSummary;
 };
+type StudentPortalSnapshot = {
+  profile: {
+    id: number; display_name: string; first_name: string | null; last_name: string | null;
+    email: string | null; phone: string | null; country_code: string | null; student_since: string | null; goals: string | null;
+  };
+  classes: Array<{
+    id: number; class_type: "individual" | "pair"; status: string; scheduled_start_at: string;
+    duration_minutes: number; style: string | null; attendance_status: string; role: string | null; level: string | null;
+  }>;
+  credits: Array<{
+    id: number; label: string | null; modality: "individual" | "pair"; total_minutes: number;
+    balance_minutes: number; status: string; purchased_at: string; expires_at: string | null;
+  }>;
+  assignments: Array<{
+    id: number; content_id: number; title: string; content_type: string; description: string | null;
+    correction_guidance: string | null; assignment_status: string; current_frequency: number | null;
+    current_importance: number | null; updated_at: string;
+  }>;
+  evaluations: Array<{ id: number; class_id: number | null; score: number; aptitude: string; created_at: string }>;
+};
+type DriveMediaInput = { media_type: "image" | "video"; external_file_id: string; title: string | null };
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
+const DRIVE_TEACHING_FOLDER_URL = "https://drive.google.com/drive/folders/12IT2BihTvmqHUz7zQKuShd6ddSV-6fpO";
 const db: SupabaseClient | null = url && key
   ? createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
   : null;
@@ -153,7 +176,7 @@ function Login() {
           {error ? <p className="error" role="alert">{error}</p> : null}
           <button className="btn" type="submit" disabled={busy}>{busy ? "Entrando…" : <>Entrar <ArrowRight size={18} /></>}</button>
         </form>
-        <div className="privacy"><LockKeyhole size={15} /> Los datos de CYA Hub no se guardan en WordPress.</div>
+        <div className="privacy"><LockKeyhole size={15} /> Acceso privado · solo para personas autorizadas.</div>
       </section>
     </main>
   );
@@ -180,6 +203,8 @@ function HomeView({ identity, count, classes, students, go, goLive, add }: { ide
   const minutesUntil = live?.status === "scheduled" ? Math.round((new Date(live.scheduled_start_at).getTime() - now.getTime()) / 60000) : null;
   const liveDominates = Boolean(live && (live.status === "active" || (live.status === "finished" && !live.pedagogy_closed_at) || (minutesUntil !== null && minutesUntil <= 30)));
   const liveNames = live ? namesFor(live.class_participants.map((p) => p.person_id), students) : "";
+  const today = now.toDateString(), todayClasses = classes.filter((item) => new Date(item.scheduled_start_at).toDateString() === today && item.status !== "cancelled").length;
+  const pendingClose = classes.filter((item) => item.status === "finished" && !item.pedagogy_closed_at).length;
   return <>
     <Header eyebrow={date} title={`Hola, ${identity.displayName}`} description="CYA te lleva primero a lo que toca ahora." />
     <section className="focus">
@@ -195,13 +220,13 @@ function HomeView({ identity, count, classes, students, go, goLive, add }: { ide
       <button className="quick quick-wide" onClick={() => go("classes")}><span><CalendarDays /><strong>Ver agenda</strong></span><ChevronRight /></button>
     </section>
     <section className="grid-2">
-      <article className="card pad"><div className="card-head"><h2>Resumen</h2><span>Ahora</span></div>
+      <article className="card pad"><div className="card-head"><h2>Tu día</h2><span>Ahora</span></div>
         <div className="stat"><span>Alumnos</span><strong>{count}</strong></div>
-        <div className="stat"><span>Datos heredados</span><strong>0</strong></div>
-        <div className="stat"><span>Incidencias de datos</span><strong>0</strong></div>
+        <div className="stat"><span>Clases de hoy</span><strong>{todayClasses}</strong></div>
+        <div className="stat"><span>Clases por cerrar</span><strong>{pendingClose}</strong></div>
       </article>
-      <article className="card pad"><div className="card-head"><h2>Migración</h2><span>Por bloques</span></div>
-        <div className="status-list"><div><CheckCircle2 /> Identidad y permisos</div><div><CheckCircle2 /> Alumnado provisional</div><div><CheckCircle2 /> Clases y bonos</div><div><CheckCircle2 /> Enseñanza</div><div><CheckCircle2 /> Marketing y CRM</div></div>
+      <article className="card pad"><div className="card-head"><h2>Todo a mano</h2><span>Listo</span></div>
+        <div className="status-list"><div><CheckCircle2 /> Alumnado y fichas</div><div><CheckCircle2 /> Agenda, clases y bonos</div><div><CheckCircle2 /> Enseñanza y evolución</div><div><CheckCircle2 /> Marketing y comunicaciones</div></div>
       </article>
     </section>
   </>;
@@ -282,6 +307,36 @@ function assignmentOptions(contentType: string) {
 
 function linkedTermLabels(ids: number[], terms: CatalogTerm[]) {
   return ids.map((id) => terms.find((term) => term.id === id)?.label).filter(Boolean).join(" · ");
+}
+
+function driveId(value: string) {
+  const trimmed = value.trim();
+  const pathMatch = trimmed.match(/\/d\/([^/?#]+)/), queryMatch = trimmed.match(/[?&]id=([^&#]+)/);
+  return decodeURIComponent(pathMatch?.[1] ?? queryMatch?.[1] ?? trimmed);
+}
+
+function driveFileUrl(fileId: string) {
+  return `https://drive.google.com/open?id=${encodeURIComponent(fileId)}`;
+}
+
+function teachingMediaFrom(form: FormData): DriveMediaInput[] {
+  const references = form.getAll("media_reference").map((value) => String(value).trim());
+  const types = form.getAll("media_type").map((value) => String(value));
+  const titles = form.getAll("media_title").map((value) => String(value).trim());
+  return references.flatMap((reference, index) => reference ? [{
+    media_type: types[index] === "image" ? "image" as const : "video" as const,
+    external_file_id: driveId(reference), title: titles[index] || null,
+  }] : []);
+}
+
+function TeachingMediaFields({ existing = [] }: { existing?: TeachingContent["teaching_content_media"] }) {
+  const [rows, setRows] = useState([0]);
+  return <details className="progressive-fields drive-fields"><summary>Añadir fotos o vídeos desde Drive</summary><div className="drive-fields-body">
+    <div className="drive-folder-row"><div><strong>Carpeta de Enseñanza</strong><span>Los archivos continúan privados en vuestro Drive.</span></div><a className="btn ghost" href={DRIVE_TEACHING_FOLDER_URL} target="_blank" rel="noreferrer"><FolderOpen /> Abrir Drive</a></div>
+    {existing.length ? <div className="existing-media"><span>Ya añadidos</span><div>{existing.map((media) => <a key={media.id} href={driveFileUrl(media.external_file_id)} target="_blank" rel="noreferrer">{media.media_type === "video" ? <Video /> : <ImageIcon />}<span>{media.title || (media.media_type === "video" ? "Vídeo" : "Foto")}</span><ExternalLink /></a>)}</div></div> : null}
+    <div className="drive-media-rows">{rows.map((row, index) => <div className="drive-media-row" key={row}><label className="field"><span>Tipo</span><select name="media_type" defaultValue="video"><option value="video">Vídeo</option><option value="image">Foto</option></select></label><label className="field"><span>Nombre</span><input name="media_title" placeholder="Opcional" /></label><label className="field drive-reference"><span>Enlace o ID de Drive</span><input name="media_reference" placeholder="Pega el enlace del archivo" /></label>{rows.length > 1 ? <button type="button" className="icon-btn drive-remove" onClick={() => setRows((current) => current.filter((value) => value !== row))} aria-label={`Quitar archivo ${index + 1}`}><X /></button> : null}</div>)}</div>
+    <button type="button" className="text-button add-media-row" onClick={() => setRows((current) => [...current, Math.max(...current) + 1])}><Plus /> Añadir otro archivo</button>
+  </div></details>;
 }
 
 function contentFitsContext(content: TeachingContent, styleId: number | null, roleId: number | null, levelId: number | null) {
@@ -382,6 +437,7 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
   const [search, setSearch] = useState(""), [showAll, setShowAll] = useState(false), [noteText, setNoteText] = useState(""), [newCorrection, setNewCorrection] = useState("");
   const [measurementMode, setMeasurementMode] = useState<"frequency" | "importance" | "both" | "none">("both"), [frequency, setFrequency] = useState(50), [importance, setImportance] = useState(50);
   const [contextRole, setContextRole] = useState(() => firstParticipant?.role_term_id ? String(firstParticipant.role_term_id) : ""), [contextLevel, setContextLevel] = useState(() => firstParticipant?.level_term_id ? String(firstParticipant.level_term_id) : ""), [busy, setBusy] = useState(""), [syncError, setSyncError] = useState(""), [finishOpen, setFinishOpen] = useState(false);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   const personKey = item.class_participants.map((p) => p.person_id).sort((a, b) => a - b).join(",");
   const loadLive = useCallback(async () => {
     if (!db || !personKey) return;
@@ -396,6 +452,7 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
     setSyncError(""); setNotes((noteResult.data ?? []) as ClassNote[]); setEvaluations((evaluationResult.data ?? []) as StudentEvaluation[]); setAssignments((assignmentResult.data ?? []) as unknown as ContentAssignment[]);
   }, [item.id, personKey]);
   useEffect(() => { const initial = window.setTimeout(() => void loadLive(), 0), timer = window.setInterval(() => { void loadLive(); void refresh(); }, 4000); return () => { clearTimeout(initial); clearInterval(timer); }; }, [loadLive, refresh]);
+  useEffect(() => { if (item.status !== "active") return; const timer = window.setInterval(() => setClockNow(Date.now()), 1000); return () => clearInterval(timer); }, [item.status]);
   const participant = item.class_participants.find((p) => p.person_id === activePersonId) ?? item.class_participants[0], student = students.find((person) => person.id === activePersonId);
   const roles = terms.filter((term) => term.taxonomy === "dance_role"), levels = terms.filter((term) => term.taxonomy === "dance_level"), style = terms.find((term) => term.id === item.style_term_id), levelTerm = terms.find((term) => term.id === participant?.level_term_id);
   const aptitudes = terms.filter((term) => term.taxonomy === "aptitude" && Array.isArray(term.metadata.levels) && (term.metadata.levels as unknown[]).includes(levelTerm?.term_key ?? ""));
@@ -476,11 +533,16 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
     await refresh(); notify("Clase cerrada por completo."); setBusy(""); exit();
   }
   const names = namesFor(item.class_participants.map((p) => p.person_id), students), finished = item.status === "finished";
+  const observationStart = new Date(item.started_at ?? item.scheduled_start_at).getTime();
+  const observationRemaining = item.status === "active" ? Math.min(180, Math.max(0, 180 - Math.floor((clockNow - observationStart) / 1000))) : 0;
+  const observationActive = item.status === "active" && observationRemaining > 0;
+  const observationClock = `${Math.floor(observationRemaining / 60)}:${String(observationRemaining % 60).padStart(2, "0")}`;
   return <div className="live-overlay">
     <div className="live-sticky"><header className="live-top"><div className="live-title"><span className={`live-dot ${finished ? "done" : ""}`} /><div><span>{finished ? "ADMINISTRACIÓN TERMINADA" : "DANDO CLASE"}</span><strong>{names}</strong><small>{style?.label || "Sin estilo"} · {minutesLabel(item.duration_minutes)}</small></div></div><div className="live-actions">{finished ? <button className="btn" onClick={closePedagogy} disabled={busy === "close"}><CheckCircle2 size={17} /> {busy === "close" ? "Cerrando…" : "Cerrar clase"}</button> : <button className="btn" onClick={() => setFinishOpen(true)}><CheckCircle2 size={17} /> Terminar clase</button>}<button className="icon-btn live-exit" onClick={exit} aria-label="Salir del modo clase"><X /></button></div></header>
       <label className="live-search"><Search /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar entre sus correcciones…" /></label>
     </div>
     <main className="live-body">
+      <section className={`observation-phase ${observationActive ? "active" : "complete"}`} aria-live="polite"><span className="observation-icon"><Clock3 /></span><div><p className="eyebrow">Observación inicial</p><strong>{observationActive ? "Escucha, observa y captura lo importante" : "Primera observación completada"}</strong><span>{observationActive ? "Tienes tres minutos desde el inicio real de la clase. Usa las notas rápidas y convierte lo necesario en corrección." : "Continúa con correcciones, evaluación y la guía de hoy."}</span></div><time dateTime={`PT${observationRemaining}S`}>{observationActive ? observationClock : <CheckCircle2 />}</time></section>
       {item.class_participants.length > 1 ? <div className="participant-tabs">{item.class_participants.map((p) => <button key={p.person_id} className={activePersonId === p.person_id ? "active" : ""} onClick={() => chooseParticipant(p.person_id)}>{students.find((person) => person.id === p.person_id)?.display_name || "Alumno"}</button>)}</div> : null}
       <section className="student-context card"><div className="student-context-main"><span className="avatar"><CircleUserRound /></span><div><p className="eyebrow">Alumno</p><h2>{student?.display_name || "Alumno"}</h2><p>{student?.auth_user_id ? "Con acceso al portal" : "Provisional · trabaja igual que cualquier alumno"}</p></div></div><div className="context-controls"><label className="field"><span>Rol</span><select value={contextRole} onChange={(e) => setContextRole(e.target.value)}><option value="">Seleccionar</option>{roles.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label className="field"><span>Nivel</span><select value={contextLevel} onChange={(e) => setContextLevel(e.target.value)}><option value="">Seleccionar</option>{levels.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><button className="btn context-save" onClick={saveContext} disabled={!contextRole || !contextLevel || busy === "context"}>{busy === "context" ? "Guardando…" : "Guardar contexto"}</button></div></section>
       {!contextReady ? <p className="live-hint">Indica rol y nivel una sola vez. A partir de ahí CYA puede relacionar evaluación y correcciones con el contexto correcto.</p> : null}
@@ -549,12 +611,13 @@ function TeachingContentEditor({ initial, defaultType, terms, close, saved, noti
     const styleIds = form.getAll("style_term_ids").map(Number), roleIds = form.getAll("role_term_ids").map(Number), levelIds = form.getAll("level_term_ids").map(Number);
     const tags = String(form.get("tags") || "").split(",").map((tag) => tag.trim()).filter(Boolean);
     setBusy(true); setError("");
-    const result = await db.rpc("save_teaching_content", {
+    const result = await db.rpc("save_teaching_content_with_media", {
       p_content_id: initial?.id ?? null, p_content_type: type, p_title: String(form.get("title") || "").trim(),
       p_description: String(form.get("description") || "").trim() || null, p_correction_guidance: String(form.get("correction_guidance") || "").trim() || null,
       p_completion_status: intent === "publish" ? "complete" : "incomplete", p_publication_status: intent === "publish" ? "published" : "draft",
       p_visibility: intent === "publish" ? String(form.get("visibility") || "student") : "staff", p_measurement_mode: type === "correction" ? String(form.get("measurement_mode") || "both") : "none",
       p_category_term_id: categoryId, p_style_term_ids: styleIds, p_role_term_ids: roleIds, p_level_term_ids: levelIds, p_tags: tags,
+      p_media: teachingMediaFrom(form),
     });
     if (result.error) { setError(result.error.message); setBusy(false); return; }
     await saved(); notify(intent === "publish" ? "Contenido publicado." : "Guardado en Incompletas."); setBusy(false); close();
@@ -582,6 +645,7 @@ function TeachingContentEditor({ initial, defaultType, terms, close, saved, noti
         <fieldset><legend>Roles</legend><div className="check-grid">{roles.map((term) => <label key={term.id}><input type="checkbox" name="role_term_ids" value={term.id} defaultChecked={selectedRoles.has(term.id)} /><span>{term.label}</span></label>)}</div></fieldset>
         <fieldset><legend>Niveles</legend><div className="check-grid">{levels.map((term) => <label key={term.id}><input type="checkbox" name="level_term_ids" value={term.id} defaultChecked={selectedLevels.has(term.id)} /><span>{term.label}</span></label>)}</div></fieldset>
       </div>
+      <TeachingMediaFields existing={initial?.teaching_content_media ?? []} />
       <p className="draft-note">Puedes guardar solo el título. Hasta que lo publiques permanecerá en Incompletas y no se propondrá ni se mostrará al alumno.</p>
       {error ? <p className="error">{error}</p> : null}
       <div className="actions teaching-actions">{initial ? <button className="btn archive-btn" type="button" onClick={archive} disabled={busy}><Archive size={16} /> Archivar</button> : null}<span /><button className="btn ghost" type="submit" name="intent" value="draft" disabled={busy}>Guardar incompleta</button><button className="btn" type="submit" name="intent" value="publish" disabled={busy}>{busy ? "Guardando…" : initial?.publication_status === "published" ? "Guardar publicada" : "Publicar"}</button></div>
@@ -676,10 +740,10 @@ function TeachingView({ contents, relations, assignments, students, terms, refre
 }
 
 function AdminView({ identity }: { identity: Identity }) {
-  return <><Header eyebrow="Administración" title="Sistema" description="Solo configuración global. Los procesos de trabajo permanecerán dentro de su módulo." />
+  return <><Header eyebrow="Administración" title="Cuenta y acceso" description="Tu perfil y el estado general del espacio de trabajo." />
     <section className="grid-2"><article className="card pad"><div className="card-head"><h2>Acceso actual</h2><span className="badge portal">Activo</span></div>
       <div className="stat"><span>Perfil</span><strong className="small-value">{identity.displayName}</strong></div><div className="stat"><span>Rol</span><strong className="small-value">{roleLabel(identity.role)}</strong></div>
-    </article><article className="card pad"><div className="card-head"><h2>Núcleo de datos</h2><span>Nuevo</span></div><div className="status-list"><div><CheckCircle2 /> Supabase conectado</div><div><CheckCircle2 /> Seguridad por usuario activa</div><div><CheckCircle2 /> Sin registros anteriores</div></div></article></section>
+    </article><article className="card pad"><div className="card-head"><h2>Espacio de trabajo</h2><span className="badge portal">Protegido</span></div><div className="status-list"><div><CheckCircle2 /> Acceso privado</div><div><CheckCircle2 /> Perfiles y permisos separados</div><div><CheckCircle2 /> Historial de trabajo conservado</div></div></article></section>
   </>;
 }
 
@@ -788,6 +852,41 @@ function StudentDetail({ student, close }: { student: Person; close: () => void 
     </div></section></div>;
 }
 
+function portalClassStatus(value: string) {
+  return ({ scheduled: "Programada", active: "En curso", finished: "Realizada", cancelled: "Cancelada" } as Record<string, string>)[value] ?? value;
+}
+
+function StudentPortal({ identity }: { identity: Identity }) {
+  const [snapshot, setSnapshot] = useState<StudentPortalSnapshot | null>(null), [error, setError] = useState("");
+  const [portalNow] = useState(() => Date.now());
+  const load = useCallback(async () => {
+    if (!db) return;
+    setError("");
+    const result = await db.rpc("student_portal_snapshot");
+    if (result.error) { setError(result.error.message); return; }
+    setSnapshot(result.data as StudentPortalSnapshot);
+  }, []);
+  useEffect(() => { const initial = window.setTimeout(() => void load(), 0); return () => clearTimeout(initial); }, [load]);
+  if (!snapshot && !error) return <Spinner />;
+  if (!snapshot) return <main className="login"><section className="login-card"><Brand /><h1>No podemos abrir tu ficha</h1><p>{error || "Tu cuenta todavía no está vinculada con una ficha de alumno."}</p><button className="btn" onClick={() => db?.auth.signOut()}>Salir</button></section></main>;
+  const upcoming = snapshot.classes.filter((item) => item.status === "scheduled" && new Date(item.scheduled_start_at).getTime() >= portalNow).sort((a, b) => new Date(a.scheduled_start_at).getTime() - new Date(b.scheduled_start_at).getTime());
+  const nextClass = upcoming[0] ?? null;
+  const activeCredits = snapshot.credits.filter((credit) => credit.status === "active" && Number(credit.balance_minutes) > 0);
+  const balance = activeCredits.reduce((sum, credit) => sum + Number(credit.balance_minutes || 0), 0);
+  const activeAssignments = snapshot.assignments.filter((assignment) => !["corrected", "completed"].includes(assignment.assignment_status));
+  const latestScores = [...snapshot.evaluations].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).reduce<Map<string, StudentPortalSnapshot["evaluations"][number]>>((map, item) => map.has(item.aptitude) ? map : map.set(item.aptitude, item), new Map());
+  return <div className="student-portal-shell"><header className="student-portal-head"><Brand /><div><span>{snapshot.profile.display_name || identity.displayName}</span><button className="icon-btn" onClick={() => db?.auth.signOut()} aria-label="Cerrar sesión"><LogOut /></button></div></header><main className="student-portal-main">
+    <section className="portal-hero"><div><p className="eyebrow">Mi espacio</p><h1>Hola, {snapshot.profile.first_name || snapshot.profile.display_name}</h1><p>{nextClass ? `Tu próxima clase es ${dateLabel(nextClass.scheduled_start_at)}.` : "Aquí tienes tus clases, saldo y evolución al día."}</p></div><Sparkles /></section>
+    <section className="portal-stats"><article><CalendarDays /><span>Próximas clases</span><strong>{upcoming.length}</strong></article><article><WalletCards /><span>Saldo disponible</span><strong>{minutesLabel(balance)}</strong></article><article><BookOpen /><span>En formación</span><strong>{activeAssignments.length}</strong></article><article><TrendingUp /><span>Aptitudes evaluadas</span><strong>{latestScores.size}</strong></article></section>
+    {nextClass ? <section className="card portal-next"><div><p className="eyebrow">Próxima clase</p><h2>{nextClass.style || "Clase privada"}</h2><p>{dateLabel(nextClass.scheduled_start_at)} · {minutesLabel(nextClass.duration_minutes)}</p></div><div><span>{nextClass.role || "Rol por confirmar"}</span><span>{nextClass.level || "Nivel por confirmar"}</span></div></section> : null}
+    <section className="portal-grid"><article className="card portal-card"><div className="card-head"><h2>Mi formación</h2><span>{snapshot.assignments.length}</span></div>{snapshot.assignments.length ? <div className="portal-learning-list">{snapshot.assignments.map((assignment) => <details key={assignment.id}><summary><div><span>{teachingKindLabels[assignment.content_type] ?? assignment.content_type}</span><strong>{assignment.title}</strong><small>{assignmentOptions(assignment.content_type).find(([value]) => value === assignment.assignment_status)?.[1] ?? assignment.assignment_status}</small></div><ChevronRight /></summary><div>{assignment.description ? <p>{assignment.description}</p> : null}{assignment.correction_guidance ? <p><strong>Cómo trabajarlo:</strong> {assignment.correction_guidance}</p> : null}{assignment.current_frequency !== null || assignment.current_importance !== null ? <div className="portal-measures">{assignment.current_frequency !== null ? <span>Frecuencia <strong>{assignment.current_frequency}</strong></span> : null}{assignment.current_importance !== null ? <span>Importancia <strong>{assignment.current_importance}</strong></span> : null}</div> : null}</div></details>)}</div> : <div className="compact-empty"><BookOpen /><span>Cuando te asignemos contenido aparecerá aquí.</span></div>}</article>
+      <article className="card portal-card"><div className="card-head"><h2>Mi evolución</h2><span>0–100</span></div>{latestScores.size ? <div className="portal-score-list">{[...latestScores.values()].map((item) => <div key={item.aptitude}><div><span>{item.aptitude}</span><strong>{item.score}</strong></div><i><b style={{ width: `${item.score}%` }} /></i></div>)}</div> : <div className="compact-empty"><TrendingUp /><span>Tu próxima evaluación aparecerá aquí.</span></div>}</article>
+      <article className="card portal-card"><div className="card-head"><h2>Mis clases</h2><span>{snapshot.classes.length}</span></div>{snapshot.classes.length ? <div className="portal-class-list">{snapshot.classes.slice(0, 8).map((item) => <div key={item.id}><CalendarDays /><div><strong>{item.style || (item.class_type === "pair" ? "Clase en pareja" : "Clase individual")}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(item.duration_minutes)}</span></div><span className={`badge ${item.status === "finished" ? "portal" : ""}`}>{portalClassStatus(item.status)}</span></div>)}</div> : <div className="compact-empty"><CalendarDays /><span>Todavía no hay clases en tu historial.</span></div>}</article>
+      <article className="card portal-card"><div className="card-head"><h2>Mis bonos</h2><span>{snapshot.credits.length}</span></div>{snapshot.credits.length ? <div className="portal-credit-list">{snapshot.credits.map((credit) => <div key={credit.id}><div><strong>{credit.label || (credit.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong><span>{new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).format(new Date(credit.purchased_at))}</span></div><strong>{minutesLabel(Number(credit.balance_minutes || 0))}</strong></div>)}</div> : <div className="compact-empty"><WalletCards /><span>No tienes bonos registrados todavía.</span></div>}</article>
+    </section>
+  </main></div>;
+}
+
 function StaffApp({ session }: { session: Session }) {
   const [view, setView] = useState<View>("home"), [identity, setIdentity] = useState<Identity | null>(null), [students, setStudents] = useState<Person[]>([]);
   const [query, setQuery] = useState(""), [newOpen, setNewOpen] = useState(false), [selected, setSelected] = useState<Person | null>(null), [ready, setReady] = useState(false);
@@ -859,15 +958,18 @@ function StaffApp({ session }: { session: Session }) {
       if (!db) return;
       const [profile, member] = await Promise.all([db.from("user_profiles").select("display_name").eq("id", session.user.id).single(), db.from("app_members").select("role,active").eq("user_id", session.user.id).single()]);
       if (!alive) return;
-      if (!profile.error && !member.error && member.data?.active) setIdentity({ displayName: profile.data?.display_name || session.user.email?.split("@")[0] || "CYA", role: member.data.role });
-      try { await Promise.all([loadStudents(), loadOperations(), loadTeaching(), loadMarketing()]); } catch (e) { if (alive) setToast(e instanceof Error ? e.message : "No se pudieron cargar los datos."); }
+      const nextIdentity = !profile.error && !member.error && member.data?.active ? { displayName: profile.data?.display_name || session.user.email?.split("@")[0] || "CYA", role: member.data.role } : null;
+      if (nextIdentity) setIdentity(nextIdentity);
+      if (nextIdentity && ["admin", "teacher_admin", "teacher"].includes(nextIdentity.role)) {
+        try { await Promise.all([loadStudents(), loadOperations(), loadTeaching(), loadMarketing()]); } catch (e) { if (alive) setToast(e instanceof Error ? e.message : "No se pudieron cargar los datos."); }
+      }
       if (alive) setReady(true);
     } boot(); return () => { alive = false; };
   }, [session.user.id, session.user.email, loadStudents, loadOperations, loadTeaching, loadMarketing]);
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 3000); return () => clearTimeout(timer); }, [toast]);
   if (!ready) return <Spinner />;
   if (!identity) return <main className="login"><section className="login-card"><Brand /><h1>Acceso no disponible</h1><p>La cuenta existe, pero no tiene un rol activo en CYA Hub.</p><button className="btn" onClick={() => db?.auth.signOut()}>Salir</button></section></main>;
-  if (!["admin", "teacher_admin", "teacher"].includes(identity.role)) return <main className="login"><section className="login-card"><Brand /><h1>Portal de alumno</h1><p>Tu acceso está correcto. El portal se conectará con el bloque pedagógico.</p><button className="btn" onClick={() => db?.auth.signOut()}>Salir</button></section></main>;
+  if (!["admin", "teacher_admin", "teacher"].includes(identity.role)) return <StudentPortal identity={identity} />;
   async function created() { await Promise.all([loadStudents(),loadMarketing()]); setToast("Alumno provisional creado correctamente."); setView("students"); }
   async function classSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Clase programada correctamente."); setView("classes"); }
   async function creditSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Bono creado correctamente."); setView("credits"); }
