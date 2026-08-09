@@ -3,12 +3,12 @@
 import {
   Archive, ArrowRight, Bell, BookOpen, CalendarDays, CheckCircle2, ChevronRight, CircleUserRound,
   Clock3, Dumbbell, ExternalLink, Eye, EyeOff, FolderOpen, GitBranch, GraduationCap, House,
-  Image as ImageIcon, LibraryBig, Link2, LockKeyhole, LogOut, Megaphone, Menu, NotebookPen,
-  Pencil, Play, Plus, Search, Settings, Sparkles, Tag, TrendingUp, UsersRound, Video,
+  Image as ImageIcon, LibraryBig, Link2, LockKeyhole, LogOut, Megaphone, NotebookPen,
+  Pencil, Play, Plus, Search, Sparkles, Tag, TrendingUp, UsersRound, Video,
   WalletCards, X,
 } from "lucide-react";
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   MarketingView,
   type CampaignMetric,
@@ -19,14 +19,20 @@ import {
   type MarketingEvent,
   type MarketingRate,
 } from "./marketing-view";
+import { AdminView } from "./admin-view";
+import { AgendaView } from "./agenda-view";
+import { ContextSelector } from "./context-selector";
+import { HomeView } from "./home-view";
+import type { ExperienceContext, IdentityContext } from "./v14-types";
 
-type View = "home" | "students" | "classes" | "credits" | "live" | "teaching" | "marketing" | "admin";
+const TeachingGraph = lazy(() => import("./teaching-graph").then((module) => ({ default: module.TeachingGraph })));
+
+type View = "home" | "students" | "classes" | "credits" | "agenda" | "live" | "teaching" | "marketing" | "admin";
 type Person = {
   id: number; auth_user_id: string | null; display_name: string; first_name: string | null;
   last_name: string | null; email: string | null; phone: string | null; country_code: string | null;
   crm_stage: string; active: boolean;
 };
-type Identity = { displayName: string; role: string };
 type CatalogTerm = { id: number; label: string; term_key: string; taxonomy: string; metadata: Record<string, unknown>; sort_order: number };
 type ClassParticipant = {
   person_id: number; attendance_status: "planned" | "present" | "absent"; billing_grant_id: number | null;
@@ -127,14 +133,10 @@ async function connectDatabase() {
 const nav = [
   ["home", "Inicio", House],
   ["students", "Alumnado", UsersRound],
-  ["classes", "Clases", CalendarDays],
-  ["credits", "Bonos", WalletCards],
   ["live", "Dar clase", GraduationCap],
   ["teaching", "Enseñanza", LibraryBig],
   ["marketing", "Marketing", Megaphone],
 ] as const;
-
-const mobileViews: View[] = ["home", "students", "classes", "credits", "live"];
 
 const teachingKinds = [
   ["correction", "Correcciones", BookOpen],
@@ -282,42 +284,6 @@ function classToOpen(classes: ClassItem[]) {
   const scheduled = classes.filter((item) => item.status === "scheduled").sort((a, b) => new Date(a.scheduled_start_at).getTime() - new Date(b.scheduled_start_at).getTime());
   const past = scheduled.filter((item) => new Date(item.scheduled_start_at).getTime() <= Date.now());
   return past.at(-1) ?? scheduled[0] ?? null;
-}
-
-function HomeView({ identity, count, classes, students, go, goLive, add }: { identity: Identity; count: number; classes: ClassItem[]; students: Person[]; go: (v: View) => void; goLive: (id?: number) => void; add: () => void }) {
-  const [now] = useState(() => new Date());
-  const date = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" }).format(now);
-  const live = classToOpen(classes);
-  const minutesUntil = live?.status === "scheduled" ? Math.round((new Date(live.scheduled_start_at).getTime() - now.getTime()) / 60000) : null;
-  const liveDominates = Boolean(live && (live.status === "active" || (live.status === "finished" && !live.pedagogy_closed_at) || (minutesUntil !== null && minutesUntil <= 30)));
-  const liveNames = live ? namesFor(live.class_participants.map((p) => p.person_id), students) : "";
-  const today = now.toDateString(), todayClasses = classes.filter((item) => new Date(item.scheduled_start_at).toDateString() === today && item.status !== "cancelled").length;
-  const pendingClose = classes.filter((item) => item.status === "finished" && !item.pedagogy_closed_at).length;
-  return <>
-    <Header eyebrow={date} title={`Hola, ${identity.displayName}`} description="CYA te lleva primero a lo que toca ahora." />
-    <section className="focus">
-      <div><small>{liveDominates ? "AHORA TOCA" : count ? "SIGUIENTE ACCIÓN" : "PRIMER PASO"}</small><h2>{liveDominates ? (live?.status === "active" ? `Dando clase · ${liveNames}` : live?.status === "finished" ? `Cerrar clase · ${liveNames}` : `Próxima clase · ${liveNames}`) : count ? "Tu alumnado ya está operativo" : "Añade tu primer alumno"}</h2>
-        <p>{liveDominates ? (live?.status === "scheduled" && minutesUntil !== null && minutesUntil > 0 ? `Empieza en ${minutesUntil} min. Todo el contexto del alumno estará preparado al entrar.` : live?.status === "finished" ? "La parte administrativa ya está terminada; queda cerrar el trabajo pedagógico." : "La clase está abierta y puedes volver exactamente al punto de trabajo.") : count ? "Ya puedes consultar alumnos, programar clases y gestionar sus bonos desde cualquier dispositivo." : "Los perfiles provisionales funcionan sin obligar al alumno a crear una cuenta de acceso."}</p>
-        {liveDominates ? <button className="btn" onClick={() => goLive(live?.id)}><GraduationCap size={18} /> {live?.status === "active" ? "Volver a la clase" : live?.status === "finished" ? "Cerrar clase" : "Dar clase"}</button> : <button className="btn" onClick={add}><Plus size={18} /> Añadir alumno</button>}
-      </div><Sparkles className="focus-icon" />
-    </section>
-    <section className="quick-grid" aria-label="Acciones rápidas">
-      <button className="quick" onClick={() => go("classes")}><CalendarDays /><strong>Programar clase</strong></button>
-      <button className="quick" onClick={() => go("students")}><UsersRound /><strong>Abrir alumno</strong></button>
-      <button className="quick" onClick={() => go("teaching")}><BookOpen /><strong>Crear contenido</strong></button>
-      <button className="quick quick-wide" onClick={() => go("classes")}><span><CalendarDays /><strong>Ver agenda</strong></span><ChevronRight /></button>
-    </section>
-    <section className="grid-2">
-      <article className="card pad"><div className="card-head"><h2>Tu día</h2><span>Ahora</span></div>
-        <div className="stat"><span>Alumnos</span><strong>{count}</strong></div>
-        <div className="stat"><span>Clases de hoy</span><strong>{todayClasses}</strong></div>
-        <div className="stat"><span>Clases por cerrar</span><strong>{pendingClose}</strong></div>
-      </article>
-      <article className="card pad"><div className="card-head"><h2>Todo a mano</h2><span>Listo</span></div>
-        <div className="status-list"><div><CheckCircle2 /> Alumnado y fichas</div><div><CheckCircle2 /> Agenda, clases y bonos</div><div><CheckCircle2 /> Enseñanza y evolución</div><div><CheckCircle2 /> Marketing y comunicaciones</div></div>
-      </article>
-    </section>
-  </>;
 }
 
 function StudentsView({ students, query, setQuery, add, open, schedule, credit }: { students: Person[]; query: string; setQuery: (v: string) => void; add: () => void; open: (p: Person) => void; schedule: (p: Person) => void; credit: (p: Person) => void }) {
@@ -525,7 +491,8 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
 function LiveSession({ item, students, credits, terms, library, relations, refresh, notify, exit }: { item: ClassItem; students: Person[]; credits: CreditItem[]; terms: CatalogTerm[]; library: TeachingContent[]; relations: TeachingRelation[]; refresh: () => Promise<void>; notify: (message: string) => void; exit: () => void }) {
   const firstParticipant = item.class_participants[0], firstPerson = firstParticipant?.person_id || 0;
   const [activePersonId, setActivePersonId] = useState(firstPerson), [notes, setNotes] = useState<ClassNote[]>([]), [evaluations, setEvaluations] = useState<StudentEvaluation[]>([]), [assignments, setAssignments] = useState<ContentAssignment[]>([]);
-  const [search, setSearch] = useState(""), [showAll, setShowAll] = useState(false), [noteText, setNoteText] = useState(""), [newCorrection, setNewCorrection] = useState("");
+  const [search, setSearch] = useState(""), [searchKind, setSearchKind] = useState<"all" | "correction" | "explanation" | "exercise" | "sequence">("all"), [showAll, setShowAll] = useState(false), [noteText, setNoteText] = useState(""), [newCorrection, setNewCorrection] = useState("");
+  const [quickType, setQuickType] = useState<"correction" | "explanation" | "exercise" | "sequence">("correction"), [quickTitle, setQuickTitle] = useState("");
   const [measurementMode, setMeasurementMode] = useState<"frequency" | "importance" | "both" | "none">("both"), [frequency, setFrequency] = useState(50), [importance, setImportance] = useState(50);
   const [contextRole, setContextRole] = useState(() => firstParticipant?.role_term_id ? String(firstParticipant.role_term_id) : ""), [contextLevel, setContextLevel] = useState(() => firstParticipant?.level_term_id ? String(firstParticipant.level_term_id) : ""), [busy, setBusy] = useState(""), [syncError, setSyncError] = useState(""), [finishOpen, setFinishOpen] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
@@ -549,7 +516,7 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
   const aptitudes = terms.filter((term) => term.taxonomy === "aptitude" && Array.isArray(term.metadata.levels) && (term.metadata.levels as unknown[]).includes(levelTerm?.term_key ?? ""));
   const scale = terms.filter((term) => term.taxonomy === "evaluation_scale").map((term) => ({ term, score: Number(term.metadata.score) })).sort((a, b) => a.score - b.score);
   const personAssignments = assignments.filter((assignment) => assignment.person_id === activePersonId);
-  const currentCorrections = personAssignments.filter((assignment) => assignment.teaching_contents.content_type === "correction").filter((assignment) => showAll || assignment.assignment_status !== "corrected").filter((assignment) => !search.trim() || assignment.teaching_contents.title.toLocaleLowerCase("es").includes(search.trim().toLocaleLowerCase("es")));
+  const currentCorrections = personAssignments.filter((assignment) => assignment.teaching_contents.content_type === "correction").filter((assignment) => showAll || assignment.assignment_status !== "corrected");
   const contextReady = Boolean(participant?.role_term_id && participant?.level_term_id && item.style_term_id), personNotes = notes.filter((note) => note.person_id === activePersonId || note.person_id === null);
   const assignedContentIds = new Set(personAssignments.map((assignment) => assignment.content_id));
   const doneContentIds = new Set(personAssignments.filter(assignmentIsDone).map((assignment) => assignment.content_id));
@@ -557,6 +524,18 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
     .filter((content) => contentFitsContext(content, item.style_term_id, participant?.role_term_id ?? null, participant?.level_term_id ?? null));
   const prerequisitesReady = (content: TeachingContent) => relations.filter((relation) => relation.source_content_id === content.id && relation.relation_type === "prerequisite").every((relation) => doneContentIds.has(relation.target_content_id));
   const guideCandidates = compatibleLibrary.filter((content) => ["explanation","sequence"].includes(content.content_type) && !assignedContentIds.has(content.id) && prerequisitesReady(content)).slice(0,4);
+  const normalizedSearch = search.trim().toLocaleLowerCase("es");
+  const matchesSearch = (content: TeachingContentSummary | TeachingContent) => !normalizedSearch || [content.title,content.description,content.correction_guidance,"teaching_content_tags" in content ? content.teaching_content_tags.map((tag) => tag.tag).join(" ") : ""].filter(Boolean).some((value) => String(value).toLocaleLowerCase("es").includes(normalizedSearch));
+  const unifiedAssigned = personAssignments
+    .filter((assignment) => searchKind === "all" || assignment.teaching_contents.content_type === searchKind)
+    .filter((assignment) => matchesSearch(assignment.teaching_contents))
+    .sort((a,b) => Number(assignmentIsDone(a)) - Number(assignmentIsDone(b)) || Number(b.teaching_contents.content_type === "correction") - Number(a.teaching_contents.content_type === "correction"));
+  const unifiedLibrary = library
+    .filter((content) => content.active && !assignedContentIds.has(content.id))
+    .filter((content) => searchKind === "all" || content.content_type === searchKind)
+    .filter(matchesSearch)
+    .filter((content) => contentFitsContext(content,item.style_term_id,participant?.role_term_id ?? null,participant?.level_term_id ?? null))
+    .sort((a,b) => Number(b.completion_status === "complete" && b.publication_status === "published") - Number(a.completion_status === "complete" && a.publication_status === "published"));
   function chooseParticipant(personId: number) {
     const next = item.class_participants.find((candidate) => candidate.person_id === personId);
     setActivePersonId(personId); setContextRole(next?.role_term_id ? String(next.role_term_id) : ""); setContextLevel(next?.level_term_id ? String(next.level_term_id) : "");
@@ -584,6 +563,44 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
       p_importance: measurementMode === "importance" || measurementMode === "both" ? importance : null,
     });
     if (result.error) notify(result.error.message); else { setNewCorrection(""); await loadLive(); notify("Corrección añadida."); } setBusy("");
+  }
+  async function createQuickContent() {
+    if (!db || !participant || !quickTitle.trim() || !contextReady || !item.style_term_id || !participant.role_term_id || !participant.level_term_id) return;
+    setBusy("quick-create");
+    if (quickType === "correction") {
+      const result = await db.rpc("create_class_correction", {
+        p_class_id: item.id,
+        p_person_id: participant.person_id,
+        p_title: quickTitle.trim(),
+        p_measurement_mode: "both",
+        p_frequency: 50,
+        p_importance: 50,
+      });
+      if (result.error) notify(result.error.message);
+      else { setQuickTitle(""); await loadLive(); await refresh(); notify("Corrección rápida añadida al alumno."); }
+      setBusy("");
+      return;
+    }
+    const result = await db.rpc("save_teaching_content_with_media", {
+      p_content_id: null,
+      p_content_type: quickType,
+      p_title: quickTitle.trim(),
+      p_description: null,
+      p_correction_guidance: null,
+      p_completion_status: "incomplete",
+      p_publication_status: "draft",
+      p_visibility: "staff",
+      p_measurement_mode: "none",
+      p_category_term_id: null,
+      p_style_term_ids: [item.style_term_id],
+      p_role_term_ids: [participant.role_term_id],
+      p_level_term_ids: [participant.level_term_id],
+      p_tags: [],
+      p_media: [],
+    });
+    if (result.error) notify(result.error.message);
+    else { setQuickTitle(""); await refresh(); notify(`${teachingKindLabels[quickType]} guardada en Incompletas para terminar después.`); }
+    setBusy("");
   }
   async function updateCorrection(assignment: ContentAssignment, changes: { status?: string; frequency?: number; importance?: number }) {
     if (!db) return; const mode = assignment.snapshot_measurement_mode;
@@ -621,9 +638,13 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
   const observationClock = `${Math.floor(observationRemaining / 60)}:${String(observationRemaining % 60).padStart(2, "0")}`;
   return <div className="live-overlay">
     <div className="live-sticky"><header className="live-top"><div className="live-title"><span className={`live-dot ${finished ? "done" : ""}`} /><div><span>{finished ? "ADMINISTRACIÓN TERMINADA" : "DANDO CLASE"}</span><strong>{names}</strong><small>{style?.label || "Sin estilo"} · {minutesLabel(item.duration_minutes)}</small></div></div><div className="live-actions">{finished ? <button className="btn" onClick={closePedagogy} disabled={busy === "close"}><CheckCircle2 size={17} /> {busy === "close" ? "Cerrando…" : "Cerrar clase"}</button> : <button className="btn" onClick={() => setFinishOpen(true)}><CheckCircle2 size={17} /> Terminar clase</button>}<button className="icon-btn live-exit" onClick={exit} aria-label="Salir del modo clase"><X /></button></div></header>
-      <label className="live-search"><Search /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar entre sus correcciones…" /></label>
+      <div className="live-search-area"><label className="live-search"><Search /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar correcciones, explicaciones, ejercicios o secuencias…" /></label><nav className="live-search-kinds" aria-label="Tipo de contenido">{([['all','Todo'],['correction','Correcciones'],['explanation','Explicaciones'],['exercise','Ejercicios'],['sequence','Secuencias']] as const).map(([value,label]) => <button key={value} className={searchKind === value ? "active" : ""} onClick={() => setSearchKind(value)}>{label}</button>)}</nav></div>
     </div>
     <main className="live-body">
+      <section className="live-unified-search card">
+        <details className="quick-content-create"><summary><Plus /> Crear rápido</summary><div><select value={quickType} onChange={(event) => setQuickType(event.target.value as typeof quickType)}><option value="correction">Corrección</option><option value="explanation">Explicación</option><option value="exercise">Ejercicio</option><option value="sequence">Secuencia</option></select><input value={quickTitle} onChange={(event) => setQuickTitle(event.target.value)} placeholder="Título corto para no detener la clase" /><button className="btn" onClick={createQuickContent} disabled={!contextReady || !quickTitle.trim() || busy === "quick-create"}>{busy === "quick-create" ? "Guardando…" : "Guardar"}</button></div><small>{quickType === "correction" ? "Se añade al alumno con medición inicial 50/50." : "Queda en Incompletas, vinculada al contexto actual, para terminarla después."}</small></details>
+        {normalizedSearch || searchKind !== "all" ? <div className="unified-results"><div className="unified-result-head"><strong>Resultados</strong><span>{unifiedAssigned.length + unifiedLibrary.length}</span></div>{unifiedAssigned.map((assignment) => <article className="unified-result assigned" key={`assigned-${assignment.id}`}><span className="content-kind">{teachingKindLabels[assignment.teaching_contents.content_type]}</span><div><strong>{assignment.teaching_contents.title}</strong><small>Ya está en la formación del alumno · {assignmentOptions(assignment.teaching_contents.content_type).find(([value]) => value === assignment.assignment_status)?.[1] ?? assignment.assignment_status}</small></div><CheckCircle2 /></article>)}{unifiedLibrary.slice(0,12).map((content) => { const ready = content.completion_status === "complete" && content.publication_status === "published"; return <article className="unified-result" key={`library-${content.id}`}><span className="content-kind">{teachingKindLabels[content.content_type]}</span><div><strong>{content.title}</strong><small>{ready ? "Biblioteca · compatible con esta clase" : "Incompleta · solo profesores"}</small></div>{ready ? <button className="btn" disabled={busy === `assign-${content.id}`} onClick={() => assignGuideContent(content)}><Plus /> Añadir</button> : <span className="badge">Completar después</span>}</article>; })}{!unifiedAssigned.length && !unifiedLibrary.length ? <div className="compact-empty"><Search /><span>No hay coincidencias. Puedes crear el contenido rápidamente.</span></div> : null}</div> : null}
+      </section>
       <section className={`observation-phase ${observationActive ? "active" : "complete"}`} aria-live="polite"><span className="observation-icon"><Clock3 /></span><div><p className="eyebrow">Observación inicial</p><strong>{observationActive ? "Escucha, observa y captura lo importante" : "Primera observación completada"}</strong><span>{observationActive ? "Tienes tres minutos desde el inicio real de la clase. Usa las notas rápidas y convierte lo necesario en corrección." : "Continúa con correcciones, evaluación y la guía de hoy."}</span></div><time dateTime={`PT${observationRemaining}S`}>{observationActive ? observationClock : <CheckCircle2 />}</time></section>
       {item.class_participants.length > 1 ? <div className="participant-tabs">{item.class_participants.map((p) => <button key={p.person_id} className={activePersonId === p.person_id ? "active" : ""} onClick={() => chooseParticipant(p.person_id)}>{students.find((person) => person.id === p.person_id)?.display_name || "Alumno"}</button>)}</div> : null}
       <section className="student-context card"><div className="student-context-main"><span className="avatar"><CircleUserRound /></span><div><p className="eyebrow">Alumno</p><h2>{student?.display_name || "Alumno"}</h2><p>{student?.auth_user_id ? "Con acceso al portal" : "Provisional · trabaja igual que cualquier alumno"}</p></div></div><div className="context-controls"><label className="field"><span>Rol</span><select value={contextRole} onChange={(e) => setContextRole(e.target.value)}><option value="">Seleccionar</option>{roles.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label className="field"><span>Nivel</span><select value={contextLevel} onChange={(e) => setContextLevel(e.target.value)}><option value="">Seleccionar</option>{levels.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><button className="btn context-save" onClick={saveContext} disabled={!contextRole || !contextLevel || busy === "context"}>{busy === "context" ? "Guardando…" : "Guardar contexto"}</button></div></section>
@@ -632,7 +653,7 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
       <section className="live-grid">
         <article className="card live-card corrections-card"><div className="live-card-head"><div><p className="eyebrow">Trabajo activo</p><h2>Correcciones</h2></div><button className="text-button" onClick={() => setShowAll(!showAll)}>{showAll ? "Solo activas" : "Ver todas"}</button></div>
           <details className="new-correction"><summary><Plus size={18} /> Nueva corrección</summary><div className="new-correction-body"><label className="field"><span>Qué has visto</span><input value={newCorrection} onChange={(e) => setNewCorrection(e.target.value)} placeholder="Escribe el fallo en una frase…" /></label><div className="correction-new-grid"><label className="field"><span>Medir por</span><select value={measurementMode} onChange={(e) => setMeasurementMode(e.target.value as typeof measurementMode)}><option value="both">Frecuencia + importancia</option><option value="frequency">Frecuencia</option><option value="importance">Importancia</option><option value="none">Sin medición</option></select></label>{measurementMode === "frequency" || measurementMode === "both" ? <label className="field"><span>Frecuencia</span><select value={frequency} onChange={(e) => setFrequency(Number(e.target.value))}>{[0,25,50,75,100].map((value) => <option key={value} value={value}>{value}</option>)}</select></label> : null}{measurementMode === "importance" || measurementMode === "both" ? <label className="field"><span>Importancia</span><select value={importance} onChange={(e) => setImportance(Number(e.target.value))}>{[0,25,50,75,100].map((value) => <option key={value} value={value}>{value}</option>)}</select></label> : null}</div><button className="btn" onClick={createCorrection} disabled={!contextReady || !newCorrection.trim() || busy === "correction"}>{busy === "correction" ? "Añadiendo…" : "Añadir corrección"}</button></div></details>
-          <div className="correction-list">{currentCorrections.length ? currentCorrections.map((assignment) => <details className="correction-item" key={assignment.id}><summary><div><strong>{assignment.teaching_contents.title}</strong><span>{correctionStateLabel(assignment.assignment_status)}{assignment.current_frequency !== null ? ` · Frec. ${assignment.current_frequency}` : ""}{assignment.current_importance !== null ? ` · Importancia ${assignment.current_importance}` : ""}</span></div><ChevronRight /></summary><div className="correction-detail"><label className="field"><span>Estado</span><select value={assignment.assignment_status} disabled={busy === `correction-${assignment.id}`} onChange={(e) => updateCorrection(assignment, { status: e.target.value })}>{correctionStates.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{assignment.snapshot_measurement_mode === "frequency" || assignment.snapshot_measurement_mode === "both" ? <label className="field"><span>Frecuencia</span><select value={assignment.current_frequency ?? 0} onChange={(e) => updateCorrection(assignment, { frequency: Number(e.target.value) })}>{[0,25,50,75,100].map((value) => <option key={value} value={value}>{value}</option>)}</select></label> : null}{assignment.snapshot_measurement_mode === "importance" || assignment.snapshot_measurement_mode === "both" ? <label className="field"><span>Importancia</span><select value={assignment.current_importance ?? 0} onChange={(e) => updateCorrection(assignment, { importance: Number(e.target.value) })}>{[0,25,50,75,100].map((value) => <option key={value} value={value}>{value}</option>)}</select></label> : null}{assignment.teaching_contents.description ? <p>{assignment.teaching_contents.description}</p> : null}{assignment.teaching_contents.correction_guidance ? <p><strong>Cómo corregirlo:</strong> {assignment.teaching_contents.correction_guidance}</p> : null}</div></details>) : <div className="compact-empty"><CheckCircle2 /><span>{personAssignments.some((assignment) => assignment.teaching_contents.content_type === "correction") && !showAll ? "No quedan correcciones activas." : search ? "No coincide ninguna corrección." : "Todavía no hay correcciones para este alumno."}</span></div>}</div>
+          <div className="correction-list">{currentCorrections.length ? currentCorrections.map((assignment) => <details className="correction-item" key={assignment.id}><summary><div><strong>{assignment.teaching_contents.title}</strong><span>{correctionStateLabel(assignment.assignment_status)}{assignment.current_frequency !== null ? ` · Frec. ${assignment.current_frequency}` : ""}{assignment.current_importance !== null ? ` · Importancia ${assignment.current_importance}` : ""}</span></div><ChevronRight /></summary><div className="correction-detail"><label className="field"><span>Estado</span><select value={assignment.assignment_status} disabled={busy === `correction-${assignment.id}`} onChange={(e) => updateCorrection(assignment, { status: e.target.value })}>{correctionStates.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{assignment.snapshot_measurement_mode === "frequency" || assignment.snapshot_measurement_mode === "both" ? <label className="field"><span>Frecuencia</span><select value={assignment.current_frequency ?? 0} onChange={(e) => updateCorrection(assignment, { frequency: Number(e.target.value) })}>{[0,25,50,75,100].map((value) => <option key={value} value={value}>{value}</option>)}</select></label> : null}{assignment.snapshot_measurement_mode === "importance" || assignment.snapshot_measurement_mode === "both" ? <label className="field"><span>Importancia</span><select value={assignment.current_importance ?? 0} onChange={(e) => updateCorrection(assignment, { importance: Number(e.target.value) })}>{[0,25,50,75,100].map((value) => <option key={value} value={value}>{value}</option>)}</select></label> : null}{assignment.teaching_contents.description ? <p>{assignment.teaching_contents.description}</p> : null}{assignment.teaching_contents.correction_guidance ? <p><strong>Cómo corregirlo:</strong> {assignment.teaching_contents.correction_guidance}</p> : null}</div></details>) : <div className="compact-empty"><CheckCircle2 /><span>{personAssignments.some((assignment) => assignment.teaching_contents.content_type === "correction") && !showAll ? "No quedan correcciones activas." : "Todavía no hay correcciones para este alumno."}</span></div>}</div>
         </article>
         <article className="card live-card"><div className="live-card-head"><div><p className="eyebrow">Guardado inmediato</p><h2>Evaluación</h2></div><span className="badge">0–100</span></div>
           {!contextReady ? <div className="compact-empty"><CircleUserRound /><span>Guarda primero rol y nivel.</span></div> : <div className="evaluation-list">{aptitudes.map((aptitude) => { const current = evaluations.find((evaluation) => evaluation.person_id === activePersonId && evaluation.aptitude_term_id === aptitude.id); return <div className="evaluation-row" key={aptitude.id}><div><strong>{aptitude.label}</strong><span>{current ? `${current.score}/100` : "Sin evaluar"}</span></div><div className="score-grid">{scale.map(({ term, score }) => <button key={term.id} className={current?.score === score ? "selected" : ""} title={term.label} aria-label={`${aptitude.label}: ${term.label} (${score})`} disabled={busy === `eval-${aptitude.id}`} onClick={() => saveEvaluation(aptitude.id, score)}>{score}</button>)}</div></div>; })}</div>}
@@ -780,12 +801,7 @@ function TeachingAssignModal({ student, contents, assignments, terms, close, sav
 }
 
 function TeachingMap({ contents, relations, terms }: { contents: TeachingContent[]; relations: TeachingRelation[]; terms: CatalogTerm[] }) {
-  const styles = terms.filter((term) => term.taxonomy === "dance_style"), roles = terms.filter((term) => term.taxonomy === "dance_role");
-  const [styleId,setStyleId] = useState(styles[0]?.id ?? 0), [roleId,setRoleId] = useState(roles[0]?.id ?? 0);
-  const explanations = contents.filter((content) => content.content_type === "explanation" && content.active && content.completion_status === "complete").filter((content) => content.teaching_content_styles.some((link) => link.style_term_id === styleId) && content.teaching_content_roles.some((link) => link.role_term_id === roleId));
-  return <><div className="map-controls"><label className="field"><span>Estilo</span><select value={styleId} onChange={(event) => setStyleId(Number(event.target.value))}>{styles.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label className="field"><span>Rol</span><select value={roleId} onChange={(event) => setRoleId(Number(event.target.value))}>{roles.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label></div>
-    {explanations.length ? <div className="teaching-map">{explanations.map((content) => { const prereqs = relations.filter((relation) => relation.source_content_id === content.id && relation.relation_type === "prerequisite").map((relation) => contents.find((item) => item.id === relation.target_content_id)?.title).filter(Boolean), counterpart = relations.find((relation) => relation.relation_type === "counterpart" && (relation.source_content_id === content.id || relation.target_content_id === content.id)), otherId = counterpart ? (counterpart.source_content_id === content.id ? counterpart.target_content_id : counterpart.source_content_id) : null, other = otherId ? contents.find((item) => item.id === otherId) : null; return <article className="card map-node" key={content.id}><span>{linkedTermLabels(content.teaching_content_levels.map((link) => link.level_term_id),terms)}</span><h3>{content.title}</h3>{prereqs.length ? <p><strong>Antes:</strong> {prereqs.join(" · ")}</p> : <p className="map-start">Punto de inicio</p>}{other ? <p><strong>Homóloga:</strong> {other.title}</p> : null}</article>; })}</div> : <div className="empty"><GitBranch /><strong>Mapa vacío</strong><p>Las explicaciones publicadas aparecerán aquí según estilo y rol.</p></div>}
-  </>;
+  return <Suspense fallback={<div className="graph-empty graph-loading"><span className="spinner" /><strong>Preparando mapa…</strong></div>}><TeachingGraph contents={contents} relations={relations} terms={terms} /></Suspense>;
 }
 
 function TeachingView({ contents, relations, assignments, students, terms, refresh, notify }: { contents: TeachingContent[]; relations: TeachingRelation[]; assignments: ContentAssignment[]; students: Person[]; terms: CatalogTerm[]; refresh: () => Promise<void>; notify: (message: string) => void }) {
@@ -817,14 +833,6 @@ function TeachingView({ contents, relations, assignments, students, terms, refre
     {editing ? <TeachingContentEditor key={editing.id} initial={editing} defaultType={editing.content_type} terms={terms} close={() => setEditing(null)} saved={refresh} notify={notify} /> : null}
     {relating ? <TeachingRelationEditor key={relating.id} content={relating} contents={contents} relations={relations} close={() => setRelating(null)} saved={refresh} notify={notify} /> : null}
     {assigning ? <TeachingAssignModal key={assigning.id} student={assigning} contents={contents} assignments={assignments} terms={terms} close={() => setAssigning(null)} saved={async () => { await refresh(); notify("Contenido añadido al alumno."); }} /> : null}
-  </>;
-}
-
-function AdminView({ identity }: { identity: Identity }) {
-  return <><Header eyebrow="Administración" title="Cuenta y acceso" description="Tu perfil y el estado general del espacio de trabajo." />
-    <section className="grid-2"><article className="card pad"><div className="card-head"><h2>Acceso actual</h2><span className="badge portal">Activo</span></div>
-      <div className="stat"><span>Perfil</span><strong className="small-value">{identity.displayName}</strong></div><div className="stat"><span>Rol</span><strong className="small-value">{roleLabel(identity.role)}</strong></div>
-    </article><article className="card pad"><div className="card-head"><h2>Espacio de trabajo</h2><span className="badge portal">Protegido</span></div><div className="status-list"><div><CheckCircle2 /> Acceso privado</div><div><CheckCircle2 /> Perfiles y permisos separados</div><div><CheckCircle2 /> Historial de trabajo conservado</div></div></article></section>
   </>;
 }
 
@@ -954,7 +962,7 @@ function portalClassStatus(value: string) {
   return ({ scheduled: "Programada", active: "En curso", finished: "Realizada", cancelled: "Cancelada" } as Record<string, string>)[value] ?? value;
 }
 
-function StudentPortal({ identity }: { identity: Identity }) {
+function StudentPortal({ identity, experience, onExperience }: { identity: IdentityContext; experience: ExperienceContext; onExperience: (value: ExperienceContext) => void }) {
   const [snapshot, setSnapshot] = useState<StudentPortalSnapshot | null>(null), [error, setError] = useState("");
   const [portalNow] = useState(() => Date.now());
   const load = useCallback(async () => {
@@ -975,7 +983,7 @@ function StudentPortal({ identity }: { identity: Identity }) {
   const latestScores = [...snapshot.evaluations].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).reduce<Map<string, StudentPortalSnapshot["evaluations"][number]>>((map, item) => map.has(item.aptitude) ? map : map.set(item.aptitude, item), new Map());
   const totalScore = [...latestScores.values()].reduce((sum,item) => sum + Number(item.score || 0),0);
   const relativeRadar = [...latestScores.values()].map((item) => ({ label:item.aptitude, value:totalScore ? Number(item.score) / totalScore * 100 : 0 }));
-  return <div className="student-portal-shell"><header className="student-portal-head"><Brand /><div><span>{snapshot.profile.display_name || identity.displayName}</span><button className="icon-btn" onClick={() => db?.auth.signOut()} aria-label="Cerrar sesión"><LogOut /></button></div></header><main className="student-portal-main">
+  return <div className="student-portal-shell"><header className="student-portal-head"><Brand /><ContextSelector identity={identity} value={experience} onChange={onExperience} compact /><div><span>{snapshot.profile.display_name || identity.display_name}</span><button className="icon-btn" onClick={() => db?.auth.signOut()} aria-label="Cerrar sesión"><LogOut /></button></div></header><main className="student-portal-main">
     <section className="portal-hero"><div><p className="eyebrow">Mi espacio</p><h1>Hola, {snapshot.profile.first_name || snapshot.profile.display_name}</h1><p>{nextClass ? `Tu próxima clase es ${dateLabel(nextClass.scheduled_start_at)}.` : "Aquí tienes tus clases, saldo y evolución al día."}</p></div><Sparkles /></section>
     <section className="portal-stats"><article><CalendarDays /><span>Próximas clases</span><strong>{upcoming.length}</strong></article><article><WalletCards /><span>Saldo disponible</span><strong>{minutesLabel(balance)}</strong></article><article><BookOpen /><span>En formación</span><strong>{activeAssignments.length}</strong></article><article><TrendingUp /><span>Aptitudes evaluadas</span><strong>{latestScores.size}</strong></article></section>
     {nextClass ? <section className="card portal-next"><div><p className="eyebrow">Próxima clase</p><h2>{nextClass.style || "Clase privada"}</h2><p>{dateLabel(nextClass.scheduled_start_at)} · {minutesLabel(nextClass.duration_minutes)}</p></div><div><span>{nextClass.role || "Rol por confirmar"}</span><span>{nextClass.level || "Nivel por confirmar"}</span></div></section> : null}
@@ -988,7 +996,7 @@ function StudentPortal({ identity }: { identity: Identity }) {
 }
 
 function StaffApp({ session }: { session: Session }) {
-  const [view, setView] = useState<View>("home"), [identity, setIdentity] = useState<Identity | null>(null), [students, setStudents] = useState<Person[]>([]);
+  const [view, setView] = useState<View>("home"), [identity, setIdentity] = useState<IdentityContext | null>(null), [experience, setExperienceState] = useState<ExperienceContext>("teacher"), [students, setStudents] = useState<Person[]>([]);
   const [query, setQuery] = useState(""), [newOpen, setNewOpen] = useState(false), [selected, setSelected] = useState<Person | null>(null), [ready, setReady] = useState(false);
   const [classes, setClasses] = useState<ClassItem[]>([]), [credits, setCredits] = useState<CreditItem[]>([]), [catalog, setCatalog] = useState<CatalogTerm[]>([]);
   const [teachingContents,setTeachingContents] = useState<TeachingContent[]>([]), [teachingRelations,setTeachingRelations] = useState<TeachingRelation[]>([]), [teachingAssignments,setTeachingAssignments] = useState<ContentAssignment[]>([]);
@@ -997,7 +1005,7 @@ function StaffApp({ session }: { session: Session }) {
   const [communicationRecipients,setCommunicationRecipients] = useState<CommunicationRecipient[]>([]);
   const [scheduleOpen, setScheduleOpen] = useState(false), [creditOpen, setCreditOpen] = useState(false);
   const [scheduleStudentId,setScheduleStudentId] = useState<number | null>(null), [creditStudentId,setCreditStudentId] = useState<number | null>(null);
-  const [toast, setToast] = useState<string>(""), [liveClassId, setLiveClassId] = useState<number | null>(null), [mobileMenuOpen,setMobileMenuOpen] = useState(false);
+  const [toast, setToast] = useState<string>(""), [liveClassId, setLiveClassId] = useState<number | null>(null);
   const loadStudents = useCallback(async () => {
     if (!db) return;
     const result = await db.from("people").select("id,auth_user_id,display_name,first_name,last_name,email,phone,country_code,crm_stage,active,student_profiles!inner(person_id,active)").eq("active", true).eq("student_profiles.active", true).order("display_name");
@@ -1057,44 +1065,71 @@ function StaffApp({ session }: { session: Session }) {
     let alive = true;
     async function boot() {
       if (!db) return;
-      const [profile, member] = await Promise.all([db.from("user_profiles").select("display_name").eq("id", session.user.id).single(), db.from("app_members").select("role,active").eq("user_id", session.user.id).single()]);
+      const [contextResult, preferenceResult] = await Promise.all([
+        db.rpc("identity_context"),
+        db.from("user_preferences").select("preferred_context").eq("user_id", session.user.id).maybeSingle(),
+      ]);
       if (!alive) return;
-      const nextIdentity = !profile.error && !member.error && member.data?.active ? { displayName: profile.data?.display_name || session.user.email?.split("@")[0] || "CYA", role: member.data.role } : null;
+      const nextIdentity = !contextResult.error && contextResult.data ? contextResult.data as IdentityContext : null;
       if (nextIdentity) setIdentity(nextIdentity);
-      if (nextIdentity && ["admin", "teacher_admin", "teacher"].includes(nextIdentity.role)) {
+      if (nextIdentity) {
+        const preferred = preferenceResult.data?.preferred_context as ExperienceContext | null;
+        const allowed = preferred === "teacher" ? nextIdentity.can_teach : preferred === "student" ? nextIdentity.can_study : preferred === "admin" ? nextIdentity.can_admin : false;
+        setExperienceState(allowed && preferred ? preferred : nextIdentity.can_teach ? "teacher" : nextIdentity.can_study ? "student" : "admin");
+      }
+      if (nextIdentity?.can_teach || nextIdentity?.can_admin) {
         try { await Promise.all([loadStudents(), loadOperations(), loadTeaching(), loadMarketing()]); } catch (e) { if (alive) setToast(e instanceof Error ? e.message : "No se pudieron cargar los datos."); }
       }
       if (alive) setReady(true);
     } boot(); return () => { alive = false; };
-  }, [session.user.id, session.user.email, loadStudents, loadOperations, loadTeaching, loadMarketing]);
+  }, [session.user.id, loadStudents, loadOperations, loadTeaching, loadMarketing]);
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 3000); return () => clearTimeout(timer); }, [toast]);
   if (!ready) return <Spinner />;
   if (!identity) return <main className="login"><section className="login-card"><Brand /><h1>Acceso no disponible</h1><p>La cuenta existe, pero no tiene un rol activo en CYA Hub.</p><button className="btn" onClick={() => db?.auth.signOut()}>Salir</button></section></main>;
-  if (!["admin", "teacher_admin", "teacher"].includes(identity.role)) return <StudentPortal identity={identity} />;
+  async function setExperience(value: ExperienceContext) {
+    const allowed = value === "teacher" ? identity.can_teach : value === "student" ? identity.can_study : identity.can_admin;
+    if (!allowed || !db) return;
+    setExperienceState(value);
+    if (value === "admin") setView("admin");
+    else if (value === "teacher" && view === "admin") setView("home");
+    const result = await db.from("user_preferences").upsert({ user_id: identity.user_id, preferred_context: value }, { onConflict: "user_id" });
+    if (result.error) setToast("La vista ha cambiado, pero no se pudo guardar como preferencia.");
+  }
+  if (experience === "student" && identity.can_study) return <StudentPortal identity={identity} experience={experience} onExperience={setExperience} />;
+  if (!identity.can_teach && !identity.can_admin) return <StudentPortal identity={identity} experience="student" onExperience={setExperience} />;
   async function created() { await Promise.all([loadStudents(),loadMarketing()]); setToast("Alumno provisional creado correctamente."); setView("students"); }
   async function classSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Clase programada correctamente."); setView("classes"); }
   async function creditSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Bono creado correctamente."); setView("credits"); }
   const styles = catalog.filter((term) => term.taxonomy === "dance_style");
   function goLive(id?: number) { if (id) setLiveClassId(id); setView("live"); }
+  function goTarget(target: string) {
+    if (target === "admin") { if (identity.can_admin) { setExperienceState("admin"); setView("admin"); } return; }
+    if (target === "live") { goLive(); return; }
+    if (["home", "students", "classes", "credits", "agenda", "teaching", "marketing"].includes(target)) setView(target as View);
+  }
+  const studentArea = ["students", "classes", "credits", "agenda"].includes(view);
+  const activeNav = (id: string) => id === "students" ? studentArea : view === id;
   return <div className="shell">
-    <aside className="sidebar"><Brand /><nav>{nav.map(([id, label, Icon]) => <button key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}><Icon />{label}</button>)}</nav>
-      <div className="side-bottom"><button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Settings />Administración</button></div>
-      <div className="side-user"><CircleUserRound /><div><strong>{identity.displayName}</strong><span>{roleLabel(identity.role)}</span></div><button onClick={() => db?.auth.signOut()} aria-label="Cerrar sesión"><LogOut /></button></div>
+    <aside className="sidebar"><Brand /><nav>{nav.map(([id, label, Icon]) => <button key={id} className={activeNav(id) ? "active" : ""} onClick={() => setView(id)}><Icon />{label}</button>)}</nav>
+      <div className="side-bottom"><ContextSelector identity={identity} value={experience} onChange={setExperience} /></div>
+      <div className="side-user"><CircleUserRound /><div><strong>{identity.display_name}</strong><span>{identity.roles.map((role) => roleLabel(role)).join(" · ")}</span></div><button onClick={() => db?.auth.signOut()} aria-label="Cerrar sesión"><LogOut /></button></div>
     </aside>
-    <div><header className="mobile-head"><div className="mobile-head-left"><button className="icon-btn mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Abrir menú"><Menu /></button></div><Brand /><div className="mobile-head-actions"><button className="icon-btn" onClick={() => setToast("No hay notificaciones nuevas.")} aria-label="Notificaciones"><Bell /></button><button className="icon-btn" onClick={() => setView("admin")} aria-label="Cuenta"><CircleUserRound /></button></div></header>
+    <div><header className="mobile-head"><div className="mobile-head-left"><Brand /></div><div /><div className="mobile-head-actions"><button className="icon-btn" onClick={() => setView("home")} aria-label="Notificaciones"><Bell /></button>{identity.can_admin ? <button className="icon-btn" onClick={() => goTarget("admin")} aria-label="Cuenta y administración"><CircleUserRound /></button> : null}</div></header>
       <main className="main"><div className="content">
-        {view === "home" ? <HomeView identity={identity} count={students.length} classes={classes} students={students} go={setView} goLive={goLive} add={() => setNewOpen(true)} /> : null}
+        {view !== "live" ? <div className="context-toolbar"><ContextSelector identity={identity} value={experience} onChange={setExperience} compact /></div> : null}
+        {studentArea ? <nav className="module-tabs" aria-label="Alumnado"><button className={view === "students" ? "active" : ""} onClick={() => setView("students")}><UsersRound /> Alumnos</button><button className={view === "classes" ? "active" : ""} onClick={() => setView("classes")}><CalendarDays /> Clases</button><button className={view === "credits" ? "active" : ""} onClick={() => setView("credits")}><WalletCards /> Bonos</button><button className={view === "agenda" ? "active" : ""} onClick={() => setView("agenda")}><CalendarDays /> Agenda</button></nav> : null}
+        {view === "home" && db ? <HomeView client={db} identity={identity} studentCount={students.length} classes={classes} students={students} go={goTarget} goLive={goLive} addStudent={() => setNewOpen(true)} scheduleClass={() => { setScheduleStudentId(null); setScheduleOpen(true); }} notify={setToast} /> : null}
         {view === "students" ? <StudentsView students={students} query={query} setQuery={setQuery} add={() => setNewOpen(true)} open={setSelected} schedule={(student) => { setScheduleStudentId(student.id); setScheduleOpen(true); }} credit={(student) => { setCreditStudentId(student.id); setCreditOpen(true); }} /> : null}
         {view === "classes" ? <ClassesView classes={classes} students={students} schedule={() => { setScheduleStudentId(null); setScheduleOpen(true); }} goLive={goLive} /> : null}
         {view === "credits" ? <CreditsView credits={credits} students={students} add={() => { setCreditStudentId(null); setCreditOpen(true); }} /> : null}
+        {view === "agenda" && db ? <AgendaView client={db} timezone={identity.timezone} schedule={() => { setScheduleStudentId(null); setScheduleOpen(true); }} openClass={goLive} notify={setToast} /> : null}
         {view === "live" ? <LiveClassView classes={classes} students={students} credits={credits} terms={catalog} library={teachingContents} relations={teachingRelations} selectedClassId={liveClassId} selectClass={setLiveClassId} refresh={refreshLive} notify={setToast} exit={() => setView("home")} /> : null}
         {view === "teaching" ? <TeachingView contents={teachingContents} relations={teachingRelations} assignments={teachingAssignments} students={students} terms={catalog} refresh={loadTeaching} notify={setToast} /> : null}
-        {view === "admin" ? <AdminView identity={identity} /> : null}
+        {view === "admin" && db && identity.can_admin ? <AdminView client={db} identity={identity} terms={catalog} notify={setToast} leave={() => { setExperienceState("teacher"); setView("home"); }} /> : null}
         {view === "marketing" && db ? <MarketingView db={db} contacts={crmContacts} rates={marketingRates} content={marketingContent} events={marketingEvents} campaigns={marketingCampaigns} metrics={campaignMetrics} recipients={communicationRecipients} refresh={refreshMarketing} notify={setToast} /> : null}
       </div></main>
-      <nav className="mobile-nav">{nav.filter(([id]) => mobileViews.includes(id)).map(([id, label, Icon]) => <button key={id} className={view === id ? "active" : ""} onClick={() => setView(id)}><Icon /><span>{label}</span></button>)}</nav>
+      {view !== "live" ? <nav className="mobile-nav">{nav.map(([id, label, Icon]) => <button key={id} className={`${activeNav(id) ? "active" : ""} ${id === "live" ? "primary" : ""}`} onClick={() => setView(id)}><Icon /><span>{label}</span></button>)}</nav> : null}
     </div>
-    {mobileMenuOpen ? <div className="mobile-menu-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setMobileMenuOpen(false)}><aside className="mobile-menu-panel"><header><Brand /><button className="icon-btn" onClick={() => setMobileMenuOpen(false)} aria-label="Cerrar menú"><X /></button></header><nav>{nav.map(([id,label,Icon]) => <button key={id} className={view === id ? "active" : ""} onClick={() => { setView(id); setMobileMenuOpen(false); }}><Icon /><span>{label}</span><ChevronRight /></button>)}</nav><button className="mobile-admin-link" onClick={() => { setView("admin"); setMobileMenuOpen(false); }}><Settings /> Administración <ChevronRight /></button></aside></div> : null}
     {newOpen ? <AddStudent close={() => setNewOpen(false)} created={created} /> : null}
     {scheduleOpen ? <ScheduleClass students={students} styles={styles} initialStudentId={scheduleStudentId} close={() => { setScheduleOpen(false); setScheduleStudentId(null); }} saved={classSaved} /> : null}
     {creditOpen ? <AddCredit students={students} initialStudentId={creditStudentId} close={() => { setCreditOpen(false); setCreditStudentId(null); }} saved={creditSaved} /> : null}
