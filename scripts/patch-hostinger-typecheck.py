@@ -25,5 +25,7 @@ new = '''  if (!identity) return <main className="login"><section className="log
 
 if old not in text:
     raise SystemExit("Identity narrowing target not found")
+text = text.replace(old, new, 1)
+text = text.replace('if (target === "admin") { if (identity.can_admin)', 'if (target === "admin") { if (activeIdentity.can_admin)', 1)
 
-path.write_text(text.replace(old, new, 1), encoding="utf-8")
+path.write_text(text, encoding="utf-8")
