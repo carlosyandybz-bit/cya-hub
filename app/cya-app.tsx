@@ -1102,13 +1102,14 @@ function StaffApp({ session }: { session: Session }) {
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 3000); return () => clearTimeout(timer); }, [toast]);
   if (!ready) return <Spinner />;
   if (!identity) return <main className="login"><section className="login-card"><Brand /><h1>Acceso no disponible</h1><p>La cuenta existe, pero no tiene un rol activo en CYA Hub.</p><button className="btn" onClick={() => db?.auth.signOut()}>Salir</button></section></main>;
+  const activeIdentity = identity;
   async function setExperience(value: ExperienceContext) {
-    const allowed = value === "teacher" ? identity.can_teach : value === "student" ? identity.can_study : identity.can_admin;
+    const allowed = value === "teacher" ? activeIdentity.can_teach : value === "student" ? activeIdentity.can_study : activeIdentity.can_admin;
     if (!allowed || !db) return;
     setExperienceState(value);
     if (value === "admin") setView("admin");
     else if (value === "teacher" && view === "admin") setView("home");
-    const result = await db.from("user_preferences").upsert({ user_id: identity.user_id, preferred_context: value }, { onConflict: "user_id" });
+    const result = await db.from("user_preferences").upsert({ user_id: activeIdentity.user_id, preferred_context: value }, { onConflict: "user_id" });
     if (result.error) setToast("La vista ha cambiado, pero no se pudo guardar como preferencia.");
   }
   if (experience === "student" && identity.can_study) return <StudentPortal identity={identity} experience={experience} onExperience={setExperience} />;
@@ -1119,7 +1120,7 @@ function StaffApp({ session }: { session: Session }) {
   const styles = catalog.filter((term) => term.taxonomy === "dance_style");
   function goLive(id?: number) { if (id) setLiveClassId(id); setView("live"); }
   function goTarget(target: string) {
-    if (target === "admin") { if (identity.can_admin) { setExperienceState("admin"); setView("admin"); } return; }
+    if (target === "admin") { if (activeIdentity.can_admin) { setExperienceState("admin"); setView("admin"); } return; }
     if (target === "live") { goLive(); return; }
     if (["home", "students", "classes", "credits", "agenda", "teaching", "marketing"].includes(target)) setView(target as View);
   }
