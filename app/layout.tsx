@@ -14,13 +14,24 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "CYA Hub",
+  applicationName: "CYA Hub",
   description: "Gestión de alumnado, clases, enseñanza y marketing de Carlos & Andy.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "CYA Hub",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   other: {
     "codex-preview": "development",
   },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
+    apple: "/icon-192.png",
   },
 };
 

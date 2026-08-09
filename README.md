@@ -17,8 +17,9 @@ Los SQL de `supabase/` documentan el esquema aplicado en producción. Para recon
 9. `v7-security-portal-media.sql`
 10. `v7-portal-projection-hardening.sql`
 11. `v7-communications-trigger-fix.sql`
+12. `v12-portal-media.sql`
 
-Las tres migraciones v7 aíslan el portal alumno, hacen atómico el guardado con referencias privadas de Drive y vuelven a validar el consentimiento justo antes de abrir o confirmar una comunicación.
+Las tres migraciones v7 aíslan el portal alumno, hacen atómico el guardado con referencias privadas de Drive y vuelven a validar el consentimiento justo antes de abrir o confirmar una comunicación. La migración v12 incorpora al portal únicamente el material multimedia de contenidos publicados, completos y visibles para el alumno.
 
 ## Base técnica
 

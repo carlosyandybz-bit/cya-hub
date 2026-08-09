@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const developmentPreviewMeta =
@@ -111,4 +112,34 @@ test("fails closed when Supabase runtime configuration is absent", async () => {
 
   assert.equal(response.status, 503);
   assert.deepEqual(await response.json(), { configured: false });
+});
+
+test("serves an installable CYA Hub manifest", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("manifest-test", `${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+  const response = await worker.fetch(
+    new Request("http://localhost/manifest.webmanifest"),
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+  assert.equal(response.status, 200);
+  const manifest = await response.json();
+  assert.equal(manifest.name, "CYA Hub");
+  assert.equal(manifest.display, "standalone");
+  assert.deepEqual(manifest.icons.map((icon) => icon.sizes), ["192x192", "512x512"]);
+});
+
+test("preserves binding interface decisions in source", async () => {
+  const [app, css] = await Promise.all([
+    readFile(new URL("../app/cya-app.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(app, /resetPasswordForEmail/);
+  assert.match(app, /PASSWORD_RECOVERY/);
+  assert.match(app, /Porcentaje de tus puntos totales/);
+  assert.match(app, /Material para trabajar/);
+  assert.doesNotMatch(app, /Ejercicios que encajan ahora/);
+  assert.doesNotMatch(css, /:hover/);
+  assert.match(css, /grid-template-columns:1fr auto 1fr/);
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Archive, ArrowRight, BookOpen, CalendarDays, CheckCircle2, ChevronRight, CircleUserRound,
+  Archive, ArrowRight, Bell, BookOpen, CalendarDays, CheckCircle2, ChevronRight, CircleUserRound,
   Clock3, Dumbbell, ExternalLink, Eye, EyeOff, FolderOpen, GitBranch, GraduationCap, House,
   Image as ImageIcon, LibraryBig, Link2, LockKeyhole, LogOut, Megaphone, Menu, NotebookPen,
   Pencil, Play, Plus, Search, Settings, Sparkles, Tag, TrendingUp, UsersRound, Video,
@@ -44,7 +44,7 @@ type CreditItem = {
   credit_grant_members: Array<{ person_id: number }>; credit_movements: Array<{ delta_minutes: number }>;
 };
 type ClassNote = { id: number; class_id: number; person_id: number | null; body: string; created_at: string };
-type StudentEvaluation = { id: number; person_id: number; class_id: number | null; aptitude_term_id: number; score: number; evaluation_kind: string };
+type StudentEvaluation = { id: number; person_id: number; class_id: number | null; aptitude_term_id: number; score: number; evaluation_kind: string; created_at: string };
 type TeachingContentSummary = {
   id: number; title: string; content_type: string; measurement_mode: "frequency" | "importance" | "both" | "none";
   description: string | null; correction_guidance: string | null;
@@ -83,6 +83,7 @@ type StudentPortalSnapshot = {
     id: number; content_id: number; title: string; content_type: string; description: string | null;
     correction_guidance: string | null; assignment_status: string; current_frequency: number | null;
     current_importance: number | null; updated_at: string;
+    media: Array<{ media_type: "video" | "image"; provider: string; external_file_id: string; title: string | null }>;
   }>;
   evaluations: Array<{ id: number; class_id: number | null; score: number; aptitude: string; created_at: string }>;
 };
@@ -167,6 +168,26 @@ function Brand() {
   return <div className="brand"><span className="brand-mark">CYA</span><span>CYA Hub</span></div>;
 }
 
+function RadarChart({ items, scaleLabel }: { items: Array<{ label: string; value: number }>; scaleLabel: string }) {
+  if (items.length < 3) return <div className="compact-empty"><TrendingUp /><span>Se necesitan al menos tres aptitudes evaluadas para dibujar el radar.</span></div>;
+  const center = 110, radius = 78, count = items.length;
+  const point = (index: number, ratio: number) => {
+    const angle = -Math.PI / 2 + (index * Math.PI * 2) / count;
+    return `${center + Math.cos(angle) * radius * ratio},${center + Math.sin(angle) * radius * ratio}`;
+  };
+  const values = items.map((item) => Math.max(0, Math.min(100, Number(item.value) || 0)));
+  return <figure className="radar-chart">
+    <svg viewBox="0 0 220 220" role="img" aria-label={`Radar de evolución. ${scaleLabel}`}>
+      {[0.25,0.5,0.75,1].map((ratio) => <polygon key={ratio} className="radar-ring" points={items.map((_, index) => point(index, ratio)).join(" ")} />)}
+      {items.map((_, index) => <line key={index} className="radar-axis" x1={center} y1={center} x2={point(index, 1).split(",")[0]} y2={point(index, 1).split(",")[1]} />)}
+      <polygon className="radar-value" points={values.map((value, index) => point(index, value / 100)).join(" ")} />
+      {values.map((value, index) => { const [cx,cy] = point(index, value / 100).split(","); return <circle key={index} className="radar-point" cx={cx} cy={cy} r="3.5" />; })}
+    </svg>
+    <figcaption>{items.map((item, index) => <span key={item.label}><i style={{ background: index % 2 ? "#9b82ff" : "#6d4aff" }} /><b>{item.label}</b><strong>{Math.round(values[index])}</strong></span>)}</figcaption>
+    <small>{scaleLabel}</small>
+  </figure>;
+}
+
 function Spinner() {
   return <main className="loading"><div><span className="spinner" /><span>Preparando CYA Hub…</span></div></main>;
 }
@@ -175,6 +196,8 @@ function Login() {
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [mode, setMode] = useState<"login" | "recovery">("login");
+  const [notice, setNotice] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!db) return setError("La conexión de CYA Hub todavía no está configurada.");
@@ -187,27 +210,64 @@ function Login() {
     if (result.error) setError(authError(result.error.message));
     setBusy(false);
   }
+  async function requestRecovery(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!db) return setError("La conexión de CYA Hub todavía no está configurada.");
+    const form = new FormData(event.currentTarget), email = String(form.get("email") ?? "").trim();
+    setBusy(true); setError(""); setNotice("");
+    const result = await db.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/` });
+    if (result.error) setError(authError(result.error.message));
+    else setNotice("Si ese email tiene acceso, recibirá un enlace seguro para crear una contraseña nueva.");
+    setBusy(false);
+  }
   return (
     <main className="login">
       <section className="login-card">
         <Brand />
-        <h1>Tu trabajo, en un solo sitio.</h1>
-        <p>Acceso privado para Carlos & Andy y su equipo.</p>
-        <form className="form" onSubmit={submit}>
-          <label className="field"><span>Email</span><input name="email" type="email" inputMode="email" autoComplete="email" required placeholder="tu@email.com" /></label>
-          <label className="field"><span>Contraseña</span><div className="password">
-            <input name="password" type={visible ? "text" : "password"} autoComplete="current-password" required placeholder="Tu contraseña" />
-            <button type="button" aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setVisible(!visible)}>
-              {visible ? <EyeOff size={19} /> : <Eye size={19} />}
-            </button>
-          </div></label>
-          {error ? <p className="error" role="alert">{error}</p> : null}
-          <button className="btn" type="submit" disabled={busy}>{busy ? "Entrando…" : <>Entrar <ArrowRight size={18} /></>}</button>
-        </form>
+        <h1>{mode === "login" ? "Tu trabajo, en un solo sitio." : "Recupera tu acceso."}</h1>
+        <p>{mode === "login" ? "Acceso privado para Carlos & Andy y su equipo." : "Te enviaremos un enlace de un solo uso al email autorizado."}</p>
+        {mode === "login" ? <form className="form" onSubmit={submit}>
+            <label className="field"><span>Email</span><input name="email" type="email" inputMode="email" autoComplete="email" required placeholder="tu@email.com" /></label>
+            <label className="field"><span>Contraseña</span><div className="password">
+              <input name="password" type={visible ? "text" : "password"} autoComplete="current-password" required placeholder="Tu contraseña" />
+              <button type="button" aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setVisible(!visible)}>
+                {visible ? <EyeOff size={19} /> : <Eye size={19} />}
+              </button>
+            </div></label>
+            {error ? <p className="error" role="alert">{error}</p> : null}
+            <button className="btn" type="submit" disabled={busy}>{busy ? "Entrando…" : <>Entrar <ArrowRight size={18} /></>}</button>
+            <button className="login-link" type="button" onClick={() => { setMode("recovery"); setError(""); }}>¿Has olvidado tu contraseña?</button>
+          </form> : <form className="form" onSubmit={requestRecovery}>
+            <label className="field"><span>Email</span><input name="email" type="email" inputMode="email" autoComplete="email" required placeholder="tu@email.com" /></label>
+            {error ? <p className="error" role="alert">{error}</p> : null}
+            {notice ? <p className="success" role="status">{notice}</p> : null}
+            <button className="btn" type="submit" disabled={busy}>{busy ? "Enviando…" : "Enviar enlace seguro"}</button>
+            <button className="login-link" type="button" onClick={() => { setMode("login"); setError(""); setNotice(""); }}>Volver al acceso</button>
+          </form>}
         <div className="privacy"><LockKeyhole size={15} /> Acceso privado · solo para personas autorizadas.</div>
       </section>
     </main>
   );
+}
+
+function PasswordRecovery({ done }: { done: () => void }) {
+  const [visible, setVisible] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!db) return;
+    const form = new FormData(event.currentTarget), password = String(form.get("password") ?? ""), confirmation = String(form.get("confirmation") ?? "");
+    if (password.length < 10) return setError("Usa al menos 10 caracteres.");
+    if (password !== confirmation) return setError("Las dos contraseñas no coinciden.");
+    setBusy(true); setError("");
+    const result = await db.auth.updateUser({ password });
+    if (result.error) { setError(authError(result.error.message)); setBusy(false); return; }
+    setBusy(false); done();
+  }
+  return <main className="login"><section className="login-card"><Brand /><h1>Crea tu contraseña nueva.</h1><p>El enlace ya ha sido verificado. Elige una contraseña única para CYA Hub.</p>
+    <form className="form" onSubmit={submit}>
+      <label className="field"><span>Contraseña nueva</span><div className="password"><input name="password" type={visible ? "text" : "password"} autoComplete="new-password" minLength={10} required /><button type="button" aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setVisible(!visible)}>{visible ? <EyeOff size={19} /> : <Eye size={19} />}</button></div></label>
+      <label className="field"><span>Repetir contraseña</span><input name="confirmation" type={visible ? "text" : "password"} autoComplete="new-password" minLength={10} required /></label>
+      {error ? <p className="error" role="alert">{error}</p> : null}<button className="btn" disabled={busy}>{busy ? "Actualizando…" : "Guardar contraseña"}</button>
+    </form></section></main>;
 }
 
 function Header({ eyebrow, title, description, action }: { eyebrow: string; title: string; description?: string; action?: React.ReactNode }) {
@@ -260,7 +320,7 @@ function HomeView({ identity, count, classes, students, go, goLive, add }: { ide
   </>;
 }
 
-function StudentsView({ students, query, setQuery, add, open }: { students: Person[]; query: string; setQuery: (v: string) => void; add: () => void; open: (p: Person) => void }) {
+function StudentsView({ students, query, setQuery, add, open, schedule, credit }: { students: Person[]; query: string; setQuery: (v: string) => void; add: () => void; open: (p: Person) => void; schedule: (p: Person) => void; credit: (p: Person) => void }) {
   const filtered = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("es");
     if (!q) return students;
@@ -270,10 +330,13 @@ function StudentsView({ students, query, setQuery, add, open }: { students: Pers
     <Header eyebrow="Alumnado" title="Personas, sin ruido" description="Un provisional tiene ficha completa aunque todavía no disponga de acceso a la app." action={<button className="btn" onClick={add}><Plus size={18} /> Nuevo</button>} />
     <label className="search"><Search /><input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar nombre, teléfono o email" /></label>
     {filtered.length ? <div className="student-list">{filtered.map((student) =>
-      <button className="student-row" key={student.id} onClick={() => open(student)}>
-        <span className="avatar"><CircleUserRound /></span><span className="student-main"><strong>{student.display_name}</strong><span>{student.phone || student.email || "Sin datos de contacto"}</span></span>
-        <span className={`badge ${student.auth_user_id ? "portal" : ""}`}>{student.auth_user_id ? "Con portal" : "Provisional"}</span>
-      </button>)}</div>
+      <article className="student-row" key={student.id}>
+        <button className="student-row-main" onClick={() => open(student)}>
+          <span className="avatar"><CircleUserRound /></span><span className="student-main"><strong>{student.display_name}</strong><span>{student.phone || student.email || "Sin datos de contacto"}</span></span>
+          <span className={`badge ${student.auth_user_id ? "portal" : ""}`}>{student.auth_user_id ? "Con portal" : "Provisional"}</span>
+        </button>
+        <span className="student-row-actions"><button className="btn ghost" onClick={() => schedule(student)}><CalendarDays size={16} /> Programar</button><button className="btn ghost" onClick={() => credit(student)}><WalletCards size={16} /> Bono</button></span>
+      </article>)}</div>
       : <div className="empty"><UsersRound /><strong>{students.length ? "No hay coincidencias" : "Aún no hay alumnos"}</strong><p>{students.length ? "Prueba con otro nombre, teléfono o email." : "Añade el primero. No necesita registrarse para que puedas trabajar con su ficha."}</p>{!students.length ? <button className="btn" onClick={add}><Plus size={18} /> Añadir alumno</button> : null}</div>}
   </>;
 }
@@ -472,7 +535,7 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
     const ids = personKey.split(",").map(Number);
     const [noteResult, evaluationResult, assignmentResult] = await Promise.all([
       db.from("class_notes").select("id,class_id,person_id,body,created_at").eq("class_id", item.id).order("created_at", { ascending: false }),
-      db.from("student_evaluations").select("id,person_id,class_id,aptitude_term_id,score,evaluation_kind").eq("class_id", item.id),
+      db.from("student_evaluations").select("id,person_id,class_id,aptitude_term_id,score,evaluation_kind,created_at").eq("class_id", item.id),
       db.from("student_content_assignments").select("id,person_id,content_id,assignment_status,current_frequency,current_importance,snapshot_style_term_id,snapshot_role_term_id,snapshot_level_term_id,snapshot_measurement_mode,updated_at,teaching_contents!inner(id,title,content_type,measurement_mode,description,correction_guidance)").in("person_id", ids).order("updated_at", { ascending: false }),
     ]);
     const error = noteResult.error || evaluationResult.error || assignmentResult.error;
@@ -494,15 +557,6 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
     .filter((content) => contentFitsContext(content, item.style_term_id, participant?.role_term_id ?? null, participant?.level_term_id ?? null));
   const prerequisitesReady = (content: TeachingContent) => relations.filter((relation) => relation.source_content_id === content.id && relation.relation_type === "prerequisite").every((relation) => doneContentIds.has(relation.target_content_id));
   const guideCandidates = compatibleLibrary.filter((content) => ["explanation","sequence"].includes(content.content_type) && !assignedContentIds.has(content.id) && prerequisitesReady(content)).slice(0,4);
-  const exerciseCandidates = compatibleLibrary.filter((content) => {
-    if (content.content_type !== "exercise" || assignedContentIds.has(content.id)) return false;
-    const explanationLinks = relations.filter((relation) => relation.source_content_id === content.id && relation.relation_type === "exercise_explanation");
-    const correctionLinks = relations.filter((relation) => relation.source_content_id === content.id && relation.relation_type === "exercise_correction");
-    if (!explanationLinks.length && !correctionLinks.length) return false;
-    const explanationsReady = explanationLinks.every((relation) => doneContentIds.has(relation.target_content_id));
-    const correctionReady = !correctionLinks.length || correctionLinks.some((relation) => personAssignments.some((assignment) => assignment.content_id === relation.target_content_id && assignment.assignment_status !== "corrected"));
-    return explanationsReady && correctionReady && prerequisitesReady(content);
-  }).slice(0,3);
   function chooseParticipant(personId: number) {
     const next = item.class_participants.find((candidate) => candidate.person_id === personId);
     setActivePersonId(personId); setContextRole(next?.role_term_id ? String(next.role_term_id) : ""); setContextLevel(next?.level_term_id ? String(next.level_term_id) : "");
@@ -595,7 +649,6 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
             </div>) : <div className="guide-empty">Aún no has añadido explicaciones, ejercicios o secuencias a esta clase.</div>}
           </div>
           {guideCandidates.length ? <section className="guide-suggestions"><span className="guide-label">Siguiente contenido disponible</span><div>{guideCandidates.map((content) => <button key={content.id} onClick={() => assignGuideContent(content)} disabled={busy === `assign-${content.id}`}><span>{teachingKindLabels[content.content_type]}</span><strong>{content.title}</strong><Plus /></button>)}</div></section> : null}
-          {exerciseCandidates.length ? <section className="guide-suggestions"><span className="guide-label">Ejercicios que encajan ahora</span><div>{exerciseCandidates.map((content) => <button key={content.id} onClick={() => assignGuideContent(content)} disabled={busy === `assign-${content.id}`}><span>Ejercicio opcional</span><strong>{content.title}</strong><Plus /></button>)}</div></section> : null}
         </>}
       </article>
       <section className={`live-bottom ${finished ? "finished" : ""}`}><div><strong>{finished ? "Parte administrativa lista" : "Cuando acabéis de bailar…"}</strong><span>{finished ? "Puedes terminar notas, evaluación y correcciones antes del cierre pedagógico." : "Asistencia y bono se confirman juntos para no dejar medias operaciones."}</span></div>{finished ? <button className="btn" onClick={closePedagogy} disabled={busy === "close"}><CheckCircle2 size={18} /> Cerrar clase</button> : <button className="btn" onClick={() => setFinishOpen(true)}>Terminar clase</button>}</section>
@@ -779,7 +832,7 @@ function localDateTime(date: Date) {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
-function ScheduleClass({ students, styles, close, saved }: { students: Person[]; styles: CatalogTerm[]; close: () => void; saved: () => Promise<void> }) {
+function ScheduleClass({ students, styles, initialStudentId, close, saved }: { students: Person[]; styles: CatalogTerm[]; initialStudentId?: number | null; close: () => void; saved: () => Promise<void> }) {
   const [type, setType] = useState<"individual" | "pair">("individual"), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [initialDate] = useState(() => localDateTime(new Date(Date.now() + 60 * 60 * 1000)));
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -804,7 +857,7 @@ function ScheduleClass({ students, styles, close, saved }: { students: Person[];
     <form className="modal-body" onSubmit={submit}>
       <div className="segmented"><button type="button" className={type === "individual" ? "active" : ""} onClick={() => setType("individual")}>Individual</button><button type="button" className={type === "pair" ? "active" : ""} onClick={() => setType("pair")}>Pareja</button></div>
       <div className="fields-2">
-        <label className="field"><span>Alumno *</span><select name="student_1" required defaultValue=""><option value="" disabled>Seleccionar</option>{students.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}</select></label>
+        <label className="field"><span>Alumno *</span><select name="student_1" required defaultValue={initialStudentId ? String(initialStudentId) : ""}><option value="" disabled>Seleccionar</option>{students.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}</select></label>
         {type === "pair" ? <label className="field"><span>Segundo alumno *</span><select name="student_2" required defaultValue=""><option value="" disabled>Seleccionar</option>{students.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}</select></label> : null}
         <label className="field field-wide"><span>Fecha y hora *</span><input name="scheduled_at" type="datetime-local" required defaultValue={initialDate} /></label>
         <label className="field"><span>Horas</span><input name="hours" type="number" min="0" max="8" defaultValue="1" /></label>
@@ -817,7 +870,7 @@ function ScheduleClass({ students, styles, close, saved }: { students: Person[];
   </section></div>;
 }
 
-function AddCredit({ students, close, saved }: { students: Person[]; close: () => void; saved: () => Promise<void> }) {
+function AddCredit({ students, initialStudentId, close, saved }: { students: Person[]; initialStudentId?: number | null; close: () => void; saved: () => Promise<void> }) {
   const [type, setType] = useState<"individual" | "pair">("individual"), [busy, setBusy] = useState(false), [error, setError] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!db) return;
@@ -839,7 +892,7 @@ function AddCredit({ students, close, saved }: { students: Person[]; close: () =
     <form className="modal-body" onSubmit={submit}>
       <div className="segmented"><button type="button" className={type === "individual" ? "active" : ""} onClick={() => setType("individual")}>Individual</button><button type="button" className={type === "pair" ? "active" : ""} onClick={() => setType("pair")}>Pareja</button></div>
       <div className="fields-2">
-        <label className="field"><span>Alumno *</span><select name="student_1" required defaultValue=""><option value="" disabled>Seleccionar</option>{students.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}</select></label>
+        <label className="field"><span>Alumno *</span><select name="student_1" required defaultValue={initialStudentId ? String(initialStudentId) : ""}><option value="" disabled>Seleccionar</option>{students.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}</select></label>
         {type === "pair" ? <label className="field"><span>Segundo alumno *</span><select name="student_2" required defaultValue=""><option value="" disabled>Seleccionar</option>{students.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}</select></label> : null}
         <label className="field"><span>Horas *</span><input name="hours" type="number" min="0" max="1000" defaultValue="5" /></label><label className="field"><span>Minutos</span><input name="minutes" type="number" min="0" max="59" defaultValue="0" /></label>
         <label className="field"><span>Importe (€)</span><input name="price" type="number" min="0" step="0.01" defaultValue="0" /></label>
@@ -872,11 +925,28 @@ function AddStudent({ close, created }: { close: () => void; created: () => Prom
   </section></div>;
 }
 
-function StudentDetail({ student, close }: { student: Person; close: () => void }) {
+function StudentDetail({ student, terms, close }: { student: Person; terms: CatalogTerm[]; close: () => void }) {
+  const [evaluations,setEvaluations] = useState<StudentEvaluation[]>([]), [error,setError] = useState("");
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      if (!db) return;
+      const result = await db.from("student_evaluations").select("id,person_id,class_id,aptitude_term_id,score,evaluation_kind,created_at").eq("person_id",student.id).order("created_at",{ ascending:false });
+      if (!alive) return;
+      if (result.error) setError(result.error.message); else setEvaluations((result.data ?? []) as StudentEvaluation[]);
+    }
+    void load(); return () => { alive = false; };
+  }, [student.id]);
+  const aptitudeTerms = new Map(terms.filter((term) => term.taxonomy === "aptitude").map((term) => [term.id,term.label]));
+  const latest = evaluations.reduce<Map<number,StudentEvaluation>>((map,item) => map.has(item.aptitude_term_id) ? map : map.set(item.aptitude_term_id,item),new Map());
+  const radarItems = [...latest.values()].map((item) => ({ label: aptitudeTerms.get(item.aptitude_term_id) ?? "Aptitud", value: item.score }));
   return <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}><section className="modal" role="dialog" aria-modal="true">
     <header className="modal-head"><h2>Ficha de alumno</h2><button className="icon-btn" onClick={close} aria-label="Cerrar"><X /></button></header><div className="modal-body">
       <div className="detail-hero"><span className="avatar"><CircleUserRound /></span><h3>{student.display_name}</h3><p>{student.auth_user_id ? "Alumno con portal" : "Alumno provisional · sin portal"}</p></div>
       <div className="detail-grid"><div><span>Teléfono</span><strong>{student.phone || "Sin indicar"}</strong></div><div><span>Email</span><strong>{student.email || "Sin indicar"}</strong></div><div><span>País</span><strong>{student.country_code || "Sin indicar"}</strong></div><div><span>Estado</span><strong>{student.active ? "Activo" : "Inactivo"}</strong></div></div>
+      <section className="student-evolution"><div className="card-head"><h2>Evolución del profesor</h2><span>Escala absoluta · 0–100</span></div>{error ? <p className="error">{error}</p> : radarItems.length ? <RadarChart items={radarItems} scaleLabel="Valor absoluto de la última evaluación por aptitud" /> : <div className="compact-empty"><TrendingUp /><span>Todavía no hay evaluaciones para este alumno.</span></div>}
+        {evaluations.length ? <div className="evaluation-history" aria-label="Historial de evaluaciones">{evaluations.slice(0,12).map((item) => <div key={item.id}><span>{new Intl.DateTimeFormat("es-ES",{ day:"numeric",month:"short",year:"numeric" }).format(new Date(item.created_at))}</span><strong>{item.score}</strong></div>)}</div> : null}
+      </section>
     </div></section></div>;
 }
 
@@ -903,12 +973,14 @@ function StudentPortal({ identity }: { identity: Identity }) {
   const balance = activeCredits.reduce((sum, credit) => sum + Number(credit.balance_minutes || 0), 0);
   const activeAssignments = snapshot.assignments.filter((assignment) => !["corrected", "completed"].includes(assignment.assignment_status));
   const latestScores = [...snapshot.evaluations].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).reduce<Map<string, StudentPortalSnapshot["evaluations"][number]>>((map, item) => map.has(item.aptitude) ? map : map.set(item.aptitude, item), new Map());
+  const totalScore = [...latestScores.values()].reduce((sum,item) => sum + Number(item.score || 0),0);
+  const relativeRadar = [...latestScores.values()].map((item) => ({ label:item.aptitude, value:totalScore ? Number(item.score) / totalScore * 100 : 0 }));
   return <div className="student-portal-shell"><header className="student-portal-head"><Brand /><div><span>{snapshot.profile.display_name || identity.displayName}</span><button className="icon-btn" onClick={() => db?.auth.signOut()} aria-label="Cerrar sesión"><LogOut /></button></div></header><main className="student-portal-main">
     <section className="portal-hero"><div><p className="eyebrow">Mi espacio</p><h1>Hola, {snapshot.profile.first_name || snapshot.profile.display_name}</h1><p>{nextClass ? `Tu próxima clase es ${dateLabel(nextClass.scheduled_start_at)}.` : "Aquí tienes tus clases, saldo y evolución al día."}</p></div><Sparkles /></section>
     <section className="portal-stats"><article><CalendarDays /><span>Próximas clases</span><strong>{upcoming.length}</strong></article><article><WalletCards /><span>Saldo disponible</span><strong>{minutesLabel(balance)}</strong></article><article><BookOpen /><span>En formación</span><strong>{activeAssignments.length}</strong></article><article><TrendingUp /><span>Aptitudes evaluadas</span><strong>{latestScores.size}</strong></article></section>
     {nextClass ? <section className="card portal-next"><div><p className="eyebrow">Próxima clase</p><h2>{nextClass.style || "Clase privada"}</h2><p>{dateLabel(nextClass.scheduled_start_at)} · {minutesLabel(nextClass.duration_minutes)}</p></div><div><span>{nextClass.role || "Rol por confirmar"}</span><span>{nextClass.level || "Nivel por confirmar"}</span></div></section> : null}
-    <section className="portal-grid"><article className="card portal-card"><div className="card-head"><h2>Mi formación</h2><span>{snapshot.assignments.length}</span></div>{snapshot.assignments.length ? <div className="portal-learning-list">{snapshot.assignments.map((assignment) => <details key={assignment.id}><summary><div><span>{teachingKindLabels[assignment.content_type] ?? assignment.content_type}</span><strong>{assignment.title}</strong><small>{assignmentOptions(assignment.content_type).find(([value]) => value === assignment.assignment_status)?.[1] ?? assignment.assignment_status}</small></div><ChevronRight /></summary><div>{assignment.description ? <p>{assignment.description}</p> : null}{assignment.correction_guidance ? <p><strong>Cómo trabajarlo:</strong> {assignment.correction_guidance}</p> : null}{assignment.current_frequency !== null || assignment.current_importance !== null ? <div className="portal-measures">{assignment.current_frequency !== null ? <span>Frecuencia <strong>{assignment.current_frequency}</strong></span> : null}{assignment.current_importance !== null ? <span>Importancia <strong>{assignment.current_importance}</strong></span> : null}</div> : null}</div></details>)}</div> : <div className="compact-empty"><BookOpen /><span>Cuando te asignemos contenido aparecerá aquí.</span></div>}</article>
-      <article className="card portal-card"><div className="card-head"><h2>Mi evolución</h2><span>0–100</span></div>{latestScores.size ? <div className="portal-score-list">{[...latestScores.values()].map((item) => <div key={item.aptitude}><div><span>{item.aptitude}</span><strong>{item.score}</strong></div><i><b style={{ width: `${item.score}%` }} /></i></div>)}</div> : <div className="compact-empty"><TrendingUp /><span>Tu próxima evaluación aparecerá aquí.</span></div>}</article>
+    <section className="portal-grid"><article className="card portal-card"><div className="card-head"><h2>Mi formación</h2><span>{snapshot.assignments.length}</span></div>{snapshot.assignments.length ? <div className="portal-learning-list">{snapshot.assignments.map((assignment) => <details key={assignment.id}><summary><div><span>{teachingKindLabels[assignment.content_type] ?? assignment.content_type}</span><strong>{assignment.title}</strong><small>{assignmentOptions(assignment.content_type).find(([value]) => value === assignment.assignment_status)?.[1] ?? assignment.assignment_status}</small></div><ChevronRight /></summary><div>{assignment.description ? <p>{assignment.description}</p> : null}{assignment.correction_guidance ? <p><strong>Cómo trabajarlo:</strong> {assignment.correction_guidance}</p> : null}{assignment.current_frequency !== null || assignment.current_importance !== null ? <div className="portal-measures">{assignment.current_frequency !== null ? <span>Frecuencia <strong>{assignment.current_frequency}</strong></span> : null}{assignment.current_importance !== null ? <span>Importancia <strong>{assignment.current_importance}</strong></span> : null}</div> : null}{assignment.media?.length ? <div className="portal-media"><span>Material para trabajar</span><div>{assignment.media.map((media) => <a key={`${media.media_type}-${media.external_file_id}`} href={driveFileUrl(media.external_file_id)} target="_blank" rel="noreferrer">{media.media_type === "video" ? <Video /> : <ImageIcon />}{media.title || (media.media_type === "video" ? "Ver vídeo" : "Ver imagen")}<ExternalLink /></a>)}</div></div> : null}</div></details>)}</div> : <div className="compact-empty"><BookOpen /><span>Cuando te asignemos contenido aparecerá aquí.</span></div>}</article>
+      <article className="card portal-card"><div className="card-head"><h2>Mi evolución</h2><span>Reparto relativo</span></div>{relativeRadar.length ? <><RadarChart items={relativeRadar} scaleLabel="Porcentaje de tus puntos totales en cada aptitud" /><div className="evaluation-history">{snapshot.evaluations.slice(0,12).map((item) => <div key={item.id}><span>{new Intl.DateTimeFormat("es-ES",{ day:"numeric",month:"short",year:"numeric" }).format(new Date(item.created_at))}</span><strong>{item.score}</strong></div>)}</div></> : <div className="compact-empty"><TrendingUp /><span>Tu próxima evaluación aparecerá aquí.</span></div>}</article>
       <article className="card portal-card"><div className="card-head"><h2>Mis clases</h2><span>{snapshot.classes.length}</span></div>{snapshot.classes.length ? <div className="portal-class-list">{snapshot.classes.slice(0, 8).map((item) => <div key={item.id}><CalendarDays /><div><strong>{item.style || (item.class_type === "pair" ? "Clase en pareja" : "Clase individual")}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(item.duration_minutes)}</span></div><span className={`badge ${item.status === "finished" ? "portal" : ""}`}>{portalClassStatus(item.status)}</span></div>)}</div> : <div className="compact-empty"><CalendarDays /><span>Todavía no hay clases en tu historial.</span></div>}</article>
       <article className="card portal-card"><div className="card-head"><h2>Mis bonos</h2><span>{snapshot.credits.length}</span></div>{snapshot.credits.length ? <div className="portal-credit-list">{snapshot.credits.map((credit) => <div key={credit.id}><div><strong>{credit.label || (credit.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong><span>{new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).format(new Date(credit.purchased_at))}</span></div><strong>{minutesLabel(Number(credit.balance_minutes || 0))}</strong></div>)}</div> : <div className="compact-empty"><WalletCards /><span>No tienes bonos registrados todavía.</span></div>}</article>
     </section>
@@ -924,6 +996,7 @@ function StaffApp({ session }: { session: Session }) {
   const [marketingEvents,setMarketingEvents] = useState<MarketingEvent[]>([]), [marketingCampaigns,setMarketingCampaigns] = useState<MarketingCampaign[]>([]), [campaignMetrics,setCampaignMetrics] = useState<CampaignMetric[]>([]);
   const [communicationRecipients,setCommunicationRecipients] = useState<CommunicationRecipient[]>([]);
   const [scheduleOpen, setScheduleOpen] = useState(false), [creditOpen, setCreditOpen] = useState(false);
+  const [scheduleStudentId,setScheduleStudentId] = useState<number | null>(null), [creditStudentId,setCreditStudentId] = useState<number | null>(null);
   const [toast, setToast] = useState<string>(""), [liveClassId, setLiveClassId] = useState<number | null>(null), [mobileMenuOpen,setMobileMenuOpen] = useState(false);
   const loadStudents = useCallback(async () => {
     if (!db) return;
@@ -1008,12 +1081,12 @@ function StaffApp({ session }: { session: Session }) {
       <div className="side-bottom"><button className={view === "admin" ? "active" : ""} onClick={() => setView("admin")}><Settings />Administración</button></div>
       <div className="side-user"><CircleUserRound /><div><strong>{identity.displayName}</strong><span>{roleLabel(identity.role)}</span></div><button onClick={() => db?.auth.signOut()} aria-label="Cerrar sesión"><LogOut /></button></div>
     </aside>
-    <div><header className="mobile-head"><Brand /><div className="mobile-head-actions"><button className="icon-btn mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Abrir menú"><Menu /></button><button className="icon-btn" onClick={() => setView("admin")} aria-label="Cuenta"><CircleUserRound /></button></div></header>
+    <div><header className="mobile-head"><div className="mobile-head-left"><button className="icon-btn mobile-menu-button" onClick={() => setMobileMenuOpen(true)} aria-label="Abrir menú"><Menu /></button></div><Brand /><div className="mobile-head-actions"><button className="icon-btn" onClick={() => setToast("No hay notificaciones nuevas.")} aria-label="Notificaciones"><Bell /></button><button className="icon-btn" onClick={() => setView("admin")} aria-label="Cuenta"><CircleUserRound /></button></div></header>
       <main className="main"><div className="content">
         {view === "home" ? <HomeView identity={identity} count={students.length} classes={classes} students={students} go={setView} goLive={goLive} add={() => setNewOpen(true)} /> : null}
-        {view === "students" ? <StudentsView students={students} query={query} setQuery={setQuery} add={() => setNewOpen(true)} open={setSelected} /> : null}
-        {view === "classes" ? <ClassesView classes={classes} students={students} schedule={() => setScheduleOpen(true)} goLive={goLive} /> : null}
-        {view === "credits" ? <CreditsView credits={credits} students={students} add={() => setCreditOpen(true)} /> : null}
+        {view === "students" ? <StudentsView students={students} query={query} setQuery={setQuery} add={() => setNewOpen(true)} open={setSelected} schedule={(student) => { setScheduleStudentId(student.id); setScheduleOpen(true); }} credit={(student) => { setCreditStudentId(student.id); setCreditOpen(true); }} /> : null}
+        {view === "classes" ? <ClassesView classes={classes} students={students} schedule={() => { setScheduleStudentId(null); setScheduleOpen(true); }} goLive={goLive} /> : null}
+        {view === "credits" ? <CreditsView credits={credits} students={students} add={() => { setCreditStudentId(null); setCreditOpen(true); }} /> : null}
         {view === "live" ? <LiveClassView classes={classes} students={students} credits={credits} terms={catalog} library={teachingContents} relations={teachingRelations} selectedClassId={liveClassId} selectClass={setLiveClassId} refresh={refreshLive} notify={setToast} exit={() => setView("home")} /> : null}
         {view === "teaching" ? <TeachingView contents={teachingContents} relations={teachingRelations} assignments={teachingAssignments} students={students} terms={catalog} refresh={loadTeaching} notify={setToast} /> : null}
         {view === "admin" ? <AdminView identity={identity} /> : null}
@@ -1023,26 +1096,29 @@ function StaffApp({ session }: { session: Session }) {
     </div>
     {mobileMenuOpen ? <div className="mobile-menu-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setMobileMenuOpen(false)}><aside className="mobile-menu-panel"><header><Brand /><button className="icon-btn" onClick={() => setMobileMenuOpen(false)} aria-label="Cerrar menú"><X /></button></header><nav>{nav.map(([id,label,Icon]) => <button key={id} className={view === id ? "active" : ""} onClick={() => { setView(id); setMobileMenuOpen(false); }}><Icon /><span>{label}</span><ChevronRight /></button>)}</nav><button className="mobile-admin-link" onClick={() => { setView("admin"); setMobileMenuOpen(false); }}><Settings /> Administración <ChevronRight /></button></aside></div> : null}
     {newOpen ? <AddStudent close={() => setNewOpen(false)} created={created} /> : null}
-    {scheduleOpen ? <ScheduleClass students={students} styles={styles} close={() => setScheduleOpen(false)} saved={classSaved} /> : null}
-    {creditOpen ? <AddCredit students={students} close={() => setCreditOpen(false)} saved={creditSaved} /> : null}
-    {selected ? <StudentDetail student={selected} close={() => setSelected(null)} /> : null}{toast ? <div className="toast">{toast}</div> : null}
+    {scheduleOpen ? <ScheduleClass students={students} styles={styles} initialStudentId={scheduleStudentId} close={() => { setScheduleOpen(false); setScheduleStudentId(null); }} saved={classSaved} /> : null}
+    {creditOpen ? <AddCredit students={students} initialStudentId={creditStudentId} close={() => { setCreditOpen(false); setCreditStudentId(null); }} saved={creditSaved} /> : null}
+    {selected ? <StudentDetail student={selected} terms={catalog} close={() => setSelected(null)} /> : null}{toast ? <div className="toast">{toast}</div> : null}
   </div>;
 }
 
 export default function CyaApp() {
   const [session, setSession] = useState<Session | null>(null), [checking, setChecking] = useState(true);
   const [connectionError, setConnectionError] = useState(""), [connectionAttempt, setConnectionAttempt] = useState(0);
+  const [recoveringPassword,setRecoveringPassword] = useState(false);
   useEffect(() => {
     let alive = true;
     let unsubscribe: (() => void) | null = null;
     connectDatabase().then(async (client) => {
+      const authListener = client.auth.onAuthStateChange((event, value) => {
+        if (!alive) return;
+        if (event === "PASSWORD_RECOVERY") setRecoveringPassword(true);
+        setSession(value); setChecking(false);
+      });
+      unsubscribe = () => authListener.data.subscription.unsubscribe();
       const { data } = await client.auth.getSession();
       if (!alive) return;
       setSession(data.session);
-      const authListener = client.auth.onAuthStateChange((_event, value) => {
-        if (alive) setSession(value);
-      });
-      unsubscribe = () => authListener.data.subscription.unsubscribe();
       setChecking(false);
     }).catch((error) => {
       if (!alive) return;
@@ -1058,6 +1134,7 @@ export default function CyaApp() {
   }
   if (checking) return <Spinner />;
   if (connectionError) return <main className="login"><section className="login-card"><Brand /><h1>Estamos reconectando CYA Hub</h1><p>{connectionError}</p><button className="btn" onClick={retryConnection}>Reintentar <ArrowRight size={18} /></button><div className="privacy"><LockKeyhole size={15} /> Tus datos permanecen protegidos.</div></section></main>;
+  if (recoveringPassword && session) return <PasswordRecovery done={() => setRecoveringPassword(false)} />;
   if (!session) return <Login />;
   return <StaffApp session={session} />;
 }

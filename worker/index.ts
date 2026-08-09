@@ -69,6 +69,8 @@ const worker = {
       url.pathname.startsWith("/assets/") ||
       url.pathname.startsWith("/_next/static/") ||
       url.pathname === "/favicon.svg" ||
+      url.pathname === "/icon-192.png" ||
+      url.pathname === "/icon-512.png" ||
       url.pathname === "/file.svg" ||
       url.pathname === "/globe.svg" ||
       url.pathname === "/window.svg"
