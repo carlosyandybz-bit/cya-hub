@@ -74,8 +74,14 @@ test("uses one reusable teaching card across teacher, live-class, portal and stu
 
   assert.match(card, /Ver información/);
   assert.match(card, /Ocultar información/);
-  assert.match(card, /drivePreviewUrl/);
+  assert.match(card, /driveContentUrl/);
+  assert.match(card, /driveThumbnailUrl/);
+  assert.match(card, /<video/);
+  assert.match(card, /playsInline/);
+  assert.match(card, /onError=\{\(\) => setFailed\(true\)\}/);
+  assert.doesNotMatch(card, /<iframe/);
+  assert.doesNotMatch(card, /\/preview`/);
   assert.match(card, /Fotos y vídeos/);
-  assert.match(card, /onClick=\{toggle\}/);
-  assert.match(cardCss, /pointer-events:none/);
+  assert.match(cardCss, /nativeMedia/);
+  assert.match(cardCss, /mediaFallback/);
 });
