@@ -1,0 +1,37 @@
+name: Validate v20 teaching multimedia
+
+on:
+  push:
+    branches:
+      - feature/v20-teaching-media-finalize
+    paths:
+      - .github/workflows/validate-v20-teaching-media.yml
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v20-teaching-media-finalize
+          fetch-depth: 0
+      - name: Apply integration patch
+        run: python scripts/patch-v20-teaching-media.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: node --test tests/rendered-html.test.mjs
+      - name: Commit validated integration
+        run: |
+          git config user.name "CYA Hub automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add app/cya-app.tsx app/student-detail.tsx app/teaching-media-editor.tsx
+          git commit -m "Integrate v20 teaching multimedia editor"
+          git push origin HEAD:feature/v20-teaching-media-finalize
