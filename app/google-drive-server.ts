@@ -3,7 +3,6 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3";
-export const DEFAULT_TEACHING_FOLDER_ID = "12IT2BihTvmqHUz7zQKuShd6ddSV-6fpO";
 
 function required(name: string) {
   const value = process.env[name]?.trim();
@@ -28,8 +27,13 @@ export function driveServerConfigured() {
     process.env.GOOGLE_DRIVE_CLIENT_ID?.trim()
     && process.env.GOOGLE_DRIVE_CLIENT_SECRET?.trim()
     && process.env.GOOGLE_DRIVE_REFRESH_TOKEN?.trim()
+    && process.env.GOOGLE_DRIVE_TEACHING_FOLDER_ID?.trim()
     && process.env.CYA_SERVER_SECRET?.trim()
   );
+}
+
+export function teachingDriveFolderId() {
+  return process.env.GOOGLE_DRIVE_TEACHING_FOLDER_ID?.trim() || null;
 }
 
 export function signMediaTicket(fileId: string, ttlSeconds = 600) {
@@ -99,7 +103,7 @@ export async function googleAccessToken() {
 
 export async function createDriveResumableUpload(name: string, mimeType: string, size: number) {
   const token = await googleAccessToken();
-  const folderId = process.env.GOOGLE_DRIVE_TEACHING_FOLDER_ID?.trim() || DEFAULT_TEACHING_FOLDER_ID;
+  const folderId = required("GOOGLE_DRIVE_TEACHING_FOLDER_ID");
   const response = await fetch(`${DRIVE_UPLOAD_API}/files?uploadType=resumable&fields=id,name,mimeType,webViewLink`, {
     method: "POST",
     headers: {
