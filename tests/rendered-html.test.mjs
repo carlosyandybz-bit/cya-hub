@@ -49,11 +49,33 @@ test("preserves critical CYA Hub product behaviour", async () => {
   assert.match(app, /resetPasswordForEmail/);
   assert.match(app, /PASSWORD_RECOVERY/);
   assert.match(app, /Porcentaje de tus puntos totales/);
-  assert.match(app, /Material para trabajar/);
-  assert.match(app, /Ver información/);
   assert.doesNotMatch(app, /Ejercicios que encajan ahora/);
   assert.match(css, /@media\(hover:hover\)/);
   assert.match(css, /grid-template-columns:1fr auto 1fr/);
   assert.match(manifest, /name:\s*"CYA Hub"/);
   assert.match(manifest, /display:\s*"standalone"/);
+});
+
+test("uses one reusable teaching card across teacher, live-class, portal and student profile surfaces", async () => {
+  const [app, studentDetail, card, cardCss] = await Promise.all([
+    source("../app/cya-app.tsx"),
+    source("../app/student-detail.tsx"),
+    source("../app/teaching-content-card.tsx"),
+    source("../app/teaching-content-card.module.css"),
+  ]);
+
+  assert.match(app, /import \{ TeachingContentCard \} from "\.\/teaching-content-card"/);
+  assert.ok((app.match(/<TeachingContentCard/g) ?? []).length >= 4, "teacher library, live corrections, live guide and student portal should share the card");
+  assert.match(app, /media=\{assignment\.media \?\? \[\]\}/);
+  assert.match(app, /media=\{libraryContent\?\.teaching_content_media \?\? \[\]\}/);
+  assert.match(studentDetail, /import \{ TeachingContentCard \} from "\.\/teaching-content-card"/);
+  assert.match(studentDetail, /teachingContents\.find/);
+  assert.match(studentDetail, /<TeachingContentCard/);
+
+  assert.match(card, /Ver información/);
+  assert.match(card, /Ocultar información/);
+  assert.match(card, /drivePreviewUrl/);
+  assert.match(card, /Fotos y vídeos/);
+  assert.match(card, /onClick=\{toggle\}/);
+  assert.match(cardCss, /pointer-events:none/);
 });
