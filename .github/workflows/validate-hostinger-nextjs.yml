@@ -1,0 +1,71 @@
+name: Validate Hostinger Next.js migration
+
+on:
+  push:
+    branches:
+      - infra/hostinger-nextjs
+    paths:
+      - .github/workflows/validate-hostinger-nextjs.yml
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout migration branch
+        uses: actions/checkout@v4
+        with:
+          ref: infra/hostinger-nextjs
+          fetch-depth: 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Refresh lockfile for standard Next.js dependencies
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build standard Next.js application
+        run: npm run build
+
+      - name: Run regression tests
+        run: node --test tests/rendered-html.test.mjs
+
+      - name: Smoke-test production server and runtime config
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_runtime_test
+          PORT: '3100'
+        run: |
+          npm start > /tmp/cya-hub-next.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3100/api/runtime-config > /tmp/runtime-config.json; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3100/ > /tmp/home.html
+          node -e 'const fs=require("fs"); const x=JSON.parse(fs.readFileSync("/tmp/runtime-config.json","utf8")); if(!x.configured || x.supabaseUrl!=="https://example.supabase.co" || x.supabasePublishableKey!=="sb_publishable_ci_runtime_test") process.exit(1)'
+          grep -q 'CYA Hub' /tmp/home.html
+
+      - name: Commit validated lockfile adjustments
+        run: |
+          git config user.name "CYA Hub automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add package-lock.json tsconfig.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Refresh dependencies for Hostinger Next.js runtime"
+            git push origin HEAD:infra/hostinger-nextjs
+          fi
