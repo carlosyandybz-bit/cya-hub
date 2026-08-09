@@ -7,38 +7,39 @@ import styles from "./drive-media.module.css";
 
 let activePreview: HTMLVideoElement | null = null;
 
+type MediaUrlState = { fileId: string | null; url: string | null; error: string | null };
+
 export function useDriveMediaUrl(fileId: string | null | undefined) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const requestedFileId = fileId || null;
+  const [state, setState] = useState<MediaUrlState>({ fileId: null, url: null, error: null });
 
   useEffect(() => {
     let alive = true;
-    if (!fileId) {
-      setUrl(null);
-      setError(null);
-      return;
-    }
-    setUrl(null);
-    setError(null);
+    if (!requestedFileId) return () => { alive = false; };
     void (async () => {
       const accessToken = await getRuntimeAccessToken();
       if (!accessToken) throw new Error("Sesión no disponible.");
       const response = await fetch("/api/google-drive/media-ticket", {
         method: "POST",
         headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
-        body: JSON.stringify({ fileId }),
+        body: JSON.stringify({ fileId: requestedFileId }),
         cache: "no-store",
       });
       const payload = await response.json().catch(() => null) as { ticket?: string; error?: string } | null;
       if (!response.ok || !payload?.ticket) throw new Error(payload?.error || "No se pudo preparar el archivo.");
-      if (alive) setUrl(`/api/google-drive/media?fileId=${encodeURIComponent(fileId)}&ticket=${encodeURIComponent(payload.ticket)}`);
+      if (alive) setState({
+        fileId: requestedFileId,
+        url: `/api/google-drive/media?fileId=${encodeURIComponent(requestedFileId)}&ticket=${encodeURIComponent(payload.ticket)}`,
+        error: null,
+      });
     })().catch((reason) => {
-      if (alive) setError(reason instanceof Error ? reason.message : "No se pudo cargar el archivo.");
+      if (alive) setState({ fileId: requestedFileId, url: null, error: reason instanceof Error ? reason.message : "No se pudo cargar el archivo." });
     });
     return () => { alive = false; };
-  }, [fileId]);
+  }, [requestedFileId]);
 
-  return { url, error };
+  if (!requestedFileId || state.fileId !== requestedFileId) return { url: null, error: null };
+  return { url: state.url, error: state.error };
 }
 
 export function SecureDriveAsset({

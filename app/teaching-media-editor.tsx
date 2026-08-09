@@ -117,16 +117,18 @@ export function TeachingMediaEditor({ value, onChange, onUploadingChange }: { va
   async function addFiles(files: File[], role: "cover" | "resources") {
     if (!files.length) return;
     setError("");
-    let busyCount = uploading;
+    let busyCount = 0;
+    let working = role === "cover" ? value.map((item) => ({ ...item, is_cover: false })) : [...value];
+    setBusy(files.filter((file) => file.type.startsWith("image/") || file.type.startsWith("video/")).length);
     for (const file of files) {
       if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) continue;
-      busyCount += 1; setBusy(busyCount);
+      busyCount += 1;
       const localUrl = URL.createObjectURL(file);
       try {
         const uploaded = await uploadToDrive(file, file.name, file.type);
-        const hasCover = value.some((item) => item.is_cover) || role === "cover";
+        const hasCover = working.some((item) => item.is_cover);
         const nextItem: TeachingMediaDraft = {
-          _key: `${uploaded.id}-${Date.now()}`,
+          _key: `${uploaded.id}-${Date.now()}-${busyCount}`,
           _local_url: localUrl,
           media_type: file.type.startsWith("image/") ? "image" : "video",
           provider: "google_drive",
@@ -142,14 +144,15 @@ export function TeachingMediaEditor({ value, onChange, onUploadingChange }: { va
           preview_start_seconds: null,
           preview_end_seconds: null,
         };
-        const base = role === "cover" ? value.map((item) => ({ ...item, is_cover: false })) : value;
-        onChange([...base, nextItem]);
+        working = [...working, nextItem];
+        onChange(working);
       } catch (reason) {
         URL.revokeObjectURL(localUrl);
         setError(reason instanceof Error ? reason.message : "No se pudo subir un archivo.");
       }
-      busyCount -= 1; setBusy(busyCount);
+      setBusy(Math.max(0, files.length - busyCount));
     }
+    setBusy(0);
   }
 
   function update(index: number, changes: Partial<TeachingMediaDraft>) {

@@ -15,8 +15,10 @@ import {
   type Node,
   type NodeProps,
 } from "@xyflow/react";
-import { ArrowLeft, Crosshair, ExternalLink, GitBranch, Image as ImageIcon, RotateCcw, Search, Video, X } from "lucide-react";
+import { ArrowLeft, Crosshair, GitBranch, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { SecureDriveAsset } from "./drive-media";
+import type { TeachingCardMedia } from "./teaching-content-card";
 
 type TaxonomyLink = { style_term_id?: number; role_term_id?: number; level_term_id?: number };
 type GraphContent = {
@@ -30,7 +32,7 @@ type GraphContent = {
   teaching_content_styles: TaxonomyLink[];
   teaching_content_roles: TaxonomyLink[];
   teaching_content_levels: TaxonomyLink[];
-  teaching_content_media: Array<{ id: number; media_type: "video" | "image"; external_file_id: string; title: string | null }>;
+  teaching_content_media: TeachingCardMedia[];
 };
 
 type GraphRelation = { id: number; source_content_id: number; target_content_id: number; relation_type: string; position: number | null };
@@ -39,10 +41,6 @@ type GraphNodeData = { content: GraphContent; level: string; relationCount: numb
 
 const kindLabels: Record<string, string> = { correction: "Corrección", explanation: "Explicación", exercise: "Ejercicio", sequence: "Secuencia" };
 const relationLabels: Record<string, string> = { prerequisite: "Necesita antes", counterpart: "Homóloga", exercise_explanation: "Trabaja explicación", exercise_correction: "Trabaja corrección", sequence_item: "Paso", related: "Relacionada" };
-
-function driveFileUrl(fileId: string) {
-  return `https://drive.google.com/open?id=${encodeURIComponent(fileId)}`;
-}
 
 function TeachingNode({ data }: NodeProps<Node<GraphNodeData>>) {
   return <article className={`flow-node kind-${data.content.content_type} ${data.selected ? "selected" : ""}`}>
@@ -163,7 +161,7 @@ function GraphCanvas({ contents, relations, terms }: { contents: GraphContent[];
         <Panel position="top-right" className="graph-actions"><button onClick={() => flow.fitView({ duration: 350, padding: 0.18, maxZoom: 1 })}><RotateCcw /> Resetear</button>{selected ? <button onClick={() => flow.fitView({ nodes: [{ id: String(selected.id) }], duration: 350, padding: 0.8, maxZoom: 1.35 })}><Crosshair /> Centrar</button> : null}{history.length ? <button onClick={goBack}><ArrowLeft /> Anterior</button> : null}</Panel>
       </ReactFlow> : <div className="graph-empty"><GitBranch /><strong>No hay nodos con estos filtros</strong><span>Amplía la búsqueda o crea contenido relacionado.</span></div>}
     </div>
-    {selected ? <aside className="graph-detail"><header><div><span>{kindLabels[selected.content_type] ?? selected.content_type}</span><h3>{selected.title}</h3></div><button className="icon-btn" onClick={() => setSelectedId(null)} aria-label="Cerrar detalle"><X /></button></header>{selected.description ? <p>{selected.description}</p> : null}{selected.correction_guidance ? <p><strong>Cómo trabajarlo:</strong> {selected.correction_guidance}</p> : null}<div className="graph-related"><strong>Relaciones</strong>{selectedRelations.length ? selectedRelations.map((relation) => { const otherId = relation.source_content_id === selected.id ? relation.target_content_id : relation.source_content_id; const other = contents.find((content) => content.id === otherId); return other ? <button key={relation.id} onClick={() => selectNode(other.id)}><span>{relationLabels[relation.relation_type] ?? relation.relation_type}</span><strong>{other.title}</strong><Crosshair /></button> : null; }) : <small>Sin relaciones registradas.</small>}</div>{selected.teaching_content_media.length ? <div className="graph-media"><strong>Multimedia</strong>{selected.teaching_content_media.map((media) => <a key={media.id} href={driveFileUrl(media.external_file_id)} target="_blank" rel="noreferrer">{media.media_type === "video" ? <Video /> : <ImageIcon />}<span>{media.title || (media.media_type === "video" ? "Ver vídeo" : "Ver imagen")}</span><ExternalLink /></a>)}</div> : null}</aside> : null}
+    {selected ? <aside className="graph-detail"><header><div><span>{kindLabels[selected.content_type] ?? selected.content_type}</span><h3>{selected.title}</h3></div><button className="icon-btn" onClick={() => setSelectedId(null)} aria-label="Cerrar detalle"><X /></button></header>{selected.description ? <p>{selected.description}</p> : null}{selected.correction_guidance ? <p><strong>Cómo trabajarlo:</strong> {selected.correction_guidance}</p> : null}<div className="graph-related"><strong>Relaciones</strong>{selectedRelations.length ? selectedRelations.map((relation) => { const otherId = relation.source_content_id === selected.id ? relation.target_content_id : relation.source_content_id; const other = contents.find((content) => content.id === otherId); return other ? <button key={relation.id} onClick={() => selectNode(other.id)}><span>{relationLabels[relation.relation_type] ?? relation.relation_type}</span><strong>{other.title}</strong><Crosshair /></button> : null; }) : <small>Sin relaciones registradas.</small>}</div>{selected.teaching_content_media.length ? <div className="graph-media"><strong>Multimedia</strong><div className="graph-media-grid">{selected.teaching_content_media.filter((media) => media.display_in_resources !== false).map((media) => <article key={media.id ?? media.external_file_id}><div className="graph-media-frame"><SecureDriveAsset fileId={media.external_file_id} mediaType={media.media_type} title={media.title} thumbnailFileId={media.thumbnail_external_file_id} controls={media.media_type === "video"} /></div><span>{media.title || (media.media_type === "video" ? "Vídeo" : "Imagen")}</span></article>)}</div></div> : null}</aside> : null}
   </section>;
 }
 

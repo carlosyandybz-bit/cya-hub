@@ -19,7 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { TeachingContentCard } from "./teaching-content-card";
+import { TeachingContentCard, type TeachingCardMedia } from "./teaching-content-card";
 import styles from "./student-detail.module.css";
 
 type Student = {
@@ -86,7 +86,7 @@ type Assignment = {
 };
 type LibraryContent = {
   id: number;
-  teaching_content_media: Array<{ id: number; media_type: "video" | "image"; provider: string; external_file_id: string; title: string | null }>;
+  teaching_content_media: TeachingCardMedia[];
 };
 type CrmContact = {
   id: number;

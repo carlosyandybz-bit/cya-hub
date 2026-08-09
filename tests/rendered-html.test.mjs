@@ -56,7 +56,7 @@ test("preserves critical CYA Hub product behaviour", async () => {
   assert.match(manifest, /display:\s*"standalone"/);
 });
 
-test("uses one reusable teaching card across teacher, live-class, portal and student profile surfaces", async () => {
+test("uses one reusable 4:3 teaching card across teacher, live-class, portal and student profile surfaces", async () => {
   const [app, studentDetail, card, cardCss] = await Promise.all([
     source("../app/cya-app.tsx"),
     source("../app/student-detail.tsx"),
@@ -64,24 +64,65 @@ test("uses one reusable teaching card across teacher, live-class, portal and stu
     source("../app/teaching-content-card.module.css"),
   ]);
 
-  assert.match(app, /import \{ TeachingContentCard \} from "\.\/teaching-content-card"/);
+  assert.match(app, /TeachingContentCard/);
   assert.ok((app.match(/<TeachingContentCard/g) ?? []).length >= 4, "teacher library, live corrections, live guide and student portal should share the card");
   assert.match(app, /media=\{assignment\.media \?\? \[\]\}/);
   assert.match(app, /media=\{libraryContent\?\.teaching_content_media \?\? \[\]\}/);
-  assert.match(studentDetail, /import \{ TeachingContentCard \} from "\.\/teaching-content-card"/);
+  assert.match(studentDetail, /TeachingContentCard/);
   assert.match(studentDetail, /teachingContents\.find/);
   assert.match(studentDetail, /<TeachingContentCard/);
 
+  assert.match(card, /is_cover/);
+  assert.match(card, /is_preview/);
+  assert.match(card, /group_label/);
+  assert.match(card, /display_in_resources/);
+  assert.match(card, /SecureDriveAsset/);
   assert.match(card, /Ver información/);
-  assert.match(card, /Ocultar información/);
-  assert.match(card, /driveContentUrl/);
-  assert.match(card, /driveThumbnailUrl/);
-  assert.match(card, /<video/);
-  assert.match(card, /playsInline/);
-  assert.match(card, /onError=\{\(\) => setFailed\(true\)\}/);
+  assert.match(card, /resourceGroup/);
   assert.doesNotMatch(card, /<iframe/);
-  assert.doesNotMatch(card, /\/preview`/);
-  assert.match(card, /Fotos y vídeos/);
-  assert.match(cardCss, /nativeMedia/);
-  assert.match(cardCss, /mediaFallback/);
+  assert.match(cardCss, /aspect-ratio:4\/3/);
+  assert.match(cardCss, /grid-template-columns:132px minmax\(0,1fr\)/);
+  assert.match(cardCss, /resourceGrid/);
+});
+
+test("supports gallery uploads, multiple resources, previews and video-frame covers", async () => {
+  const [editor, driveMedia, uploadRoute, ticketRoute, mediaRoute] = await Promise.all([
+    source("../app/teaching-media-editor.tsx"),
+    source("../app/drive-media.tsx"),
+    source("../app/api/google-drive/upload/route.ts"),
+    source("../app/api/google-drive/media-ticket/route.ts"),
+    source("../app/api/google-drive/media/route.ts"),
+  ]);
+
+  assert.match(editor, /accept="image\/\*,video\/\*"/);
+  assert.match(editor, /multiple accept="image\/\*,video\/\*"/);
+  assert.match(editor, /Subir portada/);
+  assert.match(editor, /Añadir recursos/);
+  assert.match(editor, /groupSuggestions/);
+  assert.match(editor, /is_cover/);
+  assert.match(editor, /is_preview/);
+  assert.match(editor, /display_in_resources/);
+  assert.match(editor, /canvas\.width = 800; canvas\.height = 600/);
+  assert.match(editor, /Usar este fotograma/);
+  assert.match(editor, /thumbnail_external_file_id/);
+
+  assert.match(driveMedia, /IntersectionObserver/);
+  assert.match(driveMedia, /activePreview/);
+  assert.match(driveMedia, /playsInline/);
+  assert.match(uploadRoute, /userCanManageTeaching/);
+  assert.match(uploadRoute, /image\//);
+  assert.match(uploadRoute, /video\//);
+  assert.match(ticketRoute, /userCanAccessTeachingMedia/);
+  assert.match(mediaRoute, /verifyMediaTicket/);
+});
+
+test("keeps Google Drive credentials server-only", async () => {
+  const [server, env] = await Promise.all([
+    source("../app/google-drive-server.ts"),
+    source("../.env.example"),
+  ]);
+  assert.match(server, /GOOGLE_DRIVE_REFRESH_TOKEN/);
+  assert.match(server, /CYA_SERVER_SECRET/);
+  assert.doesNotMatch(server, /NEXT_PUBLIC_GOOGLE/);
+  assert.doesNotMatch(env, /sb_publishable_gTLC/);
 });
