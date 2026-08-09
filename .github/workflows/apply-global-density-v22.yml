@@ -1,0 +1,36 @@
+name: Apply and validate global density v22
+on:
+  push:
+    branches: [audit/global-density-v22]
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/global-density-v22
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply module density patch
+        run: python scripts/apply-global-density-v22.py
+      - name: Install
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Test
+        run: node --test tests/rendered-html.test.mjs
+      - name: Commit patched module styles
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "carlosyandybz-bit"
+            git config user.email "carlosyandybz@gmail.com"
+            git add app/student-detail.module.css app/teaching-media-editor.module.css
+            git commit -m "CYA Hub v22: compact isolated mobile detail surfaces"
+            git push origin HEAD:audit/global-density-v22
+          fi
