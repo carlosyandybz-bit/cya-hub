@@ -3,7 +3,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3";
-export const DEFAULT_TEACHING_FOLDER_ID = "12IT2BihTvmqHUz7zQKuShd6ddSV-6fpO";
+export const DEFAULT_TEACHING_FOLDER_NAME = "CYA Hub - Enseñanza";
 
 function required(name: string) {
   const value = process.env[name]?.trim();
@@ -30,6 +30,14 @@ export function driveServerConfigured() {
     && process.env.GOOGLE_DRIVE_REFRESH_TOKEN?.trim()
     && process.env.CYA_SERVER_SECRET?.trim()
   );
+}
+
+export function teachingFolderMode() {
+  return process.env.GOOGLE_DRIVE_TEACHING_FOLDER_ID?.trim() ? "explicit" : "managed";
+}
+
+export function teachingFolderName() {
+  return process.env.GOOGLE_DRIVE_TEACHING_FOLDER_NAME?.trim() || DEFAULT_TEACHING_FOLDER_NAME;
 }
 
 export function signMediaTicket(fileId: string, ttlSeconds = 600) {
@@ -97,9 +105,50 @@ export async function googleAccessToken() {
   return json.access_token;
 }
 
+function driveQueryString(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+async function ensureTeachingFolder(token: string) {
+  const explicit = process.env.GOOGLE_DRIVE_TEACHING_FOLDER_ID?.trim();
+  if (explicit) return explicit;
+
+  const name = teachingFolderName();
+  const params = new URLSearchParams({
+    q: `mimeType='application/vnd.google-apps.folder' and name='${driveQueryString(name)}' and trashed=false`,
+    spaces: "drive",
+    fields: "files(id,name)",
+    pageSize: "10",
+  });
+  const existingResponse = await fetch(`${DRIVE_API}/files?${params.toString()}`, {
+    headers: { authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  const existingJson = await existingResponse.json().catch(() => null) as { files?: Array<{ id?: string; name?: string }>; error?: { message?: string } } | null;
+  if (!existingResponse.ok) throw new Error(existingJson?.error?.message || `No se pudo localizar la carpeta de CYA Hub en Drive (${existingResponse.status}).`);
+  const existing = existingJson?.files?.find((item) => item.id)?.id;
+  if (existing) return existing;
+
+  const createResponse = await fetch(`${DRIVE_API}/files?fields=id,name`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json; charset=UTF-8",
+    },
+    body: JSON.stringify({
+      name,
+      mimeType: "application/vnd.google-apps.folder",
+    }),
+    cache: "no-store",
+  });
+  const created = await createResponse.json().catch(() => null) as { id?: string; name?: string; error?: { message?: string } } | null;
+  if (!createResponse.ok || !created?.id) throw new Error(created?.error?.message || `No se pudo crear la carpeta privada de CYA Hub en Drive (${createResponse.status}).`);
+  return created.id;
+}
+
 export async function createDriveResumableUpload(name: string, mimeType: string, size: number) {
   const token = await googleAccessToken();
-  const folderId = process.env.GOOGLE_DRIVE_TEACHING_FOLDER_ID?.trim() || DEFAULT_TEACHING_FOLDER_ID;
+  const folderId = await ensureTeachingFolder(token);
   const response = await fetch(`${DRIVE_UPLOAD_API}/files?uploadType=resumable&fields=id,name,mimeType,webViewLink`, {
     method: "POST",
     headers: {
