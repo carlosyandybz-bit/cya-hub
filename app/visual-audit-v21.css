@@ -1,0 +1,76 @@
+/* CYA Hub v21 · auditoría visual transversal
+   Objetivo: listas compactas, lectura cómoda al abrir, controles táctiles claros en iPhone. */
+
+/* Escala secundaria: evita microtextos de 7–10 px sin inflar la interfaz. */
+.context-selector>span{font-size:11px}.context-selector>small{font-size:10.5px}.context-selector button{font-size:12px}
+.context-selector.compact button{font-size:11.5px}
+.module-tabs button{font-size:12px}
+.draft-note{font-size:12.5px;line-height:1.5}
+.relation-list span{font-size:10.5px}.relation-list strong{font-size:13px}
+.map-node>span{font-size:11px}.map-node h3{font-size:17px}.map-node p{font-size:12.5px}
+.student-teaching-card header span:not(.avatar){font-size:12px}.student-teaching-card header .btn{font-size:12px}
+.student-assignment-list span{font-size:10.5px}.student-assignment-list strong{font-size:13px}.student-assignment-list select{font-size:12.5px}
+.portal-stats span{font-size:12px}.portal-next p:not(.eyebrow){font-size:13px}.portal-next>div:last-child span{font-size:11.5px}
+.portal-class-list>div>div>strong,.portal-credit-list>div>div>strong{font-size:13px}.portal-class-list>div>div>span,.portal-credit-list>div>div>span{font-size:11.5px}.portal-credit-list>div>strong{font-size:15px}
+
+/* Marketing */
+.marketing-tabs button{font-size:11.5px}.marketing-section-head p{font-size:13px}.crm-pipeline button span{font-size:11px}
+.crm-row-main p,.crm-row-main small{font-size:12px}.crm-row-actions .btn{font-size:12px}
+.marketing-item-top span:not(.marketing-icon){font-size:10.5px}.marketing-item-meta{font-size:12px}.marketing-item>p{font-size:13px;line-height:1.55}.campaign-foot span{font-size:11.5px}
+.field-hint{font-size:11.5px}.drive-folder-row strong{font-size:13px}.drive-folder-row span{font-size:11.5px}.existing-media>span{font-size:11.5px}.existing-media a,.communication-media a{font-size:11px;min-height:36px}
+.communication-info strong{font-size:13px}.communication-info span{font-size:12px}.communication-batch-head>div>span{font-size:10.5px}.communication-batch-head h3{font-size:17px}.communication-stats>span{font-size:11px}
+.communication-recipient-main>div>strong{font-size:13px}.communication-recipient-main>span{font-size:11.5px}.communication-recipient-main summary{font-size:11.5px}.communication-recipient-main details>p{font-size:12.5px}.communication-recipient-actions .btn{font-size:11.5px}.sent-stamp,.recipient-problem{font-size:11px}.communication-media>span{font-size:10.5px}
+.prepare-summary strong{font-size:15px}.prepare-summary span{font-size:11.5px}.prepare-counts span{font-size:11px}.permission-note strong{font-size:12px}.permission-note span{font-size:11.5px}.recipient-picker strong{font-size:13px}.recipient-picker small{font-size:11.5px}
+.rate-card>div>span{font-size:10.5px}.rate-card h3{font-size:16px}.rate-card small{font-size:11.5px}.stat-card span{font-size:11.5px}.source-row span,.source-row strong{font-size:12.5px}
+
+/* Administración */
+.admin-team-row>div:nth-child(2) strong{font-size:13px}.admin-team-row>div:nth-child(2) small{font-size:11px}.role-chip-list>label{font-size:11px}
+.admin-choice-list>header span{font-size:11.5px}.admin-choice-list strong{font-size:12.5px}.admin-choice-list small{font-size:10.5px}
+.form-field-admin-list strong{font-size:12.5px}.form-field-admin-list small{font-size:10.5px}.field-order{font-size:10.5px}
+.term-list span{font-size:12.5px}.term-list small{font-size:10.5px}.quiet-hours{font-size:12.5px!important}
+.admin-rule>summary strong{font-size:12.5px}.admin-rule>summary small{font-size:10.5px}.admin-rule-body>p{font-size:12px}.rule-toggles label{font-size:11.5px}
+.notification-rule strong{font-size:12.5px}.notification-rule small{font-size:10.5px}.export-grid .btn{font-size:11.5px}.admin-note{font-size:11.5px}.file-drop{font-size:12px}.import-preview strong{font-size:12px}.import-preview span{font-size:11px}
+.transfer-list strong,.audit-list strong{font-size:12px}.transfer-list small,.audit-list small{font-size:10.5px}.integration-grid p{font-size:12px}.appearance-preview p:not(.eyebrow){font-size:12px}.security-summary p:not(.eyebrow){font-size:12.5px}.saving-indicator{font-size:11.5px}
+
+/* Mapa de enseñanza: legible sin perder densidad. */
+.graph-filterbar select,.graph-search input{font-size:12px}.flow-node>span{font-size:10px}.flow-node>strong{font-size:13px}.flow-node>small{font-size:10px}.flow-node>i{font-size:9.5px}.react-flow__edge-text{font-size:10px}.graph-actions button{font-size:10.5px;min-height:36px}.graph-empty span{font-size:11.5px}.graph-detail>header span{font-size:10px}.graph-detail>p{font-size:13px}.graph-related>strong,.graph-media>strong{font-size:12px}.graph-related button>span{font-size:10px}.graph-related button>strong,.graph-media a{font-size:12px}
+
+/* Dar clase */
+.live-search-kinds button{min-height:34px;font-size:11.5px}.quick-content-create>summary{font-size:12.5px}.quick-content-create select,.quick-content-create input{font-size:13px}.quick-content-create .btn{font-size:12px}.quick-content-create>small{font-size:11px;line-height:1.45}
+.unified-result-head strong{font-size:12.5px}.unified-result-head span{font-size:11px}.unified-result>div strong{font-size:13px}.unified-result>div small{font-size:11.5px}.unified-result .btn{font-size:11.5px}.content-kind{font-size:10.5px!important}
+.new-correction summary{font-size:13.5px}.correction-item summary strong{font-size:14px}.correction-item summary span{font-size:12px}.correction-detail p{font-size:13px}.evaluation-row strong{font-size:13.5px}.evaluation-row span{font-size:12px}.score-grid button{font-size:12.5px}.note-list span{font-size:11px}.note-list p{font-size:13px}.guide-row span{font-size:10.5px}.guide-row strong{font-size:13px}.guide-row select{font-size:12.5px}.guide-empty{font-size:12.5px}.guide-label{font-size:11.5px}.guide-suggestions button>span{font-size:10.5px}.guide-suggestions button>strong{font-size:13px}.live-bottom strong{font-size:14px}.live-bottom span{font-size:12px}
+
+@media(max-width:820px){
+  /* Safari iOS: 16px evita zoom automático al enfocar formularios. */
+  input:not([type="checkbox"]):not([type="radio"]),select,textarea{font-size:16px!important}
+  .field span{font-size:13px}.field-hint{font-size:12px}.btn{min-height:44px;font-size:13px}.icon-btn{width:44px;height:44px}.icon-btn svg{width:20px;height:20px}
+  .eyebrow{font-size:11.5px!important}.page-head>div>p:not(.eyebrow){font-size:14px;line-height:1.5}.card-head>span:not(.badge){font-size:12px}.card-head h2,.card h2{font-size:18px}
+
+  /* Navegación y Inicio */
+  .mobile-nav{min-height:72px}.mobile-nav button{font-size:11.5px}.mobile-nav button svg{width:25px;height:25px}.module-tabs button{min-height:44px;font-size:12px}.context-selector.compact button{min-height:38px;font-size:12px}
+  .daily-quote{font-size:14px!important;line-height:1.5}.quick strong{font-size:13px!important}.quick-wide strong{font-size:14px}.focus p{font-size:13.5px}.status-list div{font-size:13px}
+
+  /* Alumnado / Agenda */
+  .student-main strong{font-size:15.5px}.student-main span{font-size:13px}.student-row-actions .btn{font-size:12px}.badge{font-size:11.5px}.agenda-row div strong{font-size:14.5px}.agenda-row div span{font-size:12.5px}.credit-caption,.credit-label{font-size:12.5px}
+
+  /* Modales generales */
+  .modal-head{padding:18px}.modal-head h2{font-size:22px}.modal-body{padding:18px}.segmented button{min-height:44px;font-size:13px}.actions .btn{font-size:13px}.detail-grid span{font-size:12px}.detail-grid strong{font-size:14px}
+
+  /* Enseñanza */
+  .teaching-switch button{font-size:11.5px!important;min-height:52px!important}.teaching-kind-grid button strong{font-size:13px!important}.teaching-kind-grid button small{font-size:11.5px}.teaching-actions .btn{font-size:12px!important;min-height:44px}.relation-list span{font-size:11px}.relation-list strong{font-size:13px}.student-teaching-card header h2{font-size:16px}.student-teaching-card header span:not(.avatar){font-size:12px}.student-assignment-list span{font-size:10.5px}.student-assignment-list strong{font-size:13.5px}
+
+  /* Dar clase */
+  .live-title strong{font-size:15px!important}.live-title small{font-size:11.5px}.live-actions .btn{font-size:12px!important}.live-search-kinds button{min-height:36px;font-size:12px}.quick-content-create>summary{font-size:13px}.quick-content-create>small{font-size:11.5px}.unified-result>div strong{font-size:13.5px}.unified-result>div small{font-size:11.5px}.observation-phase>div>strong{font-size:13px!important}.observation-phase>div>span{font-size:11.5px!important}.student-context-main h2{font-size:18px}.student-context-main p{font-size:12.5px}.live-card-head h2{font-size:18px}.live-card-head .eyebrow{font-size:10.5px!important}.correction-detail p{font-size:13px}.guide-empty{font-size:12.5px}.guide-label{font-size:12px}.guide-suggestions button>strong{font-size:13px}
+
+  /* Portal alumno */
+  .portal-hero p:not(.eyebrow){font-size:14px;line-height:1.5}.portal-stats span{font-size:12.5px}.portal-stats strong{font-size:22px!important}.portal-next p:not(.eyebrow){font-size:13px}.portal-next>div:last-child span{font-size:12px}.portal-card{padding:17px!important}.portal-class-list>div>div>strong,.portal-credit-list>div>div>strong{font-size:13.5px}.portal-class-list>div>div>span,.portal-credit-list>div>div>span{font-size:12px}.portal-score-list span{font-size:12.5px}.portal-score-list strong{font-size:14px}
+
+  /* Marketing */
+  .marketing-tabs button{font-size:11.5px!important;min-height:58px!important}.marketing-section-head p{font-size:13px}.crm-pipeline button span{font-size:11.5px}.crm-row-main p,.crm-row-main small{font-size:12.5px}.crm-row-actions .btn{font-size:12px}.marketing-item-top span:not(.marketing-icon){font-size:10.5px}.marketing-item h3{font-size:16px}.marketing-item-meta{font-size:12px}.marketing-item>p{font-size:13px}.communication-info strong{font-size:13px}.communication-info span{font-size:12px}.communication-recipient-main>div>strong{font-size:13px}.communication-recipient-main>span{font-size:11.5px}.communication-recipient-main details>p{font-size:12.5px!important}.communication-recipient-actions .btn{font-size:12px}.recipient-problem{font-size:11.5px}.rate-card small{font-size:12px}.stat-card span{font-size:12px}
+
+  /* Administración */
+  .admin-nav button{min-height:44px;font-size:12px}.admin-team-row>div:nth-child(2) strong{font-size:13.5px}.admin-team-row>div:nth-child(2) small{font-size:11.5px}.role-chip-list>label{font-size:11.5px}.admin-choice-list strong{font-size:13px}.admin-choice-list small{font-size:11px}.form-field-admin-list strong{font-size:13px}.form-field-admin-list small{font-size:11px}.term-list span{font-size:13px}.term-list small{font-size:11px}.admin-rule>summary strong{font-size:13px}.admin-rule>summary small{font-size:11px}.admin-rule-body>p{font-size:12.5px}.notification-rule strong{font-size:13px}.notification-rule small{font-size:11px}.export-grid .btn{font-size:12px}.admin-note{font-size:12px}.file-drop{font-size:12.5px}.transfer-list strong,.audit-list strong{font-size:12.5px}.transfer-list small,.audit-list small{font-size:11px}.integration-grid p{font-size:12.5px}
+
+  /* Mapa */
+  .flow-node>span{font-size:10.5px}.flow-node>strong{font-size:13.5px}.flow-node>small{font-size:10.5px}.flow-node>i{font-size:10px}.graph-actions button{min-height:38px;font-size:11px}.graph-detail>header span{font-size:10.5px}.graph-detail>p{font-size:13px}.graph-related>strong,.graph-media>strong{font-size:12.5px}.graph-related button>span{font-size:10.5px}.graph-related button>strong,.graph-media a{font-size:12.5px}
+}
