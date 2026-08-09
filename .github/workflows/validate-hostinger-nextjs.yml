@@ -73,4 +73,4 @@ jobs:
             git push origin HEAD:infra/hostinger-nextjs
           fi
 
-# Validation pass 4
+# Final validation pass
