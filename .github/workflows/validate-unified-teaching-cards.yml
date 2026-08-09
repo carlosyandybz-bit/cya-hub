@@ -20,7 +20,9 @@ jobs:
           ref: feature/unified-teaching-cards
           fetch-depth: 0
       - name: Apply unified teaching-card integration
-        run: python scripts/patch-unified-teaching-cards.py
+        run: |
+          python scripts/patch-unified-teaching-cards.py
+          python scripts/patch-unified-teaching-cleanup.py
       - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
