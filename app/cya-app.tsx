@@ -4,7 +4,7 @@ import {
   Archive, ArrowRight, Bell, BookOpen, CalendarDays, CheckCircle2, ChevronRight, CircleUserRound,
   Clock3, Dumbbell, ExternalLink, Eye, EyeOff, FolderOpen, GitBranch, GraduationCap, House,
   Image as ImageIcon, LibraryBig, Link2, LockKeyhole, LogOut, Megaphone, NotebookPen,
-  Pencil, Play, Plus, Search, Sparkles, Tag, TrendingUp, UsersRound, Video,
+  Pencil, Play, Plus, Search, Sparkles, TrendingUp, UsersRound, Video,
   WalletCards, X,
 } from "lucide-react";
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
@@ -24,6 +24,7 @@ import { AgendaView } from "./agenda-view";
 import { ContextSelector } from "./context-selector";
 import { HomeView } from "./home-view";
 import { StudentMasterDetail } from "./student-detail";
+import { TeachingContentCard } from "./teaching-content-card";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 
 const TeachingGraph = lazy(() => import("./teaching-graph").then((module) => ({ default: module.TeachingGraph })));
@@ -377,10 +378,6 @@ function driveFileUrl(fileId: string) {
   return `https://drive.google.com/open?id=${encodeURIComponent(fileId)}`;
 }
 
-function drivePreviewUrl(fileId: string) {
-  return `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/preview`;
-}
-
 function teachingMediaFrom(form: FormData): DriveMediaInput[] {
   const references = form.getAll("media_reference").map((value) => String(value).trim());
   const types = form.getAll("media_type").map((value) => String(value));
@@ -658,7 +655,19 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
       <section className="live-grid">
         <article className="card live-card corrections-card"><div className="live-card-head"><div><p className="eyebrow">Trabajo activo</p><h2>Correcciones</h2></div><button className="text-button" onClick={() => setShowAll(!showAll)}>{showAll ? "Solo activas" : "Ver todas"}</button></div>
           <details className="new-correction"><summary><Plus size={18} /> Nueva corrección</summary><div className="new-correction-body"><label className="field"><span>Qué has visto</span><input value={newCorrection} onChange={(e) => setNewCorrection(e.target.value)} placeholder="Escribe el fallo en una frase…" /></label><div className="correction-new-grid"><label className="field"><span>Medir por</span><select value={measurementMode} onChange={(e) => setMeasurementMode(e.target.value as typeof measurementMode)}><option value="both">Frecuencia + importancia</option><option value="frequency">Frecuencia</option><option value="importance">Importancia</option><option value="none">Sin medición</option></select></label>{measurementMode === "frequency" || measurementMode === "both" ? <label className="field"><span>Frecuencia</span><select value={frequency} onChange={(e) => setFrequency(Number(e.target.value))}>{[0,25,50,75,100].map((value) => <option key={value} value={value}>{value}</option>)}</select></label> : null}{measurementMode === "importance" || measurementMode === "both" ? <label className="field"><span>Importancia</span><select value={importance} onChange={(e) => setImportance(Number(e.target.value))}>{[0,25,50,75,100].map((value) => <option key={value} value={value}>{value}</option>)}</select></label> : null}</div><button className="btn" onClick={createCorrection} disabled={!contextReady || !newCorrection.trim() || busy === "correction"}>{busy === "correction" ? "Añadiendo…" : "Añadir corrección"}</button></div></details>
-          <div className="correction-list">{currentCorrections.length ? currentCorrections.map((assignment) => <details className="correction-item" key={assignment.id}><summary><div><strong>{assignment.teaching_contents.title}</strong><span>{correctionStateLabel(assignment.assignment_status)}{assignment.current_frequency !== null ? ` · Frec. ${assignment.current_frequency}` : ""}{assignment.current_importance !== null ? ` · Importancia ${assignment.current_importance}` : ""}</span></div><ChevronRight /></summary><div className="correction-detail"><label className="field"><span>Estado</span><select value={assignment.assignment_status} disabled={busy === `correction-${assignment.id}`} onChange={(e) => updateCorrection(assignment, { status: e.target.value })}>{correctionStates.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{assignment.snapshot_measurement_mode === "frequency" || assignment.snapshot_measurement_mode === "both" ? <label className="field"><span>Frecuencia</span><select value={assignment.current_frequency ?? 0} onChange={(e) => updateCorrection(assignment, { frequency: Number(e.target.value) })}>{[0,25,50,75,100].map((value) => <option key={value} value={value}>{value}</option>)}</select></label> : null}{assignment.snapshot_measurement_mode === "importance" || assignment.snapshot_measurement_mode === "both" ? <label className="field"><span>Importancia</span><select value={assignment.current_importance ?? 0} onChange={(e) => updateCorrection(assignment, { importance: Number(e.target.value) })}>{[0,25,50,75,100].map((value) => <option key={value} value={value}>{value}</option>)}</select></label> : null}{assignment.teaching_contents.description ? <p>{assignment.teaching_contents.description}</p> : null}{assignment.teaching_contents.correction_guidance ? <p><strong>Cómo corregirlo:</strong> {assignment.teaching_contents.correction_guidance}</p> : null}</div></details>) : <div className="compact-empty"><CheckCircle2 /><span>{personAssignments.some((assignment) => assignment.teaching_contents.content_type === "correction") && !showAll ? "No quedan correcciones activas." : "Todavía no hay correcciones para este alumno."}</span></div>}</div>
+          <div className="correction-list">{currentCorrections.length ? currentCorrections.map((assignment) => { const libraryContent = library.find((content) => content.id === assignment.content_id); return <TeachingContentCard
+            key={assignment.id}
+            kindLabel="Corrección"
+            title={assignment.teaching_contents.title}
+            subtitle={`${correctionStateLabel(assignment.assignment_status)}${assignment.current_frequency !== null ? ` · Frec. ${assignment.current_frequency}` : ""}${assignment.current_importance !== null ? ` · Importancia ${assignment.current_importance}` : ""}`}
+            statusLabel={correctionStateLabel(assignment.assignment_status)}
+            statusTone={assignment.assignment_status === "corrected" ? "success" : "default"}
+            description={assignment.teaching_contents.description}
+            correctionGuidance={assignment.teaching_contents.correction_guidance}
+            media={libraryContent?.teaching_content_media ?? []}
+          >
+            <div className="correction-detail"><label className="field"><span>Estado</span><select value={assignment.assignment_status} disabled={busy === `correction-${assignment.id}`} onChange={(e) => updateCorrection(assignment, { status: e.target.value })}>{correctionStates.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{assignment.snapshot_measurement_mode === "frequency" || assignment.snapshot_measurement_mode === "both" ? <label className="field"><span>Frecuencia</span><select value={assignment.current_frequency ?? 0} onChange={(e) => updateCorrection(assignment, { frequency: Number(e.target.value) })}>{[0,25,50,75,100].map((value) => <option key={value} value={value}>{value}</option>)}</select></label> : null}{assignment.snapshot_measurement_mode === "importance" || assignment.snapshot_measurement_mode === "both" ? <label className="field"><span>Importancia</span><select value={assignment.current_importance ?? 0} onChange={(e) => updateCorrection(assignment, { importance: Number(e.target.value) })}>{[0,25,50,75,100].map((value) => <option key={value} value={value}>{value}</option>)}</select></label> : null}</div>
+          </TeachingContentCard>; }) : <div className="compact-empty"><CheckCircle2 /><span>{personAssignments.some((assignment) => assignment.teaching_contents.content_type === "correction") && !showAll ? "No quedan correcciones activas." : "Todavía no hay correcciones para este alumno."}</span></div>}</div>
         </article>
         <article className="card live-card"><div className="live-card-head"><div><p className="eyebrow">Guardado inmediato</p><h2>Evaluación</h2></div><span className="badge">0–100</span></div>
           {!contextReady ? <div className="compact-empty"><CircleUserRound /><span>Guarda primero rol y nivel.</span></div> : <div className="evaluation-list">{aptitudes.map((aptitude) => { const current = evaluations.find((evaluation) => evaluation.person_id === activePersonId && evaluation.aptitude_term_id === aptitude.id); return <div className="evaluation-row" key={aptitude.id}><div><strong>{aptitude.label}</strong><span>{current ? `${current.score}/100` : "Sin evaluar"}</span></div><div className="score-grid">{scale.map(({ term, score }) => <button key={term.id} className={current?.score === score ? "selected" : ""} title={term.label} aria-label={`${aptitude.label}: ${term.label} (${score})`} disabled={busy === `eval-${aptitude.id}`} onClick={() => saveEvaluation(aptitude.id, score)}>{score}</button>)}</div></div>; })}</div>}
@@ -669,10 +678,15 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
         <div className="live-card-head"><div><p className="eyebrow">Guía de hoy</p><h2>Qué trabajar ahora</h2></div><LibraryBig /></div>
         {!contextReady ? <div className="compact-empty"><CircleUserRound /><span>Guarda rol y nivel para activar la guía.</span></div> : <>
           <div className="guide-active">
-            {personAssignments.filter((assignment) => assignment.teaching_contents.content_type !== "correction").length ? personAssignments.filter((assignment) => assignment.teaching_contents.content_type !== "correction").map((assignment) => <div className="guide-row" key={assignment.id}>
-              <div><span>{teachingKindLabels[assignment.teaching_contents.content_type]}</span><strong>{assignment.teaching_contents.title}</strong></div>
-              <select value={assignment.assignment_status} disabled={busy === `guide-${assignment.id}`} onChange={(e) => updateGuideAssignment(assignment,e.target.value)}>{assignmentOptions(assignment.teaching_contents.content_type).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>
-            </div>) : <div className="guide-empty">Aún no has añadido explicaciones, ejercicios o secuencias a esta clase.</div>}
+            {personAssignments.filter((assignment) => assignment.teaching_contents.content_type !== "correction").length ? personAssignments.filter((assignment) => assignment.teaching_contents.content_type !== "correction").map((assignment) => { const libraryContent = library.find((content) => content.id === assignment.content_id); return <TeachingContentCard
+              key={assignment.id}
+              kindLabel={teachingKindLabels[assignment.teaching_contents.content_type]}
+              title={assignment.teaching_contents.title}
+              description={assignment.teaching_contents.description}
+              correctionGuidance={assignment.teaching_contents.correction_guidance}
+              media={libraryContent?.teaching_content_media ?? []}
+              actions={<select value={assignment.assignment_status} disabled={busy === `guide-${assignment.id}`} onChange={(e) => updateGuideAssignment(assignment,e.target.value)}>{assignmentOptions(assignment.teaching_contents.content_type).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select>}
+            />; }) : <div className="guide-empty">Aún no has añadido explicaciones, ejercicios o secuencias a esta clase.</div>}
           </div>
           {guideCandidates.length ? <section className="guide-suggestions"><span className="guide-label">Siguiente contenido disponible</span><div>{guideCandidates.map((content) => <button key={content.id} onClick={() => assignGuideContent(content)} disabled={busy === `assign-${content.id}`}><span>{teachingKindLabels[content.content_type]}</span><strong>{content.title}</strong><Plus /></button>)}</div></section> : null}
         </>}
@@ -811,7 +825,7 @@ function TeachingMap({ contents, relations, terms }: { contents: TeachingContent
 
 function TeachingView({ contents, relations, assignments, students, terms, refresh, notify }: { contents: TeachingContent[]; relations: TeachingRelation[]; assignments: ContentAssignment[]; students: Person[]; terms: CatalogTerm[]; refresh: () => Promise<void>; notify: (message: string) => void }) {
   const [mode,setMode] = useState<"library"|"students"|"map">("library"), [kind,setKind] = useState("correction"), [query,setQuery] = useState("");
-  const [editing,setEditing] = useState<TeachingContent|null>(null), [creating,setCreating] = useState(false), [relating,setRelating] = useState<TeachingContent|null>(null), [assigning,setAssigning] = useState<Person|null>(null), [studentQuery,setStudentQuery] = useState(""), [expandedContentId,setExpandedContentId] = useState<number|null>(null);
+  const [editing,setEditing] = useState<TeachingContent|null>(null), [creating,setCreating] = useState(false), [relating,setRelating] = useState<TeachingContent|null>(null), [assigning,setAssigning] = useState<Person|null>(null), [studentQuery,setStudentQuery] = useState("");
   const filtered = contents.filter((content) => content.active && content.content_type === kind).filter((content) => !query.trim() || [content.title,content.description,content.correction_guidance,content.teaching_content_tags.map((tag) => tag.tag).join(" ")].some((value) => String(value || "").toLocaleLowerCase("es").includes(query.trim().toLocaleLowerCase("es"))));
   const incomplete = filtered.filter((content) => content.completion_status === "incomplete"), complete = filtered.filter((content) => content.completion_status === "complete");
   const categoryTaxonomy = kind === "correction" ? "correction_category" : `${kind}_category`, categories = terms.filter((term) => term.taxonomy === categoryTaxonomy);
@@ -821,41 +835,40 @@ function TeachingView({ contents, relations, assignments, students, terms, refre
     if (result.error) notify(result.error.message); else { await refresh(); notify("Estado actualizado."); }
   }
   const renderContent = (content: TeachingContent) => {
-    const isExpanded = expandedContentId === content.id;
     const category = terms.find((term) => term.id === content.category_term_id)?.label ?? "Sin categoría";
-    const primaryMedia = content.teaching_content_media.find((media) => media.media_type === "video") ?? content.teaching_content_media[0] ?? null;
     const ownRelations = relations.filter((relation) => relation.source_content_id === content.id || relation.target_content_id === content.id);
     const measurementLabel = ({ frequency: "Frecuencia", importance: "Importancia", both: "Frecuencia + importancia", none: "Sin medición" } as Record<string,string>)[content.measurement_mode] ?? content.measurement_mode;
     const visibilityLabel = content.visibility === "student" ? "Visible para el alumno" : "Solo profesores";
     const publicationLabel = content.publication_status === "published" ? "Publicada" : content.publication_status === "archived" ? "Archivada" : "Borrador";
-    return <article className="teaching-row" key={content.id} style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr)", alignItems:"stretch", gap:12 }}>
-      {primaryMedia ? <button type="button" aria-label={`Ver información de ${content.title}`} onClick={() => setExpandedContentId(isExpanded ? null : content.id)} style={{ width:"min(100%, 390px)", aspectRatio:"16 / 9", overflow:"hidden", padding:0, borderRadius:14, border:"1px solid #e8e5ee", background:"#f4f2f6", cursor:"pointer", position:"relative", zIndex:1 }}>
-        <iframe title={primaryMedia.title || `${teachingKindLabels[content.content_type]} · ${content.title}`} src={drivePreviewUrl(primaryMedia.external_file_id)} loading="lazy" tabIndex={-1} aria-hidden="true" style={{ width:"100%", height:"100%", border:0, display:"block", pointerEvents:"none" }} />
-      </button> : null}
-      <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) auto", alignItems:"center", gap:10 }}>
-        <button type="button" className="teaching-row-main" onClick={() => setExpandedContentId(isExpanded ? null : content.id)} aria-expanded={isExpanded} style={{ width:"100%", minWidth:0, padding:0, border:0, background:"transparent", color:"inherit", textAlign:"left", cursor:"pointer" }}><span className="content-kind">{teachingKindLabels[content.content_type]}</span><strong>{content.title}</strong><span>{linkedTermLabels(content.teaching_content_styles.map((link) => link.style_term_id),terms)} · {linkedTermLabels(content.teaching_content_roles.map((link) => link.role_term_id),terms)} · {linkedTermLabels(content.teaching_content_levels.map((link) => link.level_term_id),terms)}</span>{content.teaching_content_tags.length ? <small><Tag /> {content.teaching_content_tags.map((tag) => tag.tag).join(" · ")}</small> : null}</button>
-        <div className="teaching-row-actions"><span className={`badge ${content.publication_status === "published" ? "portal" : ""}`}>{content.publication_status === "published" ? "Publicada" : content.completion_status === "incomplete" ? "Incompleta" : "Borrador"}</span><button className="icon-btn" onClick={() => setRelating(content)} aria-label={`Relaciones de ${content.title}`} title="Relaciones"><Link2 /></button><button className="icon-btn" onClick={() => setEditing(content)} aria-label={`Editar ${content.title}`} title="Editar"><Pencil /></button></div>
-      </div>
-      <button type="button" className="btn ghost" onClick={() => setExpandedContentId(isExpanded ? null : content.id)} aria-expanded={isExpanded} style={{ width:"100%", minHeight:44, justifyContent:"space-between", padding:"0 12px", fontSize:12, position:"relative", zIndex:2, touchAction:"manipulation" }}><span>{isExpanded ? "Ocultar información" : "Ver información"}</span><ChevronRight size={17} style={{ transform:isExpanded ? "rotate(90deg)" : "none", transition:"transform .15s" }} /></button>
-      {isExpanded ? <section aria-label={`Información de ${content.title}`} style={{ display:"grid", gap:14, padding:"14px", border:"1px solid #eeeaf3", borderRadius:14, background:"#faf9fc" }}>
-        <div className="detail-grid">
-          <div><span>Tipo</span><strong>{teachingKindLabels[content.content_type]}</strong></div>
-          <div><span>Categoría</span><strong>{category}</strong></div>
-          <div><span>Estado</span><strong>{publicationLabel}</strong></div>
-          <div><span>Visibilidad</span><strong>{visibilityLabel}</strong></div>
-          {content.content_type === "correction" ? <div><span>Medición</span><strong>{measurementLabel}</strong></div> : null}
-          <div><span>Estilos</span><strong>{linkedTermLabels(content.teaching_content_styles.map((link) => link.style_term_id),terms)}</strong></div>
-          <div><span>Roles</span><strong>{linkedTermLabels(content.teaching_content_roles.map((link) => link.role_term_id),terms)}</strong></div>
-          <div><span>Niveles</span><strong>{linkedTermLabels(content.teaching_content_levels.map((link) => link.level_term_id),terms)}</strong></div>
-        </div>
-        {content.description ? <div><span style={{ display:"block", marginBottom:5, color:"#777287", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".04em" }}>Explicación</span><p style={{ margin:0, color:"#4e495b", lineHeight:1.55, whiteSpace:"pre-wrap" }}>{content.description}</p></div> : null}
-        {content.correction_guidance ? <div><span style={{ display:"block", marginBottom:5, color:"#777287", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".04em" }}>Cómo se corrige</span><p style={{ margin:0, color:"#4e495b", lineHeight:1.55, whiteSpace:"pre-wrap" }}>{content.correction_guidance}</p></div> : null}
-        {content.teaching_content_tags.length ? <div><span style={{ display:"block", marginBottom:7, color:"#777287", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".04em" }}>Etiquetas</span><div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>{content.teaching_content_tags.map((tag) => <span className="badge" key={tag.tag}>{tag.tag}</span>)}</div></div> : null}
-        {content.teaching_content_media.length ? <div><span style={{ display:"block", marginBottom:8, color:"#777287", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".04em" }}>Fotos y vídeos</span><div style={{ display:"grid", gap:10 }}>{content.teaching_content_media.map((media) => <div key={media.id} style={{ display:"grid", gap:7 }}><div style={{ width:"min(100%, 560px)", aspectRatio:"16 / 9", overflow:"hidden", borderRadius:12, border:"1px solid #e8e5ee", background:"white" }}><iframe title={media.title || (media.media_type === "video" ? "Vídeo" : "Imagen")} src={drivePreviewUrl(media.external_file_id)} loading="lazy" allow="autoplay; fullscreen" allowFullScreen style={{ width:"100%", height:"100%", border:0, display:"block" }} /></div><a className="btn ghost" href={driveFileUrl(media.external_file_id)} target="_blank" rel="noreferrer" style={{ width:"max-content", minHeight:38, fontSize:11 }}>{media.media_type === "video" ? <Video size={16} /> : <ImageIcon size={16} />}{media.title || (media.media_type === "video" ? "Abrir vídeo en Drive" : "Abrir imagen en Drive")}<ExternalLink size={14} /></a></div>)}</div></div> : null}
-        {ownRelations.length ? <div><span style={{ display:"block", marginBottom:7, color:"#777287", fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".04em" }}>Relaciones</span><div style={{ display:"grid", gap:6 }}>{ownRelations.map((relation) => { const otherId = relation.source_content_id === content.id ? relation.target_content_id : relation.source_content_id, other = contents.find((item) => item.id === otherId); return <div key={relation.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, padding:"9px 10px", border:"1px solid #e8e5ee", borderRadius:10, background:"white" }}><span style={{ color:"#777287", fontSize:11 }}>{relationLabels[relation.relation_type] ?? relation.relation_type}</span><strong style={{ fontSize:12, textAlign:"right" }}>{other?.title ?? "Contenido archivado"}</strong></div>; })}</div></div> : null}
-        {!content.description && !content.correction_guidance && !content.teaching_content_media.length && !ownRelations.length ? <div className="compact-empty"><BookOpen /><span>No hay información adicional guardada todavía.</span></div> : null}
-      </section> : null}
-    </article>;
+    const statusLabel = content.publication_status === "published" ? "Publicada" : content.completion_status === "incomplete" ? "Incompleta" : "Borrador";
+    return <TeachingContentCard
+      key={content.id}
+      kindLabel={teachingKindLabels[content.content_type]}
+      title={content.title}
+      subtitle={`${linkedTermLabels(content.teaching_content_styles.map((link) => link.style_term_id),terms)} · ${linkedTermLabels(content.teaching_content_roles.map((link) => link.role_term_id),terms)} · ${linkedTermLabels(content.teaching_content_levels.map((link) => link.level_term_id),terms)}`}
+      statusLabel={statusLabel}
+      statusTone={content.publication_status === "published" ? "success" : content.completion_status === "incomplete" ? "warning" : "default"}
+      description={content.description}
+      correctionGuidance={content.correction_guidance}
+      media={content.teaching_content_media}
+      tags={content.teaching_content_tags.map((tag) => tag.tag)}
+      metadata={[
+        { label: "Tipo", value: teachingKindLabels[content.content_type] },
+        { label: "Categoría", value: category },
+        { label: "Estado", value: publicationLabel },
+        { label: "Visibilidad", value: visibilityLabel },
+        ...(content.content_type === "correction" ? [{ label: "Medición", value: measurementLabel }] : []),
+        { label: "Estilos", value: linkedTermLabels(content.teaching_content_styles.map((link) => link.style_term_id),terms) },
+        { label: "Roles", value: linkedTermLabels(content.teaching_content_roles.map((link) => link.role_term_id),terms) },
+        { label: "Niveles", value: linkedTermLabels(content.teaching_content_levels.map((link) => link.level_term_id),terms) },
+      ]}
+      actions={<>
+        <button className="icon-btn" onClick={() => setRelating(content)} aria-label={`Relaciones de ${content.title}`} title="Relaciones"><Link2 /></button>
+        <button className="icon-btn" onClick={() => setEditing(content)} aria-label={`Editar ${content.title}`} title="Editar"><Pencil /></button>
+      </>}
+    >
+      {ownRelations.length ? <div style={{ display:"grid", gap:7 }}><span style={{ color:"#777287", fontSize:9, fontWeight:800, textTransform:"uppercase", letterSpacing:".04em" }}>Relaciones</span><div style={{ display:"grid", gap:6 }}>{ownRelations.map((relation) => { const otherId = relation.source_content_id === content.id ? relation.target_content_id : relation.source_content_id, other = contents.find((item) => item.id === otherId); return <div key={relation.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, padding:"9px 10px", border:"1px solid #e8e5ee", borderRadius:10, background:"white" }}><span style={{ color:"#777287", fontSize:10 }}>{relationLabels[relation.relation_type] ?? relation.relation_type}</span><strong style={{ fontSize:11, textAlign:"right" }}>{other?.title ?? "Contenido archivado"}</strong></div>; })}</div></div> : null}
+    </TeachingContentCard>;
   };
   return <>
     <Header eyebrow="Enseñanza" title="Tu biblioteca" description="Crea una vez, relaciona bien y reutiliza en cada clase." action={<button className="btn" onClick={() => setCreating(true)}><Plus size={18} /> Crear contenido</button>} />
@@ -1003,7 +1016,20 @@ function StudentPortal({ identity, experience, onExperience }: { identity: Ident
     <section className="portal-hero"><div><p className="eyebrow">Mi espacio</p><h1>Hola, {snapshot.profile.first_name || snapshot.profile.display_name}</h1><p>{nextClass ? `Tu próxima clase es ${dateLabel(nextClass.scheduled_start_at)}.` : "Aquí tienes tus clases, saldo y evolución al día."}</p></div><Sparkles /></section>
     <section className="portal-stats"><article><CalendarDays /><span>Próximas clases</span><strong>{upcoming.length}</strong></article><article><WalletCards /><span>Saldo disponible</span><strong>{minutesLabel(balance)}</strong></article><article><BookOpen /><span>En formación</span><strong>{activeAssignments.length}</strong></article><article><TrendingUp /><span>Aptitudes evaluadas</span><strong>{latestScores.size}</strong></article></section>
     {nextClass ? <section className="card portal-next"><div><p className="eyebrow">Próxima clase</p><h2>{nextClass.style || "Clase privada"}</h2><p>{dateLabel(nextClass.scheduled_start_at)} · {minutesLabel(nextClass.duration_minutes)}</p></div><div><span>{nextClass.role || "Rol por confirmar"}</span><span>{nextClass.level || "Nivel por confirmar"}</span></div></section> : null}
-    <section className="portal-grid"><article className="card portal-card"><div className="card-head"><h2>Mi formación</h2><span>{snapshot.assignments.length}</span></div>{snapshot.assignments.length ? <div className="portal-learning-list">{snapshot.assignments.map((assignment) => <details key={assignment.id}><summary><div><span>{teachingKindLabels[assignment.content_type] ?? assignment.content_type}</span><strong>{assignment.title}</strong><small>{assignmentOptions(assignment.content_type).find(([value]) => value === assignment.assignment_status)?.[1] ?? assignment.assignment_status}</small></div><ChevronRight /></summary><div>{assignment.description ? <p>{assignment.description}</p> : null}{assignment.correction_guidance ? <p><strong>Cómo trabajarlo:</strong> {assignment.correction_guidance}</p> : null}{assignment.current_frequency !== null || assignment.current_importance !== null ? <div className="portal-measures">{assignment.current_frequency !== null ? <span>Frecuencia <strong>{assignment.current_frequency}</strong></span> : null}{assignment.current_importance !== null ? <span>Importancia <strong>{assignment.current_importance}</strong></span> : null}</div> : null}{assignment.media?.length ? <div className="portal-media"><span>Material para trabajar</span><div>{assignment.media.map((media) => <a key={`${media.media_type}-${media.external_file_id}`} href={driveFileUrl(media.external_file_id)} target="_blank" rel="noreferrer">{media.media_type === "video" ? <Video /> : <ImageIcon />}{media.title || (media.media_type === "video" ? "Ver vídeo" : "Ver imagen")}<ExternalLink /></a>)}</div></div> : null}</div></details>)}</div> : <div className="compact-empty"><BookOpen /><span>Cuando te asignemos contenido aparecerá aquí.</span></div>}</article>
+    <section className="portal-grid"><article className="card portal-card"><div className="card-head"><h2>Mi formación</h2><span>{snapshot.assignments.length}</span></div>{snapshot.assignments.length ? <div className="portal-learning-list">{snapshot.assignments.map((assignment) => <TeachingContentCard
+        key={assignment.id}
+        kindLabel={teachingKindLabels[assignment.content_type] ?? assignment.content_type}
+        title={assignment.title}
+        statusLabel={assignmentOptions(assignment.content_type).find(([value]) => value === assignment.assignment_status)?.[1] ?? assignment.assignment_status}
+        statusTone={["corrected","explained","completed"].includes(assignment.assignment_status) ? "success" : "default"}
+        description={assignment.description}
+        correctionGuidance={assignment.correction_guidance}
+        media={assignment.media ?? []}
+        metadata={[
+          ...(assignment.current_frequency !== null ? [{ label: "Frecuencia", value: String(assignment.current_frequency) }] : []),
+          ...(assignment.current_importance !== null ? [{ label: "Importancia", value: String(assignment.current_importance) }] : []),
+        ]}
+      />)}</div> : <div className="compact-empty"><BookOpen /><span>Cuando te asignemos contenido aparecerá aquí.</span></div>}</article>
       <article className="card portal-card"><div className="card-head"><h2>Mi evolución</h2><span>Reparto relativo</span></div>{relativeRadar.length ? <><RadarChart items={relativeRadar} scaleLabel="Porcentaje de tus puntos totales en cada aptitud" /><div className="evaluation-history">{snapshot.evaluations.slice(0,12).map((item) => <div key={item.id}><span>{new Intl.DateTimeFormat("es-ES",{ day:"numeric",month:"short",year:"numeric" }).format(new Date(item.created_at))}</span><strong>{item.score}</strong></div>)}</div></> : <div className="compact-empty"><TrendingUp /><span>Tu próxima evaluación aparecerá aquí.</span></div>}</article>
       <article className="card portal-card"><div className="card-head"><h2>Mis clases</h2><span>{snapshot.classes.length}</span></div>{snapshot.classes.length ? <div className="portal-class-list">{snapshot.classes.slice(0, 8).map((item) => <div key={item.id}><CalendarDays /><div><strong>{item.style || (item.class_type === "pair" ? "Clase en pareja" : "Clase individual")}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(item.duration_minutes)}</span></div><span className={`badge ${item.status === "finished" ? "portal" : ""}`}>{portalClassStatus(item.status)}</span></div>)}</div> : <div className="compact-empty"><CalendarDays /><span>Todavía no hay clases en tu historial.</span></div>}</article>
       <article className="card portal-card"><div className="card-head"><h2>Mis bonos</h2><span>{snapshot.credits.length}</span></div>{snapshot.credits.length ? <div className="portal-credit-list">{snapshot.credits.map((credit) => <div key={credit.id}><div><strong>{credit.label || (credit.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong><span>{new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).format(new Date(credit.purchased_at))}</span></div><strong>{minutesLabel(Number(credit.balance_minutes || 0))}</strong></div>)}</div> : <div className="compact-empty"><WalletCards /><span>No tienes bonos registrados todavía.</span></div>}</article>
@@ -1157,6 +1183,7 @@ function StaffApp({ session }: { session: Session }) {
       classes={classes}
       credits={credits}
       assignments={teachingAssignments}
+      teachingContents={teachingContents}
       crmContact={crmContacts.find((contact) => contact.id === selected.id) ?? null}
       rates={marketingRates}
       close={() => setSelected(null)}

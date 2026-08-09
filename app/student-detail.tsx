@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { TeachingContentCard } from "./teaching-content-card";
 import styles from "./student-detail.module.css";
 
 type Student = {
@@ -82,6 +83,10 @@ type Assignment = {
     description: string | null;
     correction_guidance: string | null;
   };
+};
+type LibraryContent = {
+  id: number;
+  teaching_content_media: Array<{ id: number; media_type: "video" | "image"; provider: string; external_file_id: string; title: string | null }>;
 };
 type CrmContact = {
   id: number;
@@ -230,6 +235,7 @@ export function StudentMasterDetail({
   classes,
   credits,
   assignments,
+  teachingContents,
   crmContact,
   rates,
   close,
@@ -243,6 +249,7 @@ export function StudentMasterDetail({
   classes: ClassItem[];
   credits: CreditItem[];
   assignments: Assignment[];
+  teachingContents: LibraryContent[];
   crmContact: CrmContact | null;
   rates: Rate[];
   close: () => void;
@@ -348,14 +355,22 @@ export function StudentMasterDetail({
   function renderLearning() {
     return <section className={styles.sectionCard}>
       <div className={styles.sectionHead}><div><span>Formación</span><h3>{ownAssignments.length} contenidos asignados</h3></div></div>
-      {ownAssignments.length ? <div className={styles.learningList}>{ownAssignments.map((assignment) => <details key={assignment.id}>
-        <summary><div><span>{contentLabels[assignment.teaching_contents.content_type] ?? assignment.teaching_contents.content_type}</span><strong>{assignment.teaching_contents.title}</strong><small>{assignmentLabels[assignment.assignment_status] ?? assignment.assignment_status}{assignment.current_frequency !== null ? ` · Frec. ${assignment.current_frequency}` : ""}{assignment.current_importance !== null ? ` · Importancia ${assignment.current_importance}` : ""}</small></div><ChevronRight /></summary>
-        <div className={styles.learningBody}>
-          <div className={styles.chips}><span>Estilo: {termLabel(assignment.snapshot_style_term_id, terms)}</span><span>Rol: {termLabel(assignment.snapshot_role_term_id, terms)}</span><span>Nivel: {termLabel(assignment.snapshot_level_term_id, terms)}</span></div>
-          {assignment.teaching_contents.description ? <p>{assignment.teaching_contents.description}</p> : null}
-          {assignment.teaching_contents.correction_guidance ? <p><strong>Cómo trabajarlo:</strong> {assignment.teaching_contents.correction_guidance}</p> : null}
-        </div>
-      </details>)}</div> : <div className={styles.empty}><BookOpen /><span>No hay formación asignada todavía.</span></div>}
+      {ownAssignments.length ? <div className={styles.learningList}>{ownAssignments.map((assignment) => { const libraryContent = teachingContents.find((content) => content.id === assignment.content_id); return <TeachingContentCard
+        key={assignment.id}
+        kindLabel={contentLabels[assignment.teaching_contents.content_type] ?? assignment.teaching_contents.content_type}
+        title={assignment.teaching_contents.title}
+        subtitle={`${assignmentLabels[assignment.assignment_status] ?? assignment.assignment_status}${assignment.current_frequency !== null ? ` · Frec. ${assignment.current_frequency}` : ""}${assignment.current_importance !== null ? ` · Importancia ${assignment.current_importance}` : ""}`}
+        statusLabel={assignmentLabels[assignment.assignment_status] ?? assignment.assignment_status}
+        statusTone={["corrected","explained","completed"].includes(assignment.assignment_status) ? "success" : "default"}
+        description={assignment.teaching_contents.description}
+        correctionGuidance={assignment.teaching_contents.correction_guidance}
+        media={libraryContent?.teaching_content_media ?? []}
+        metadata={[
+          { label: "Estilo", value: termLabel(assignment.snapshot_style_term_id, terms) },
+          { label: "Rol", value: termLabel(assignment.snapshot_role_term_id, terms) },
+          { label: "Nivel", value: termLabel(assignment.snapshot_level_term_id, terms) },
+        ]}
+      />; })}</div> : <div className={styles.empty}><BookOpen /><span>No hay formación asignada todavía.</span></div>}
     </section>;
   }
 
