@@ -88,12 +88,40 @@ type StudentPortalSnapshot = {
 };
 type DriveMediaInput = { media_type: "image" | "video"; external_file_id: string; title: string | null };
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
 const DRIVE_TEACHING_FOLDER_URL = "https://drive.google.com/drive/folders/12IT2BihTvmqHUz7zQKuShd6ddSV-6fpO";
-const db: SupabaseClient | null = url && key
-  ? createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
-  : null;
+let db: SupabaseClient | null = null;
+let dbConnection: Promise<SupabaseClient> | null = null;
+
+async function connectDatabase() {
+  if (db) return db;
+  if (!dbConnection) {
+    dbConnection = fetch("/api/runtime-config", {
+      cache: "no-store",
+      headers: { accept: "application/json" },
+    }).then(async (response) => {
+      const config = await response.json().catch(() => null) as {
+        configured?: boolean;
+        supabaseUrl?: string;
+        supabasePublishableKey?: string;
+      } | null;
+      if (!response.ok || !config?.configured || !config.supabaseUrl || !config.supabasePublishableKey) {
+        throw new Error("CYA Hub no ha podido conectar con sus datos.");
+      }
+      const parsedUrl = new URL(config.supabaseUrl);
+      if (parsedUrl.protocol !== "https:" || !config.supabasePublishableKey.startsWith("sb_publishable_")) {
+        throw new Error("La configuración de conexión de CYA Hub no es válida.");
+      }
+      db = createClient(config.supabaseUrl, config.supabasePublishableKey, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      });
+      return db;
+    }).catch((error) => {
+      dbConnection = null;
+      throw error;
+    });
+  }
+  return dbConnection;
+}
 
 const nav = [
   ["home", "Inicio", House],
@@ -1002,12 +1030,34 @@ function StaffApp({ session }: { session: Session }) {
 }
 
 export default function CyaApp() {
-  const [session, setSession] = useState<Session | null>(null), [checking, setChecking] = useState(Boolean(db));
+  const [session, setSession] = useState<Session | null>(null), [checking, setChecking] = useState(true);
+  const [connectionError, setConnectionError] = useState(""), [connectionAttempt, setConnectionAttempt] = useState(0);
   useEffect(() => {
-    if (!db) return; let alive = true;
-    db.auth.getSession().then(({ data }) => { if (alive) { setSession(data.session); setChecking(false); } });
-    const { data } = db.auth.onAuthStateChange((_event, value) => { setSession(value); setChecking(false); });
-    return () => { alive = false; data.subscription.unsubscribe(); };
-  }, []);
-  if (checking) return <Spinner />; if (!session) return <Login />; return <StaffApp session={session} />;
+    let alive = true;
+    let unsubscribe: (() => void) | null = null;
+    connectDatabase().then(async (client) => {
+      const { data } = await client.auth.getSession();
+      if (!alive) return;
+      setSession(data.session);
+      const authListener = client.auth.onAuthStateChange((_event, value) => {
+        if (alive) setSession(value);
+      });
+      unsubscribe = () => authListener.data.subscription.unsubscribe();
+      setChecking(false);
+    }).catch((error) => {
+      if (!alive) return;
+      setConnectionError(error instanceof Error ? error.message : "CYA Hub no ha podido conectar con sus datos.");
+      setChecking(false);
+    });
+    return () => { alive = false; unsubscribe?.(); };
+  }, [connectionAttempt]);
+  function retryConnection() {
+    setChecking(true);
+    setConnectionError("");
+    setConnectionAttempt((value) => value + 1);
+  }
+  if (checking) return <Spinner />;
+  if (connectionError) return <main className="login"><section className="login-card"><Brand /><h1>Estamos reconectando CYA Hub</h1><p>{connectionError}</p><button className="btn" onClick={retryConnection}>Reintentar <ArrowRight size={18} /></button><div className="privacy"><LockKeyhole size={15} /> Tus datos permanecen protegidos.</div></section></main>;
+  if (!session) return <Login />;
+  return <StaffApp session={session} />;
 }

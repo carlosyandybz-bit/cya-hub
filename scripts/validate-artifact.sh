@@ -9,6 +9,7 @@ fi
 
 worker="${SITES_PROJECT_ROOT}/dist/server/index.js"
 hosting="${SITES_PROJECT_ROOT}/dist/.openai/hosting.json"
+client_assets="${SITES_PROJECT_ROOT}/dist/client/assets"
 
 [[ -f "${worker}" ]] || {
   echo "Missing Sites Worker entry: dist/server/index.js" >&2
@@ -16,6 +17,18 @@ hosting="${SITES_PROJECT_ROOT}/dist/.openai/hosting.json"
 }
 [[ -f "${hosting}" ]] || {
   echo "Missing packaged Sites manifest: dist/.openai/hosting.json" >&2
+  exit 66
+}
+[[ -d "${client_assets}" ]] || {
+  echo "Missing Sites client assets: dist/client/assets" >&2
+  exit 66
+}
+find "${client_assets}" -type f -name '*.js' -print -quit | grep -q . || {
+  echo "Missing Sites client JavaScript bundle." >&2
+  exit 66
+}
+find "${client_assets}" -type f -name '*.css' -print -quit | grep -q . || {
+  echo "Missing Sites client stylesheet bundle." >&2
   exit 66
 }
 

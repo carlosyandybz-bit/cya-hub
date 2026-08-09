@@ -20,6 +20,7 @@ button,input,select,textarea { font:inherit; } button { -webkit-tap-highlight-co
 .field input,.field select,.search input { width:100%; min-height:48px; padding:0 14px; border:1px solid #dcd8e6; border-radius:14px; outline:none; background:white; color:var(--ink); }
 .field textarea { width:100%; padding:12px 14px; resize:vertical; border:1px solid #dcd8e6; border-radius:14px; outline:none; background:white; color:var(--ink); line-height:1.45; }
 .field input:focus,.field select:focus,.field textarea:focus,.search input:focus { border-color:var(--purple); box-shadow:0 0 0 4px #6d4aff1c; }
+.field input:-webkit-autofill,.field input:-webkit-autofill:hover,.field input:-webkit-autofill:focus { -webkit-text-fill-color:var(--ink); caret-color:var(--ink); -webkit-box-shadow:0 0 0 1000px white inset; }
 .password { position:relative; } .password input { padding-right:48px; } .password button { position:absolute; top:5px; right:6px; width:38px; height:38px; display:grid; place-items:center; border:0; background:transparent; color:var(--muted); cursor:pointer; }
 .error { margin:0; padding:11px 13px; border:1px solid #d94b5830; border-radius:12px; background:#fff3f4; color:#a72d3a; font-size:13px; line-height:1.45; }
 .privacy { display:flex; align-items:center; gap:8px; margin-top:22px; color:#8a8597; font-size:12px; }
