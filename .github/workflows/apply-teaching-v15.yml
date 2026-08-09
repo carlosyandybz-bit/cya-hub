@@ -1,0 +1,38 @@
+name: Apply teaching library v15 patch
+
+on:
+  push:
+    branches:
+      - audit-teaching-media-v15
+    paths:
+      - .github/workflows/apply-teaching-v15.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: audit-teaching-media-v15
+          fetch-depth: 0
+
+      - name: Apply teaching library patch
+        run: |
+          python scripts/patch_teaching_view_v15.py
+          python scripts/patch_teaching_view_v15_followup.py
+
+      - name: Commit patched application
+        run: |
+          if git diff --quiet -- app/cya-app.tsx; then
+            echo "No application changes to commit."
+            exit 0
+          fi
+          git config user.name "CYA Hub automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add app/cya-app.tsx
+          git commit -m "CYA Hub v15: teaching media and read-only details"
+          git push origin HEAD:audit-teaching-media-v15
