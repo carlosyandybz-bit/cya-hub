@@ -3,6 +3,7 @@
 import { Image as ImageIcon, Play, Video } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { getRuntimeAccessToken } from "./supabase-runtime";
+import styles from "./drive-media.module.css";
 
 let activePreview: HTMLVideoElement | null = null;
 
@@ -83,15 +84,15 @@ export function SecureDriveAsset({
     };
   }, [autoPreview, controls, url]);
 
-  if (!url) return <div className={`drive-asset-fallback ${className}`.trim()} aria-label={title || "Multimedia"}>
+  if (!url) return <div className={`${styles.fallback} ${className}`.trim()} aria-label={title || "Multimedia"}>
     {mediaType === "video" ? <Video /> : <ImageIcon />}
     <span>{error ? "Multimedia pendiente" : "Preparando…"}</span>
   </div>;
 
   if (mediaType === "image") return <img className={className} src={url} alt={title || "Recurso visual"} loading="lazy" />;
 
-  return <div className={`drive-video-shell ${className}`.trim()}>
+  return <div className={`${styles.videoShell} ${className}`.trim()}>
     <video ref={videoRef} src={url} poster={poster || undefined} controls={controls} muted={!controls || autoPreview} loop={autoPreview} playsInline preload={autoPreview ? "metadata" : "none"} />
-    {!controls && !autoPreview ? <span className="drive-video-play"><Play /></span> : null}
+    {!controls && !autoPreview ? <span className={styles.play}><Play /></span> : null}
   </div>;
 }
