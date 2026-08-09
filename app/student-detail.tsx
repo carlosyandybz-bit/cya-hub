@@ -257,6 +257,7 @@ export function StudentMasterDetail({
   const [crmActivities, setCrmActivities] = useState<CrmActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     let alive = true;
@@ -286,7 +287,7 @@ export function StudentMasterDetail({
     .filter((item) => item.class_participants.some((participant) => participant.person_id === student.id))
     .sort((a, b) => new Date(b.scheduled_start_at).getTime() - new Date(a.scheduled_start_at).getTime()), [classes, student.id]);
   const upcoming = [...ownClasses]
-    .filter((item) => item.status === "scheduled" && new Date(item.scheduled_start_at).getTime() >= Date.now())
+    .filter((item) => item.status === "scheduled" && new Date(item.scheduled_start_at).getTime() >= now)
     .sort((a, b) => new Date(a.scheduled_start_at).getTime() - new Date(b.scheduled_start_at).getTime());
   const ownCredits = useMemo(() => credits
     .filter((item) => item.credit_grant_members.some((member) => member.person_id === student.id))
