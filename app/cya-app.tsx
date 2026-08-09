@@ -23,6 +23,7 @@ import { AdminView } from "./admin-view";
 import { AgendaView } from "./agenda-view";
 import { ContextSelector } from "./context-selector";
 import { HomeView } from "./home-view";
+import { StudentMasterDetail } from "./student-detail";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 
 const TeachingGraph = lazy(() => import("./teaching-graph").then((module) => ({ default: module.TeachingGraph })));
@@ -973,31 +974,6 @@ function AddStudent({ close, created }: { close: () => void; created: () => Prom
   </section></div>;
 }
 
-function StudentDetail({ student, terms, close }: { student: Person; terms: CatalogTerm[]; close: () => void }) {
-  const [evaluations,setEvaluations] = useState<StudentEvaluation[]>([]), [error,setError] = useState("");
-  useEffect(() => {
-    let alive = true;
-    async function load() {
-      if (!db) return;
-      const result = await db.from("student_evaluations").select("id,person_id,class_id,aptitude_term_id,score,evaluation_kind,created_at").eq("person_id",student.id).order("created_at",{ ascending:false });
-      if (!alive) return;
-      if (result.error) setError(result.error.message); else setEvaluations((result.data ?? []) as StudentEvaluation[]);
-    }
-    void load(); return () => { alive = false; };
-  }, [student.id]);
-  const aptitudeTerms = new Map(terms.filter((term) => term.taxonomy === "aptitude").map((term) => [term.id,term.label]));
-  const latest = evaluations.reduce<Map<number,StudentEvaluation>>((map,item) => map.has(item.aptitude_term_id) ? map : map.set(item.aptitude_term_id,item),new Map());
-  const radarItems = [...latest.values()].map((item) => ({ label: aptitudeTerms.get(item.aptitude_term_id) ?? "Aptitud", value: item.score }));
-  return <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}><section className="modal" role="dialog" aria-modal="true">
-    <header className="modal-head"><h2>Ficha de alumno</h2><button className="icon-btn" onClick={close} aria-label="Cerrar"><X /></button></header><div className="modal-body">
-      <div className="detail-hero"><span className="avatar"><CircleUserRound /></span><h3>{student.display_name}</h3><p>{student.auth_user_id ? "Alumno con portal" : "Alumno provisional · sin portal"}</p></div>
-      <div className="detail-grid"><div><span>Teléfono</span><strong>{student.phone || "Sin indicar"}</strong></div><div><span>Email</span><strong>{student.email || "Sin indicar"}</strong></div><div><span>País</span><strong>{student.country_code || "Sin indicar"}</strong></div><div><span>Estado</span><strong>{student.active ? "Activo" : "Inactivo"}</strong></div></div>
-      <section className="student-evolution"><div className="card-head"><h2>Evolución del profesor</h2><span>Escala absoluta · 0–100</span></div>{error ? <p className="error">{error}</p> : radarItems.length ? <RadarChart items={radarItems} scaleLabel="Valor absoluto de la última evaluación por aptitud" /> : <div className="compact-empty"><TrendingUp /><span>Todavía no hay evaluaciones para este alumno.</span></div>}
-        {evaluations.length ? <div className="evaluation-history" aria-label="Historial de evaluaciones">{evaluations.slice(0,12).map((item) => <div key={item.id}><span>{new Intl.DateTimeFormat("es-ES",{ day:"numeric",month:"short",year:"numeric" }).format(new Date(item.created_at))}</span><strong>{item.score}</strong></div>)}</div> : null}
-      </section>
-    </div></section></div>;
-}
-
 function portalClassStatus(value: string) {
   return ({ scheduled: "Programada", active: "En curso", finished: "Realizada", cancelled: "Cancelada" } as Record<string, string>)[value] ?? value;
 }
@@ -1173,7 +1149,20 @@ function StaffApp({ session }: { session: Session }) {
     {newOpen ? <AddStudent close={() => setNewOpen(false)} created={created} /> : null}
     {scheduleOpen ? <ScheduleClass students={students} styles={styles} initialStudentId={scheduleStudentId} close={() => { setScheduleOpen(false); setScheduleStudentId(null); }} saved={classSaved} /> : null}
     {creditOpen ? <AddCredit students={students} initialStudentId={creditStudentId} close={() => { setCreditOpen(false); setCreditStudentId(null); }} saved={creditSaved} /> : null}
-    {selected ? <StudentDetail student={selected} terms={catalog} close={() => setSelected(null)} /> : null}{toast ? <div className="toast">{toast}</div> : null}
+    {selected && db ? <StudentMasterDetail
+      client={db}
+      student={selected}
+      terms={catalog}
+      classes={classes}
+      credits={credits}
+      assignments={teachingAssignments}
+      crmContact={crmContacts.find((contact) => contact.id === selected.id) ?? null}
+      rates={marketingRates}
+      close={() => setSelected(null)}
+      schedule={() => { setSelected(null); setScheduleStudentId(selected.id); setScheduleOpen(true); }}
+      addCredit={() => { setSelected(null); setCreditStudentId(selected.id); setCreditOpen(true); }}
+      openClass={(id) => { setSelected(null); goLive(id); }}
+    /> : null}{toast ? <div className="toast">{toast}</div> : null}
   </div>;
 }
 
