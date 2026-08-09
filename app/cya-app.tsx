@@ -2,9 +2,9 @@
 
 import {
   Archive, ArrowRight, Bell, BookOpen, CalendarDays, CheckCircle2, ChevronRight, CircleUserRound,
-  Clock3, Dumbbell, ExternalLink, Eye, EyeOff, FolderOpen, GitBranch, GraduationCap, House,
-  Image as ImageIcon, LibraryBig, Link2, LockKeyhole, LogOut, Megaphone, NotebookPen,
-  Pencil, Play, Plus, Search, Sparkles, TrendingUp, UsersRound, Video,
+  Clock3, Dumbbell, Eye, EyeOff, GitBranch, GraduationCap, House,
+  LibraryBig, Link2, LockKeyhole, LogOut, Megaphone, NotebookPen,
+  Pencil, Play, Plus, Search, Sparkles, TrendingUp, UsersRound,
   WalletCards, X,
 } from "lucide-react";
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
@@ -24,7 +24,9 @@ import { AgendaView } from "./agenda-view";
 import { ContextSelector } from "./context-selector";
 import { HomeView } from "./home-view";
 import { StudentMasterDetail } from "./student-detail";
-import { TeachingContentCard } from "./teaching-content-card";
+import { TeachingContentCard, type TeachingCardMedia } from "./teaching-content-card";
+import { TeachingMediaEditor, type TeachingMediaDraft } from "./teaching-media-editor";
+import { setRuntimeSupabaseClient } from "./supabase-runtime";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 
 const TeachingGraph = lazy(() => import("./teaching-graph").then((module) => ({ default: module.TeachingGraph })));
@@ -64,7 +66,7 @@ type TeachingContent = TeachingContentSummary & {
   teaching_content_roles: Array<{ role_term_id: number }>;
   teaching_content_levels: Array<{ level_term_id: number }>;
   teaching_content_tags: Array<{ tag: string }>;
-  teaching_content_media: Array<{ id: number; media_type: "video" | "image"; provider: string; external_file_id: string; title: string | null }>;
+  teaching_content_media: TeachingCardMedia[];
 };
 type TeachingRelation = {
   id: number; source_content_id: number; target_content_id: number; relation_type: string; position: number | null;
@@ -91,13 +93,10 @@ type StudentPortalSnapshot = {
     id: number; content_id: number; title: string; content_type: string; description: string | null;
     correction_guidance: string | null; assignment_status: string; current_frequency: number | null;
     current_importance: number | null; updated_at: string;
-    media: Array<{ media_type: "video" | "image"; provider: string; external_file_id: string; title: string | null }>;
+    media: TeachingCardMedia[];
   }>;
   evaluations: Array<{ id: number; class_id: number | null; score: number; aptitude: string; created_at: string }>;
 };
-type DriveMediaInput = { media_type: "image" | "video"; external_file_id: string; title: string | null };
-
-const DRIVE_TEACHING_FOLDER_URL = "https://drive.google.com/drive/folders/12IT2BihTvmqHUz7zQKuShd6ddSV-6fpO";
 let db: SupabaseClient | null = null;
 let dbConnection: Promise<SupabaseClient> | null = null;
 
@@ -123,6 +122,7 @@ async function connectDatabase() {
       db = createClient(config.supabaseUrl, config.supabasePublishableKey, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
       });
+      setRuntimeSupabaseClient(db);
       return db;
     }).catch((error) => {
       dbConnection = null;
@@ -366,36 +366,6 @@ function assignmentOptions(contentType: string) {
 
 function linkedTermLabels(ids: number[], terms: CatalogTerm[]) {
   return ids.map((id) => terms.find((term) => term.id === id)?.label).filter(Boolean).join(" · ");
-}
-
-function driveId(value: string) {
-  const trimmed = value.trim();
-  const pathMatch = trimmed.match(/\/d\/([^/?#]+)/), queryMatch = trimmed.match(/[?&]id=([^&#]+)/);
-  return decodeURIComponent(pathMatch?.[1] ?? queryMatch?.[1] ?? trimmed);
-}
-
-function driveFileUrl(fileId: string) {
-  return `https://drive.google.com/open?id=${encodeURIComponent(fileId)}`;
-}
-
-function teachingMediaFrom(form: FormData): DriveMediaInput[] {
-  const references = form.getAll("media_reference").map((value) => String(value).trim());
-  const types = form.getAll("media_type").map((value) => String(value));
-  const titles = form.getAll("media_title").map((value) => String(value).trim());
-  return references.flatMap((reference, index) => reference ? [{
-    media_type: types[index] === "image" ? "image" as const : "video" as const,
-    external_file_id: driveId(reference), title: titles[index] || null,
-  }] : []);
-}
-
-function TeachingMediaFields({ existing = [] }: { existing?: TeachingContent["teaching_content_media"] }) {
-  const [rows, setRows] = useState([0]);
-  return <details className="progressive-fields drive-fields"><summary>Añadir fotos o vídeos desde Drive</summary><div className="drive-fields-body">
-    <div className="drive-folder-row"><div><strong>Carpeta de Enseñanza</strong><span>Los archivos continúan privados en vuestro Drive.</span></div><a className="btn ghost" href={DRIVE_TEACHING_FOLDER_URL} target="_blank" rel="noreferrer"><FolderOpen /> Abrir Drive</a></div>
-    {existing.length ? <div className="existing-media"><span>Ya añadidos</span><div>{existing.map((media) => <a key={media.id} href={driveFileUrl(media.external_file_id)} target="_blank" rel="noreferrer">{media.media_type === "video" ? <Video /> : <ImageIcon />}<span>{media.title || (media.media_type === "video" ? "Vídeo" : "Foto")}</span><ExternalLink /></a>)}</div></div> : null}
-    <div className="drive-media-rows">{rows.map((row, index) => <div className="drive-media-row" key={row}><label className="field"><span>Tipo</span><select name="media_type" defaultValue="video"><option value="video">Vídeo</option><option value="image">Foto</option></select></label><label className="field"><span>Nombre</span><input name="media_title" placeholder="Opcional" /></label><label className="field drive-reference"><span>Enlace o ID de Drive</span><input name="media_reference" placeholder="Pega el enlace del archivo" /></label>{rows.length > 1 ? <button type="button" className="icon-btn drive-remove" onClick={() => setRows((current) => current.filter((value) => value !== row))} aria-label={`Quitar archivo ${index + 1}`}><X /></button> : null}</div>)}</div>
-    <button type="button" className="text-button add-media-row" onClick={() => setRows((current) => [...current, Math.max(...current) + 1])}><Plus /> Añadir otro archivo</button>
-  </div></details>;
 }
 
 function contentFitsContext(content: TeachingContent, styleId: number | null, roleId: number | null, levelId: number | null) {
@@ -720,6 +690,8 @@ function LiveClassView({ classes, students, credits, terms, library, relations, 
 
 function TeachingContentEditor({ initial, defaultType, terms, close, saved, notify }: { initial: TeachingContent | null; defaultType: string; terms: CatalogTerm[]; close: () => void; saved: () => Promise<void>; notify: (message: string) => void }) {
   const [type, setType] = useState(initial?.content_type ?? defaultType), [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const [media, setMedia] = useState<TeachingMediaDraft[]>(() => (initial?.teaching_content_media ?? []).map((item) => ({ ...item, _key: `existing-${item.id ?? item.external_file_id}` })));
+  const [mediaUploading, setMediaUploading] = useState(false);
   const styles = terms.filter((term) => term.taxonomy === "dance_style"), roles = terms.filter((term) => term.taxonomy === "dance_role"), levels = terms.filter((term) => term.taxonomy === "dance_level");
   const categoryTaxonomy = type === "correction" ? "correction_category" : `${type}_category`;
   const categories = terms.filter((term) => term.taxonomy === categoryTaxonomy);
@@ -738,7 +710,21 @@ function TeachingContentEditor({ initial, defaultType, terms, close, saved, noti
       p_completion_status: intent === "publish" ? "complete" : "incomplete", p_publication_status: intent === "publish" ? "published" : "draft",
       p_visibility: intent === "publish" ? String(form.get("visibility") || "student") : "staff", p_measurement_mode: type === "correction" ? String(form.get("measurement_mode") || "both") : "none",
       p_category_term_id: categoryId, p_style_term_ids: styleIds, p_role_term_ids: roleIds, p_level_term_ids: levelIds, p_tags: tags,
-      p_media: teachingMediaFrom(form),
+      p_media: media.map((item) => ({
+        media_type: item.media_type,
+        provider: "google_drive",
+        external_file_id: item.external_file_id,
+        title: item.title || null,
+        mime_type: item.mime_type || null,
+        group_label: item.group_label || null,
+        is_cover: Boolean(item.is_cover),
+        is_preview: Boolean(item.is_preview),
+        display_in_resources: item.display_in_resources !== false,
+        thumbnail_external_file_id: item.thumbnail_external_file_id || null,
+        thumbnail_mime_type: item.thumbnail_mime_type || null,
+        preview_start_seconds: item.preview_start_seconds ?? null,
+        preview_end_seconds: item.preview_end_seconds ?? null,
+      })),
     });
     if (result.error) { setError(result.error.message); setBusy(false); return; }
     await saved(); notify(intent === "publish" ? "Contenido publicado." : "Guardado en Incompletas."); setBusy(false); close();
@@ -766,10 +752,10 @@ function TeachingContentEditor({ initial, defaultType, terms, close, saved, noti
         <fieldset><legend>Roles</legend><div className="check-grid">{roles.map((term) => <label key={term.id}><input type="checkbox" name="role_term_ids" value={term.id} defaultChecked={selectedRoles.has(term.id)} /><span>{term.label}</span></label>)}</div></fieldset>
         <fieldset><legend>Niveles</legend><div className="check-grid">{levels.map((term) => <label key={term.id}><input type="checkbox" name="level_term_ids" value={term.id} defaultChecked={selectedLevels.has(term.id)} /><span>{term.label}</span></label>)}</div></fieldset>
       </div>
-      <TeachingMediaFields existing={initial?.teaching_content_media ?? []} />
+      <TeachingMediaEditor value={media} onChange={setMedia} onUploadingChange={setMediaUploading} />
       <p className="draft-note">Puedes guardar solo el título. Hasta que lo publiques permanecerá en Incompletas y no se propondrá ni se mostrará al alumno.</p>
       {error ? <p className="error">{error}</p> : null}
-      <div className="actions teaching-actions">{initial ? <button className="btn archive-btn" type="button" onClick={archive} disabled={busy}><Archive size={16} /> Archivar</button> : null}<span /><button className="btn ghost" type="submit" name="intent" value="draft" disabled={busy}>Guardar incompleta</button><button className="btn" type="submit" name="intent" value="publish" disabled={busy}>{busy ? "Guardando…" : initial?.publication_status === "published" ? "Guardar publicada" : "Publicar"}</button></div>
+      <div className="actions teaching-actions">{initial ? <button className="btn archive-btn" type="button" onClick={archive} disabled={busy}><Archive size={16} /> Archivar</button> : null}<span /><button className="btn ghost" type="submit" name="intent" value="draft" disabled={busy || mediaUploading}>Guardar incompleta</button><button className="btn" type="submit" name="intent" value="publish" disabled={busy || mediaUploading}>{busy ? "Guardando…" : initial?.publication_status === "published" ? "Guardar publicada" : "Publicar"}</button></div>
     </form>
   </section></div>;
 }
@@ -1070,7 +1056,7 @@ function StaffApp({ session }: { session: Session }) {
   const loadTeaching = useCallback(async () => {
     if (!db) return;
     const [contentResult, relationResult, assignmentResult] = await Promise.all([
-      db.from("teaching_contents").select("id,title,content_type,description,correction_guidance,completion_status,publication_status,visibility,measurement_mode,category_term_id,active,published_at,updated_at,teaching_content_styles(style_term_id),teaching_content_roles(role_term_id),teaching_content_levels(level_term_id),teaching_content_tags(tag),teaching_content_media(id,media_type,provider,external_file_id,title)").eq("active",true).order("updated_at",{ ascending:false }),
+      db.from("teaching_contents").select("id,title,content_type,description,correction_guidance,completion_status,publication_status,visibility,measurement_mode,category_term_id,active,published_at,updated_at,teaching_content_styles(style_term_id),teaching_content_roles(role_term_id),teaching_content_levels(level_term_id),teaching_content_tags(tag),teaching_content_media(id,media_type,provider,external_file_id,title,mime_type,sort_order,group_label,is_cover,is_preview,display_in_resources,thumbnail_external_file_id,thumbnail_mime_type,preview_start_seconds,preview_end_seconds)").eq("active",true).order("updated_at",{ ascending:false }),
       db.from("teaching_content_relations").select("id,source_content_id,target_content_id,relation_type,position").order("id"),
       db.from("student_content_assignments").select("id,person_id,content_id,assignment_status,current_frequency,current_importance,snapshot_style_term_id,snapshot_role_term_id,snapshot_level_term_id,snapshot_measurement_mode,updated_at,teaching_contents!inner(id,title,content_type,measurement_mode,description,correction_guidance)").order("updated_at",{ ascending:false }),
     ]);
