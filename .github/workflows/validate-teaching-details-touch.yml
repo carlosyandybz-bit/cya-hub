@@ -1,0 +1,41 @@
+name: Validate teaching detail touch fix
+
+on:
+  push:
+    branches:
+      - fix/teaching-details-touch
+    paths:
+      - .github/workflows/validate-teaching-details-touch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/teaching-details-touch
+          fetch-depth: 0
+      - name: Apply touch fix
+        run: python scripts/fix_teaching_details_touch.py
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Commit validated product file
+        run: |
+          git config user.name "CYA Hub automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add app/cya-app.tsx
+          git commit -m "Fix teaching detail opening on touch devices"
+          git push origin HEAD:fix/teaching-details-touch
