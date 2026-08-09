@@ -1,0 +1,36 @@
+name: Finalize visual audit v21
+on:
+  push:
+    paths:
+      - '.github/workflows/finalize-visual-audit-v21.yml'
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/visual-readability-v21
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Apply final readability patch
+        run: python3 scripts/visual-audit-v21-patch.py
+      - name: Install
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Test
+        run: node --test tests/rendered-html.test.mjs
+      - name: Commit final patched files
+        run: |
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add app/student-detail.module.css app/cya-app.tsx
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "CYA Hub v21: improve student and teaching detail readability"
+          git push origin HEAD:audit/visual-readability-v21
