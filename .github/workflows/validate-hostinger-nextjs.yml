@@ -20,6 +20,9 @@ jobs:
           ref: infra/hostinger-nextjs
           fetch-depth: 0
 
+      - name: Apply migration compatibility fix
+        run: python scripts/patch-hostinger-typecheck.py
+
       - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:
@@ -60,12 +63,12 @@ jobs:
           node -e 'const fs=require("fs"); const x=JSON.parse(fs.readFileSync("/tmp/runtime-config.json","utf8")); if(!x.configured || x.supabaseUrl!=="https://example.supabase.co" || x.supabasePublishableKey!=="sb_publishable_ci_runtime_test") process.exit(1)'
           grep -q 'CYA Hub' /tmp/home.html
 
-      - name: Commit validated lockfile adjustments
+      - name: Commit validated migration files
         run: |
           git config user.name "CYA Hub automation"
           git config user.email "actions@users.noreply.github.com"
-          git add package-lock.json tsconfig.json
+          git add app/cya-app.tsx package-lock.json tsconfig.json
           if ! git diff --cached --quiet; then
-            git commit -m "Refresh dependencies for Hostinger Next.js runtime"
+            git commit -m "Finalize Hostinger Next.js compatibility"
             git push origin HEAD:infra/hostinger-nextjs
           fi
