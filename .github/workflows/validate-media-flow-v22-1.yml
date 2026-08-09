@@ -1,0 +1,17 @@
+name: Validate media flow v22.1
+on:
+  push:
+    branches: [fix/media-flow-v22-1]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
