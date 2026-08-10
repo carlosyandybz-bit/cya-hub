@@ -25,8 +25,8 @@ test('correction card does not repeat status in subtitle and badge', () => {
 
 test('live session has only the sticky administrative action', () => {
   assert.equal(live.includes('className={`live-bottom'), false);
-  const finishButtons = [...live.matchAll(/>Terminar clase<\/button>/g)].length;
-  assert.equal(finishButtons, 1);
+  const finishActions = [...live.matchAll(/onClick=\{\(\) => setFinishOpen\(true\)\}/g)].length;
+  assert.equal(finishActions, 1);
 });
 
 test('student context omits portal/provisional status noise', () => {
