@@ -138,7 +138,7 @@ export function AdminDataTransfer({
     try {
       const result = isBackup
         ? await client.rpc("apply_backup_restore", { p_job_id: importPreview.id })
-        : await client.rpc("apply_data_import", { p_job_id: importPreview.id });
+        : await client.rpc("apply_data_import_v2", { p_job_id: importPreview.id });
       if (result.error) throw result.error;
       const job = result.data as TransferJob;
       setImportPreview(job);
@@ -173,7 +173,7 @@ export function AdminDataTransfer({
       <article className="card pad">
         <div className="card-head"><div><p className="eyebrow">Importar</p><h2>Analizar antes de cambiar</h2></div><Upload /></div>
         <div className="fields-2">
-          <label className="field"><span>Tipo de información</span><select value={importDomain} onChange={(event) => { setImportDomain(event.target.value); setImportPreview(null); }}><>{importDomains.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</></select></label>
+          <label className="field"><span>Tipo de información</span><select value={importDomain} onChange={(event) => { setImportDomain(event.target.value); setImportPreview(null); }}>{importDomains.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label className="field"><span>Duplicados</span><select value={importStrategy} disabled={importDomain === "complete"} onChange={(event) => setImportStrategy(event.target.value)}><option value="fill_empty">Completar campos vacíos</option><option value="update">Actualizar</option><option value="skip">Omitir</option></select></label>
           <label className="file-drop field-wide"><FileInput /><span>{importFile?.name ?? "Seleccionar JSON, CSV o Excel .xlsx"}</span><input type="file" accept="application/json,.json,text/csv,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx" onChange={(event: ChangeEvent<HTMLInputElement>) => { setImportFile(event.target.files?.[0] ?? null); setImportPreview(null); setRestoreConfirmation(""); }} /></label>
         </div>
