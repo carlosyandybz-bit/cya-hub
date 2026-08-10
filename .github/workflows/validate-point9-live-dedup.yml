@@ -1,0 +1,36 @@
+name: Validate Point 9 live dedup
+on:
+  push:
+    branches: [feat/point9-live-dedup]
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Apply Point 9 patch
+        run: python scripts/apply-point9-live-dedup.py
+      - name: Install dependencies
+        run: npm ci
+      - name: Point 9 regressions
+        run: node --test tests/live-session-dedup.test.mjs tests/point8-final-close-v30.test.mjs tests/no-real-time-class-duration.test.mjs tests/numeric-inputs.test.mjs
+      - name: Strict production build
+        run: npm run build
+      - name: Existing rendered regression
+        run: node --test tests/rendered-html.test.mjs
+      - name: Diff integrity
+        run: git diff --check
+      - name: Commit validated functional files
+        run: |
+          git config user.name 'carlosyandybz-bit'
+          git config user.email 'carlosyandybz@gmail.com'
+          git add app/cya-app.tsx tests/live-session-dedup.test.mjs
+          if ! git diff --cached --quiet; then
+            git commit -m 'Deduplicate live class experience [validated-point9]'
+            git push origin HEAD:feat/point9-live-dedup
+          fi
