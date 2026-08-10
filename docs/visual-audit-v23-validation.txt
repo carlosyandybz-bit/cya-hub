@@ -1,0 +1,1 @@
+Validated by GitHub Actions: visual-integrity.test.mjs, strict npm run build, rendered-html.test.mjs.
