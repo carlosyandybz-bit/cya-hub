@@ -18,7 +18,7 @@ test("finish flow offers quick bonus and atomic single-class payment", () => {
   assert.match(app, /Crear bono rápido/);
   assert.match(app, /Pagar clase suelta/);
   assert.match(app, /create_credit_grant/);
-  assert.match(app, /administratively_finish_class_v3/);
+  assert.match(app, /administratively_finish_class_v4/);
   assert.match(app, /p_direct_payment_price_cents/);
 });
 
