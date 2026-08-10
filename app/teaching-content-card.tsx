@@ -40,6 +40,8 @@ type Props = {
   metadata?: TeachingCardMeta[];
   tags?: string[];
   actions?: ReactNode;
+  quickControls?: ReactNode;
+  kindTone?: "correction" | "explanation" | "exercise" | "sequence";
   children?: ReactNode;
   className?: string;
   defaultOpen?: boolean;
@@ -62,6 +64,8 @@ export function TeachingContentCard({
   metadata = [],
   tags = [],
   actions,
+  quickControls,
+  kindTone,
   children,
   className = "",
   defaultOpen = false,
@@ -97,7 +101,9 @@ export function TeachingContentCard({
     };
   }, [open]);
 
-  return <article className={`${styles.card} ${className}`.trim()}>
+  const toneClass = kindTone === "correction" ? styles.correction : kindTone === "explanation" ? styles.explanation : kindTone === "exercise" ? styles.exercise : kindTone === "sequence" ? styles.sequence : "";
+
+  return <article className={`${styles.card} ${toneClass} ${className}`.trim()}>
     <div className={styles.collapsedRow}>
       <button type="button" className={styles.visualButton} onClick={() => setOpen(true)} aria-label={`Abrir ${title}`}>
         <div className={styles.visualFrame}>
@@ -125,6 +131,8 @@ export function TeachingContentCard({
             {actions ? <div className={styles.actions}>{actions}</div> : null}
           </div>
         </div>
+
+        {quickControls ? <div className={styles.quickControls}>{quickControls}</div> : null}
 
         <button type="button" className={styles.toggle} onClick={() => setOpen(true)}>
           <span>Abrir contenido</span>
