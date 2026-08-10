@@ -21,7 +21,7 @@ jobs:
         run: |
           node --test tests/live-class-polish-point11b.test.mjs
           node --test tests/live-class-search-point11.test.mjs
-          node --test tests/live-class-workflow-point10.test.mjs
+          node --test tests/class-workflow-point10.test.mjs
           node --test tests/live-session-dedup.test.mjs
           node --test tests/no-real-time-class-duration.test.mjs
           node --test tests/numeric-inputs-global.test.mjs
@@ -35,7 +35,7 @@ jobs:
         run: |
           git config user.name "carlosyandybz-bit"
           git config user.email "carlosyandybz@gmail.com"
-          git add app/cya-app.tsx app/globals.css app/teaching-content-card.tsx app/teaching-content-card.module.css tests/live-class-polish-point11b.test.mjs supabase/v33-live-class-polish-permissions.sql
+          git add app/cya-app.tsx app/globals.css app/teaching-content-card.tsx app/teaching-content-card.module.css tests/live-class-polish-point11b.test.mjs tests/live-class-search-point11.test.mjs supabase/v33-live-class-polish-permissions.sql
           if ! git diff --cached --quiet; then
             git commit -m "Implement Point 11B live class polish"
             git push
