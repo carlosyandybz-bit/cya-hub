@@ -3,7 +3,7 @@
 import { CheckCircle2, ClipboardList, DatabaseBackup, Download, FileInput, ShieldCheck, Upload } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ChangeEvent, useState } from "react";
-import { downloadBundle, normalizeImportRows, parseTransferFile, type CyaDataBundle, type TransferFormat } from "./data-transfer-formats";
+import { downloadBundle, normalizeImportRows, parseTransferFile, type CyaDataBundle, type TransferFormat } from "./data-transfer-formats-safe";
 
 type TransferJob = {
   id: number;
