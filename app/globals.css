@@ -730,3 +730,7 @@ body:has([role="dialog"]){overflow:hidden}
 .account-settings-back{justify-self:start}.account-settings-brand{justify-self:center}.account-settings-head>div:last-child{justify-self:end}
 .account-settings-main{width:min(940px,100%);margin:0 auto;padding:24px max(18px,env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
 @media(max-width:700px){.account-settings-head{grid-template-columns:46px minmax(0,1fr) 46px;min-height:64px}.account-settings-main{padding-top:18px}}
+
+
+/* CYA notification indicator v25 */
+.notification-trigger{position:relative}.notification-trigger.has-notifications{background:#f1edff;color:#6d4aff}.notification-trigger.has-notifications svg{stroke-width:2.25}.notification-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;border:2px solid #fff;border-radius:50%;background:#6d4aff;box-sizing:content-box;pointer-events:none}

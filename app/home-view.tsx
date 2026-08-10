@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Bell,
   BookOpen,
   CalendarDays,
   Check,
@@ -30,14 +29,6 @@ type ClassSummary = {
 };
 
 type PersonSummary = { id: number; display_name: string };
-
-type Notification = {
-  id: number;
-  title: string;
-  body: string | null;
-  action_target: string | null;
-  created_at: string;
-};
 
 type HomeViewProps = {
   client: SupabaseClient;
@@ -223,7 +214,6 @@ function MissionDialog({
 export function HomeView({ client, identity, studentCount, classes, students, go, goLive, addStudent, scheduleClass, notify }: HomeViewProps) {
   const [now] = useState(() => Date.now());
   const [snapshot, setSnapshot] = useState<HomeSnapshot | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -231,17 +221,9 @@ export function HomeView({ client, identity, studentCount, classes, students, go
     setLoading(true);
     const refreshResult = await client.rpc("refresh_missions");
     if (refreshResult.error) notify(refreshResult.error.message);
-    const [homeResult, notificationResult] = await Promise.all([
-      client.rpc("home_snapshot"),
-      client.from("internal_notifications")
-        .select("id,title,body,action_target,created_at")
-        .is("read_at", null)
-        .order("created_at", { ascending: false })
-        .limit(4),
-    ]);
+    const homeResult = await client.rpc("home_snapshot");
     if (homeResult.error) notify(homeResult.error.message);
     else setSnapshot(homeResult.data as HomeSnapshot);
-    if (!notificationResult.error) setNotifications((notificationResult.data ?? []) as Notification[]);
     setLoading(false);
   }, [client, notify]);
 
@@ -267,13 +249,6 @@ export function HomeView({ client, identity, studentCount, classes, students, go
     const target = mission.action_target ?? "home";
     if (target === "live") goLive();
     else go(target);
-  }
-
-  async function openNotification(item: Notification) {
-    setNotifications((current) => current.filter((notification) => notification.id !== item.id));
-    const result = await client.from("internal_notifications").update({ read_at: new Date().toISOString() }).eq("id", item.id);
-    if (result.error) notify(result.error.message);
-    if (item.action_target) go(item.action_target);
   }
 
   const firstName = identity.display_name.trim().split(/\s+/)[0] || identity.profile_name;
@@ -332,10 +307,6 @@ export function HomeView({ client, identity, studentCount, classes, students, go
           <div className="day-summary"><span>Hoy <strong>{todayClasses.length}</strong></span><span>Por cerrar <strong>{classes.filter((item) => item.status === "finished" && !item.pedagogy_closed_at).length}</strong></span></div>
         </article>
 
-        <article className="card pad home-notifications">
-          <div className="card-head"><div><p className="eyebrow">Avisos</p><h2>Notificaciones</h2></div><Bell /></div>
-          {notifications.length ? notifications.map((item) => <button key={item.id} onClick={() => void openNotification(item)}><Bell /><span><strong>{item.title}</strong><small>{item.body}</small></span><ChevronRight /></button>) : <div className="compact-empty"><CheckCircle2 /><span>No hay avisos nuevos.</span></div>}
-        </article>
 
         {identity.can_admin ? <button className="admin-entry card" onClick={() => go("admin")}><Settings /><span><strong>Administración</strong><small>Equipo, misiones, formularios, datos e integraciones</small></span><ChevronRight /></button> : null}
       </section>
