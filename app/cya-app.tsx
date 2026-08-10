@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  AlertTriangle, Archive, ArrowRight, Bell, BookOpen, CalendarDays, CheckCircle2, ChevronRight, CircleUserRound,
+  AlertTriangle, Archive, ArrowRight, Bell, BellRing, BookOpen, CalendarDays, CheckCircle2, ChevronRight, CircleUserRound,
   Clock3, Dumbbell, Eye, EyeOff, GitBranch, GraduationCap, House,
   LibraryBig, Link2, LockKeyhole, LogOut, Megaphone, NotebookPen,
   Pencil, Play, Plus, Search, Sparkles, TrendingUp, UsersRound,
@@ -24,6 +24,7 @@ import { AgendaView } from "./agenda-view";
 import { AccountMenu } from "./account-menu";
 import { PreferencesSettingsView, ProfileSettingsView } from "./account-pages";
 import { HomeView } from "./home-view";
+import { NotificationsView, type NotificationTargetContext } from "./notifications-view";
 import { StudentMasterDetail } from "./student-detail";
 import { TeachingContentCard, type TeachingCardMedia } from "./teaching-content-card";
 import { TeachingMediaEditor, type TeachingMediaDraft } from "./teaching-media-editor";
@@ -32,7 +33,7 @@ import type { ExperienceContext, IdentityContext } from "./v14-types";
 
 const TeachingGraph = lazy(() => import("./teaching-graph").then((module) => ({ default: module.TeachingGraph })));
 
-type View = "home" | "students" | "classes" | "credits" | "agenda" | "live" | "teaching" | "marketing" | "admin" | "profile" | "preferences";
+type View = "home" | "students" | "classes" | "credits" | "agenda" | "live" | "teaching" | "marketing" | "admin" | "profile" | "preferences" | "notifications";
 type CyaOverlay = "new-student" | "schedule" | "credit" | null;
 type CyaHistoryState = {
   cyaHub: true;
@@ -1070,7 +1071,24 @@ function StaffApp({ session }: { session: Session }) {
   const [scheduleOpen, setScheduleOpen] = useState(false), [creditOpen, setCreditOpen] = useState(false);
   const [scheduleStudentId,setScheduleStudentId] = useState<number | null>(null), [creditStudentId,setCreditStudentId] = useState<number | null>(null);
   const [toast, setToast] = useState<string>(""), [liveClassId, setLiveClassId] = useState<number | null>(null);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const patchIdentity = useCallback((patch: Partial<IdentityContext>) => setIdentity((current) => current ? { ...current, ...patch } : current), []);
+  const loadNotificationCount = useCallback(async () => {
+    if (!db) return;
+    const notificationResult = await db.from("internal_notifications")
+      .select("id,source_type,source_id,read_at")
+      .is("read_at", null)
+      .limit(200);
+    if (notificationResult.error) return;
+    const rows = (notificationResult.data ?? []) as Array<{ id: number; source_type: string | null; source_id: string | null; read_at: string | null }>;
+    const missionIds = rows.filter((item) => item.source_type === "mission" && item.source_id && /^\d+$/.test(item.source_id)).map((item) => Number(item.source_id));
+    if (!missionIds.length) { setUnreadNotificationCount(rows.length); return; }
+    const missionResult = await db.from("missions").select("id,state").in("id", [...new Set(missionIds)]);
+    if (missionResult.error) { setUnreadNotificationCount(rows.length); return; }
+    const states = new Map(((missionResult.data ?? []) as Array<{ id: number; state: string }>).map((item) => [item.id, item.state]));
+    const resolved = new Set(["completed", "completed_automatically", "cancelled"]);
+    setUnreadNotificationCount(rows.filter((item) => item.source_type !== "mission" || !item.source_id || !resolved.has(states.get(Number(item.source_id)) ?? "")).length);
+  }, []);
   const loadStudents = useCallback(async () => {
     if (!db) return;
     const result = await db.from("people").select("id,auth_user_id,display_name,first_name,last_name,email,phone,country_code,crm_stage,active,student_profiles!inner(person_id,active)").eq("active", true).eq("student_profiles.active", true).order("display_name");
@@ -1143,11 +1161,11 @@ function StaffApp({ session }: { session: Session }) {
         setExperienceState(allowed && preferred ? preferred : nextIdentity.can_teach ? "teacher" : nextIdentity.can_study ? "student" : "admin");
       }
       if (nextIdentity?.can_teach || nextIdentity?.can_admin) {
-        try { await Promise.all([loadStudents(), loadOperations(), loadTeaching(), loadMarketing()]); } catch (e) { if (alive) setToast(e instanceof Error ? e.message : "No se pudieron cargar los datos."); }
+        try { await Promise.all([loadStudents(), loadOperations(), loadTeaching(), loadMarketing(), loadNotificationCount()]); } catch (e) { if (alive) setToast(e instanceof Error ? e.message : "No se pudieron cargar los datos."); }
       }
       if (alive) setReady(true);
     } boot(); return () => { alive = false; };
-  }, [session.user.id, loadStudents, loadOperations, loadTeaching, loadMarketing]);
+  }, [session.user.id, loadStudents, loadOperations, loadTeaching, loadMarketing, loadNotificationCount]);
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 3000); return () => clearTimeout(timer); }, [toast]);
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1274,7 +1292,23 @@ function StaffApp({ session }: { session: Session }) {
   function goTarget(target: string) {
     if (target === "admin") { if (activeIdentity.can_admin) navigateView("admin", { experience: "admin" }); return; }
     if (target === "live") { goLive(); return; }
-    if (["home", "students", "classes", "credits", "agenda", "teaching", "marketing"].includes(target)) navigateView(target as View);
+    if (["home", "students", "classes", "credits", "agenda", "teaching", "marketing", "notifications"].includes(target)) navigateView(target as View);
+  }
+  function openNotificationTarget(target: string, context: NotificationTargetContext) {
+    if (context.classId) { navigateView("live", { liveClassId: context.classId }); return; }
+    if (context.personId) {
+      const student = students.find((item) => item.id === context.personId);
+      if (student) {
+        const state = historyState("students", { selectedId: student.id });
+        window.history.pushState(state, "", window.location.href);
+        clearTransient();
+        setLiveClassId(null);
+        setView("students");
+        setSelected(student);
+        return;
+      }
+    }
+    goTarget(target);
   }
   const studentArea = ["students", "classes", "credits", "agenda"].includes(view);
   const activeNav = (id: string) => id === "students" ? studentArea : view === id;
@@ -1282,10 +1316,11 @@ function StaffApp({ session }: { session: Session }) {
     <aside className="sidebar"><Brand /><nav>{nav.map(([id, label, Icon]) => <button key={id} className={activeNav(id) ? "active" : ""} onClick={() => navigateView(id)}><Icon />{label}</button>)}</nav>
       <AccountMenu client={db!} identity={identity} experience={experience} email={accountEmail} variant="sidebar" onExperience={setExperience} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} notify={setToast} />
     </aside>
-    <div><header className="mobile-head"><div className="mobile-head-back">{view !== "home" ? <button className="mobile-back" type="button" onClick={() => goBack("home")} aria-label="Volver">‹</button> : null}</div><div className="mobile-head-brand"><Brand /></div><div className="mobile-head-actions"><button className="icon-btn" onClick={() => navigateView("home")} aria-label="Notificaciones"><Bell /></button><AccountMenu client={db!} identity={identity} experience={experience} email={accountEmail} variant="header" onExperience={setExperience} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} notify={setToast} /></div></header>
+    <div><header className="mobile-head"><div className="mobile-head-back">{view !== "home" ? <button className="mobile-back" type="button" onClick={() => goBack("home")} aria-label="Volver">‹</button> : null}</div><div className="mobile-head-brand"><Brand /></div><div className="mobile-head-actions"><button className={`icon-btn notification-trigger ${unreadNotificationCount ? "has-notifications" : ""}`} onClick={() => navigateView("notifications")} aria-label={unreadNotificationCount ? `${unreadNotificationCount} notificaciones pendientes` : "Notificaciones"}>{unreadNotificationCount ? <BellRing /> : <Bell />}{unreadNotificationCount ? <span className="notification-dot" aria-hidden="true" /> : null}</button><AccountMenu client={db!} identity={identity} experience={experience} email={accountEmail} variant="header" onExperience={setExperience} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} notify={setToast} /></div></header>
       <main className="main"><div className="content">
         {studentArea ? <nav className="module-tabs" aria-label="Alumnado"><button className={view === "students" ? "active" : ""} onClick={() => navigateView("students")}><UsersRound /> Alumnos</button><button className={view === "classes" ? "active" : ""} onClick={() => navigateView("classes")}><CalendarDays /> Clases</button><button className={view === "credits" ? "active" : ""} onClick={() => navigateView("credits")}><WalletCards /> Bonos</button><button className={view === "agenda" ? "active" : ""} onClick={() => navigateView("agenda")}><CalendarDays /> Agenda</button></nav> : null}
         {view === "home" && db ? <HomeView client={db} identity={identity} studentCount={students.length} classes={classes} students={students} go={goTarget} goLive={goLive} addStudent={openNewStudent} scheduleClass={() => openSchedule(null)} notify={setToast} /> : null}
+        {view === "notifications" && db ? <NotificationsView client={db} timezone={identity.timezone} openTarget={openNotificationTarget} onUnreadChange={setUnreadNotificationCount} notify={setToast} /> : null}
         {view === "students" ? <StudentsView students={students} query={query} setQuery={setQuery} add={openNewStudent} open={openStudentDetail} schedule={(student) => openSchedule(student.id)} credit={(student) => openCredit(student.id)} /> : null}
         {view === "classes" ? <ClassesView classes={classes} students={students} schedule={() => openSchedule(null)} goLive={goLive} /> : null}
         {view === "credits" ? <CreditsView credits={credits} students={students} add={() => openCredit(null)} /> : null}
