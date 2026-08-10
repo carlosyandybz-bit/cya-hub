@@ -8,11 +8,11 @@ const liveEnd = source.indexOf('\nfunction LiveClassView(', liveStart);
 const live = source.slice(liveStart, liveEnd);
 
 test('live session deduplicates assignments per student and content', () => {
-  assert.ok(live.includes('rows.findIndex((candidate) => candidate.content_id === assignment.content_id) === index'));
+  assert.ok(live.includes('candidate.person_id===assignment.person_id && candidate.content_id===assignment.content_id'));
 });
 
 test('corrections have one creation path inside live session', () => {
-  assert.ok(live.includes('<summary><Plus size={18} /> Nueva corrección</summary>'));
+  assert.ok(live.includes('<summary><Plus/> Nueva corrección</summary>'));
   assert.equal(live.includes('<option value="correction">Corrección</option>'), false);
   assert.equal(live.includes('Corrección rápida añadida al alumno.'), false);
 });
