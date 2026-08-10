@@ -356,8 +356,9 @@ returns public.student_content_assignments language plpgsql set search_path='' a
 declare v_assignment public.student_content_assignments; v_type text; v_done boolean;
 begin
   if not (select private.is_staff()) then raise exception 'No tienes permiso para actualizar enseñanza.' using errcode='42501'; end if;
-  select a.*,t.content_type into v_assignment,v_type from public.student_content_assignments a join public.teaching_contents t on t.id=a.content_id where a.id=p_assignment_id for update of a;
+  select a into v_assignment from public.student_content_assignments a where a.id=p_assignment_id for update;
   if not found then raise exception 'La asignación no existe.' using errcode='P0002'; end if;
+  select t.content_type into v_type from public.teaching_contents t where t.id=v_assignment.content_id;
   if (v_type='correction' and p_assignment_status not in ('pending','corrected')) or (v_type in ('explanation','sequence') and p_assignment_status not in ('pending','explained')) or (v_type='exercise' and p_assignment_status not in ('pending','active','completed')) then raise exception 'Estado no válido para este tipo de contenido.' using errcode='22023'; end if;
   v_done:=p_assignment_status in ('corrected','explained','completed');
   update public.student_content_assignments set assignment_status=p_assignment_status,completed_at=case when v_done then coalesce(completed_at,now()) else null end,student_visible_at=case when not v_done then null else student_visible_at end where id=p_assignment_id returning * into v_assignment;
