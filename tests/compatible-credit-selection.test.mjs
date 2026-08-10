@@ -4,6 +4,7 @@ import fs from "node:fs";
 
 const app = fs.readFileSync("app/cya-app.tsx", "utf8");
 const sql = fs.readFileSync("supabase/v27-compatible-credit-selection.sql", "utf8");
+const sql30 = fs.readFileSync("supabase/v30-point8-final-close.sql", "utf8");
 
 test("active compatible credit is selected by earliest expiry and remains manually changeable", () => {
   assert.match(app, /compatibleCreditsForClass/);
@@ -12,14 +13,17 @@ test("active compatible credit is selected by earliest expiry and remains manual
   assert.match(app, /safeA - safeB/);
   assert.match(app, /defaultGrantSelection\(item, credits\)/);
   assert.match(app, /<select value=\{grantIds\[participant\.person_id\]/);
+  assert.match(app, /Bono de pareja/);
 });
 
-test("finish flow offers quick bonus and atomic single-class payment", () => {
+test("finish flow offers quick bonus, regularization and atomic single-class payment", () => {
   assert.match(app, /Crear bono rápido/);
   assert.match(app, /Pagar clase suelta/);
+  assert.match(app, /Regularizar \{minutesLabel\(row\.shortfall\)\} ahora/);
   assert.match(app, /create_credit_grant/);
-  assert.match(app, /administratively_finish_class_v5/);
+  assert.match(app, /administratively_finish_class_v6/);
   assert.match(app, /p_direct_payment_price_cents/);
+  assert.match(app, /p_regularizations/);
 });
 
 test("backend rejects incompatible grants and creates direct payment inside the finish transaction", () => {
@@ -30,4 +34,5 @@ test("backend rejects incompatible grants and creates direct payment inside the 
   assert.match(sql, /public\.create_credit_grant/);
   assert.match(sql, /'Clase suelta','paid'/);
   assert.match(sql, /administratively_finish_class_v2/);
+  assert.match(sql30, /administratively_finish_class_v4/);
 });
