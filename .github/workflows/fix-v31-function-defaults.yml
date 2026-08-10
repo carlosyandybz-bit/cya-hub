@@ -1,0 +1,26 @@
+name: Validate v31 function compatibility
+on:
+  push:
+    branches: [fix/v31-function-defaults]
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply compatibility fix
+        run: python scripts/fix-v31-function-defaults.py
+      - name: Verify preserved defaults
+        run: |
+          grep -F "p_frequency smallint default null,p_importance smallint default null" supabase/v31-class-workflow-realtime.sql
+          git diff --check
+      - name: Commit functional migration
+        run: |
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add supabase/v31-class-workflow-realtime.sql
+          if ! git diff --cached --quiet; then
+            git commit -m "Preserve v31 function defaults [validated]"
+            git push origin HEAD:fix/v31-function-defaults
+          fi
