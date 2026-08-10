@@ -224,7 +224,16 @@ function zipStored(entries: Array<{ name: string; data: Uint8Array }>) {
   write32(endView, 12, centralSize);
   write32(endView, 16, localOffset);
   write16(endView, 20, 0);
-  return new Blob([...localParts, ...centralParts, end], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+  const archiveParts = [...localParts, ...centralParts, end];
+  const archiveSize = archiveParts.reduce((sum, part) => sum + part.byteLength, 0);
+  const archive = new Uint8Array(archiveSize);
+  let archiveOffset = 0;
+  for (const part of archiveParts) {
+    archive.set(part, archiveOffset);
+    archiveOffset += part.byteLength;
+  }
+  return new Blob([archive.buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
 
 function buildXlsx(bundle: CyaDataBundle) {
