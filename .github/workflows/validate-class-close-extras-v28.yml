@@ -1,0 +1,42 @@
+name: Validate class close extras v28
+
+on:
+  push:
+    branches:
+      - feat/class-close-extras-v28
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply v28 patch
+        run: python scripts/apply-v28.py
+      - name: Install dependencies
+        run: npm ci
+      - name: Class close regression checks
+        run: node --test tests/class-close-extras.test.mjs tests/compatible-credit-selection.test.mjs tests/no-real-time-class-duration.test.mjs
+      - name: Visual integrity checks
+        run: node --test tests/visual-integrity.test.mjs
+      - name: Strict production build
+        run: npm run build
+      - name: Existing tests
+        run: npm test
+      - name: Commit validated change
+        run: |
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add app/cya-app.tsx supabase/v28-class-close-extras.sql tests/class-close-extras.test.mjs tests/compatible-credit-selection.test.mjs tests/no-real-time-class-duration.test.mjs
+          if git diff --cached --quiet; then
+            echo "No functional changes to commit"
+          else
+            git commit -m "Complete class close with extras and pair transfer [validated-v28]"
+            git push origin HEAD:feat/class-close-extras-v28
+          fi
