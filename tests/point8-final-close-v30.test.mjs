@@ -58,7 +58,7 @@ test("multiple class videos support both pair students by default", () => {
 
 test("finished classes can be safely reopened and financial close is reversed", () => {
   assert.match(app, /reopen_administratively_finished_class/);
-  assert.match(app, />Reabrir<\/button>/);
+  assert.match(app, /className="btn ghost class-reopen"[\s\S]*?>Reabrir<\/button>/);
   assert.match(sql, /Reapertura de clase · devolución de consumo/);
   assert.match(sql, /delete from public\.class_financial_accounts/);
   assert.match(sql, /delete from public\.student_incidents/);
