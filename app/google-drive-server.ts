@@ -4,6 +4,8 @@ const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3";
 export const DEFAULT_TEACHING_FOLDER_NAME = "CYA Hub - Enseñanza";
+export const DEFAULT_CLASS_VIDEOS_FOLDER_ID = "1QqL1Wt0lNebcTO-2qtUGdgCsOF_IRiV_";
+export type DriveUploadScope = "teaching" | "class_video";
 
 function required(name: string) {
   const value = process.env[name]?.trim();
@@ -146,9 +148,11 @@ async function ensureTeachingFolder(token: string) {
   return created.id;
 }
 
-export async function createDriveResumableUpload(name: string, mimeType: string, size: number) {
+export async function createDriveResumableUpload(name: string, mimeType: string, size: number, scope: DriveUploadScope = "teaching") {
   const token = await googleAccessToken();
-  const folderId = await ensureTeachingFolder(token);
+  const folderId = scope === "class_video"
+    ? (process.env.GOOGLE_DRIVE_CLASS_VIDEOS_FOLDER_ID?.trim() || DEFAULT_CLASS_VIDEOS_FOLDER_ID)
+    : await ensureTeachingFolder(token);
   const response = await fetch(`${DRIVE_UPLOAD_API}/files?uploadType=resumable&fields=id,name,mimeType,webViewLink`, {
     method: "POST",
     headers: {

@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
   try {
     if (!driveServerConfigured()) return NextResponse.json({ error: "Google Drive todavía no está conectado al servidor de CYA Hub." }, { status: 503 });
     const accessToken = bearer(request);
-    if (!accessToken || !(await userCanManageTeaching(accessToken))) return NextResponse.json({ error: "No tienes permiso para subir archivos de Enseñanza." }, { status: 403 });
+    if (!accessToken || !(await userCanManageTeaching(accessToken))) return NextResponse.json({ error: "No tienes permiso para subir archivos." }, { status: 403 });
+    const scope = request.headers.get("x-cya-media-scope") === "class_video" ? "class_video" : "teaching";
 
     const name = decodeURIComponent(request.headers.get("x-cya-file-name") || "archivo").trim().slice(0, 180) || "archivo";
     const mimeType = (request.headers.get("content-type") || "application/octet-stream").split(";")[0].trim();
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
     if (!mimeType.startsWith("image/") && !mimeType.startsWith("video/")) return NextResponse.json({ error: "Solo se admiten fotos y vídeos." }, { status: 400 });
     if (!request.body) return NextResponse.json({ error: "El archivo está vacío." }, { status: 400 });
 
-    const location = await createDriveResumableUpload(name, mimeType, size);
+    const location = await createDriveResumableUpload(name, mimeType, size, scope);
     const init: RequestInit & { duplex: "half" } = {
       method: "PUT",
       headers: { "content-type": mimeType, "content-length": String(size) },
