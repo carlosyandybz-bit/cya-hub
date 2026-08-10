@@ -1,0 +1,101 @@
+name: Validate compact header back navigation
+
+on:
+  push:
+    branches:
+      - fix/navigation-header-back
+    paths:
+      - .github/workflows/validate-navigation-header-back.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-build-test:
+    if: ${{ !contains(github.event.head_commit.message, '[validated-header-back]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/navigation-header-back
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply scoped corrections
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          app = Path('app/cya-app.tsx')
+          detail = Path('app/student-detail.tsx')
+          css_file = Path('app/globals.css')
+          workflow = Path('.github/workflows/validate-navigation-header-back.yml')
+
+          text = app.read_text()
+          def one(old, new, label):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {count}')
+              text = text.replace(old, new, 1)
+
+          one('AlertTriangle, Archive, ArrowLeft, ArrowRight, Bell', 'AlertTriangle, Archive, ArrowRight, Bell', 'remove ArrowLeft import')
+          one(
+            '<div><header className="mobile-head"><div className="mobile-head-left"><Brand /></div><div /><div className="mobile-head-actions"><button className="icon-btn" onClick={() => navigateView("home")} aria-label="Notificaciones"><Bell /></button>{identity.can_admin ? <button className="icon-btn" onClick={() => goTarget("admin")} aria-label="Cuenta y administración"><CircleUserRound /></button> : null}</div></header>',
+            '<div><header className="mobile-head"><div className="mobile-head-back">{view !== "home" ? <button className="mobile-back" type="button" onClick={() => goBack("home")} aria-label="Volver">‹</button> : null}</div><div className="mobile-head-brand"><Brand /></div><div className="mobile-head-actions"><button className="icon-btn" onClick={() => navigateView("home")} aria-label="Notificaciones"><Bell /></button>{identity.can_admin ? <button className="icon-btn" onClick={() => goTarget("admin")} aria-label="Cuenta y administración"><CircleUserRound /></button> : null}</div></header>',
+            'mobile header structure'
+          )
+          one('        {view !== "home" && view !== "live" ? <button className="app-back" type="button" onClick={() => goBack("home")}><ArrowLeft size={18} /> Volver</button> : null}\n', '', 'remove content back button')
+          app.write_text(text)
+
+          d = detail.read_text()
+          block = '''  function closeAnd(action: () => void) {\n    close();\n    action();\n  }\n\n'''
+          if d.count(block) != 1:
+              raise SystemExit(f'closeAnd helper: expected 1 match, found {d.count(block)}')
+          d = d.replace(block, '', 1)
+          expected = {
+              'onClick={() => closeAnd(schedule)}': 2,
+              'onClick={() => closeAnd(addCredit)}': 2,
+              'onClick={() => closeAnd(() => openClass(item.id))}': 1,
+          }
+          for pattern, count in expected.items():
+              if d.count(pattern) != count:
+                  raise SystemExit(f'{pattern}: expected {count}, found {d.count(pattern)}')
+          d = d.replace('onClick={() => closeAnd(schedule)}', 'onClick={schedule}')
+          d = d.replace('onClick={() => closeAnd(addCredit)}', 'onClick={addCredit}')
+          d = d.replace('onClick={() => closeAnd(() => openClass(item.id))}', 'onClick={() => openClass(item.id)}')
+          if 'closeAnd(' in d:
+              raise SystemExit('closeAnd references remain')
+          detail.write_text(d)
+
+          css = css_file.read_text()
+          old_mobile = '''  .shell { display:block; } .sidebar { display:none; } .mobile-head { position:sticky; z-index:20; top:0; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; min-height:62px; padding:0 10px; border-bottom:1px solid #e8e5eeeb; background:#ffffffdf; backdrop-filter:blur(14px); }\n  .mobile-head>div:nth-child(2) { display:none; } .mobile-head-left { justify-self:start; } .mobile-head-actions { justify-self:end; }\n  .mobile-head .brand-mark { width:34px; height:34px; }'''
+          new_mobile = '''  .shell { display:block; } .sidebar { display:none; } .mobile-head { position:sticky; z-index:20; top:0; display:grid; grid-template-columns:48px minmax(0,1fr) 88px; align-items:center; min-height:62px; padding:0 10px; border-bottom:1px solid #e8e5eeeb; background:#ffffffdf; backdrop-filter:blur(14px); }\n  .mobile-head-back { justify-self:start; } .mobile-head-brand { min-width:0; justify-self:center; } .mobile-head-brand .brand { justify-content:center; } .mobile-head-actions { justify-self:end; display:flex; align-items:center; gap:2px; }\n  .mobile-back { width:44px; height:44px; display:grid; place-items:center; padding:0 0 3px; border:0; border-radius:50%; background:transparent; color:var(--ink); font-size:34px; font-weight:400; line-height:1; cursor:pointer; } .mobile-back:active { background:#f1edff; }\n  .mobile-head .brand-mark { width:34px; height:34px; }'''
+          if css.count(old_mobile) != 1:
+              raise SystemExit(f'mobile header CSS: expected 1 match, found {css.count(old_mobile)}')
+          css = css.replace(old_mobile, new_mobile, 1)
+          old_back = '''\n\n/* CYA history navigation */\n.app-back {\n  display: inline-flex;\n  align-items: center;\n  gap: 0.45rem;\n  min-height: 44px;\n  margin: 0 0 0.65rem;\n  padding: 0.45rem 0.75rem;\n  border: 0;\n  border-radius: 999px;\n  background: transparent;\n  color: var(--ink, #24212f);\n  font: inherit;\n  font-weight: 750;\n  cursor: pointer;\n}\n.app-back:hover { background: rgba(109, 74, 255, 0.08); }\n.app-back:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }\n@media (max-width: 720px) {\n  .app-back { margin-top: -0.15rem; }\n}\n'''
+          if css.count(old_back) != 1:
+              raise SystemExit(f'app-back CSS: expected 1 match, found {css.count(old_back)}')
+          css = css.replace(old_back, '\n')
+          css_file.write_text(css)
+
+          workflow.unlink()
+          PY
+      - name: Install dependencies
+        run: npm ci
+      - name: Strict production build
+        run: npm run build
+      - name: Existing rendered HTML checks
+        run: node --test tests/rendered-html.test.mjs
+      - name: Commit validated correction
+        shell: bash
+        run: |
+          git config user.name "CYA Hub automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Refine mobile back navigation [validated-header-back]"
+          git push origin HEAD:fix/navigation-header-back
