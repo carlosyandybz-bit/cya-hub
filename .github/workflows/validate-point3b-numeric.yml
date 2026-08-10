@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Point 3B regressions
-        run: node --test tests/numeric-inputs.test.mjs tests/point8-final-close-v30.test.mjs tests/no-real-time-class-duration.test.mjs tests/visual-integrity.test.mjs
+        run: node --test tests/numeric-inputs.test.mjs tests/point8-final-close-v30.test.mjs tests/no-real-time-class-duration.test.mjs
       - name: Strict production build
         run: npm run build
       - name: Existing rendered regression
@@ -32,6 +32,7 @@ jobs:
             echo 'type=number remains in application TSX' >&2
             exit 1
           fi
+          git diff --exit-code -- app/globals.css app/student-detail.module.css
       - name: Commit validated functional files
         run: |
           git config user.name 'carlosyandybz-bit'
