@@ -187,6 +187,23 @@ function authError(message: string) {
   return message || "No se ha podido iniciar sesión.";
 }
 
+function integerFieldValue(value: FormDataEntryValue | null, min: number, max: number) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return 0;
+  if (!/^\d+$/.test(raw)) return null;
+  const numeric = Number(raw);
+  return Number.isSafeInteger(numeric) && numeric >= min && numeric <= max ? numeric : null;
+}
+
+function decimalFieldValue(value: FormDataEntryValue | null, min = 0, max = 10000000) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return 0;
+  const normalized = raw.replace(",", ".");
+  if (!/^\d+(?:\.\d{0,2})?$/.test(normalized)) return null;
+  const numeric = Number(normalized);
+  return Number.isFinite(numeric) && numeric >= min && numeric <= max ? numeric : null;
+}
+
 function Brand() {
   return <div className="brand"><span className="brand-mark">CYA</span><span>CYA Hub</span></div>;
 }
@@ -470,8 +487,11 @@ function ManualStartClass({ students, styles, close, started }: { students: Pers
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!db) return;
     const form = new FormData(event.currentTarget), first = Number(form.get("student_1")), second = Number(form.get("student_2") || 0);
-    const duration = Number(form.get("hours") || 0) * 60 + Number(form.get("minutes") || 0), scheduled = String(form.get("scheduled_at") || ""), style = Number(form.get("style_term_id") || 0);
+    const hours = integerFieldValue(form.get("hours"), 0, 8), minutes = integerFieldValue(form.get("minutes"), 0, 59);
+    const scheduled = String(form.get("scheduled_at") || ""), style = Number(form.get("style_term_id") || 0);
     if (!first || (type === "pair" && (!second || first === second))) return setError("Selecciona los alumnos correctamente.");
+    if (hours === null || minutes === null) return setError("Indica horas y minutos válidos.");
+    const duration = hours * 60 + minutes;
     if (!scheduled || duration <= 0 || !style) return setError("Indica fecha, hora, duración y estilo.");
     setBusy(true); setError("");
     const result = await db.rpc("start_manual_class", {
@@ -492,7 +512,7 @@ function ManualStartClass({ students, styles, close, started }: { students: Pers
         <label className="field"><span>Alumno *</span><select name="student_1" required defaultValue=""><option value="" disabled>Seleccionar</option>{students.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}</select></label>
         {type === "pair" ? <label className="field"><span>Segundo alumno *</span><select name="student_2" required defaultValue=""><option value="" disabled>Seleccionar</option>{students.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}</select></label> : null}
         <label className="field field-wide"><span>Fecha y hora *</span><input name="scheduled_at" type="datetime-local" required defaultValue={initialDate} /></label>
-        <label className="field"><span>Horas</span><input name="hours" type="number" min="0" max="8" defaultValue="1" /></label><label className="field"><span>Minutos</span><input name="minutes" type="number" min="0" max="59" defaultValue="0" /></label>
+        <label className="field"><span>Horas</span><input name="hours" type="text" inputMode="numeric" pattern="[0-8]" defaultValue="1" /></label><label className="field"><span>Minutos</span><input name="minutes" type="text" inputMode="numeric" pattern="[0-5]?[0-9]" defaultValue="" /></label>
         <label className="field field-wide"><span>Estilo *</span><select name="style_term_id" required defaultValue=""><option value="" disabled>Seleccionar estilo</option>{styles.map((style) => <option key={style.id} value={style.id}>{style.label}</option>)}</select></label>
         <label className="field field-wide"><span>Notas</span><input name="notes" placeholder="Opcional" /></label>
       </div>
@@ -1198,9 +1218,11 @@ function ScheduleClass({ students, styles, initialStudentId, close, saved }: { s
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!db) return;
     const form = new FormData(event.currentTarget), first = Number(form.get("student_1")), second = Number(form.get("student_2") || 0);
-    const hours = Number(form.get("hours") || 0), minutes = Number(form.get("minutes") || 0), duration = hours * 60 + minutes;
+    const hours = integerFieldValue(form.get("hours"), 0, 8), minutes = integerFieldValue(form.get("minutes"), 0, 59);
     const scheduled = String(form.get("scheduled_at") || "");
     if (!first || (type === "pair" && (!second || first === second))) return setError("Selecciona los alumnos correctamente.");
+    if (hours === null || minutes === null) return setError("Indica horas y minutos válidos.");
+    const duration = hours * 60 + minutes;
     if (!scheduled || duration <= 0) return setError("Indica fecha, hora y duración.");
     setBusy(true); setError("");
     const result = await db.rpc("schedule_class", {
@@ -1220,8 +1242,8 @@ function ScheduleClass({ students, styles, initialStudentId, close, saved }: { s
         <label className="field"><span>Alumno *</span><select name="student_1" required defaultValue={initialStudentId ? String(initialStudentId) : ""}><option value="" disabled>Seleccionar</option>{students.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}</select></label>
         {type === "pair" ? <label className="field"><span>Segundo alumno *</span><select name="student_2" required defaultValue=""><option value="" disabled>Seleccionar</option>{students.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}</select></label> : null}
         <label className="field field-wide"><span>Fecha y hora *</span><input name="scheduled_at" type="datetime-local" required defaultValue={initialDate} /></label>
-        <label className="field"><span>Horas</span><input name="hours" type="number" min="0" max="8" defaultValue="1" /></label>
-        <label className="field"><span>Minutos</span><input name="minutes" type="number" min="0" max="59" defaultValue="0" /></label>
+        <label className="field"><span>Horas</span><input name="hours" type="text" inputMode="numeric" pattern="[0-8]" defaultValue="1" /></label>
+        <label className="field"><span>Minutos</span><input name="minutes" type="text" inputMode="numeric" pattern="[0-5]?[0-9]" defaultValue="" /></label>
         <label className="field field-wide"><span>Estilo *</span><select name="style_term_id" required defaultValue=""><option value="" disabled>Seleccionar estilo</option>{styles.map((style) => <option key={style.id} value={style.id}>{style.label}</option>)}</select></label>
         <label className="field field-wide"><span>Notas</span><input name="notes" placeholder="Opcional" /></label>
       </div>
@@ -1235,13 +1257,16 @@ function AddCredit({ students, initialStudentId, close, saved }: { students: Per
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!db) return;
     const form = new FormData(event.currentTarget), first = Number(form.get("student_1")), second = Number(form.get("student_2") || 0);
-    const duration = Number(form.get("hours") || 0) * 60 + Number(form.get("minutes") || 0);
+    const hours = integerFieldValue(form.get("hours"), 0, 1000), minutes = integerFieldValue(form.get("minutes"), 0, 59), price = decimalFieldValue(form.get("price"));
     if (!first || (type === "pair" && (!second || first === second))) return setError("Selecciona los alumnos correctamente.");
+    if (hours === null || minutes === null) return setError("Indica horas y minutos válidos.");
+    if (price === null) return setError("Indica un importe válido.");
+    const duration = hours * 60 + minutes;
     if (duration <= 0) return setError("El bono necesita una duración mayor que cero.");
     setBusy(true); setError("");
     const result = await db.rpc("create_credit_grant", {
       p_student_ids: type === "pair" ? [first, second] : [first], p_modality: type, p_minutes: duration,
-      p_price_cents: Math.round(Number(form.get("price") || 0) * 100), p_label: String(form.get("label") || "").trim() || null,
+      p_price_cents: Math.round(price * 100), p_label: String(form.get("label") || "").trim() || null,
       p_payment_status: String(form.get("payment_status") || "paid"),
     });
     if (result.error) { setError(result.error.message); setBusy(false); return; }
@@ -1254,8 +1279,8 @@ function AddCredit({ students, initialStudentId, close, saved }: { students: Per
       <div className="fields-2">
         <label className="field"><span>Alumno *</span><select name="student_1" required defaultValue={initialStudentId ? String(initialStudentId) : ""}><option value="" disabled>Seleccionar</option>{students.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}</select></label>
         {type === "pair" ? <label className="field"><span>Segundo alumno *</span><select name="student_2" required defaultValue=""><option value="" disabled>Seleccionar</option>{students.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}</select></label> : null}
-        <label className="field"><span>Horas *</span><input name="hours" type="number" min="0" max="1000" defaultValue="5" /></label><label className="field"><span>Minutos</span><input name="minutes" type="number" min="0" max="59" defaultValue="0" /></label>
-        <label className="field"><span>Importe (€)</span><input name="price" type="number" min="0" step="0.01" defaultValue="0" /></label>
+        <label className="field"><span>Horas *</span><input name="hours" type="text" inputMode="numeric" pattern="[0-9]*" defaultValue="5" /></label><label className="field"><span>Minutos</span><input name="minutes" type="text" inputMode="numeric" pattern="[0-5]?[0-9]" defaultValue="" /></label>
+        <label className="field"><span>Importe (€)</span><input name="price" type="text" inputMode="decimal" pattern="[0-9]*([,.][0-9]{0,2})?" defaultValue="" /></label>
         <label className="field"><span>Pago</span><select name="payment_status" defaultValue="paid"><option value="paid">Pagado</option><option value="pending">Pendiente</option></select></label>
         <label className="field field-wide"><span>Nombre del bono</span><input name="label" placeholder="Opcional" /></label>
       </div>
