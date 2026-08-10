@@ -67,7 +67,7 @@ test("uses one reusable 4:3 teaching card with a dedicated readable detail viewe
   assert.match(app, /TeachingContentCard/);
   assert.ok((app.match(/<TeachingContentCard/g) ?? []).length >= 4, "teacher library, live corrections, live guide and student portal should share the card");
   assert.match(app, /media=\{assignment\.media \?\? \[\]\}/);
-  assert.match(app, /media=\{libraryContent\?\.teaching_content_media \?\? \[\]\}/);
+  assert.match(app, /media=\{(?:libraryContent|content)\?\.teaching_content_media \?\? \[\]\}/);
   assert.match(studentDetail, /TeachingContentCard/);
   assert.match(studentDetail, /teachingContents\.find/);
   assert.match(studentDetail, /<TeachingContentCard/);
