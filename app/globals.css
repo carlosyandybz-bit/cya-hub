@@ -722,3 +722,11 @@ body:has([role="dialog"]){overflow:hidden}
   .student-portal-head{display:flex;align-items:center;justify-content:space-between;grid-template-columns:none}
   .student-portal-head>div:last-child{margin-left:auto;justify-self:auto}
 }
+
+
+/* Standalone account settings screens */
+.account-settings-shell{min-height:100svh;background:var(--bg,#f8f7fb);color:var(--ink,#24212f)}
+.account-settings-head{position:sticky;z-index:120;top:0;display:grid;grid-template-columns:52px minmax(0,1fr) 52px;align-items:center;min-height:72px;padding:max(8px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left));border-bottom:1px solid #e8e5ee;background:rgba(255,255,255,.96);backdrop-filter:blur(18px)}
+.account-settings-back{justify-self:start}.account-settings-brand{justify-self:center}.account-settings-head>div:last-child{justify-self:end}
+.account-settings-main{width:min(940px,100%);margin:0 auto;padding:24px max(18px,env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
+@media(max-width:700px){.account-settings-head{grid-template-columns:46px minmax(0,1fr) 46px;min-height:64px}.account-settings-main{padding-top:18px}}

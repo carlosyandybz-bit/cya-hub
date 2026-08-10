@@ -22,6 +22,7 @@ import {
 import { AdminView } from "./admin-view";
 import { AgendaView } from "./agenda-view";
 import { AccountMenu } from "./account-menu";
+import { PreferencesSettingsView, ProfileSettingsView } from "./account-pages";
 import { HomeView } from "./home-view";
 import { StudentMasterDetail } from "./student-detail";
 import { TeachingContentCard, type TeachingCardMedia } from "./teaching-content-card";
@@ -31,7 +32,7 @@ import type { ExperienceContext, IdentityContext } from "./v14-types";
 
 const TeachingGraph = lazy(() => import("./teaching-graph").then((module) => ({ default: module.TeachingGraph })));
 
-type View = "home" | "students" | "classes" | "credits" | "agenda" | "live" | "teaching" | "marketing" | "admin";
+type View = "home" | "students" | "classes" | "credits" | "agenda" | "live" | "teaching" | "marketing" | "admin" | "profile" | "preferences";
 type CyaOverlay = "new-student" | "schedule" | "credit" | null;
 type CyaHistoryState = {
   cyaHub: true;
@@ -1009,7 +1010,7 @@ function portalClassStatus(value: string) {
   return ({ scheduled: "Programada", active: "En curso", finished: "Realizada", cancelled: "Cancelada" } as Record<string, string>)[value] ?? value;
 }
 
-function StudentPortal({ identity, experience, onExperience, client, email, onIdentityPatch }: { identity: IdentityContext; experience: ExperienceContext; onExperience: (value: ExperienceContext) => void | Promise<void>; client: SupabaseClient; email: string; onIdentityPatch: (patch: Partial<IdentityContext>) => void }) {
+function StudentPortal({ identity, experience, onExperience, client, email, onIdentityPatch, onOpenProfile, onOpenPreferences }: { identity: IdentityContext; experience: ExperienceContext; onExperience: (value: ExperienceContext) => void | Promise<void>; client: SupabaseClient; email: string; onIdentityPatch: (patch: Partial<IdentityContext>) => void; onOpenProfile: () => void; onOpenPreferences: () => void }) {
   const [snapshot, setSnapshot] = useState<StudentPortalSnapshot | null>(null), [error, setError] = useState("");
   const [portalNow] = useState(() => Date.now());
   const load = useCallback(async () => {
@@ -1032,7 +1033,7 @@ function StudentPortal({ identity, experience, onExperience, client, email, onId
   const latestScores = [...snapshot.evaluations].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).reduce<Map<string, StudentPortalSnapshot["evaluations"][number]>>((map, item) => map.has(item.aptitude) ? map : map.set(item.aptitude, item), new Map());
   const totalScore = [...latestScores.values()].reduce((sum,item) => sum + Number(item.score || 0),0);
   const relativeRadar = [...latestScores.values()].map((item) => ({ label:item.aptitude, value:totalScore ? Number(item.score) / totalScore * 100 : 0 }));
-  return <div className="student-portal-shell"><header className="student-portal-head"><Brand /><div><span>{identity.profile_name || snapshot.profile.display_name || identity.display_name}</span><AccountMenu client={client} identity={identity} experience={experience} email={email} variant="header" onExperience={onExperience} onIdentityPatch={onIdentityPatch} notify={() => undefined} /></div></header><main className="student-portal-main">
+  return <div className="student-portal-shell"><header className="student-portal-head"><Brand /><div><span>{identity.profile_name || snapshot.profile.display_name || identity.display_name}</span><AccountMenu client={client} identity={identity} experience={experience} email={email} variant="header" onExperience={onExperience} onOpenProfile={onOpenProfile} onOpenPreferences={onOpenPreferences} onIdentityPatch={onIdentityPatch} notify={() => undefined} /></div></header><main className="student-portal-main">
     <section className="portal-hero"><div><p className="eyebrow">Mi espacio</p><h1>Hola, {snapshot.profile.first_name || snapshot.profile.display_name}</h1><p>{nextClass ? `Tu próxima clase es ${dateLabel(nextClass.scheduled_start_at)}.` : "Aquí tienes tus clases, saldo y evolución al día."}</p></div><Sparkles /></section>
     <section className="portal-stats"><article><CalendarDays /><span>Próximas clases</span><strong>{upcoming.length}</strong></article><article><WalletCards /><span>Saldo neto</span><strong>{minutesLabel(balance)}</strong></article><article><BookOpen /><span>En formación</span><strong>{activeAssignments.length}</strong></article><article><TrendingUp /><span>Aptitudes evaluadas</span><strong>{latestScores.size}</strong></article></section>
     {pendingDebt > 0 ? <section className="card portal-next"><div><p className="eyebrow">Saldo pendiente</p><h2>{minutesLabel(pendingDebt)} por regularizar</h2><p>Una o más clases quedaron sin saldo suficiente. El profesor puede regularizarlas con un bono o dejar constancia de otra decisión.</p></div><AlertTriangle /></section> : null}
@@ -1069,6 +1070,7 @@ function StaffApp({ session }: { session: Session }) {
   const [scheduleOpen, setScheduleOpen] = useState(false), [creditOpen, setCreditOpen] = useState(false);
   const [scheduleStudentId,setScheduleStudentId] = useState<number | null>(null), [creditStudentId,setCreditStudentId] = useState<number | null>(null);
   const [toast, setToast] = useState<string>(""), [liveClassId, setLiveClassId] = useState<number | null>(null);
+  const patchIdentity = useCallback((patch: Partial<IdentityContext>) => setIdentity((current) => current ? { ...current, ...patch } : current), []);
   const loadStudents = useCallback(async () => {
     if (!db) return;
     const result = await db.from("people").select("id,auth_user_id,display_name,first_name,last_name,email,phone,country_code,crm_stage,active,student_profiles!inner(person_id,active)").eq("active", true).eq("student_profiles.active", true).order("display_name");
@@ -1250,8 +1252,20 @@ function StaffApp({ session }: { session: Session }) {
     const result = await db.from("user_preferences").upsert({ user_id: activeIdentity.user_id, preferred_context: value }, { onConflict: "user_id" });
     if (result.error) setToast("La vista ha cambiado, pero no se pudo guardar como preferencia.");
   }
-  if (experience === "student" && identity.can_study) return <StudentPortal identity={identity} experience={experience} onExperience={setExperience} client={db!} email={session.user.email ?? ""} onIdentityPatch={(patch) => setIdentity((current) => current ? { ...current, ...patch } : current)} />;
-  if (!identity.can_teach && !identity.can_admin) return <StudentPortal identity={identity} experience="student" onExperience={setExperience} client={db!} email={session.user.email ?? ""} onIdentityPatch={(patch) => setIdentity((current) => current ? { ...current, ...patch } : current)} />;
+  const accountEmail = session.user.email ?? "";
+  if (view === "profile" || view === "preferences") return <div className="account-settings-shell">
+    <header className="account-settings-head">
+      <button className="mobile-back account-settings-back" type="button" onClick={() => goBack("home")} aria-label="Volver">‹</button>
+      <div className="account-settings-brand"><Brand /></div>
+      <AccountMenu client={db!} identity={identity} experience={experience} email={accountEmail} variant="header" onExperience={setExperience} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} notify={setToast} />
+    </header>
+    <main className="account-settings-main">
+      {view === "profile" ? <ProfileSettingsView client={db!} identity={identity} onIdentityPatch={patchIdentity} notify={setToast} /> : <PreferencesSettingsView client={db!} identity={identity} experience={experience} onIdentityPatch={patchIdentity} notify={setToast} />}
+    </main>
+    {toast ? <div className="toast">{toast}</div> : null}
+  </div>;
+  if (experience === "student" && identity.can_study) return <StudentPortal identity={identity} experience={experience} onExperience={setExperience} client={db!} email={accountEmail} onIdentityPatch={patchIdentity} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} />;
+  if (!identity.can_teach && !identity.can_admin) return <StudentPortal identity={identity} experience="student" onExperience={setExperience} client={db!} email={accountEmail} onIdentityPatch={patchIdentity} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} />;
   async function created() { await Promise.all([loadStudents(),loadMarketing()]); setToast("Alumno provisional creado correctamente."); setNewOpen(false); replaceView("students"); }
   async function classSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Clase programada correctamente."); setScheduleOpen(false); setScheduleStudentId(null); replaceView("classes"); }
   async function creditSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Bono creado correctamente."); setCreditOpen(false); setCreditStudentId(null); replaceView("credits"); }
@@ -1266,9 +1280,9 @@ function StaffApp({ session }: { session: Session }) {
   const activeNav = (id: string) => id === "students" ? studentArea : view === id;
   return <div className="shell">
     <aside className="sidebar"><Brand /><nav>{nav.map(([id, label, Icon]) => <button key={id} className={activeNav(id) ? "active" : ""} onClick={() => navigateView(id)}><Icon />{label}</button>)}</nav>
-      <AccountMenu client={db!} identity={identity} experience={experience} email={session.user.email ?? ""} variant="sidebar" onExperience={setExperience} onIdentityPatch={(patch) => setIdentity((current) => current ? { ...current, ...patch } : current)} notify={setToast} />
+      <AccountMenu client={db!} identity={identity} experience={experience} email={accountEmail} variant="sidebar" onExperience={setExperience} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} notify={setToast} />
     </aside>
-    <div><header className="mobile-head"><div className="mobile-head-back">{view !== "home" ? <button className="mobile-back" type="button" onClick={() => goBack("home")} aria-label="Volver">‹</button> : null}</div><div className="mobile-head-brand"><Brand /></div><div className="mobile-head-actions"><button className="icon-btn" onClick={() => navigateView("home")} aria-label="Notificaciones"><Bell /></button><AccountMenu client={db!} identity={identity} experience={experience} email={session.user.email ?? ""} variant="header" onExperience={setExperience} onIdentityPatch={(patch) => setIdentity((current) => current ? { ...current, ...patch } : current)} notify={setToast} /></div></header>
+    <div><header className="mobile-head"><div className="mobile-head-back">{view !== "home" ? <button className="mobile-back" type="button" onClick={() => goBack("home")} aria-label="Volver">‹</button> : null}</div><div className="mobile-head-brand"><Brand /></div><div className="mobile-head-actions"><button className="icon-btn" onClick={() => navigateView("home")} aria-label="Notificaciones"><Bell /></button><AccountMenu client={db!} identity={identity} experience={experience} email={accountEmail} variant="header" onExperience={setExperience} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} notify={setToast} /></div></header>
       <main className="main"><div className="content">
         {studentArea ? <nav className="module-tabs" aria-label="Alumnado"><button className={view === "students" ? "active" : ""} onClick={() => navigateView("students")}><UsersRound /> Alumnos</button><button className={view === "classes" ? "active" : ""} onClick={() => navigateView("classes")}><CalendarDays /> Clases</button><button className={view === "credits" ? "active" : ""} onClick={() => navigateView("credits")}><WalletCards /> Bonos</button><button className={view === "agenda" ? "active" : ""} onClick={() => navigateView("agenda")}><CalendarDays /> Agenda</button></nav> : null}
         {view === "home" && db ? <HomeView client={db} identity={identity} studentCount={students.length} classes={classes} students={students} go={goTarget} goLive={goLive} addStudent={openNewStudent} scheduleClass={() => openSchedule(null)} notify={setToast} /> : null}
