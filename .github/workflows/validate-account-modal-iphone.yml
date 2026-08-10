@@ -6,6 +6,7 @@ on:
       - fix/account-modal-iphone
     paths:
       - .github/workflows/validate-account-modal-iphone.yml
+      - tests/account-menu.test.mjs
 
 permissions:
   contents: write
