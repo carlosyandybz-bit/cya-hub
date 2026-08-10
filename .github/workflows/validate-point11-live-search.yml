@@ -1,0 +1,37 @@
+name: Validate Point 11 live search
+on:
+  push:
+    branches: [feat/point11-live-search]
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply Point 11 patch
+        run: python scripts/apply-point11.py
+      - name: Install dependencies
+        run: npm ci
+      - name: Point 11 and regression tests
+        run: node --test tests/live-class-search-point11.test.mjs tests/class-workflow-point10.test.mjs tests/live-session-dedup.test.mjs tests/point8-final-close-v30.test.mjs tests/no-real-time-class-duration.test.mjs tests/numeric-inputs.test.mjs
+      - name: Strict production build
+        run: npm run build
+      - name: Existing rendered regression
+        run: npm test
+      - name: Diff integrity
+        run: git diff --check
+      - name: Commit validated functional files
+        if: success()
+        run: |
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add app/cya-app.tsx app/globals.css
+          if ! git diff --cached --quiet; then
+            git commit -m "Implement contextual live class search [validated-v32]"
+            git push origin HEAD:feat/point11-live-search
+          fi
