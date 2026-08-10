@@ -4,10 +4,7 @@ import {
   Bell,
   CheckCircle2,
   ChevronRight,
-  ClipboardList,
   Database,
-  Download,
-  FileInput,
   FileText,
   Gauge,
   GraduationCap,
@@ -17,12 +14,12 @@ import {
   Settings,
   ShieldCheck,
   Target,
-  Upload,
   UsersRound,
 } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { IdentityContext } from "./v14-types";
+import { AdminDataTransfer } from "./admin-data-transfer";
 
 type AdminSection = "general" | "team" | "forms" | "teaching" | "missions" | "notifications" | "data" | "integrations" | "appearance" | "security";
 
@@ -90,25 +87,11 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (che
   return <button type="button" className={`switch ${checked ? "on" : ""}`} role="switch" aria-checked={checked} aria-label={label} onClick={() => onChange(!checked)}><span /></button>;
 }
 
-function downloadJson(name: string, value: unknown) {
-  const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
 export function AdminView({ client, identity, terms, notify, leave }: { client: SupabaseClient; identity: IdentityContext; terms: Term[]; notify: (message: string) => void; leave: () => void }) {
   const [section, setSection] = useState<AdminSection>("general");
   const [data, setData] = useState<AdminData>(emptyData);
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState("");
   const [selectedFormId, setSelectedFormId] = useState<number | null>(null);
-  const [importDomain, setImportDomain] = useState("people"), [importStrategy, setImportStrategy] = useState("fill_empty");
-  const [importFile, setImportFile] = useState<File | null>(null), [importPreview, setImportPreview] = useState<TransferJob | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -170,50 +153,6 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
   const selectedFields = selectedVersion ? data.fields.filter((field) => field.form_version_id === selectedVersion.id).sort((a, b) => a.sort_order - b.sort_order) : [];
   const termGroups = useMemo(() => Object.entries(terms.reduce<Record<string, Term[]>>((groups, term) => ({ ...groups, [term.taxonomy]: [...(groups[term.taxonomy] ?? []), term] }), {})), [terms]);
 
-  async function exportDomain(domain: string) {
-    setBusy(`export-${domain}`);
-    const tableMap: Record<string, string[]> = {
-      people: ["people", "student_profiles", "student_dance_profiles", "crm_profiles"],
-      classes: ["classes", "class_participants", "class_notes"],
-      credits: ["credit_grants", "credit_grant_members", "credit_movements"],
-      teaching: ["teaching_contents", "teaching_content_styles", "teaching_content_roles", "teaching_content_levels", "teaching_content_tags", "teaching_content_relations", "teaching_content_media", "student_content_assignments", "student_content_measurements"],
-      missions: ["mission_engine_settings", "mission_rules", "missions", "mission_comments", "mission_evidence"],
-      marketing: ["marketing_rates", "marketing_content", "marketing_content_media", "marketing_events", "marketing_campaigns", "marketing_campaign_media", "marketing_campaign_metrics", "communication_recipients", "communication_events"],
-      forms: ["form_definitions", "form_versions", "form_fields", "form_submissions"],
-    };
-    const selectedTables = domain === "complete" ? [...new Set(Object.values(tableMap).flat())] : tableMap[domain] ?? [];
-    const rows = await Promise.all(selectedTables.map(async (table) => {
-      const result = await client.from(table).select("*");
-      return { table, data: result.data ?? [], error: result.error?.message ?? null };
-    }));
-    const error = rows.find((row) => row.error);
-    if (error) notify(readableError(error.error ?? "No se pudo exportar."));
-    else {
-      downloadJson(`cya-hub-${domain}-${new Date().toISOString().slice(0, 10)}.json`, { format: "cya-hub-export", version: 1, exported_at: new Date().toISOString(), domain, tables: Object.fromEntries(rows.map((row) => [row.table, row.data])) });
-      notify("Exportación preparada.");
-    }
-    setBusy("");
-  }
-
-  async function previewImport() {
-    if (!importFile) return;
-    setBusy("import");
-    setImportPreview(null);
-    try {
-      const raw = await importFile.text();
-      const parsed = JSON.parse(raw) as unknown;
-      const payload = Array.isArray(parsed) ? parsed : (parsed && typeof parsed === "object" && "items" in parsed ? (parsed as { items: unknown }).items : null);
-      if (!Array.isArray(payload)) throw new Error("El JSON debe contener una lista de registros.");
-      const result = await client.rpc("preview_data_import", { p_domain: importDomain, p_payload: payload, p_strategy: importStrategy, p_file_name: importFile.name });
-      if (result.error) throw result.error;
-      setImportPreview(result.data as TransferJob);
-      await load();
-    } catch (error) {
-      notify(readableError(error instanceof Error ? error.message : "No se pudo analizar el archivo."));
-    }
-    setBusy("");
-  }
-
   function generalSection() {
     return <div className="admin-content-grid">
       <article className="card pad admin-system"><div className="card-head"><h2>Estado de CYA Hub</h2><span className="badge portal">Operativo</span></div><div className="admin-metric-grid"><div><strong>{data.members.filter((member) => member.active).length}</strong><span>roles activos</span></div><div><strong>{data.forms.filter((form) => form.status === "active").length}</strong><span>formularios</span></div><div><strong>{data.missionRules.filter((rule) => rule.enabled).length}</strong><span>reglas de misión</span></div><div><strong>{data.notificationRules.filter((rule) => rule.enabled).length}</strong><span>avisos activos</span></div></div></article>
@@ -245,8 +184,7 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
   }
 
   function dataSection() {
-    const domains = [["people", "Personas"], ["classes", "Clases"], ["credits", "Bonos"], ["teaching", "Enseñanza"], ["missions", "Misiones"], ["marketing", "Marketing"], ["forms", "Formularios"], ["complete", "Copia completa"]];
-    return <section className="admin-stack"><div className="admin-content-grid"><article className="card pad"><div className="card-head"><div><p className="eyebrow">Exportar</p><h2>Descargar datos</h2></div><Download /></div><div className="export-grid">{domains.map(([value, label]) => <button key={value} className="btn ghost" disabled={Boolean(busy)} onClick={() => exportDomain(value)}><Download /> {label}</button>)}</div><p className="admin-note">Los archivos no incluyen credenciales ni secretos de integraciones.</p></article><article className="card pad"><div className="card-head"><div><p className="eyebrow">Importar</p><h2>Analizar antes de cambiar</h2></div><Upload /></div><div className="fields-2"><label className="field"><span>Tipo de información</span><select value={importDomain} onChange={(event) => setImportDomain(event.target.value)}><option value="people">Personas</option><option value="teaching">Enseñanza</option><option value="daily_quotes">Frases diarias</option><option value="mission_rules">Reglas de misión</option><option value="marketing_rates">Tarifas</option></select></label><label className="field"><span>Duplicados</span><select value={importStrategy} onChange={(event) => setImportStrategy(event.target.value)}><option value="fill_empty">Completar campos vacíos</option><option value="update">Actualizar</option><option value="skip">Omitir</option></select></label><label className="file-drop field-wide"><FileInput /><span>{importFile?.name ?? "Seleccionar JSON"}</span><input type="file" accept="application/json,.json" onChange={(event: ChangeEvent<HTMLInputElement>) => { setImportFile(event.target.files?.[0] ?? null); setImportPreview(null); }} /></label></div><button className="btn" disabled={!importFile || busy === "import"} onClick={previewImport}><ClipboardList /> {busy === "import" ? "Analizando…" : "Previsualizar importación"}</button>{importPreview ? <div className="import-preview"><CheckCircle2 /><div><strong>Archivo validado</strong><span>{String(importPreview.preview.total ?? 0)} registros · {String(importPreview.preview.duplicates ?? 0)} duplicados · {String(importPreview.preview.new ?? 0)} nuevos</span></div></div> : null}</article></div>{data.transfers.length ? <article className="card pad"><div className="card-head"><h2>Historial</h2><span>{data.transfers.length}</span></div><div className="transfer-list">{data.transfers.map((job) => <div key={job.id}><span className={`badge ${job.status === "completed" ? "portal" : ""}`}>{job.status === "validated" ? "Validada" : job.status}</span><strong>{job.file_name || job.domain}</strong><small>{new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(job.created_at))}</small></div>)}</div></article> : null}</section>;
+    return <AdminDataTransfer client={client} transfers={data.transfers} refresh={load} notify={notify} />;
   }
 
   function integrationsSection() {
