@@ -59,8 +59,7 @@ type ClassItem = {
   id: number; class_type: "individual" | "pair"; status: string; scheduled_start_at: string;
   duration_minutes: number; notes: string | null; style_term_id: number | null; location_term_id: number | null;
   started_at: string | null; administrative_finished_at: string | null; pedagogy_closed_at: string | null;
-  actual_end_at: string | null; actual_duration_minutes: number | null; billed_duration_minutes: number | null;
-  duration_source: "elapsed" | "manual" | "legacy_scheduled" | null; administratively_finished_by: string | null;
+  administratively_finished_by: string | null;
   class_participants: ClassParticipant[];
 };
 type CreditItem = {
@@ -101,8 +100,7 @@ type StudentPortalSnapshot = {
   };
   classes: Array<{
     id: number; class_type: "individual" | "pair"; status: string; scheduled_start_at: string;
-    duration_minutes: number; actual_duration_minutes?: number | null; billed_duration_minutes?: number | null;
-    billing_status?: string; uncovered_minutes?: number; style: string | null; attendance_status: string; role: string | null; level: string | null;
+    duration_minutes: number; billing_status?: string; uncovered_minutes?: number; style: string | null; attendance_status: string; role: string | null; level: string | null;
   }>;
   credits: Array<{
     id: number; label: string | null; modality: "individual" | "pair"; total_minutes: number;
@@ -348,10 +346,10 @@ function ClassesView({ classes, students, schedule, goLive }: { classes: ClassIt
     <Header eyebrow="Agenda" title="Clases" description="Cada clase se identifica por alumno y fecha; la numeración interna queda fuera de la interfaz." action={<button className="btn" onClick={schedule}><Plus size={18} /> Programar</button>} />
     {!students.length ? <div className="empty"><UsersRound /><strong>Primero necesitas un alumno</strong><p>En cuanto añadas un alumno podrás programar su primera clase.</p></div>
     : !classes.length ? <div className="empty"><CalendarDays /><strong>Agenda vacía</strong><p>Programa la primera clase. Puede ser individual o en pareja.</p><button className="btn" onClick={schedule}><Plus size={18} /> Programar clase</button></div>
-    : <div className="agenda-list">{classes.map((item) => { const shownDuration = item.status === "finished" ? item.actual_duration_minutes ?? item.duration_minutes : item.duration_minutes; return <article className="agenda-row" key={item.id}>
-        <span className="agenda-icon"><CalendarDays /></span><div><strong>{namesFor(item.class_participants.map((p) => p.person_id), students)}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(shownDuration)}{item.status === "finished" && shownDuration !== item.duration_minutes ? ` reales · prevista ${minutesLabel(item.duration_minutes)}` : ""}</span></div>
+    : <div className="agenda-list">{classes.map((item) => <article className="agenda-row" key={item.id}>
+        <span className="agenda-icon"><CalendarDays /></span><div><strong>{namesFor(item.class_participants.map((p) => p.person_id), students)}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(item.duration_minutes)}</span></div>
         <span className="agenda-actions"><span className={`badge ${item.status === "active" ? "portal" : ""}`}>{item.status === "scheduled" ? "Programada" : item.status === "active" ? "En clase" : item.status === "finished" ? (item.pedagogy_closed_at ? "Cerrada" : "Por cerrar") : "Cancelada"}</span>{item.status === "scheduled" || item.status === "active" || (item.status === "finished" && !item.pedagogy_closed_at) ? <button className="btn class-go" onClick={() => goLive(item.id)}><Play size={16} /> {item.status === "scheduled" ? "Dar clase" : "Abrir"}</button> : null}</span>
-      </article>; })}</div>}
+      </article>)}</div>}
   </>;
 }
 
@@ -444,15 +442,8 @@ function ManualStartClass({ students, styles, close, started }: { students: Pers
 function FinishClassModal({ item, students, credits, close, finished }: { item: ClassItem; students: Person[]; credits: CreditItem[]; close: () => void; finished: () => Promise<void> }) {
   const [attendance, setAttendance] = useState<Record<number, "present" | "absent">>(() => Object.fromEntries(item.class_participants.map((p) => [p.person_id, "present"])) as Record<number, "present" | "absent">);
   const [grantIds, setGrantIds] = useState<Record<number, string>>(() => Object.fromEntries(item.class_participants.map((p) => [p.person_id, p.billing_grant_id ? String(p.billing_grant_id) : ""])));
-  const [actualDuration, setActualDuration] = useState(() => {
-    if (!item.started_at) return item.duration_minutes;
-    return Math.max(1, Math.min(480, Math.round((Date.now() - new Date(item.started_at).getTime()) / 60000)));
-  });
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
-  const actualHours = Math.floor(actualDuration / 60), actualMinutes = actualDuration % 60;
-  function setDurationParts(hours: number, minutes: number) {
-    setActualDuration(Math.max(0, Math.min(480, Math.max(0, hours) * 60 + Math.max(0, Math.min(59, minutes)))));
-  }
+  const plannedDuration = item.duration_minutes;
   function eligibleCredits(personId: number) {
     return credits.filter((grant) => grant.status === "active" && grant.credit_grant_members.some((member) => member.person_id === personId) && creditBalance(grant) > 0);
   }
@@ -465,13 +456,13 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!db) return;
-    if (actualDuration <= 0 || actualDuration > 480) return setError("La duración real debe estar entre 1 minuto y 8 horas.");
     const personIds = item.class_participants.map((participant) => participant.person_id);
     setBusy(true); setError("");
-    const result = await db.rpc("administratively_finish_class_v2", {
-      p_class_id: item.id, p_person_ids: personIds, p_attendance: personIds.map((id) => attendance[id]),
+    const result = await db.rpc("administratively_finish_class", {
+      p_class_id: item.id,
+      p_person_ids: personIds,
+      p_attendance: personIds.map((id) => attendance[id]),
       p_grant_ids: personIds.map((id) => attendance[id] === "present" && grantIds[id] ? Number(grantIds[id]) : null),
-      p_actual_duration_minutes: actualDuration,
     });
     if (result.error) { setError(result.error.message); setBusy(false); return; }
     await finished(); setBusy(false); close();
@@ -479,16 +470,15 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
   return <div className="backdrop"><section className="modal finish-modal" role="dialog" aria-modal="true">
     <header className="modal-head"><div><p className="eyebrow">Parte administrativa</p><h2>Terminar clase</h2></div><button className="icon-btn" onClick={close} aria-label="Cerrar"><X /></button></header>
     <form className="modal-body" onSubmit={submit}>
-      <p className="modal-intro">CYA ha calculado la duración desde el inicio real. Puedes corregirla antes de confirmar. Un bono insuficiente se consume hasta agotarlo y el resto queda como incidencia pendiente.</p>
-      <section className="card pad"><div className="card-head"><div><p className="eyebrow">Duración</p><h2>Tiempo realmente impartido</h2></div><span className="badge">Prevista · {minutesLabel(item.duration_minutes)}</span></div><div className="fields-2"><label className="field"><span>Horas reales</span><input type="number" min="0" max="8" value={actualHours} onChange={(event) => setDurationParts(Number(event.target.value || 0), actualMinutes)} /></label><label className="field"><span>Minutos reales</span><input type="number" min="0" max="59" value={actualMinutes} onChange={(event) => setDurationParts(actualHours, Number(event.target.value || 0))} /></label></div><p className="modal-intro">Se registrarán {minutesLabel(actualDuration)} como duración real y facturable de esta clase.</p></section>
+      <section className="card pad"><div className="card-head"><div><p className="eyebrow">Duración</p><h2>Duración prevista</h2></div><strong>{minutesLabel(plannedDuration)}</strong></div><p className="modal-intro">El saldo se calculará con la duración prevista de la clase.</p></section>
       <div className="finish-list">{item.class_participants.map((participant) => {
         const student = students.find((person) => person.id === participant.person_id), available = eligibleCredits(participant.person_id);
         return <section className="finish-person" key={participant.person_id}><strong>{student?.display_name || "Alumno"}</strong><div className="finish-grid">
           <label className="field"><span>Asistencia</span><select value={attendance[participant.person_id]} onChange={(e) => { const value = e.target.value as "present" | "absent"; setAttendance((current) => ({ ...current, [participant.person_id]: value })); if (value === "absent") setGrantIds((current) => ({ ...current, [participant.person_id]: "" })); }}><option value="present">Ha venido</option><option value="absent">No ha venido</option></select></label>
-          <label className="field"><span>Bono</span><select value={grantIds[participant.person_id] || ""} disabled={attendance[participant.person_id] === "absent"} onChange={(e) => chooseGrant(participant.person_id, e.target.value)}><option value="">Sin bono · {minutesLabel(actualDuration)} pendientes</option>{available.map((grant) => { const balance = creditBalance(grant), shortfall = Math.max(0, actualDuration - balance); return <option key={grant.id} value={grant.id}>{grant.label || (grant.modality === "pair" ? "Bono pareja" : "Bono individual")} · {minutesLabel(balance)}{shortfall ? ` · faltarán ${minutesLabel(shortfall)}` : ""}</option>; })}</select></label>
-        </div>{attendance[participant.person_id] === "present" && grantIds[participant.person_id] ? (() => { const selected = credits.find((grant) => String(grant.id) === grantIds[participant.person_id]); const remaining = selected ? Math.max(0, actualDuration - creditBalance(selected)) : actualDuration; return remaining ? <p className="modal-intro">Se consumirá el saldo disponible y quedarán {minutesLabel(remaining)} como incidencia.</p> : null; })() : attendance[participant.person_id] === "present" ? <p className="modal-intro">La clase quedará pendiente íntegramente como incidencia hasta que la regularices o decidas aceptarla sin regularizar.</p> : null}</section>;
+          <label className="field"><span>Bono</span><select value={grantIds[participant.person_id] || ""} disabled={attendance[participant.person_id] === "absent"} onChange={(e) => chooseGrant(participant.person_id, e.target.value)}><option value="">Sin bono · {minutesLabel(plannedDuration)} pendientes</option>{available.map((grant) => { const balance = creditBalance(grant), shortfall = Math.max(0, plannedDuration - balance); return <option key={grant.id} value={grant.id}>{grant.label || (grant.modality === "pair" ? "Bono pareja" : "Bono individual")} · {minutesLabel(balance)}{shortfall ? ` · faltarán ${minutesLabel(shortfall)}` : ""}</option>; })}</select></label>
+        </div>{attendance[participant.person_id] === "present" && grantIds[participant.person_id] ? (() => { const selected = credits.find((grant) => String(grant.id) === grantIds[participant.person_id]); const remaining = selected ? Math.max(0, plannedDuration - creditBalance(selected)) : plannedDuration; return remaining ? <p className="modal-intro">Se consumirá el saldo disponible y quedarán {minutesLabel(remaining)} como incidencia.</p> : null; })() : attendance[participant.person_id] === "present" ? <p className="modal-intro">La clase quedará pendiente íntegramente como incidencia hasta que la regularices o decidas aceptarla sin regularizar.</p> : null}</section>;
       })}</div>
-      {error ? <p className="error">{error}</p> : null}<div className="actions"><button className="btn ghost" type="button" onClick={close}>Seguir en clase</button><button className="btn" disabled={busy || actualDuration <= 0}><CheckCircle2 size={17} /> {busy ? "Terminando…" : "Terminar clase"}</button></div>
+      {error ? <p className="error">{error}</p> : null}<div className="actions"><button className="btn ghost" type="button" onClick={close}>Seguir en clase</button><button className="btn" disabled={busy}><CheckCircle2 size={17} /> {busy ? "Terminando…" : "Terminar clase"}</button></div>
     </form>
   </section></div>;
 }
@@ -500,7 +490,6 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
   const [quickType, setQuickType] = useState<"correction" | "explanation" | "exercise" | "sequence">("correction"), [quickTitle, setQuickTitle] = useState("");
   const [measurementMode, setMeasurementMode] = useState<"frequency" | "importance" | "both" | "none">("both"), [frequency, setFrequency] = useState(50), [importance, setImportance] = useState(50);
   const [contextRole, setContextRole] = useState(() => firstParticipant?.role_term_id ? String(firstParticipant.role_term_id) : ""), [contextLevel, setContextLevel] = useState(() => firstParticipant?.level_term_id ? String(firstParticipant.level_term_id) : ""), [busy, setBusy] = useState(""), [syncError, setSyncError] = useState(""), [finishOpen, setFinishOpen] = useState(false);
-  const [clockNow, setClockNow] = useState(() => Date.now());
   const personKey = item.class_participants.map((p) => p.person_id).sort((a, b) => a - b).join(",");
   const loadLive = useCallback(async () => {
     if (!db || !personKey) return;
@@ -515,7 +504,6 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
     setSyncError(""); setNotes((noteResult.data ?? []) as ClassNote[]); setEvaluations((evaluationResult.data ?? []) as StudentEvaluation[]); setAssignments((assignmentResult.data ?? []) as unknown as ContentAssignment[]);
   }, [item.id, personKey]);
   useEffect(() => { const initial = window.setTimeout(() => void loadLive(), 0), timer = window.setInterval(() => { void loadLive(); void refresh(); }, 4000); return () => { clearTimeout(initial); clearInterval(timer); }; }, [loadLive, refresh]);
-  useEffect(() => { if (item.status !== "active") return; const timer = window.setInterval(() => setClockNow(Date.now()), 1000); return () => clearInterval(timer); }, [item.status]);
   const participant = item.class_participants.find((p) => p.person_id === activePersonId) ?? item.class_participants[0], student = students.find((person) => person.id === activePersonId);
   const roles = terms.filter((term) => term.taxonomy === "dance_role"), levels = terms.filter((term) => term.taxonomy === "dance_level"), style = terms.find((term) => term.id === item.style_term_id), levelTerm = terms.find((term) => term.id === participant?.level_term_id);
   const aptitudes = terms.filter((term) => term.taxonomy === "aptitude" && Array.isArray(term.metadata.levels) && (term.metadata.levels as unknown[]).includes(levelTerm?.term_key ?? ""));
@@ -637,13 +625,8 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
     await refresh(); notify("Clase cerrada por completo."); setBusy(""); exit();
   }
   const names = namesFor(item.class_participants.map((p) => p.person_id), students), finished = item.status === "finished";
-  const shownDuration = finished ? item.actual_duration_minutes ?? item.duration_minutes : item.duration_minutes;
-  const observationStart = new Date(item.started_at ?? item.scheduled_start_at).getTime();
-  const observationRemaining = item.status === "active" ? Math.min(180, Math.max(0, 180 - Math.floor((clockNow - observationStart) / 1000))) : 0;
-  const observationActive = item.status === "active" && observationRemaining > 0;
-  const observationClock = `${Math.floor(observationRemaining / 60)}:${String(observationRemaining % 60).padStart(2, "0")}`;
   return <div className="live-overlay">
-    <div className="live-sticky"><header className="live-top"><div className="live-title"><span className={`live-dot ${finished ? "done" : ""}`} /><div><span>{finished ? "ADMINISTRACIÓN TERMINADA" : "DANDO CLASE"}</span><strong>{names}</strong><small>{style?.label || "Sin estilo"} · {minutesLabel(shownDuration)}{finished && shownDuration !== item.duration_minutes ? ` reales · prevista ${minutesLabel(item.duration_minutes)}` : ""}</small></div></div><div className="live-actions">{finished ? <button className="btn" onClick={closePedagogy} disabled={busy === "close"}><CheckCircle2 size={17} /> {busy === "close" ? "Cerrando…" : "Cerrar clase"}</button> : <button className="btn" onClick={() => setFinishOpen(true)}><CheckCircle2 size={17} /> Terminar clase</button>}<button className="icon-btn live-exit" onClick={exit} aria-label="Salir del modo clase"><X /></button></div></header>
+    <div className="live-sticky"><header className="live-top"><div className="live-title"><span className={`live-dot ${finished ? "done" : ""}`} /><div><span>{finished ? "ADMINISTRACIÓN TERMINADA" : "DANDO CLASE"}</span><strong>{names}</strong><small>{style?.label || "Sin estilo"} · {minutesLabel(item.duration_minutes)}</small></div></div><div className="live-actions">{finished ? <button className="btn" onClick={closePedagogy} disabled={busy === "close"}><CheckCircle2 size={17} /> {busy === "close" ? "Cerrando…" : "Cerrar clase"}</button> : <button className="btn" onClick={() => setFinishOpen(true)}><CheckCircle2 size={17} /> Terminar clase</button>}<button className="icon-btn live-exit" onClick={exit} aria-label="Salir del modo clase"><X /></button></div></header>
       <div className="live-search-area"><label className="live-search"><Search /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar correcciones, explicaciones, ejercicios o secuencias…" /></label><nav className="live-search-kinds" aria-label="Tipo de contenido">{([['all','Todo'],['correction','Correcciones'],['explanation','Explicaciones'],['exercise','Ejercicios'],['sequence','Secuencias']] as const).map(([value,label]) => <button key={value} className={searchKind === value ? "active" : ""} onClick={() => setSearchKind(value)}>{label}</button>)}</nav></div>
     </div>
     <main className="live-body">
@@ -651,7 +634,6 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
         <details className="quick-content-create"><summary><Plus /> Crear rápido</summary><div><select value={quickType} onChange={(event) => setQuickType(event.target.value as typeof quickType)}><option value="correction">Corrección</option><option value="explanation">Explicación</option><option value="exercise">Ejercicio</option><option value="sequence">Secuencia</option></select><input value={quickTitle} onChange={(event) => setQuickTitle(event.target.value)} placeholder="Título corto para no detener la clase" /><button className="btn" onClick={createQuickContent} disabled={!contextReady || !quickTitle.trim() || busy === "quick-create"}>{busy === "quick-create" ? "Guardando…" : "Guardar"}</button></div><small>{quickType === "correction" ? "Se añade al alumno con medición inicial 50/50." : "Queda en Incompletas, vinculada al contexto actual, para terminarla después."}</small></details>
         {normalizedSearch || searchKind !== "all" ? <div className="unified-results"><div className="unified-result-head"><strong>Resultados</strong><span>{unifiedAssigned.length + unifiedLibrary.length}</span></div>{unifiedAssigned.map((assignment) => <article className="unified-result assigned" key={`assigned-${assignment.id}`}><span className="content-kind">{teachingKindLabels[assignment.teaching_contents.content_type]}</span><div><strong>{assignment.teaching_contents.title}</strong><small>Ya está en la formación del alumno · {assignmentOptions(assignment.teaching_contents.content_type).find(([value]) => value === assignment.assignment_status)?.[1] ?? assignment.assignment_status}</small></div><CheckCircle2 /></article>)}{unifiedLibrary.slice(0,12).map((content) => { const ready = content.completion_status === "complete" && content.publication_status === "published"; return <article className="unified-result" key={`library-${content.id}`}><span className="content-kind">{teachingKindLabels[content.content_type]}</span><div><strong>{content.title}</strong><small>{ready ? "Biblioteca · compatible con esta clase" : "Incompleta · solo profesores"}</small></div>{ready ? <button className="btn" disabled={busy === `assign-${content.id}`} onClick={() => assignGuideContent(content)}><Plus /> Añadir</button> : <span className="badge">Completar después</span>}</article>; })}{!unifiedAssigned.length && !unifiedLibrary.length ? <div className="compact-empty"><Search /><span>No hay coincidencias. Puedes crear el contenido rápidamente.</span></div> : null}</div> : null}
       </section>
-      <section className={`observation-phase ${observationActive ? "active" : "complete"}`} aria-live="polite"><span className="observation-icon"><Clock3 /></span><div><p className="eyebrow">Observación inicial</p><strong>{observationActive ? "Escucha, observa y captura lo importante" : "Primera observación completada"}</strong><span>{observationActive ? "Tienes tres minutos desde el inicio real de la clase. Usa las notas rápidas y convierte lo necesario en corrección." : "Continúa con correcciones, evaluación y la guía de hoy."}</span></div><time dateTime={`PT${observationRemaining}S`}>{observationActive ? observationClock : <CheckCircle2 />}</time></section>
       {item.class_participants.length > 1 ? <div className="participant-tabs">{item.class_participants.map((p) => <button key={p.person_id} className={activePersonId === p.person_id ? "active" : ""} onClick={() => chooseParticipant(p.person_id)}>{students.find((person) => person.id === p.person_id)?.display_name || "Alumno"}</button>)}</div> : null}
       <section className="student-context card"><div className="student-context-main"><span className="avatar"><CircleUserRound /></span><div><p className="eyebrow">Alumno</p><h2>{student?.display_name || "Alumno"}</h2><p>{student?.auth_user_id ? "Con acceso al portal" : "Provisional · trabaja igual que cualquier alumno"}</p></div></div><div className="context-controls"><label className="field"><span>Rol</span><select value={contextRole} onChange={(e) => setContextRole(e.target.value)}><option value="">Seleccionar</option>{roles.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label className="field"><span>Nivel</span><select value={contextLevel} onChange={(e) => setContextLevel(e.target.value)}><option value="">Seleccionar</option>{levels.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><button className="btn context-save" onClick={saveContext} disabled={!contextRole || !contextLevel || busy === "context"}>{busy === "context" ? "Guardando…" : "Guardar contexto"}</button></div></section>
       {!contextReady ? <p className="live-hint">Indica rol y nivel una sola vez. A partir de ahí CYA puede relacionar evaluación y correcciones con el contexto correcto.</p> : null}
@@ -697,7 +679,7 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
       </article>
       <section className={`live-bottom ${finished ? "finished" : ""}`}><div><strong>{finished ? "Parte administrativa lista" : "Cuando acabéis de bailar…"}</strong><span>{finished ? "Puedes terminar notas, evaluación y correcciones antes del cierre pedagógico." : "Asistencia y bono se confirman juntos para no dejar medias operaciones."}</span></div>{finished ? <button className="btn" onClick={closePedagogy} disabled={busy === "close"}><CheckCircle2 size={18} /> Cerrar clase</button> : <button className="btn" onClick={() => setFinishOpen(true)}>Terminar clase</button>}</section>
     </main>
-    {finishOpen ? <FinishClassModal item={item} students={students} credits={credits} close={() => setFinishOpen(false)} finished={async () => { await refresh(); await loadLive(); notify("Clase terminada. Duración, saldo e incidencias ya están actualizados."); }} /> : null}
+    {finishOpen ? <FinishClassModal item={item} students={students} credits={credits} close={() => setFinishOpen(false)} finished={async () => { await refresh(); await loadLive(); notify("Clase terminada. Saldo e incidencias actualizados con la duración prevista."); }} /> : null}
   </div>;
 }
 
@@ -1054,7 +1036,7 @@ function StudentPortal({ identity, experience, onExperience, client, email, onId
         ]}
       />)}</div> : <div className="compact-empty"><BookOpen /><span>Cuando te asignemos contenido aparecerá aquí.</span></div>}</article>
       <article className="card portal-card"><div className="card-head"><h2>Mi evolución</h2><span>Reparto relativo</span></div>{relativeRadar.length ? <><RadarChart items={relativeRadar} scaleLabel="Porcentaje de tus puntos totales en cada aptitud" /><div className="evaluation-history">{snapshot.evaluations.slice(0,12).map((item) => <div key={item.id}><span>{new Intl.DateTimeFormat("es-ES",{ day:"numeric",month:"short",year:"numeric" }).format(new Date(item.created_at))}</span><strong>{item.score}</strong></div>)}</div></> : <div className="compact-empty"><TrendingUp /><span>Tu próxima evaluación aparecerá aquí.</span></div>}</article>
-      <article className="card portal-card"><div className="card-head"><h2>Mis clases</h2><span>{snapshot.classes.length}</span></div>{snapshot.classes.length ? <div className="portal-class-list">{snapshot.classes.slice(0, 8).map((item) => { const shown = item.status === "finished" ? item.actual_duration_minutes ?? item.duration_minutes : item.duration_minutes; const billingNote = item.billing_status === "accepted_uncovered" && item.uncovered_minutes ? ` · aceptado sin regularizar ${minutesLabel(item.uncovered_minutes)}` : item.uncovered_minutes ? ` · pendiente ${minutesLabel(item.uncovered_minutes)}` : ""; return <div key={item.id}><CalendarDays /><div><strong>{item.style || (item.class_type === "pair" ? "Clase en pareja" : "Clase individual")}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(shown)}{billingNote}</span></div><span className={`badge ${item.status === "finished" ? "portal" : ""}`}>{portalClassStatus(item.status)}</span></div>; })}</div> : <div className="compact-empty"><CalendarDays /><span>Todavía no hay clases en tu historial.</span></div>}</article>
+      <article className="card portal-card"><div className="card-head"><h2>Mis clases</h2><span>{snapshot.classes.length}</span></div>{snapshot.classes.length ? <div className="portal-class-list">{snapshot.classes.slice(0, 8).map((item) => { const billingNote = item.billing_status === "accepted_uncovered" && item.uncovered_minutes ? ` · aceptado sin regularizar ${minutesLabel(item.uncovered_minutes)}` : item.uncovered_minutes ? ` · pendiente ${minutesLabel(item.uncovered_minutes)}` : ""; return <div key={item.id}><CalendarDays /><div><strong>{item.style || (item.class_type === "pair" ? "Clase en pareja" : "Clase individual")}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(item.duration_minutes)}{billingNote}</span></div><span className={`badge ${item.status === "finished" ? "portal" : ""}`}>{portalClassStatus(item.status)}</span></div>; })}</div> : <div className="compact-empty"><CalendarDays /><span>Todavía no hay clases en tu historial.</span></div>}</article>
       <article className="card portal-card"><div className="card-head"><h2>Mis bonos</h2><span>{snapshot.credits.length}</span></div>{snapshot.credits.length ? <div className="portal-credit-list">{snapshot.credits.map((credit) => <div key={credit.id}><div><strong>{credit.label || (credit.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong><span>{new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).format(new Date(credit.purchased_at))}</span></div><strong>{minutesLabel(Number(credit.balance_minutes || 0))}</strong></div>)}</div> : <div className="compact-empty"><WalletCards /><span>No tienes bonos registrados todavía.</span></div>}</article>
     </section>
   </main></div>;
@@ -1097,7 +1079,7 @@ function StaffApp({ session }: { session: Session }) {
   const loadOperations = useCallback(async () => {
     if (!db) return;
     const [classResult, creditResult, catalogResult] = await Promise.all([
-      db.from("classes").select("id,class_type,status,scheduled_start_at,duration_minutes,notes,style_term_id,location_term_id,started_at,administrative_finished_at,pedagogy_closed_at,actual_end_at,actual_duration_minutes,billed_duration_minutes,duration_source,administratively_finished_by,class_participants(person_id,attendance_status,billing_grant_id,role_term_id,level_term_id,billed_minutes,uncovered_minutes,billing_status)").order("scheduled_start_at"),
+      db.from("classes").select("id,class_type,status,scheduled_start_at,duration_minutes,notes,style_term_id,location_term_id,started_at,administrative_finished_at,pedagogy_closed_at,administratively_finished_by,class_participants(person_id,attendance_status,billing_grant_id,role_term_id,level_term_id,billed_minutes,uncovered_minutes,billing_status)").order("scheduled_start_at"),
       db.from("credit_grants").select("id,modality,label,total_minutes,price_cents,payment_status,status,purchased_at,credit_grant_members(person_id),credit_movements(delta_minutes)").order("purchased_at", { ascending: false }),
       db.from("catalog_terms").select("id,label,term_key,taxonomy,metadata,sort_order").in("taxonomy", ["dance_style","dance_role","dance_level","aptitude","evaluation_scale","correction_category","explanation_category","exercise_category","sequence_category"]).eq("active", true).order("sort_order"),
     ]);
