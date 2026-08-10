@@ -15,6 +15,8 @@ jobs:
           cache: npm
       - name: Apply Point 10 patch
         run: python scripts/apply-point10.py
+      - name: Fix and validate v31 SQL shape
+        run: python scripts/fix-point10-v31-sql.py
       - name: Install dependencies
         run: npm ci
       - name: Point 10 and regression tests
@@ -30,7 +32,7 @@ jobs:
         run: |
           git config user.name "carlosyandybz-bit"
           git config user.email "carlosyandybz@gmail.com"
-          git add app/cya-app.tsx app/globals.css supabase/v31-class-workflow-realtime.sql tests/class-workflow-point10.test.mjs
+          git add app/cya-app.tsx app/globals.css supabase/v31-class-workflow-realtime.sql tests/class-workflow-point10.test.mjs tests/live-session-dedup.test.mjs tests/rendered-html.test.mjs
           if ! git diff --cached --quiet; then
             git commit -m "Implement Point 10 class workflow [validated-v31]"
             git push origin HEAD:feat/point10-class-workflow
