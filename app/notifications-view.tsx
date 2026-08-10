@@ -185,7 +185,7 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
 
   return <section className={styles.root}>
     <header className={styles.hero}>
-      <div><p>NOTIFICACIONES</p><h1>Centro de avisos</h1><span>Solo aparecen aquí los avisos de CYA. Inicio queda libre para tu trabajo del día.</span></div>
+      <div><p>NOTIFICACIONES</p><h1>Centro de avisos</h1><span>Tus avisos pendientes y el historial reciente.</span></div>
       <div className={styles.heroIcon}>{pending.length ? <BellRing /> : <CheckCheck />}</div>
     </header>
 

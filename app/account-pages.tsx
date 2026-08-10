@@ -172,7 +172,7 @@ export function ProfileSettingsView({ client, identity, onIdentityPatch, notify 
       <header className={styles.pageHeader}>
         <span className={styles.eyebrow}>Mi cuenta</span>
         <h1 id="profile-settings-title">Editar perfil</h1>
-        <p>Tu identidad visible en CYA Hub. Aquí puedes ampliar más datos del perfil cuando los incorporemos.</p>
+        <p>Gestiona tu nombre y tu foto de perfil.</p>
       </header>
 
       <form className={styles.card} onSubmit={submit}>
@@ -180,7 +180,7 @@ export function ProfileSettingsView({ client, identity, onIdentityPatch, notify 
           <ProfileAvatar src={shownAvatar} name={displayName} />
           <div className={styles.photoActions}>
             <strong>Foto de perfil</strong>
-            <span>Elige una foto desde el iPhone. CYA la optimiza antes de subirla.</span>
+            <span>Elige una foto desde el iPhone.</span>
             <div>
               <button type="button" className={styles.secondaryButton} onClick={() => inputRef.current?.click()} disabled={busy}><Camera /> {shownAvatar ? "Cambiar foto" : "Subir foto"}</button>
               {shownAvatar ? <button type="button" className={styles.dangerButton} onClick={() => { setFile(null); setRemoveAvatar(true); }} disabled={busy}><Trash2 /> Eliminar</button> : null}
@@ -246,7 +246,7 @@ export function PreferencesSettingsView({ client, identity, experience, onIdenti
       <header className={styles.pageHeader}>
         <span className={styles.eyebrow}>Mi cuenta</span>
         <h1 id="preferences-settings-title">Preferencias</h1>
-        <p>Configuración personal de CYA Hub. Esta pantalla podrá crecer por secciones sin convertir el avatar en un menú interminable.</p>
+        <p>Ajusta tu zona horaria y los saludos de Inicio.</p>
       </header>
 
       <form className={styles.card} onSubmit={submit}>
@@ -264,7 +264,7 @@ export function PreferencesSettingsView({ client, identity, experience, onIdenti
           <label className={styles.field}><span>Buenas noches desde</span><input type="time" value={night} onChange={(event) => setNight(event.target.value)} /></label>
         </div>
 
-        <div className={styles.portalSummary}><UserRound /><div><strong>Portal preferido actual</strong><span>{experience === "admin" ? "Administrador" : experience === "student" ? "Alumno" : "Profesor"}. Se actualiza al cambiar de portal desde el avatar.</span></div></div>
+        <div className={styles.portalSummary}><UserRound /><div><strong>Portal preferido actual</strong><span>{experience === "admin" ? "Administrador" : experience === "student" ? "Alumno" : "Profesor"}</span></div></div>
 
         {error ? <p className={styles.error}>{error}</p> : null}
         <div className={styles.actions}><button className={styles.primaryButton} disabled={busy}><Save /> {busy ? "Guardando…" : "Guardar preferencias"}</button></div>

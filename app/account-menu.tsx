@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 import styles from "./account-menu.module.css";
 
@@ -206,7 +207,7 @@ export function AccountMenu({
         </div>
       ) : null}
 
-      {accountOpen ? (
+      {accountOpen && typeof document !== "undefined" ? createPortal(
         <div className={styles.backdrop} onMouseDown={(event) => event.target === event.currentTarget && setAccountOpen(false)}>
           <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="account-session-title">
             <header className={styles.dialogHeader}>
@@ -219,11 +220,12 @@ export function AccountMenu({
                 <div><span>Portal activo</span><strong>{contextLabels[experience]}</strong></div>
                 <div><span>Permisos</span><strong>{identity.roles.map((role) => roleLabels[role] ?? role).join(" · ")}</strong></div>
               </div>
-              <p className={styles.accountNote}>Cambiar de portal modifica únicamente la vista. Tus permisos reales se mantienen.</p>
+              <p className={styles.accountNote}>Tus permisos se mantienen al cambiar de portal.</p>
               <div className={styles.dialogActions}><button type="button" className={styles.secondaryButton} onClick={() => setAccountOpen(false)}>Cerrar</button><button type="button" className={styles.dangerButton} disabled={busy} onClick={() => void signOut()}><LogOut /> Cerrar sesión</button></div>
             </div>
           </section>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );
