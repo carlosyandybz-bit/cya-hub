@@ -1,0 +1,19 @@
+name: Audit Point 3B numeric inputs
+on:
+  push:
+    branches: [feat/point3b-numeric-inputs]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: List numeric inputs
+        run: |
+          echo '--- type=number ---'
+          grep -RIn 'type="number"' app --include='*.tsx' || true
+          echo '--- inputMode numeric/decimal ---'
+          grep -RIn 'inputMode="\(numeric\|decimal\)"' app --include='*.tsx' || true
+          echo '--- suspicious numeric names without inputMode ---'
+          grep -RInE '<input[^>]*name="(hours|minutes|price|budget|capacity|spend|impressions|reach|clicks|inquiries|bookings|revenue|quoted_amount)"' app --include='*.tsx' || true
