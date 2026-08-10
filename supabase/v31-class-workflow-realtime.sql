@@ -261,7 +261,7 @@ begin
 end $$;
 grant execute on function public.add_class_note_v2(bigint,bigint,text,text) to authenticated;
 
-create or replace function public.create_class_correction(p_class_id bigint,p_person_id bigint,p_title text,p_measurement_mode text,p_frequency smallint,p_importance smallint)
+create or replace function public.create_class_correction(p_class_id bigint,p_person_id bigint,p_title text,p_measurement_mode text,p_frequency smallint default null,p_importance smallint default null)
 returns public.student_content_assignments language plpgsql set search_path='' as $$
 declare v_style_id bigint; v_role_id bigint; v_level_id bigint; v_category_id bigint; v_content public.teaching_contents; v_assignment public.student_content_assignments;
 begin
