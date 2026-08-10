@@ -28,7 +28,6 @@ jobs:
           from pathlib import Path
           p=Path('app/account-menu.tsx')
           t=p.read_text()
-          t=t.replace('  UserRound,\n','')
           old='{showAvatarImage ? <img src={identity.avatar_url ?? ""} alt="" onError={() => setAvatarFailed(true)} /> : <UserRound />}'
           new='{showAvatarImage ? <img src={identity.avatar_url ?? ""} alt="" onError={() => setAvatarFailed(true)} /> : <span className={styles.avatarSilhouette}><span className={styles.avatarHead} /><span className={styles.avatarShoulders} /></span>}'
           if t.count(old)!=1: raise SystemExit(f'expected one fallback, got {t.count(old)}')
