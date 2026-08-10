@@ -139,6 +139,27 @@ type CrmActivity = {
   to_stage: string | null;
   occurred_at: string;
 };
+type StudentIncident = {
+  id: number;
+  incident_type: "negative_balance";
+  status: "open" | "resolved" | "accepted";
+  title: string;
+  related_class_id: number | null;
+  related_grant_id: number | null;
+  debt_minutes: number;
+  remaining_minutes: number;
+  resolution_mode: "regularized" | "accepted_without_regularization" | null;
+  resolution_note: string | null;
+  created_at: string;
+  student_incident_people: Array<{ person_id: number }>;
+};
+type ClassFinancial = {
+  actual_duration_minutes: number | null;
+  billed_duration_minutes: number | null;
+  billed_minutes: number;
+  uncovered_minutes: number;
+  billing_status: string;
+};
 type Tab = "summary" | "learning" | "evaluation" | "classes" | "credits" | "data" | "crm";
 
 const tabItems: Array<[Tab, string]> = [
@@ -180,10 +201,12 @@ const classLabels: Record<string, string> = {
 };
 
 function minutesLabel(value: number) {
-  const safe = Math.max(0, Number(value) || 0);
-  const hours = Math.floor(safe / 60);
-  const minutes = safe % 60;
-  return [hours ? `${hours} h` : "", minutes ? `${minutes} min` : ""].filter(Boolean).join(" ") || "0 min";
+  const numeric = Number(value) || 0;
+  const absolute = Math.abs(Math.trunc(numeric));
+  const hours = Math.floor(absolute / 60);
+  const minutes = absolute % 60;
+  const text = [hours ? `${hours} h` : "", minutes ? `${minutes} min` : ""].filter(Boolean).join(" ") || "0 min";
+  return numeric < 0 ? `−${text}` : text;
 }
 
 function dateLabel(value: string | null, withTime = true) {
@@ -262,6 +285,15 @@ export function StudentMasterDetail({
   const [danceProfiles, setDanceProfiles] = useState<DanceProfile[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [crmActivities, setCrmActivities] = useState<CrmActivity[]>([]);
+  const [incidents, setIncidents] = useState<StudentIncident[]>([]);
+  const [liveBalances, setLiveBalances] = useState<Record<number, number>>({});
+  const [classFinancial, setClassFinancial] = useState<Record<number, ClassFinancial>>({});
+  const [incidentGrant, setIncidentGrant] = useState<Record<number, string>>({});
+  const [acceptingIncident, setAcceptingIncident] = useState<number | null>(null);
+  const [resolutionNotes, setResolutionNotes] = useState<Record<number, string>>({});
+  const [financialBusy, setFinancialBusy] = useState("");
+  const [financialNotice, setFinancialNotice] = useState("");
+  const [financialRefresh, setFinancialRefresh] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [now] = useState(() => Date.now());
@@ -290,6 +322,60 @@ export function StudentMasterDetail({
     return () => { alive = false; };
   }, [client, student.id]);
 
+  useEffect(() => {
+    let alive = true;
+    async function loadFinancial() {
+      const ownCreditIds = credits.filter((credit) => credit.credit_grant_members.some((member) => member.person_id === student.id)).map((credit) => credit.id);
+      const linkResult = await client.from("student_incident_people").select("incident_id").eq("person_id", student.id);
+      if (!alive) return;
+      if (linkResult.error) { setError(linkResult.error.message); return; }
+      const incidentIds = [...new Set((linkResult.data ?? []).map((row) => Number(row.incident_id)).filter(Boolean))];
+      let nextIncidents: StudentIncident[] = [];
+      if (incidentIds.length) {
+        const incidentResult = await client.from("student_incidents")
+          .select("id,incident_type,status,title,related_class_id,related_grant_id,debt_minutes,remaining_minutes,resolution_mode,resolution_note,created_at,student_incident_people(person_id)")
+          .in("id", incidentIds)
+          .order("created_at", { ascending: false });
+        if (!alive) return;
+        if (incidentResult.error) { setError(incidentResult.error.message); return; }
+        nextIncidents = (incidentResult.data ?? []) as unknown as StudentIncident[];
+      }
+
+      const balances: Record<number, number> = {};
+      if (ownCreditIds.length) {
+        const movementResult = await client.from("credit_movements").select("grant_id,delta_minutes").in("grant_id", ownCreditIds);
+        if (!alive) return;
+        if (movementResult.error) { setError(movementResult.error.message); return; }
+        ownCreditIds.forEach((id) => { balances[id] = 0; });
+        for (const movement of movementResult.data ?? []) balances[Number(movement.grant_id)] = (balances[Number(movement.grant_id)] ?? 0) + Number(movement.delta_minutes || 0);
+      }
+
+      const participantResult = await client.from("class_participants")
+        .select("class_id,billed_minutes,uncovered_minutes,billing_status,classes(actual_duration_minutes,billed_duration_minutes)")
+        .eq("person_id", student.id);
+      if (!alive) return;
+      if (participantResult.error) { setError(participantResult.error.message); return; }
+      const financialByClass: Record<number, ClassFinancial> = {};
+      for (const row of participantResult.data ?? []) {
+        const nested = row.classes as unknown as { actual_duration_minutes: number | null; billed_duration_minutes: number | null } | Array<{ actual_duration_minutes: number | null; billed_duration_minutes: number | null }> | null;
+        const classData = Array.isArray(nested) ? nested[0] : nested;
+        financialByClass[Number(row.class_id)] = {
+          actual_duration_minutes: classData?.actual_duration_minutes ?? null,
+          billed_duration_minutes: classData?.billed_duration_minutes ?? null,
+          billed_minutes: Number(row.billed_minutes || 0),
+          uncovered_minutes: Number(row.uncovered_minutes || 0),
+          billing_status: String(row.billing_status || "planned"),
+        };
+      }
+      if (!alive) return;
+      setIncidents(nextIncidents);
+      setLiveBalances(balances);
+      setClassFinancial(financialByClass);
+    }
+    void loadFinancial();
+    return () => { alive = false; };
+  }, [client, credits, student.id, financialRefresh]);
+
   const ownClasses = useMemo(() => classes
     .filter((item) => item.class_participants.some((participant) => participant.person_id === student.id))
     .sort((a, b) => new Date(b.scheduled_start_at).getTime() - new Date(a.scheduled_start_at).getTime()), [classes, student.id]);
@@ -299,7 +385,11 @@ export function StudentMasterDetail({
   const ownCredits = useMemo(() => credits
     .filter((item) => item.credit_grant_members.some((member) => member.person_id === student.id))
     .sort((a, b) => new Date(b.purchased_at).getTime() - new Date(a.purchased_at).getTime()), [credits, student.id]);
-  const balance = ownCredits.filter((item) => item.status === "active").reduce((sum, item) => sum + Math.max(0, creditBalance(item)), 0);
+  const balanceFor = (credit: CreditItem) => Object.prototype.hasOwnProperty.call(liveBalances, credit.id) ? liveBalances[credit.id] : creditBalance(credit);
+  const availableBalance = ownCredits.filter((item) => item.status === "active").reduce((sum, item) => sum + Math.max(0, balanceFor(item)), 0);
+  const openIncidents = incidents.filter((incident) => incident.status === "open" && incident.incident_type === "negative_balance");
+  const pendingDebt = openIncidents.reduce((sum, incident) => sum + Number(incident.remaining_minutes || 0), 0);
+  const balance = availableBalance - pendingDebt;
   const ownAssignments = useMemo(() => assignments.filter((item) => item.person_id === student.id), [assignments, student.id]);
   const activeAssignments = ownAssignments.filter((item) => !["corrected", "explained", "completed"].includes(item.assignment_status));
   const crm = crmContact?.crm_profiles?.[0] ?? null;
@@ -311,15 +401,55 @@ export function StudentMasterDetail({
   const averageScore = radarItems.length ? Math.round(radarItems.reduce((sum, item) => sum + item.value, 0) / radarItems.length) : null;
 
   const issues = [
+    ...openIncidents.map((incident) => ({ key: `debt-${incident.id}`, label: `Saldo pendiente: ${minutesLabel(incident.remaining_minutes)}`, tab: "credits" as Tab })),
     ...ownCredits.filter((item) => item.payment_status === "pending").map((item) => ({ key: `payment-${item.id}`, label: "Hay un bono con pago pendiente", tab: "credits" as Tab })),
     ...ownClasses.filter((item) => item.status === "finished" && !item.pedagogy_closed_at).map((item) => ({ key: `class-${item.id}`, label: "Hay una clase pendiente de cierre pedagógico", tab: "classes" as Tab })),
     ...(!danceProfiles.length ? [{ key: "dance", label: "Falta definir el contexto de baile del alumno", tab: "data" as Tab }] : []),
-    ...(upcoming.length && balance <= 0 ? [{ key: "balance", label: "Tiene una próxima clase y no hay saldo activo", tab: "credits" as Tab }] : []),
+    ...(upcoming.length && balance <= 0 ? [{ key: "balance", label: "Tiene una próxima clase y el saldo neto no es positivo", tab: "credits" as Tab }] : []),
   ];
 
   function closeAnd(action: () => void) {
     close();
     action();
+  }
+
+  function compatibleCredits(incident: StudentIncident) {
+    const people = incident.student_incident_people.map((link) => link.person_id);
+    return ownCredits.filter((grant) => grant.status === "active" && balanceFor(grant) > 0)
+      .filter((grant) => people.every((personId) => grant.credit_grant_members.some((member) => member.person_id === personId)))
+      .filter((grant) => people.length <= 1 || grant.modality === "pair");
+  }
+
+  async function regularizeIncident(incident: StudentIncident) {
+    const grantId = Number(incidentGrant[incident.id] || 0);
+    if (!grantId) return;
+    setFinancialBusy(`regularize-${incident.id}`);
+    setFinancialNotice("");
+    setError("");
+    const result = await client.rpc("regularize_student_incident", { p_incident_id: incident.id, p_grant_id: grantId });
+    if (result.error) setError(result.error.message);
+    else {
+      const remaining = Number((result.data as { remaining_minutes?: number } | null)?.remaining_minutes || 0);
+      setFinancialNotice(remaining > 0 ? `Se ha aplicado el saldo disponible. Quedan ${minutesLabel(remaining)} pendientes.` : "Incidencia regularizada. El saldo pendiente ha quedado a cero.");
+      setFinancialRefresh((value) => value + 1);
+    }
+    setFinancialBusy("");
+  }
+
+  async function acceptIncident(incident: StudentIncident) {
+    const note = (resolutionNotes[incident.id] || "").trim();
+    if (note.length < 3) return setError("Escribe un motivo breve antes de aceptar que el saldo no se regularizará.");
+    setFinancialBusy(`accept-${incident.id}`);
+    setFinancialNotice("");
+    setError("");
+    const result = await client.rpc("accept_student_incident_without_regularization", { p_incident_id: incident.id, p_note: note });
+    if (result.error) setError(result.error.message);
+    else {
+      setFinancialNotice("Incidencia cerrada conscientemente sin regularizar. La decisión queda registrada en auditoría.");
+      setAcceptingIncident(null);
+      setFinancialRefresh((value) => value + 1);
+    }
+    setFinancialBusy("");
   }
 
   function renderSummary() {
@@ -328,7 +458,7 @@ export function StudentMasterDetail({
         : <section className={`${styles.issueBox} ${styles.issueGood}`}><header><CheckCircle2 /><div><strong>Todo en orden</strong><span>No hay incidencias operativas detectadas para este alumno.</span></div></header></section>}
 
       <section className={styles.metrics}>
-        <article><WalletCards /><span>Saldo disponible</span><strong>{minutesLabel(balance)}</strong></article>
+        <article><WalletCards /><span>Saldo neto</span><strong>{minutesLabel(balance)}</strong>{pendingDebt > 0 ? <small>{minutesLabel(pendingDebt)} pendientes de regularizar</small> : null}</article>
         <article><CalendarDays /><span>Próxima clase</span><strong>{upcoming[0] ? dateLabel(upcoming[0].scheduled_start_at, false) : "Sin programar"}</strong></article>
         <article><BookOpen /><span>En formación</span><strong>{activeAssignments.length}</strong></article>
         <article><TrendingUp /><span>Evaluación media</span><strong>{averageScore === null ? "Sin evaluar" : `${averageScore}/100`}</strong></article>
@@ -383,14 +513,41 @@ export function StudentMasterDetail({
 
   function renderClasses() {
     return <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Clases</span><h3>Historial y próximas</h3></div><button onClick={() => closeAnd(schedule)}>Programar clase</button></div>
-      {ownClasses.length ? <div className={styles.classList}>{ownClasses.map((item) => { const participant = item.class_participants.find((value) => value.person_id === student.id); const actionable = item.status === "scheduled" || item.status === "active" || (item.status === "finished" && !item.pedagogy_closed_at); return <article key={item.id}><span className={styles.classIcon}><CalendarDays /></span><div><strong>{termLabel(item.style_term_id, terms)} · {item.class_type === "pair" ? "Pareja" : "Individual"}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(item.duration_minutes)}</span><small>{classLabels[item.status] ?? item.status} · {participant?.attendance_status === "present" ? "Asistió" : participant?.attendance_status === "absent" ? "Ausente" : "Asistencia pendiente"}</small>{item.notes ? <p>{item.notes}</p> : null}</div>{actionable ? <button onClick={() => closeAnd(() => openClass(item.id))}>{item.status === "scheduled" ? "Dar clase" : "Abrir"}</button> : <span className={styles.statusPill}>{classLabels[item.status] ?? item.status}</span>}</article>; })}</div> : <div className={styles.empty}><CalendarDays /><span>No hay clases registradas.</span></div>}
+      {ownClasses.length ? <div className={styles.classList}>{ownClasses.map((item) => {
+        const participant = item.class_participants.find((value) => value.person_id === student.id);
+        const financial = classFinancial[item.id];
+        const actualDuration = item.status === "finished" ? financial?.actual_duration_minutes ?? item.duration_minutes : item.duration_minutes;
+        const actionable = item.status === "scheduled" || item.status === "active" || (item.status === "finished" && !item.pedagogy_closed_at);
+        return <article key={item.id}><span className={styles.classIcon}><CalendarDays /></span><div><strong>{termLabel(item.style_term_id, terms)} · {item.class_type === "pair" ? "Pareja" : "Individual"}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(actualDuration)}{item.status === "finished" && actualDuration !== item.duration_minutes ? ` reales · prevista ${minutesLabel(item.duration_minutes)}` : ""}</span><small>{classLabels[item.status] ?? item.status} · {participant?.attendance_status === "present" ? "Asistió" : participant?.attendance_status === "absent" ? "Ausente" : "Asistencia pendiente"}{financial?.uncovered_minutes ? ` · Pendiente ${minutesLabel(financial.uncovered_minutes)}` : ""}</small>{item.notes ? <p>{item.notes}</p> : null}</div>{actionable ? <button onClick={() => closeAnd(() => openClass(item.id))}>{item.status === "scheduled" ? "Dar clase" : "Abrir"}</button> : <span className={styles.statusPill}>{classLabels[item.status] ?? item.status}</span>}</article>;
+      })}</div> : <div className={styles.empty}><CalendarDays /><span>No hay clases registradas.</span></div>}
     </section>;
   }
 
   function renderCredits() {
-    return <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Bonos</span><h3>Saldo e historial</h3></div><button onClick={() => closeAnd(addCredit)}>Añadir bono</button></div>
-      {ownCredits.length ? <div className={styles.creditGrid}>{ownCredits.map((item) => { const itemBalance = creditBalance(item); return <article key={item.id} className={item.payment_status === "pending" ? styles.pendingCredit : ""}><div><span>{dateLabel(item.purchased_at, false)}</span><strong>{item.label || (item.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong></div><b>{minutesLabel(itemBalance)}</b><small>de {minutesLabel(item.total_minutes)} · {euros(item.price_cents)} · {item.payment_status === "paid" ? "Pagado" : item.payment_status === "pending" ? "Pago pendiente" : "Reembolsado"}</small></article>; })}</div> : <div className={styles.empty}><WalletCards /><span>No hay bonos registrados.</span></div>}
-    </section>;
+    return <div className={styles.stack}>
+      {openIncidents.length ? <section className={styles.sectionCard}>
+        <div className={styles.sectionHead}><div><span>Incidencias de saldo</span><h3>Pendiente de decisión</h3></div><b>{openIncidents.length}</b></div>
+        <p>Estas incidencias no desaparecen solas. Puedes regularizarlas con un bono o aceptar expresamente que no se regularizarán.</p>
+        <div className={styles.stack}>{openIncidents.map((incident) => {
+          const compatible = compatibleCredits(incident);
+          const selected = incidentGrant[incident.id] || (compatible[0] ? String(compatible[0].id) : "");
+          const relatedClass = incident.related_class_id ? ownClasses.find((item) => item.id === incident.related_class_id) : null;
+          return <article className="card" key={incident.id}>
+            <div className={styles.sectionHead}><div><span>{relatedClass ? dateLabel(relatedClass.scheduled_start_at, false) : dateLabel(incident.created_at, false)}</span><h3>{incident.title}</h3></div><b>{minutesLabel(incident.remaining_minutes)}</b></div>
+            <p>{incident.remaining_minutes < incident.debt_minutes ? `Deuda original ${minutesLabel(incident.debt_minutes)} · ya se ha regularizado una parte.` : "Este tiempo sigue pendiente de regularizar."}</p>
+            {compatible.length ? <div className="fields-2"><label className="field"><span>Bono para regularizar</span><select value={selected} onChange={(event) => setIncidentGrant((current) => ({ ...current, [incident.id]: event.target.value }))}>{compatible.map((grant) => <option key={grant.id} value={grant.id}>{grant.label || (grant.modality === "pair" ? "Bono de pareja" : "Bono individual")} · {minutesLabel(balanceFor(grant))}</option>)}</select></label><div className="field"><span>Acción</span><button className="btn" type="button" disabled={financialBusy === `regularize-${incident.id}`} onClick={() => { if (!incidentGrant[incident.id] && selected) setIncidentGrant((current) => ({ ...current, [incident.id]: selected })); void regularizeIncident({ ...incident }); }}>{financialBusy === `regularize-${incident.id}` ? "Regularizando…" : "Regularizar con bono"}</button></div></div> : <p>No hay un bono compatible con saldo disponible. Puedes añadir uno y después volver a esta incidencia.</p>}
+            {acceptingIncident === incident.id ? <div><label className="field"><span>Motivo para no regularizar *</span><textarea rows={2} value={resolutionNotes[incident.id] || ""} onChange={(event) => setResolutionNotes((current) => ({ ...current, [incident.id]: event.target.value }))} placeholder="Deja constancia del motivo de la decisión" /></label><div className="actions"><button className="btn ghost" type="button" onClick={() => setAcceptingIncident(null)}>Cancelar</button><button className="btn" type="button" disabled={financialBusy === `accept-${incident.id}` || (resolutionNotes[incident.id] || "").trim().length < 3} onClick={() => void acceptIncident(incident)}>{financialBusy === `accept-${incident.id}` ? "Guardando…" : "Confirmar: no regularizar"}</button></div></div> : <button className="btn ghost" type="button" onClick={() => setAcceptingIncident(incident.id)}>Aceptar sin regularizar</button>}
+          </article>;
+        })}</div>
+      </section> : null}
+
+      {financialNotice ? <section className={`${styles.issueBox} ${styles.issueGood}`}><header><CheckCircle2 /><div><strong>Gestión guardada</strong><span>{financialNotice}</span></div></header></section> : null}
+
+      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Bonos</span><h3>Saldo e historial</h3></div><button onClick={() => closeAnd(addCredit)}>Añadir bono</button></div>
+        <div className={styles.metrics}><article><WalletCards /><span>Saldo en bonos</span><strong>{minutesLabel(availableBalance)}</strong></article><article><AlertTriangle /><span>Pendiente</span><strong>{minutesLabel(pendingDebt)}</strong></article><article><WalletCards /><span>Saldo neto</span><strong>{minutesLabel(balance)}</strong></article></div>
+        {ownCredits.length ? <div className={styles.creditGrid}>{ownCredits.map((item) => { const itemBalance = balanceFor(item); return <article key={item.id} className={item.payment_status === "pending" ? styles.pendingCredit : ""}><div><span>{dateLabel(item.purchased_at, false)}</span><strong>{item.label || (item.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong></div><b>{minutesLabel(itemBalance)}</b><small>de {minutesLabel(item.total_minutes)} · {euros(item.price_cents)} · {item.payment_status === "paid" ? "Pagado" : item.payment_status === "pending" ? "Pago pendiente" : "Reembolsado"}</small></article>; })}</div> : <div className={styles.empty}><WalletCards /><span>No hay bonos registrados.</span></div>}
+      </section>
+    </div>;
   }
 
   function renderData() {
