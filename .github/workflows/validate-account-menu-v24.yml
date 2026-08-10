@@ -1,0 +1,45 @@
+name: Validate account menu v24
+
+on:
+  push:
+    branches:
+      - feat/account-menu-v24
+    paths:
+      - .github/workflows/validate-account-menu-v24.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/account-menu-v24
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Integrate account menu
+        run: python scripts/apply_account_menu_v24.py
+      - name: Remove temporary integration helpers
+        run: rm -f scripts/apply_account_menu_v24.py .github/workflows/validate-account-menu-v24.yml
+      - name: Install dependencies
+        run: npm ci
+      - name: Account menu regression checks
+        run: node --test tests/account-menu.test.mjs
+      - name: Visual integrity regression checks
+        run: node --test tests/visual-integrity.test.mjs
+      - name: Strict production build
+        run: npm run build
+      - name: Existing rendered HTML tests
+        run: node --test tests/rendered-html.test.mjs
+      - name: Commit validated account menu
+        run: |
+          git config user.name "CYA Hub automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Add avatar account and portal menu [validated-v24]"
+          git push origin HEAD:feat/account-menu-v24
