@@ -64,7 +64,7 @@ type ClassItem = {
 };
 type CreditItem = {
   id: number; modality: "individual" | "pair"; label: string | null; total_minutes: number;
-  price_cents: number; payment_status: string; status: string; purchased_at: string;
+  price_cents: number; payment_status: string; status: string; purchased_at: string; expires_at: string | null;
   credit_grant_members: Array<{ person_id: number }>; credit_movements: Array<{ delta_minutes: number }>;
 };
 type ClassNote = { id: number; class_id: number; person_id: number | null; body: string; created_at: string };
@@ -402,6 +402,42 @@ function creditBalance(grant: CreditItem) {
   return grant.credit_movements.reduce((sum, movement) => sum + Number(movement.delta_minutes || 0), 0);
 }
 
+function compatibleCreditsForClass(item: ClassItem, credits: CreditItem[], personId: number) {
+  const classPeople = item.class_participants.map((participant) => participant.person_id).sort((a, b) => a - b);
+  return credits.filter((grant) => {
+    if (grant.status !== "active" || grant.modality !== item.class_type || creditBalance(grant) <= 0) return false;
+    if (grant.expires_at) {
+      const expiry = new Date(grant.expires_at).getTime();
+      if (Number.isFinite(expiry) && expiry <= Date.now()) return false;
+    }
+    const members = grant.credit_grant_members.map((member) => member.person_id).sort((a, b) => a - b);
+    if (item.class_type === "pair") return members.length === classPeople.length && members.every((id, index) => id === classPeople[index]);
+    return members.length === 1 && members[0] === personId;
+  }).sort((a, b) => {
+    const aExpiry = a.expires_at ? new Date(a.expires_at).getTime() : Number.POSITIVE_INFINITY;
+    const bExpiry = b.expires_at ? new Date(b.expires_at).getTime() : Number.POSITIVE_INFINITY;
+    const safeA = Number.isFinite(aExpiry) ? aExpiry : Number.POSITIVE_INFINITY;
+    const safeB = Number.isFinite(bExpiry) ? bExpiry : Number.POSITIVE_INFINITY;
+    if (safeA !== safeB) return safeA - safeB;
+    return new Date(a.purchased_at).getTime() - new Date(b.purchased_at).getTime();
+  });
+}
+
+function defaultGrantSelection(item: ClassItem, credits: CreditItem[]) {
+  const next: Record<number, string> = {};
+  if (item.class_type === "pair") {
+    const firstPerson = item.class_participants[0]?.person_id;
+    const preferred = firstPerson ? compatibleCreditsForClass(item, credits, firstPerson)[0] : null;
+    item.class_participants.forEach((participant) => { next[participant.person_id] = preferred ? String(preferred.id) : ""; });
+    return next;
+  }
+  item.class_participants.forEach((participant) => {
+    const preferred = compatibleCreditsForClass(item, credits, participant.person_id)[0];
+    next[participant.person_id] = preferred ? String(preferred.id) : "";
+  });
+  return next;
+}
+
 function ManualStartClass({ students, styles, close, started }: { students: Person[]; styles: CatalogTerm[]; close: () => void; started: (id: number) => Promise<void> }) {
   const [type, setType] = useState<"individual" | "pair">("individual"), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [initialDate] = useState(() => localDateTime(new Date()));
@@ -440,36 +476,88 @@ function ManualStartClass({ students, styles, close, started }: { students: Pers
 }
 
 function FinishClassModal({ item, students, credits, close, finished }: { item: ClassItem; students: Person[]; credits: CreditItem[]; close: () => void; finished: () => Promise<void> }) {
+  const [localCredits, setLocalCredits] = useState<CreditItem[]>([]);
+  const allCredits = useMemo(() => [...localCredits, ...credits], [localCredits, credits]);
   const [attendance, setAttendance] = useState<Record<number, "present" | "absent">>(() => Object.fromEntries(item.class_participants.map((p) => [p.person_id, "present"])) as Record<number, "present" | "absent">);
-  const [grantIds, setGrantIds] = useState<Record<number, string>>(() => Object.fromEntries(item.class_participants.map((p) => [p.person_id, p.billing_grant_id ? String(p.billing_grant_id) : ""])));
+  const [grantIds, setGrantIds] = useState<Record<number, string>>(() => defaultGrantSelection(item, credits));
   const [manualDuration, setManualDuration] = useState(item.duration_minutes);
-  const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const [billingMode, setBillingMode] = useState<"none" | "quick" | "direct">("none");
+  const [quickHours, setQuickHours] = useState(5), [quickMinutes, setQuickMinutes] = useState(0), [quickPrice, setQuickPrice] = useState("");
+  const [quickPaymentStatus, setQuickPaymentStatus] = useState<"paid" | "pending">("paid");
+  const [quickBusy, setQuickBusy] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const plannedDuration = item.duration_minutes;
   const durationHours = Math.floor(manualDuration / 60), durationMinutes = manualDuration % 60;
+  const classPersonIds = item.class_participants.map((participant) => participant.person_id);
+  const hasSelectedGrant = item.class_participants.every((participant) => Boolean(grantIds[participant.person_id]));
   function setDurationParts(hours: number, minutes: number) {
     setManualDuration(Math.max(0, Math.min(480, Math.max(0, hours) * 60 + Math.max(0, Math.min(59, minutes)))));
   }
   function eligibleCredits(personId: number) {
-    return credits.filter((grant) => grant.status === "active" && grant.credit_grant_members.some((member) => member.person_id === personId) && creditBalance(grant) > 0);
+    return compatibleCreditsForClass(item, allCredits, personId);
   }
   function chooseGrant(personId: number, value: string) {
+    setBillingMode("none"); setError("");
     setGrantIds((current) => {
-      const next = { ...current, [personId]: value }, grant = credits.find((credit) => String(credit.id) === value);
-      if (grant?.modality === "pair") item.class_participants.forEach((participant) => { if (grant.credit_grant_members.some((member) => member.person_id === participant.person_id)) next[participant.person_id] = value; });
+      const next = { ...current };
+      if (item.class_type === "pair") item.class_participants.forEach((participant) => { next[participant.person_id] = value; });
+      else next[personId] = value;
       return next;
     });
+  }
+  function selectCreatedGrant(id: number) {
+    setGrantIds((current) => {
+      const next = { ...current };
+      item.class_participants.forEach((participant) => { next[participant.person_id] = String(id); });
+      return next;
+    });
+    setBillingMode("none");
+  }
+  function expiryLabel(grant: CreditItem) {
+    if (!grant.expires_at) return "";
+    return ` · caduca ${new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" }).format(new Date(grant.expires_at))}`;
+  }
+  async function createQuickBonus() {
+    if (!db) return;
+    const duration = Math.max(0, quickHours) * 60 + Math.max(0, Math.min(59, quickMinutes));
+    const price = Number(quickPrice.replace(",", "."));
+    if (duration <= 0) return setError("Indica la duración del bono.");
+    if (!quickPrice.trim() || !Number.isFinite(price) || price < 0) return setError("Indica el importe del bono.");
+    setQuickBusy(true); setError("");
+    const result = await db.rpc("create_credit_grant", {
+      p_student_ids: classPersonIds, p_modality: item.class_type, p_minutes: duration,
+      p_price_cents: Math.round(price * 100), p_label: "Bono rápido", p_payment_status: quickPaymentStatus,
+    });
+    if (result.error) { setError(result.error.message); setQuickBusy(false); return; }
+    const row = (result.data ?? {}) as Partial<CreditItem> & { id?: number };
+    const id = Number(row.id || 0);
+    if (!id) { setError("No se pudo seleccionar el bono creado."); setQuickBusy(false); return; }
+    const created: CreditItem = {
+      id, modality: item.class_type, label: row.label ?? "Bono rápido", total_minutes: duration,
+      price_cents: Math.round(price * 100), payment_status: quickPaymentStatus, status: row.status ?? "active",
+      purchased_at: row.purchased_at ?? new Date().toISOString(), expires_at: row.expires_at ?? null,
+      credit_grant_members: classPersonIds.map((person_id) => ({ person_id })), credit_movements: [{ delta_minutes: duration }],
+    };
+    setLocalCredits((current) => [created, ...current]); selectCreatedGrant(id); setQuickBusy(false);
+  }
+  function openDirectPayment() {
+    setGrantIds(Object.fromEntries(item.class_participants.map((participant) => [participant.person_id, ""])) as Record<number, string>);
+    setBillingMode("direct"); setQuickPrice(""); setError("");
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!db) return;
     if (manualDuration <= 0 || manualDuration > 480) return setError("La duración debe estar entre 1 minuto y 8 horas.");
+    const directPrice = Number(quickPrice.replace(",", "."));
+    if (billingMode === "direct" && (!quickPrice.trim() || !Number.isFinite(directPrice) || directPrice < 0)) return setError("Indica el importe de la clase suelta.");
+    if (billingMode === "quick") return setError("Crea el bono rápido o cancela esa opción antes de terminar la clase.");
     const personIds = item.class_participants.map((participant) => participant.person_id);
     setBusy(true); setError("");
-    const result = await db.rpc("administratively_finish_class_v2", {
+    const result = await db.rpc("administratively_finish_class_v3", {
       p_class_id: item.id,
       p_person_ids: personIds,
       p_attendance: personIds.map((id) => attendance[id]),
-      p_grant_ids: personIds.map((id) => attendance[id] === "present" && grantIds[id] ? Number(grantIds[id]) : null),
+      p_grant_ids: billingMode === "direct" ? personIds.map(() => null) : personIds.map((id) => attendance[id] === "present" && grantIds[id] ? Number(grantIds[id]) : null),
       p_actual_duration_minutes: manualDuration,
+      p_direct_payment_price_cents: billingMode === "direct" ? Math.round(directPrice * 100) : null,
     });
     if (result.error) { setError(result.error.message); setBusy(false); return; }
     await finished(); setBusy(false); close();
@@ -481,11 +569,15 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
       <div className="finish-list">{item.class_participants.map((participant) => {
         const student = students.find((person) => person.id === participant.person_id), available = eligibleCredits(participant.person_id);
         return <section className="finish-person" key={participant.person_id}><strong>{student?.display_name || "Alumno"}</strong><div className="finish-grid">
-          <label className="field"><span>Asistencia</span><select value={attendance[participant.person_id]} onChange={(e) => { const value = e.target.value as "present" | "absent"; setAttendance((current) => ({ ...current, [participant.person_id]: value })); if (value === "absent") setGrantIds((current) => ({ ...current, [participant.person_id]: "" })); }}><option value="present">Ha venido</option><option value="absent">No ha venido</option></select></label>
-          <label className="field"><span>Bono</span><select value={grantIds[participant.person_id] || ""} disabled={attendance[participant.person_id] === "absent"} onChange={(e) => chooseGrant(participant.person_id, e.target.value)}><option value="">Sin bono · {minutesLabel(manualDuration)} pendientes</option>{available.map((grant) => { const balance = creditBalance(grant), shortfall = Math.max(0, manualDuration - balance); return <option key={grant.id} value={grant.id}>{grant.label || (grant.modality === "pair" ? "Bono pareja" : "Bono individual")} · {minutesLabel(balance)}{shortfall ? ` · faltarán ${minutesLabel(shortfall)}` : ""}</option>; })}</select></label>
-        </div>{attendance[participant.person_id] === "present" && grantIds[participant.person_id] ? (() => { const selected = credits.find((grant) => String(grant.id) === grantIds[participant.person_id]); const remaining = selected ? Math.max(0, manualDuration - creditBalance(selected)) : manualDuration; return remaining ? <p className="modal-intro">Se consumirá el saldo disponible y quedarán {minutesLabel(remaining)} como incidencia.</p> : null; })() : attendance[participant.person_id] === "present" ? <p className="modal-intro">La clase quedará pendiente íntegramente como incidencia hasta que la regularices o decidas aceptarla sin regularizar.</p> : null}</section>;
+          <label className="field"><span>Asistencia</span><select value={attendance[participant.person_id]} onChange={(e) => { const value = e.target.value as "present" | "absent"; setAttendance((current) => ({ ...current, [participant.person_id]: value })); if (value === "absent") chooseGrant(participant.person_id, ""); }}><option value="present">Ha venido</option><option value="absent">No ha venido</option></select></label>
+          <label className="field"><span>Bono</span><select value={grantIds[participant.person_id] || ""} disabled={attendance[participant.person_id] === "absent" || billingMode === "direct"} onChange={(e) => chooseGrant(participant.person_id, e.target.value)}><option value="">Sin bono · dejar pendiente</option>{available.map((grant) => { const balance = creditBalance(grant), shortfall = Math.max(0, manualDuration - balance); return <option key={grant.id} value={grant.id}>{grant.label || (grant.modality === "pair" ? "Bono pareja" : "Bono individual")} · {minutesLabel(balance)}{expiryLabel(grant)}{shortfall ? ` · faltarán ${minutesLabel(shortfall)}` : ""}</option>; })}</select></label>
+        </div>{attendance[participant.person_id] === "present" && grantIds[participant.person_id] ? (() => { const selected = allCredits.find((grant) => String(grant.id) === grantIds[participant.person_id]); const remaining = selected ? Math.max(0, manualDuration - creditBalance(selected)) : manualDuration; return remaining ? <p className="modal-intro">Se consumirá el saldo disponible y quedarán {minutesLabel(remaining)} como incidencia.</p> : null; })() : null}</section>;
       })}</div>
-      {error ? <p className="error">{error}</p> : null}<div className="actions"><button className="btn ghost" type="button" onClick={close}>Seguir en clase</button><button className="btn" disabled={busy || manualDuration <= 0}><CheckCircle2 size={17} /> {busy ? "Terminando…" : "Terminar clase"}</button></div>
+      {!hasSelectedGrant && billingMode === "none" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Cobro</p><h2>Sin bono compatible</h2></div></div><div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("quick"); setQuickPrice(""); setError(""); }}><Plus size={17} /> Crear bono rápido</button><button className="btn" type="button" onClick={openDirectPayment}><WalletCards size={17} /> Pagar clase suelta</button></div></section> : null}
+      {billingMode === "quick" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Bono rápido</p><h2>{item.class_type === "pair" ? "Bono de pareja" : "Bono individual"}</h2></div></div><div className="fields-2"><label className="field"><span>Horas</span><input type="number" min="0" max="1000" value={quickHours} onChange={(event) => setQuickHours(Number(event.target.value || 0))} /></label><label className="field"><span>Minutos</span><input type="number" min="0" max="59" value={quickMinutes} onChange={(event) => setQuickMinutes(Number(event.target.value || 0))} /></label><label className="field"><span>Importe (€)</span><input type="number" min="0" step="0.01" value={quickPrice} onChange={(event) => setQuickPrice(event.target.value)} /></label><label className="field"><span>Pago</span><select value={quickPaymentStatus} onChange={(event) => setQuickPaymentStatus(event.target.value as "paid" | "pending")}><option value="paid">Pagado</option><option value="pending">Pendiente</option></select></label></div><div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("none"); setError(""); }}>Cancelar</button><button className="btn" type="button" disabled={quickBusy} onClick={() => void createQuickBonus()}><Plus size={17} /> {quickBusy ? "Creando…" : "Crear y usar"}</button></div></section> : null}
+      {billingMode === "direct" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Clase suelta</p><h2>{minutesLabel(manualDuration)}</h2></div><span className="badge">Pagado</span></div><label className="field"><span>Importe (€)</span><input type="number" min="0" step="0.01" value={quickPrice} onChange={(event) => setQuickPrice(event.target.value)} /></label><div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("none"); setError(""); }}>Cancelar</button></div></section> : null}
+      {!hasSelectedGrant && billingMode === "none" ? <p className="modal-intro">Si terminas sin bono, la duración quedará pendiente como incidencia.</p> : null}
+      {error ? <p className="error">{error}</p> : null}<div className="actions"><button className="btn ghost" type="button" onClick={close}>Seguir en clase</button><button className="btn" disabled={busy || manualDuration <= 0 || billingMode === "quick"}><CheckCircle2 size={17} /> {busy ? "Terminando…" : "Terminar clase"}</button></div>
     </form>
   </section></div>;
 }
@@ -1086,7 +1178,7 @@ function StaffApp({ session }: { session: Session }) {
     if (!db) return;
     const [classResult, creditResult, catalogResult] = await Promise.all([
       db.from("classes").select("id,class_type,status,scheduled_start_at,duration_minutes,notes,style_term_id,location_term_id,started_at,administrative_finished_at,pedagogy_closed_at,administratively_finished_by,class_participants(person_id,attendance_status,billing_grant_id,role_term_id,level_term_id,billed_minutes,uncovered_minutes,billing_status)").order("scheduled_start_at"),
-      db.from("credit_grants").select("id,modality,label,total_minutes,price_cents,payment_status,status,purchased_at,credit_grant_members(person_id),credit_movements(delta_minutes)").order("purchased_at", { ascending: false }),
+      db.from("credit_grants").select("id,modality,label,total_minutes,price_cents,payment_status,status,purchased_at,expires_at,credit_grant_members(person_id),credit_movements(delta_minutes)").order("purchased_at", { ascending: false }),
       db.from("catalog_terms").select("id,label,term_key,taxonomy,metadata,sort_order").in("taxonomy", ["dance_style","dance_role","dance_level","aptitude","evaluation_scale","correction_category","explanation_category","exercise_category","sequence_category"]).eq("active", true).order("sort_order"),
     ]);
     if (classResult.error) throw classResult.error;
