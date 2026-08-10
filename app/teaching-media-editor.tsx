@@ -3,13 +3,21 @@
 import { ArrowDown, ArrowUp, Check, Crop, Image as ImageIcon, Link2, Plus, Star, Trash2, Upload, Video, X } from "lucide-react";
 import { ChangeEvent, useMemo, useRef, useState } from "react";
 import { SecureDriveAsset, useDriveMediaUrl } from "./drive-media";
-import { getRuntimeAccessToken } from "./supabase-runtime";
+import { getRuntimeAccessToken, getRuntimeSupabaseClient } from "./supabase-runtime";
 import type { TeachingCardMedia } from "./teaching-content-card";
 import styles from "./teaching-media-editor.module.css";
 
 export type TeachingMediaDraft = TeachingCardMedia & {
   _key?: string;
   _local_url?: string;
+};
+
+type ReusableClassVideo = {
+  id: number;
+  external_file_id: string;
+  title: string | null;
+  mime_type: string | null;
+  created_at: string;
 };
 
 const groupSuggestions = ["Explicación", "Ejemplos", "Para mejorar", "Demostración", "Variantes", "Detalles"];
@@ -101,13 +109,49 @@ function FramePicker({ item, close, saved }: { item: TeachingMediaDraft; close: 
   </section></div>;
 }
 
-export function TeachingMediaEditor({ value, onChange, onUploadingChange }: { value: TeachingMediaDraft[]; onChange: (items: TeachingMediaDraft[]) => void; onUploadingChange?: (busy: boolean) => void }) {
+export function TeachingMediaEditor({ value, onChange, onUploadingChange, allowClassVideos = false }: { value: TeachingMediaDraft[]; onChange: (items: TeachingMediaDraft[]) => void; onUploadingChange?: (busy: boolean) => void; allowClassVideos?: boolean }) {
   const [uploading, setUploading] = useState(0), [error, setError] = useState(""), [manualOpen, setManualOpen] = useState(false), [frameIndex, setFrameIndex] = useState<number | null>(null);
   const [manualType, setManualType] = useState<"image" | "video">("video"), [manualTitle, setManualTitle] = useState(""), [manualReference, setManualReference] = useState("");
+  const [classVideoOpen, setClassVideoOpen] = useState(false), [classVideoLoading, setClassVideoLoading] = useState(false), [classVideos, setClassVideos] = useState<ReusableClassVideo[]>([]);
   const cover = value.find((item) => item.is_cover) ?? value[0] ?? null;
   const preview = value.find((item) => item.is_preview) ?? null;
   const resourceCount = value.filter((item) => item.display_in_resources !== false).length;
   const groups = useMemo(() => [...new Set([...groupSuggestions, ...value.map((item) => item.group_label || "").filter(Boolean)])], [value]);
+
+  async function toggleClassVideos() {
+    if (classVideoOpen) { setClassVideoOpen(false); return; }
+    setClassVideoOpen(true); setClassVideoLoading(true); setError("");
+    const client = getRuntimeSupabaseClient();
+    if (!client) { setError("Sesión no disponible."); setClassVideoLoading(false); return; }
+    const result = await client.from("class_video_resources")
+      .select("id,external_file_id,title,mime_type,created_at")
+      .eq("visibility_scope", "reusable")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (result.error) setError(result.error.message);
+    else setClassVideos((result.data ?? []) as ReusableClassVideo[]);
+    setClassVideoLoading(false);
+  }
+
+  function addClassVideo(video: ReusableClassVideo) {
+    if (value.some((item) => item.external_file_id === video.external_file_id)) return;
+    onChange([...value, {
+      _key: `class-video-${video.id}-${Date.now()}`,
+      media_type: "video",
+      provider: "google_drive",
+      external_file_id: video.external_file_id,
+      title: video.title || "Vídeo de clase",
+      mime_type: video.mime_type,
+      group_label: "Vídeos de clase",
+      is_cover: false,
+      is_preview: false,
+      display_in_resources: true,
+      thumbnail_external_file_id: null,
+      thumbnail_mime_type: null,
+      preview_start_seconds: null,
+      preview_end_seconds: null,
+    }]);
+  }
 
   function setBusy(next: number) {
     setUploading(next);
@@ -213,11 +257,13 @@ export function TeachingMediaEditor({ value, onChange, onUploadingChange }: { va
       <label className={styles.uploadButton}><Star /><span>Subir portada</span><input type="file" accept="image/*,video/*" disabled={uploading > 0} onChange={(event: ChangeEvent<HTMLInputElement>) => { const files = [...(event.target.files ?? [])]; event.target.value = ""; void addFiles(files.slice(0,1), "cover"); }} /></label>
       <label className={styles.uploadButton}><Plus /><span>Añadir recursos</span><input type="file" multiple accept="image/*,video/*" disabled={uploading > 0} onChange={(event: ChangeEvent<HTMLInputElement>) => { const files = [...(event.target.files ?? [])]; event.target.value = ""; void addFiles(files, "resources"); }} /></label>
       <button type="button" className={styles.secondaryButton} onClick={() => setManualOpen((current) => !current)}><Link2 /> Desde Drive</button>
+      {allowClassVideos ? <button type="button" className={styles.secondaryButton} onClick={() => void toggleClassVideos()}><Video /> Vídeos de clase</button> : null}
     </div>
     {uploading ? <div className={styles.uploading}><span /><strong>Subiendo {uploading === 1 ? "archivo" : `${uploading} archivos`} a Drive…</strong></div> : null}
     {error ? <p className={styles.error}>{error}</p> : null}
 
     {manualOpen ? <div className={styles.manualRow}><select value={manualType} onChange={(event) => setManualType(event.target.value as "image" | "video")}><option value="video">Vídeo</option><option value="image">Foto</option></select><input value={manualTitle} onChange={(event) => setManualTitle(event.target.value)} placeholder="Título" /><input value={manualReference} onChange={(event) => setManualReference(event.target.value)} placeholder="Enlace o ID de Drive" /><button type="button" onClick={addManual}><Plus /> Añadir</button></div> : null}
+    {allowClassVideos && classVideoOpen ? <div className={styles.classVideoPicker}>{classVideoLoading ? <span>Buscando vídeos…</span> : classVideos.length ? classVideos.map((video) => <button key={video.id} type="button" onClick={() => addClassVideo(video)} disabled={value.some((item) => item.external_file_id === video.external_file_id)}><Video /><span><strong>{video.title || "Vídeo de clase"}</strong><small>{new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).format(new Date(video.created_at))}</small></span><Plus /></button>) : <span>No hay vídeos reutilizables todavía.</span>}</div> : null}
 
     {value.length ? <div className={styles.items}>{value.map((item, index) => <article className={styles.item} key={item._key || item.id || `${item.external_file_id}-${index}`}>
       <div className={styles.itemMedia}><LocalOrDriveAsset item={item} /></div>

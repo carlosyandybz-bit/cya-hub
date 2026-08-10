@@ -12,3 +12,12 @@
 .editor{gap:10px;padding:10px;border-radius:15px}.editorHead{gap:7px}.editorHead h3{margin:3px 0 3px}.summary{min-width:52px;padding:7px}.coverSection{grid-template-columns:112px minmax(0,1fr);gap:9px}.coverInfo span{margin-top:4px;line-height:1.35}.coverInfo small{margin-top:4px}.uploadActions{gap:6px}.uploadButton,.secondaryButton{min-height:42px;padding:0 9px}.manualRow{gap:6px}.manualRow select,.manualRow input,.manualRow button{min-height:40px}.items{gap:7px}.item{grid-template-columns:96px minmax(0,1fr);gap:8px;padding:8px;border-radius:12px}.itemFields{gap:6px}.itemFields label>span{margin-bottom:3px}.itemFields input{min-height:40px}.itemFlags{gap:4px}.itemFlags button,.frameButton{min-height:33px;padding:0 7px}.itemOrder{gap:4px}.itemOrder button{width:32px;height:32px}.emptyState{min-height:96px}.frameModal{gap:9px;padding:12px 12px calc(16px + env(safe-area-inset-bottom))}.frameModal>header strong{margin-top:2px}.timeline{gap:7px}.primary{min-height:42px}
 }
 
+
+.classVideoPicker{display:grid;gap:8px;padding:10px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.classVideoPicker>span{font-size:13px;color:var(--muted)}
+.classVideoPicker>button{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;min-height:48px;padding:9px 11px;border:1px solid var(--line);border-radius:14px;background:var(--surface);text-align:left}
+.classVideoPicker>button>svg{width:20px;height:20px}
+.classVideoPicker>button>span{display:grid;gap:2px;min-width:0}
+.classVideoPicker>button strong{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.classVideoPicker>button small{font-size:11px;color:var(--muted)}
+.classVideoPicker>button:disabled{opacity:.48}

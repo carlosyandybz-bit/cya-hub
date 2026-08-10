@@ -27,6 +27,7 @@ import { HomeView } from "./home-view";
 import { NotificationsView, type NotificationTargetContext } from "./notifications-view";
 import { StudentMasterDetail } from "./student-detail";
 import { TeachingContentCard, type TeachingCardMedia } from "./teaching-content-card";
+import { SecureDriveAsset } from "./drive-media";
 import { TeachingMediaEditor, type TeachingMediaDraft } from "./teaching-media-editor";
 import { setRuntimeSupabaseClient } from "./supabase-runtime";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
@@ -68,6 +69,7 @@ type CreditItem = {
   credit_grant_members: Array<{ person_id: number }>; credit_movements: Array<{ delta_minutes: number }>;
 };
 type ClassNote = { id: number; class_id: number; person_id: number | null; body: string; created_at: string };
+type ClassPrivateVideo = { id: number; class_id: number; person_id: number; external_file_id: string; title: string | null; mime_type: string | null; created_at: string };
 type StudentEvaluation = { id: number; person_id: number; class_id: number | null; aptitude_term_id: number; score: number; evaluation_kind: string; created_at: string };
 type TeachingContentSummary = {
   id: number; title: string; content_type: string; measurement_mode: "frequency" | "importance" | "both" | "none";
@@ -496,20 +498,23 @@ function ManualStartClass({ students, styles, close, started }: { students: Pers
   </section></div>;
 }
 
-function FinishClassModal({ item, students, credits, close, finished }: { item: ClassItem; students: Person[]; credits: CreditItem[]; close: () => void; finished: () => Promise<void> }) {
+function FinishClassModal({ item, students, credits, library, close, finished }: { item: ClassItem; students: Person[]; credits: CreditItem[]; library: TeachingContent[]; close: () => void; finished: () => Promise<void> }) {
   const [localCredits, setLocalCredits] = useState<CreditItem[]>([]);
   const allCredits = useMemo(() => [...localCredits, ...credits], [localCredits, credits]);
   const [grantIds, setGrantIds] = useState<Record<number, string>>(() => defaultGrantSelection(item, credits));
   const [manualDuration, setManualDuration] = useState(item.duration_minutes);
   const [billingMode, setBillingMode] = useState<"none" | "quick" | "direct" | "transfer">("none");
   const [quickHours, setQuickHours] = useState(5), [quickMinutes, setQuickMinutes] = useState(0), [quickPrice, setQuickPrice] = useState("");
-  const [quickPaymentStatus, setQuickPaymentStatus] = useState<"paid" | "pending">("paid");
   const initialTransferSources = transferableIndividualCreditsForPair(item, credits);
   const [transferSourceId, setTransferSourceId] = useState(() => initialTransferSources[0] ? String(initialTransferSources[0].id) : "");
   const [transferFee, setTransferFee] = useState("0");
   const [supplements, setSupplements] = useState<Array<{ id: number; concept: string; amount: string }>>([]);
   const [nextSupplementId, setNextSupplementId] = useState(1);
-  const [quickCreatedChargeCents, setQuickCreatedChargeCents] = useState(0);
+  const [quickCreatedChargeCents, setQuickCreatedChargeCents] = useState(0), [quickCreatedGrantId, setQuickCreatedGrantId] = useState<number | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"full" | "half" | "custom" | "none">("full"), [customPayment, setCustomPayment] = useState("");
+  const [videoFile, setVideoFile] = useState<File | null>(null), [videoTitle, setVideoTitle] = useState("");
+  const [videoMode, setVideoMode] = useState<"private" | "reusable">("private"), [videoPersonId, setVideoPersonId] = useState(() => item.class_participants[0]?.person_id ?? 0), [videoContentId, setVideoContentId] = useState("");
+  const [videoSaved, setVideoSaved] = useState(false);
   const [quickBusy, setQuickBusy] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const plannedDuration = item.duration_minutes;
   const durationHours = Math.floor(manualDuration / 60), durationMinutes = manualDuration % 60;
@@ -522,6 +527,7 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
   const transferShortfall = Math.max(0, manualDuration - transferMinutes);
   const selectedGrantId = Object.values(grantIds).find(Boolean) ?? "";
   const selectedGrant = allCredits.find((grant) => String(grant.id) === selectedGrantId) ?? null;
+  const reusableVideoContents = library.filter((content) => content.active && ["correction","explanation","sequence"].includes(content.content_type));
 
   function setDurationParts(hours: number, minutes: number) {
     setManualDuration(Math.max(0, Math.min(480, Math.max(0, hours) * 60 + Math.max(0, Math.min(59, minutes)))));
@@ -534,9 +540,7 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
   function euroLabel(cents: number) {
     return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(cents / 100);
   }
-  function eligibleCredits(personId: number) {
-    return compatibleCreditsForClass(item, allCredits, personId);
-  }
+  function eligibleCredits(personId: number) { return compatibleCreditsForClass(item, allCredits, personId); }
   function chooseGrant(personId: number, value: string) {
     setBillingMode("none"); setError("");
     setGrantIds((current) => {
@@ -546,9 +550,7 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
       return next;
     });
   }
-  function clearGrantSelection() {
-    setGrantIds(Object.fromEntries(item.class_participants.map((participant) => [participant.person_id, ""])) as Record<number, string>);
-  }
+  function clearGrantSelection() { setGrantIds(Object.fromEntries(item.class_participants.map((participant) => [participant.person_id, ""])) as Record<number, string>); }
   function selectCreatedGrant(id: number) {
     setGrantIds((current) => {
       const next = { ...current };
@@ -565,16 +567,10 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
     const personId = grant.credit_grant_members[0]?.person_id;
     return students.find((person) => person.id === personId)?.display_name || "Alumno";
   }
-  function addSupplement() {
-    setSupplements((current) => [...current, { id: nextSupplementId, concept: "", amount: "" }]);
-    setNextSupplementId((current) => current + 1);
-  }
-  function updateSupplement(id: number, patch: Partial<{ concept: string; amount: string }>) {
-    setSupplements((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
-  }
-  function removeSupplement(id: number) {
-    setSupplements((current) => current.filter((item) => item.id !== id));
-  }
+  function addSupplement() { setSupplements((current) => [...current, { id: nextSupplementId, concept: "", amount: "" }]); setNextSupplementId((current) => current + 1); }
+  function updateSupplement(id: number, patch: Partial<{ concept: string; amount: string }>) { setSupplements((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row)); }
+  function removeSupplement(id: number) { setSupplements((current) => current.filter((row) => row.id !== id)); }
+
   async function createQuickBonus() {
     if (!db) return;
     const duration = Math.max(0, quickHours) * 60 + Math.max(0, Math.min(59, quickMinutes));
@@ -584,7 +580,7 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
     setQuickBusy(true); setError("");
     const result = await db.rpc("create_credit_grant", {
       p_student_ids: classPersonIds, p_modality: item.class_type, p_minutes: duration,
-      p_price_cents: price, p_label: "Bono rápido", p_payment_status: quickPaymentStatus,
+      p_price_cents: price, p_label: "Bono rápido", p_payment_status: "pending",
     });
     if (result.error) { setError(result.error.message); setQuickBusy(false); return; }
     const row = (result.data ?? {}) as Partial<CreditItem> & { id?: number };
@@ -592,21 +588,17 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
     if (!id) { setError("No se pudo seleccionar el bono creado."); setQuickBusy(false); return; }
     const created: CreditItem = {
       id, modality: item.class_type, label: row.label ?? "Bono rápido", total_minutes: duration,
-      price_cents: price, payment_status: quickPaymentStatus, status: row.status ?? "active",
+      price_cents: price, payment_status: "pending", status: row.status ?? "active",
       purchased_at: row.purchased_at ?? new Date().toISOString(), expires_at: row.expires_at ?? null,
       credit_grant_members: classPersonIds.map((person_id) => ({ person_id })), credit_movements: [{ delta_minutes: duration }],
     };
     setLocalCredits((current) => [created, ...current]);
-    setQuickCreatedChargeCents((current) => current + price);
+    setQuickCreatedChargeCents(price); setQuickCreatedGrantId(id);
     selectCreatedGrant(id); setQuickBusy(false);
   }
-  function openDirectPayment() {
-    clearGrantSelection(); setBillingMode("direct"); setQuickPrice(""); setError("");
-  }
+  function openDirectPayment() { clearGrantSelection(); setBillingMode("direct"); setQuickPrice(""); setError(""); }
   function openPairTransfer() {
-    clearGrantSelection();
-    const preferred = transferSources[0];
-    if (preferred) setTransferSourceId(String(preferred.id));
+    clearGrantSelection(); const preferred = transferSources[0]; if (preferred) setTransferSourceId(String(preferred.id));
     setBillingMode("transfer"); setTransferFee("0"); setError("");
   }
 
@@ -614,6 +606,43 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
   const directPriceCents = billingMode === "direct" ? (moneyCents(quickPrice) ?? 0) : 0;
   const transferFeeCents = billingMode === "transfer" ? (moneyCents(transferFee) ?? 0) : 0;
   const totalEconomicCents = quickCreatedChargeCents + directPriceCents + transferFeeCents + supplementTotalCents;
+  const customPaidCents = moneyCents(customPayment);
+  const paidNowCents = totalEconomicCents <= 0 ? 0 : paymentMode === "full" ? totalEconomicCents : paymentMode === "half" ? Math.round(totalEconomicCents / 2) : paymentMode === "none" ? 0 : (customPaidCents ?? 0);
+  const pendingPaymentCents = Math.max(0, totalEconomicCents - paidNowCents);
+
+  async function saveClassVideo() {
+    if (!db || !videoFile || videoSaved) return true;
+    if (videoMode === "private" && !videoPersonId) { setError("Selecciona quién recibirá el vídeo."); return false; }
+    const sessionResult = await db.auth.getSession();
+    const token = sessionResult.data.session?.access_token;
+    if (!token) { setError("Tu sesión ha caducado."); return false; }
+    const response = await fetch("/api/google-drive/upload", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": videoFile.type || "video/mp4",
+        "x-cya-file-name": encodeURIComponent(videoFile.name),
+        "x-cya-file-size": String(videoFile.size),
+        "x-cya-media-scope": "class_video",
+      },
+      body: videoFile,
+    });
+    const payload = await response.json().catch(() => null) as { id?: string; mimeType?: string; error?: string } | null;
+    if (!response.ok || !payload?.id) { setError(payload?.error || "No se pudo subir el vídeo a Drive."); return false; }
+    const title = videoTitle.trim() || videoFile.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Vídeo de clase";
+    const registered = await db.rpc("register_class_video_resource", {
+      p_class_id: item.id,
+      p_person_id: videoMode === "private" ? videoPersonId : null,
+      p_visibility_scope: videoMode === "private" ? "private_student" : "reusable",
+      p_external_file_id: payload.id,
+      p_title: title,
+      p_mime_type: payload.mimeType || videoFile.type || "video/mp4",
+      p_size_bytes: videoFile.size,
+      p_content_id: videoMode === "reusable" && videoContentId ? Number(videoContentId) : null,
+    });
+    if (registered.error) { setError(registered.error.message); return false; }
+    setVideoSaved(true); return true;
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!db) return;
@@ -624,6 +653,7 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
     const pairTransferFee = moneyCents(transferFee);
     if (billingMode === "transfer" && (!transferSourceId || pairTransferFee === null)) return setError("Selecciona el bono individual y el coste adicional.");
     if (billingMode === "transfer" && !transferSources.some((grant) => String(grant.id) === transferSourceId)) return setError("El bono individual seleccionado ya no está disponible.");
+    if (paymentMode === "custom" && (customPaidCents === null || customPaidCents > totalEconomicCents)) return setError("Indica un pago válido que no supere el total.");
     const supplementPayload: Array<{ concept: string; amount_cents: number }> = [];
     for (const row of supplements) {
       const concept = row.concept.trim(), amount = moneyCents(row.amount);
@@ -634,7 +664,8 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
     }
     const personIds = item.class_participants.map((participant) => participant.person_id);
     setBusy(true); setError("");
-    const result = await db.rpc("administratively_finish_class_v4", {
+    if (!(await saveClassVideo())) { setBusy(false); return; }
+    const result = await db.rpc("administratively_finish_class_v5", {
       p_class_id: item.id,
       p_person_ids: personIds,
       p_grant_ids: billingMode === "direct" || billingMode === "transfer" ? personIds.map(() => null) : personIds.map((id) => grantIds[id] ? Number(grantIds[id]) : null),
@@ -643,6 +674,8 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
       p_pair_transfer_source_grant_id: billingMode === "transfer" ? Number(transferSourceId) : null,
       p_pair_transfer_fee_cents: billingMode === "transfer" ? (pairTransferFee ?? 0) : 0,
       p_supplements: supplementPayload,
+      p_paid_now_cents: paidNowCents,
+      p_quick_created_grant_id: quickCreatedGrantId,
     });
     if (result.error) { setError(result.error.message); setBusy(false); return; }
     await finished(); setBusy(false); close();
@@ -654,22 +687,24 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
       <section className="card pad"><div className="card-head"><div><p className="eyebrow">Duración</p><h2>Duración de la clase</h2></div><span className="badge">Programada · {minutesLabel(plannedDuration)}</span></div><div className="fields-2"><label className="field"><span>Horas</span><input type="number" min="0" max="8" value={durationHours} onChange={(event) => setDurationParts(Number(event.target.value || 0), durationMinutes)} /></label><label className="field"><span>Minutos</span><input type="number" min="0" max="59" value={durationMinutes} onChange={(event) => setDurationParts(durationHours, Number(event.target.value || 0))} /></label></div><p className="modal-intro">{manualDuration === plannedDuration ? `Se usarán ${minutesLabel(manualDuration)}.` : `Se usarán ${minutesLabel(manualDuration)} en saldo, incidencias e historial.`}</p></section>
       <div className="finish-list">{item.class_participants.map((participant) => {
         const student = students.find((person) => person.id === participant.person_id), available = eligibleCredits(participant.person_id);
-        return <section className="finish-person" key={participant.person_id}><strong>{student?.display_name || "Alumno"}</strong><div className="finish-grid">
-          <label className="field"><span>Bono</span><select value={grantIds[participant.person_id] || ""} disabled={billingMode === "direct"} onChange={(event) => chooseGrant(participant.person_id, event.target.value)}><option value="">Sin bono</option>{available.map((grant) => { const balance = creditBalance(grant), shortfall = Math.max(0, manualDuration - balance); return <option key={grant.id} value={grant.id}>{grant.label || (grant.modality === "pair" ? "Bono pareja" : "Bono individual")} · {minutesLabel(balance)}{expiryLabel(grant)}{shortfall ? ` · faltarán ${minutesLabel(shortfall)}` : ""}</option>; })}</select></label>
-        </div>{grantIds[participant.person_id] ? (() => { const selected = allCredits.find((grant) => String(grant.id) === grantIds[participant.person_id]); const remaining = selected ? Math.max(0, manualDuration - creditBalance(selected)) : manualDuration; return remaining ? <p className="modal-intro">Se consumirá el saldo disponible y quedarán {minutesLabel(remaining)} como incidencia.</p> : null; })() : null}</section>;
+        return <section className="finish-person" key={participant.person_id}><strong>{student?.display_name || "Alumno"}</strong><div className="finish-grid"><label className="field"><span>Bono</span><select value={grantIds[participant.person_id] || ""} disabled={billingMode === "direct" || billingMode === "transfer"} onChange={(event) => chooseGrant(participant.person_id, event.target.value)}><option value="">Sin bono</option>{available.map((grant) => { const balance = creditBalance(grant), shortfall = Math.max(0, manualDuration - balance); return <option key={grant.id} value={grant.id}>{grant.label || (grant.modality === "pair" ? "Bono pareja" : "Bono individual")} · {minutesLabel(balance)}{expiryLabel(grant)}{shortfall ? ` · faltarán ${minutesLabel(shortfall)}` : ""}</option>; })}</select></label></div>{grantIds[participant.person_id] ? (() => { const selected = allCredits.find((grant) => String(grant.id) === grantIds[participant.person_id]); const remaining = selected ? Math.max(0, manualDuration - creditBalance(selected)) : manualDuration; return remaining ? <p className="modal-intro">Se consumirá el saldo disponible y quedarán {minutesLabel(remaining)} como incidencia.</p> : null; })() : null}</section>;
       })}</div>
 
       {!hasSelectedGrant && billingMode === "none" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Cobro</p><h2>Sin bono compatible</h2></div></div><div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("quick"); setQuickPrice(""); setError(""); }}><Plus size={17} /> Crear bono rápido</button>{item.class_type === "pair" && transferSources.length ? <button className="btn ghost" type="button" onClick={openPairTransfer}><WalletCards size={17} /> Transferir saldo individual</button> : null}<button className="btn" type="button" onClick={openDirectPayment}><WalletCards size={17} /> Pagar clase suelta</button></div></section> : null}
 
-      {billingMode === "quick" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Bono rápido</p><h2>{item.class_type === "pair" ? "Bono de pareja" : "Bono individual"}</h2></div></div><div className="fields-2"><label className="field"><span>Horas</span><input type="number" min="0" max="1000" value={quickHours} onChange={(event) => setQuickHours(Number(event.target.value || 0))} /></label><label className="field"><span>Minutos</span><input type="number" min="0" max="59" value={quickMinutes} onChange={(event) => setQuickMinutes(Number(event.target.value || 0))} /></label><label className="field"><span>Importe (€)</span><input type="number" min="0" step="0.01" value={quickPrice} onChange={(event) => setQuickPrice(event.target.value)} /></label><label className="field"><span>Pago</span><select value={quickPaymentStatus} onChange={(event) => setQuickPaymentStatus(event.target.value as "paid" | "pending")}><option value="paid">Pagado</option><option value="pending">Pendiente</option></select></label></div><div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("none"); setError(""); }}>Cancelar</button><button className="btn" type="button" disabled={quickBusy} onClick={() => void createQuickBonus()}><Plus size={17} /> {quickBusy ? "Creando…" : "Crear y usar"}</button></div></section> : null}
+      {billingMode === "quick" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Bono rápido</p><h2>{item.class_type === "pair" ? "Bono de pareja" : "Bono individual"}</h2></div></div><div className="fields-2"><label className="field"><span>Horas</span><input type="number" min="0" max="1000" value={quickHours} onChange={(event) => setQuickHours(Number(event.target.value || 0))} /></label><label className="field"><span>Minutos</span><input type="number" min="0" max="59" value={quickMinutes} onChange={(event) => setQuickMinutes(Number(event.target.value || 0))} /></label><label className="field field-wide"><span>Importe (€)</span><input type="number" min="0" step="0.01" value={quickPrice} onChange={(event) => setQuickPrice(event.target.value)} /></label></div><p className="modal-intro">El pago se decide en el resumen final.</p><div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("none"); setError(""); }}>Cancelar</button><button className="btn" type="button" disabled={quickBusy} onClick={() => void createQuickBonus()}><Plus size={17} /> {quickBusy ? "Creando…" : "Crear y usar"}</button></div></section> : null}
 
-      {billingMode === "direct" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Clase suelta</p><h2>{minutesLabel(manualDuration)}</h2></div><span className="badge">Pagado</span></div><label className="field"><span>Importe (€)</span><input type="number" min="0" step="0.01" value={quickPrice} onChange={(event) => setQuickPrice(event.target.value)} /></label><div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("none"); setError(""); }}>Cancelar</button></div></section> : null}
+      {billingMode === "direct" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Clase suelta</p><h2>{minutesLabel(manualDuration)}</h2></div><span className="badge">Clase suelta</span></div><label className="field"><span>Importe (€)</span><input type="number" min="0" step="0.01" value={quickPrice} onChange={(event) => setQuickPrice(event.target.value)} /></label><div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("none"); setError(""); }}>Cancelar</button></div></section> : null}
 
       {billingMode === "transfer" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Pareja</p><h2>Transferir saldo individual</h2></div><span className="badge">{minutesLabel(transferMinutes)}</span></div><div className="fields-2"><label className="field field-wide"><span>Bono individual</span><select value={transferSourceId} onChange={(event) => setTransferSourceId(event.target.value)}>{transferSources.map((grant) => <option key={grant.id} value={grant.id}>{ownerLabel(grant)} · {grant.label || "Bono individual"} · {minutesLabel(creditBalance(grant))}{expiryLabel(grant)}</option>)}</select></label><label className="field"><span>Coste adicional (€)</span><input type="number" min="0" step="0.01" value={transferFee} onChange={(event) => setTransferFee(event.target.value)} /></label></div>{transferSource ? <p className="modal-intro">Se moverán {minutesLabel(transferMinutes)} del bono individual a un bono de pareja para esta clase.{transferShortfall ? ` Quedarán ${minutesLabel(transferShortfall)} pendientes.` : ""}</p> : null}<div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("none"); setError(""); }}>Cancelar</button></div></section> : null}
 
       <section className="card pad"><div className="card-head"><div><p className="eyebrow">Extras</p><h2>Suplementos</h2></div><button className="btn ghost" type="button" onClick={addSupplement}><Plus size={17} /> Añadir</button></div>{supplements.length ? <div className="finish-list">{supplements.map((supplement) => <div className="fields-2" key={supplement.id}><label className="field"><span>Concepto</span><input value={supplement.concept} onChange={(event) => updateSupplement(supplement.id, { concept: event.target.value })} placeholder="Parking, desplazamiento…" /></label><label className="field"><span>Importe (€)</span><input type="number" min="0" step="0.01" value={supplement.amount} onChange={(event) => updateSupplement(supplement.id, { amount: event.target.value })} /></label><div className="actions"><button className="btn ghost" type="button" onClick={() => removeSupplement(supplement.id)}><X size={16} /> Eliminar</button></div></div>)}</div> : <p className="modal-intro">Sin suplementos.</p>}</section>
 
-      <section className="card pad"><div className="card-head"><div><p className="eyebrow">Resumen</p><h2>Cierre</h2></div></div><p className="modal-intro"><strong>Duración:</strong> {minutesLabel(manualDuration)}</p>{selectedGrant ? <p className="modal-intro"><strong>Bono:</strong> {selectedGrant.label || (selectedGrant.modality === "pair" ? "Bono de pareja" : "Bono individual")} · se consumirán hasta {minutesLabel(Math.min(manualDuration, creditBalance(selectedGrant)))}</p> : null}{billingMode === "direct" ? <p className="modal-intro"><strong>Clase suelta:</strong> {euroLabel(directPriceCents)}</p> : null}{billingMode === "transfer" && transferSource ? <p className="modal-intro"><strong>Conversión:</strong> {minutesLabel(transferMinutes)} desde {ownerLabel(transferSource)} · {euroLabel(transferFeeCents)}</p> : null}{supplementTotalCents ? <p className="modal-intro"><strong>Suplementos:</strong> {euroLabel(supplementTotalCents)}</p> : null}{quickCreatedChargeCents ? <p className="modal-intro"><strong>Bono creado ahora:</strong> {euroLabel(quickCreatedChargeCents)}</p> : null}<div className="card-head"><h2>Total económico registrado ahora</h2><strong>{euroLabel(totalEconomicCents)}</strong></div></section>
+      <section className="card pad"><div className="card-head"><div><p className="eyebrow">Vídeo</p><h2>Vídeo explicativo</h2></div>{videoSaved ? <span className="badge portal">Guardado</span> : null}</div><label className="field"><span>Seleccionar vídeo</span><input type="file" accept="video/*" disabled={busy || videoSaved} onChange={(event) => { const file = event.target.files?.[0] ?? null; setVideoFile(file); setVideoTitle(file ? file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ") : ""); setVideoSaved(false); }} /></label>{videoFile ? <><div className="segmented"><button type="button" className={videoMode === "private" ? "active" : ""} disabled={videoSaved} onClick={() => { setVideoMode("private"); setVideoContentId(""); }}>Solo para alumno</button><button type="button" className={videoMode === "reusable" ? "active" : ""} disabled={videoSaved} onClick={() => setVideoMode("reusable")}>Reutilizable</button></div><div className="fields-2"><label className="field field-wide"><span>Título</span><input value={videoTitle} disabled={videoSaved} onChange={(event) => setVideoTitle(event.target.value)} /></label>{videoMode === "private" && item.class_type === "pair" ? <label className="field field-wide"><span>Alumno</span><select value={videoPersonId} disabled={videoSaved} onChange={(event) => setVideoPersonId(Number(event.target.value))}>{item.class_participants.map((participant) => <option key={participant.person_id} value={participant.person_id}>{students.find((person) => person.id === participant.person_id)?.display_name || "Alumno"}</option>)}</select></label> : null}{videoMode === "reusable" ? <label className="field field-wide"><span>Añadir ahora a contenido</span><select value={videoContentId} disabled={videoSaved} onChange={(event) => setVideoContentId(event.target.value)}><option value="">Dejar disponible para después</option>{reusableVideoContents.map((content) => <option key={content.id} value={content.id}>{teachingKindLabels[content.content_type]} · {content.title}</option>)}</select></label> : null}</div><p className="modal-intro">{videoMode === "private" ? `Solo estará disponible para ${students.find((person) => person.id === videoPersonId)?.display_name || "este alumno"}.` : "Podrás reutilizarlo como recurso de correcciones, explicaciones o secuencias."}</p></> : <p className="modal-intro">Opcional.</p>}</section>
+
+      <section className="card pad"><div className="card-head"><div><p className="eyebrow">Resumen</p><h2>Cierre</h2></div></div><p className="modal-intro"><strong>Duración:</strong> {minutesLabel(manualDuration)}</p>{selectedGrant ? <p className="modal-intro"><strong>Bono:</strong> {selectedGrant.label || (selectedGrant.modality === "pair" ? "Bono de pareja" : "Bono individual")} · se consumirán hasta {minutesLabel(Math.min(manualDuration, creditBalance(selectedGrant)))}</p> : null}{billingMode === "direct" ? <p className="modal-intro"><strong>Clase suelta:</strong> {euroLabel(directPriceCents)}</p> : null}{billingMode === "transfer" && transferSource ? <p className="modal-intro"><strong>Conversión:</strong> {minutesLabel(transferMinutes)} desde {ownerLabel(transferSource)} · {euroLabel(transferFeeCents)}</p> : null}{supplementTotalCents ? <p className="modal-intro"><strong>Suplementos:</strong> {euroLabel(supplementTotalCents)}</p> : null}{quickCreatedChargeCents ? <p className="modal-intro"><strong>Bono creado ahora:</strong> {euroLabel(quickCreatedChargeCents)}</p> : null}<div className="card-head"><h2>Total de este cierre</h2><strong>{euroLabel(totalEconomicCents)}</strong></div></section>
+
+      {totalEconomicCents > 0 ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Pago</p><h2>Pago recibido ahora</h2></div><strong>{euroLabel(paidNowCents)}</strong></div><div className="fields-2"><button className={paymentMode === "full" ? "btn" : "btn ghost"} type="button" onClick={() => setPaymentMode("full")}>Todo · {euroLabel(totalEconomicCents)}</button><button className={paymentMode === "half" ? "btn" : "btn ghost"} type="button" onClick={() => setPaymentMode("half")}>Mitad · {euroLabel(Math.round(totalEconomicCents / 2))}</button><button className={paymentMode === "custom" ? "btn" : "btn ghost"} type="button" onClick={() => setPaymentMode("custom")}>Otra cantidad</button><button className={paymentMode === "none" ? "btn" : "btn ghost"} type="button" onClick={() => setPaymentMode("none")}>Nada ahora</button></div>{paymentMode === "custom" ? <label className="field"><span>Importe recibido (€)</span><input type="number" min="0" max={(totalEconomicCents / 100).toFixed(2)} step="0.01" value={customPayment} onChange={(event) => setCustomPayment(event.target.value)} /></label> : null}<div className="card-head"><span>Pagado ahora</span><strong>{euroLabel(paidNowCents)}</strong></div><div className="card-head"><span>Pendiente</span><strong>{euroLabel(pendingPaymentCents)}</strong></div></section> : null}
 
       {!hasSelectedGrant && billingMode === "none" ? <p className="modal-intro">Si terminas sin bono, la duración quedará pendiente como incidencia.</p> : null}
       {error ? <p className="error">{error}</p> : null}<div className="actions"><button className="btn ghost" type="button" onClick={close}>Seguir en clase</button><button className="btn" disabled={busy || manualDuration <= 0 || billingMode === "quick"}><CheckCircle2 size={17} /> {busy ? "Terminando…" : "Terminar clase"}</button></div>
@@ -870,9 +905,9 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
           {guideCandidates.length ? <section className="guide-suggestions"><span className="guide-label">Siguiente contenido disponible</span><div>{guideCandidates.map((content) => <button key={content.id} onClick={() => assignGuideContent(content)} disabled={busy === `assign-${content.id}`}><span>{teachingKindLabels[content.content_type]}</span><strong>{content.title}</strong><Plus /></button>)}</div></section> : null}
         </>}
       </article>
-      <section className={`live-bottom ${finished ? "finished" : ""}`}><div><strong>{finished ? "Parte administrativa lista" : "Cuando acabéis de bailar…"}</strong><span>{finished ? "Puedes terminar notas, evaluación y correcciones antes del cierre pedagógico." : "Asistencia y bono se confirman juntos para no dejar medias operaciones."}</span></div>{finished ? <button className="btn" onClick={closePedagogy} disabled={busy === "close"}><CheckCircle2 size={18} /> Cerrar clase</button> : <button className="btn" onClick={() => setFinishOpen(true)}>Terminar clase</button>}</section>
+      <section className={`live-bottom ${finished ? "finished" : ""}`}><div><strong>{finished ? "Parte administrativa lista" : "Cuando acabéis de bailar…"}</strong><span>{finished ? "Puedes terminar notas, evaluación y correcciones antes del cierre pedagógico." : "Duración, bono y cobro se confirman juntos antes de cerrar."}</span></div>{finished ? <button className="btn" onClick={closePedagogy} disabled={busy === "close"}><CheckCircle2 size={18} /> Cerrar clase</button> : <button className="btn" onClick={() => setFinishOpen(true)}>Terminar clase</button>}</section>
     </main>
-    {finishOpen ? <FinishClassModal item={item} students={students} credits={credits} close={() => setFinishOpen(false)} finished={async () => { await refresh(); await loadLive(); notify("Clase terminada. Saldo e incidencias actualizados con la duración prevista."); }} /> : null}
+    {finishOpen ? <FinishClassModal item={item} students={students} credits={credits} library={library} close={() => setFinishOpen(false)} finished={async () => { await refresh(); await loadLive(); notify("Clase terminada. Saldo, cobro e incidencias actualizados."); }} /> : null}
   </div>;
 }
 
@@ -961,7 +996,7 @@ function TeachingContentEditor({ initial, defaultType, terms, close, saved, noti
         <fieldset><legend>Roles</legend><div className="check-grid">{roles.map((term) => <label key={term.id}><input type="checkbox" name="role_term_ids" value={term.id} defaultChecked={selectedRoles.has(term.id)} /><span>{term.label}</span></label>)}</div></fieldset>
         <fieldset><legend>Niveles</legend><div className="check-grid">{levels.map((term) => <label key={term.id}><input type="checkbox" name="level_term_ids" value={term.id} defaultChecked={selectedLevels.has(term.id)} /><span>{term.label}</span></label>)}</div></fieldset>
       </div>
-      <TeachingMediaEditor value={media} onChange={setMedia} onUploadingChange={setMediaUploading} />
+      <TeachingMediaEditor value={media} onChange={setMedia} onUploadingChange={setMediaUploading} allowClassVideos={["correction","explanation","sequence"].includes(type)} />
       <p className="draft-note">Puedes guardar solo el título. Hasta que lo publiques permanecerá en Incompletas y no se propondrá ni se mostrará al alumno.</p>
       {error ? <p className="error">{error}</p> : null}
       <div className="actions teaching-actions">{initial ? <button className="btn archive-btn" type="button" onClick={archive} disabled={busy}><Archive size={16} /> Archivar</button> : null}<span /><button className="btn ghost" type="submit" name="intent" value="draft" disabled={busy || mediaUploading}>Guardar incompleta</button><button className="btn" type="submit" name="intent" value="publish" disabled={busy || mediaUploading}>{busy ? "Guardando…" : initial?.publication_status === "published" ? "Guardar publicada" : "Publicar"}</button></div>
@@ -1188,13 +1223,21 @@ function portalClassStatus(value: string) {
 
 function StudentPortal({ identity, experience, onExperience, client, email, onIdentityPatch, onOpenProfile, onOpenPreferences }: { identity: IdentityContext; experience: ExperienceContext; onExperience: (value: ExperienceContext) => void | Promise<void>; client: SupabaseClient; email: string; onIdentityPatch: (patch: Partial<IdentityContext>) => void; onOpenProfile: () => void; onOpenPreferences: () => void }) {
   const [snapshot, setSnapshot] = useState<StudentPortalSnapshot | null>(null), [error, setError] = useState("");
+  const [privateVideos, setPrivateVideos] = useState<ClassPrivateVideo[]>([]);
   const [portalNow] = useState(() => Date.now());
   const load = useCallback(async () => {
     if (!db) return;
     setError("");
     const result = await db.rpc("student_portal_snapshot");
     if (result.error) { setError(result.error.message); return; }
-    setSnapshot(result.data as StudentPortalSnapshot);
+    const nextSnapshot = result.data as StudentPortalSnapshot;
+    const videoResult = await db.from("class_video_resources")
+      .select("id,class_id,person_id,external_file_id,title,mime_type,created_at")
+      .eq("visibility_scope", "private_student")
+      .eq("person_id", nextSnapshot.profile.id)
+      .order("created_at", { ascending: false });
+    if (!videoResult.error) setPrivateVideos((videoResult.data ?? []) as ClassPrivateVideo[]);
+    setSnapshot(nextSnapshot);
   }, []);
   useEffect(() => { const initial = window.setTimeout(() => void load(), 0); return () => clearTimeout(initial); }, [load]);
   if (!snapshot && !error) return <Spinner />;
@@ -1228,6 +1271,7 @@ function StudentPortal({ identity, experience, onExperience, client, email, onId
           ...(assignment.current_importance !== null ? [{ label: "Importancia", value: String(assignment.current_importance) }] : []),
         ]}
       />)}</div> : <div className="compact-empty"><BookOpen /><span>Cuando te asignemos contenido aparecerá aquí.</span></div>}</article>
+      {privateVideos.length ? <article className="card portal-card"><div className="card-head"><h2>Vídeos de mis clases</h2><span>{privateVideos.length}</span></div><div className="portal-video-list">{privateVideos.map((video) => <div className="portal-video-item" key={video.id}><SecureDriveAsset fileId={video.external_file_id} mediaType="video" title={video.title || "Vídeo de clase"} controls className="portal-video-media" /><div><strong>{video.title || "Vídeo de clase"}</strong><span>{new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).format(new Date(video.created_at))}</span></div></div>)}</div></article> : null}
       <article className="card portal-card"><div className="card-head"><h2>Mi evolución</h2><span>Reparto relativo</span></div>{relativeRadar.length ? <><RadarChart items={relativeRadar} scaleLabel="Porcentaje de tus puntos totales en cada aptitud" /><div className="evaluation-history">{snapshot.evaluations.slice(0,12).map((item) => <div key={item.id}><span>{new Intl.DateTimeFormat("es-ES",{ day:"numeric",month:"short",year:"numeric" }).format(new Date(item.created_at))}</span><strong>{item.score}</strong></div>)}</div></> : <div className="compact-empty"><TrendingUp /><span>Tu próxima evaluación aparecerá aquí.</span></div>}</article>
       <article className="card portal-card"><div className="card-head"><h2>Mis clases</h2><span>{snapshot.classes.length}</span></div>{snapshot.classes.length ? <div className="portal-class-list">{snapshot.classes.slice(0, 8).map((item) => { const billingNote = item.billing_status === "accepted_uncovered" && item.uncovered_minutes ? ` · aceptado sin regularizar ${minutesLabel(item.uncovered_minutes)}` : item.uncovered_minutes ? ` · pendiente ${minutesLabel(item.uncovered_minutes)}` : ""; return <div key={item.id}><CalendarDays /><div><strong>{item.style || (item.class_type === "pair" ? "Clase en pareja" : "Clase individual")}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(item.duration_minutes)}{billingNote}</span></div><span className={`badge ${item.status === "finished" ? "portal" : ""}`}>{portalClassStatus(item.status)}</span></div>; })}</div> : <div className="compact-empty"><CalendarDays /><span>Todavía no hay clases en tu historial.</span></div>}</article>
       <article className="card portal-card"><div className="card-head"><h2>Mis bonos</h2><span>{snapshot.credits.length}</span></div>{snapshot.credits.length ? <div className="portal-credit-list">{snapshot.credits.map((credit) => <div key={credit.id}><div><strong>{credit.label || (credit.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong><span>{new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).format(new Date(credit.purchased_at))}</span></div><strong>{minutesLabel(Number(credit.balance_minutes || 0))}</strong></div>)}</div> : <div className="compact-empty"><WalletCards /><span>No tienes bonos registrados todavía.</span></div>}</article>

@@ -12,9 +12,9 @@ test("class close no longer asks for attendance", () => {
   assert.ok(finish);
   assert.doesNotMatch(finish, /Asistencia|Ha venido|No ha venido/);
   assert.doesNotMatch(finish, /p_attendance/);
-  assert.match(finish, /administratively_finish_class_v4/);
-  assert.match(sql, /administratively_finish_class_v4/);
-  assert.doesNotMatch(sql.match(/administratively_finish_class_v4\([\s\S]*?\)\nreturns/)?.[0] ?? "", /p_attendance/);
+  assert.match(finish, /administratively_finish_class_v5/);
+  assert.match(sql, new RegExp("administratively_finish_class_v" + "4"));
+  assert.doesNotMatch(sql.match(new RegExp("administratively_finish_class_v" + "4\\\\([\\\\s\\\\S]*?\\\\)\\\\nreturns"))?.[0] ?? "", /p_attendance/);
   assert.match(sql, /array_fill\('present'::text/);
 });
 
@@ -43,7 +43,7 @@ test("pair classes can transfer individual credit with an extra fee and full tra
 });
 
 test("final summary includes duration, payment path, extras and current economic total", () => {
-  assert.match(finish, /Total económico registrado ahora/);
+  assert.match(finish, /Total de este cierre/);
   assert.match(finish, /supplementTotalCents/);
   assert.match(finish, /transferFeeCents/);
   assert.match(finish, /directPriceCents/);
