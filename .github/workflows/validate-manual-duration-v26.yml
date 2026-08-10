@@ -1,0 +1,40 @@
+name: Validate manual class duration v26
+
+on:
+  push:
+    branches: [fix/manual-class-duration-v26]
+
+permissions:
+  contents: write
+
+jobs:
+  validate-manual-duration:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/manual-class-duration-v26
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Apply manual duration UI patch
+        run: node scripts/apply-v26-manual-duration.mjs
+      - name: Install dependencies
+        run: npm ci
+      - name: Duration regression checks
+        run: node --test tests/no-real-time-class-duration.test.mjs
+      - name: Visual integrity checks
+        run: node --test tests/visual-integrity.test.mjs tests/account-menu.test.mjs tests/account-session-layer.test.mjs tests/notifications-view.test.mjs
+      - name: Strict production build
+        run: npm run build
+      - name: Existing tests
+        run: node --test tests/*.test.mjs
+      - name: Commit validated UI change
+        run: |
+          git config user.name "CYA Hub automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add app/cya-app.tsx
+          git diff --cached --quiet || git commit -m "Allow manual class duration without elapsed timing [validated-v26b]"
+          git push origin HEAD:fix/manual-class-duration-v26
