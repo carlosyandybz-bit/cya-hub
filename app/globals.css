@@ -678,3 +678,26 @@ button,input,select,textarea { font:inherit; } button { -webkit-tap-highlight-co
   .communication-batch { padding:14px; } .communication-batch-head { grid-template-columns:42px minmax(0,1fr); } .communication-batch-head>.btn { grid-column:1/-1; width:100%; } .communication-recipient { grid-template-columns:42px minmax(0,1fr); align-items:start; } .communication-recipient-actions { grid-column:1/-1; justify-content:stretch; } .communication-recipient-actions .btn { flex:1; } .recipient-problem { max-width:none; text-align:left; } .communication-recipient-main details>p { font-size:10px; }
 }
 @media(prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
+
+
+/* CYA history navigation */
+.app-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  margin: 0 0 0.65rem;
+  padding: 0.45rem 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink, #24212f);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+.app-back:hover { background: rgba(109, 74, 255, 0.08); }
+.app-back:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+@media (max-width: 720px) {
+  .app-back { margin-top: -0.15rem; }
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  AlertTriangle, Archive, ArrowRight, Bell, BookOpen, CalendarDays, CheckCircle2, ChevronRight, CircleUserRound,
+  AlertTriangle, Archive, ArrowLeft, ArrowRight, Bell, BookOpen, CalendarDays, CheckCircle2, ChevronRight, CircleUserRound,
   Clock3, Dumbbell, Eye, EyeOff, GitBranch, GraduationCap, House,
   LibraryBig, Link2, LockKeyhole, LogOut, Megaphone, NotebookPen,
   Pencil, Play, Plus, Search, Sparkles, TrendingUp, UsersRound,
@@ -32,6 +32,16 @@ import type { ExperienceContext, IdentityContext } from "./v14-types";
 const TeachingGraph = lazy(() => import("./teaching-graph").then((module) => ({ default: module.TeachingGraph })));
 
 type View = "home" | "students" | "classes" | "credits" | "agenda" | "live" | "teaching" | "marketing" | "admin";
+type CyaOverlay = "new-student" | "schedule" | "credit" | null;
+type CyaHistoryState = {
+  cyaHub: true;
+  view: View;
+  experience: ExperienceContext;
+  selectedId: number | null;
+  overlay: CyaOverlay;
+  modalStudentId: number | null;
+  liveClassId: number | null;
+};
 type Person = {
   id: number; auth_user_id: string | null; display_name: string; first_name: string | null;
   last_name: string | null; email: string | null; phone: string | null; country_code: string | null;
@@ -1137,56 +1147,148 @@ function StaffApp({ session }: { session: Session }) {
     } boot(); return () => { alive = false; };
   }, [session.user.id, loadStudents, loadOperations, loadTeaching, loadMarketing]);
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 3000); return () => clearTimeout(timer); }, [toast]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const existing = window.history.state as CyaHistoryState | null;
+    if (!existing?.cyaHub) {
+      window.history.replaceState({ cyaHub: true, view: "home", experience: "teacher", selectedId: null, overlay: null, modalStudentId: null, liveClassId: null } satisfies CyaHistoryState, "", window.location.href);
+    }
+    const restore = (event: PopStateEvent) => {
+      const state = event.state as CyaHistoryState | null;
+      if (!state?.cyaHub) return;
+      setView(state.view);
+      setExperienceState(state.experience);
+      setLiveClassId(state.liveClassId ?? null);
+      setSelected(state.selectedId ? students.find((student) => student.id === state.selectedId) ?? null : null);
+      setNewOpen(state.overlay === "new-student");
+      setScheduleOpen(state.overlay === "schedule");
+      setCreditOpen(state.overlay === "credit");
+      setScheduleStudentId(state.overlay === "schedule" ? state.modalStudentId ?? null : null);
+      setCreditStudentId(state.overlay === "credit" ? state.modalStudentId ?? null : null);
+    };
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, [students]);
   if (!ready) return <Spinner />;
   if (!identity) return <main className="login"><section className="login-card"><Brand /><h1>Acceso no disponible</h1><p>La cuenta existe, pero no tiene un rol activo en CYA Hub.</p><button className="btn" onClick={() => db?.auth.signOut()}>Salir</button></section></main>;
   const activeIdentity = identity;
+  function historyState(nextView: View, options: Partial<Omit<CyaHistoryState, "cyaHub" | "view">> = {}): CyaHistoryState {
+    return {
+      cyaHub: true,
+      view: nextView,
+      experience: options.experience ?? experience,
+      selectedId: options.selectedId ?? null,
+      overlay: options.overlay ?? null,
+      modalStudentId: options.modalStudentId ?? null,
+      liveClassId: options.liveClassId ?? null,
+    };
+  }
+  function clearTransient() {
+    setSelected(null);
+    setNewOpen(false);
+    setScheduleOpen(false);
+    setCreditOpen(false);
+    setScheduleStudentId(null);
+    setCreditStudentId(null);
+  }
+  function navigateView(nextView: View, options: { liveClassId?: number | null; experience?: ExperienceContext } = {}) {
+    const nextExperience = options.experience ?? experience;
+    if (view === nextView && !selected && !newOpen && !scheduleOpen && !creditOpen && (nextView !== "live" || (options.liveClassId ?? null) === liveClassId) && nextExperience === experience) return;
+    const state = historyState(nextView, { experience: nextExperience, liveClassId: options.liveClassId ?? null });
+    window.history.pushState(state, "", window.location.href);
+    clearTransient();
+    setExperienceState(nextExperience);
+    setLiveClassId(state.liveClassId);
+    setView(nextView);
+  }
+  function replaceView(nextView: View, options: { experience?: ExperienceContext } = {}) {
+    const nextExperience = options.experience ?? experience;
+    const state = historyState(nextView, { experience: nextExperience });
+    window.history.replaceState(state, "", window.location.href);
+    clearTransient();
+    setLiveClassId(null);
+    setExperienceState(nextExperience);
+    setView(nextView);
+  }
+  function openStudentDetail(student: Person) {
+    window.history.pushState(historyState(view, { selectedId: student.id }), "", window.location.href);
+    setSelected(student);
+  }
+  function openNewStudent() {
+    window.history.pushState(historyState(view, { overlay: "new-student" }), "", window.location.href);
+    setNewOpen(true);
+  }
+  function openSchedule(studentId: number | null = null) {
+    window.history.pushState(historyState(view, { overlay: "schedule", modalStudentId: studentId }), "", window.location.href);
+    setSelected(null);
+    setScheduleStudentId(studentId);
+    setScheduleOpen(true);
+  }
+  function openCredit(studentId: number | null = null) {
+    window.history.pushState(historyState(view, { overlay: "credit", modalStudentId: studentId }), "", window.location.href);
+    setSelected(null);
+    setCreditStudentId(studentId);
+    setCreditOpen(true);
+  }
+  function goBack(fallback: View = "home") {
+    const state = window.history.state as CyaHistoryState | null;
+    if (state?.cyaHub && (state.selectedId || state.overlay || state.view !== "home")) {
+      window.history.back();
+      return;
+    }
+    replaceView(fallback);
+  }
   async function setExperience(value: ExperienceContext) {
     const allowed = value === "teacher" ? activeIdentity.can_teach : value === "student" ? activeIdentity.can_study : activeIdentity.can_admin;
     if (!allowed || !db) return;
-    setExperienceState(value);
-    if (value === "admin") setView("admin");
-    else if (value === "teacher" && view === "admin") setView("home");
+    if (value === "admin") navigateView("admin", { experience: value });
+    else if (value === "teacher" && view === "admin") navigateView("home", { experience: value });
+    else {
+      window.history.pushState(historyState(view, { experience: value }), "", window.location.href);
+      setExperienceState(value);
+    }
     const result = await db.from("user_preferences").upsert({ user_id: activeIdentity.user_id, preferred_context: value }, { onConflict: "user_id" });
     if (result.error) setToast("La vista ha cambiado, pero no se pudo guardar como preferencia.");
   }
   if (experience === "student" && identity.can_study) return <StudentPortal identity={identity} experience={experience} onExperience={setExperience} />;
   if (!identity.can_teach && !identity.can_admin) return <StudentPortal identity={identity} experience="student" onExperience={setExperience} />;
-  async function created() { await Promise.all([loadStudents(),loadMarketing()]); setToast("Alumno provisional creado correctamente."); setView("students"); }
-  async function classSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Clase programada correctamente."); setView("classes"); }
-  async function creditSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Bono creado correctamente."); setView("credits"); }
+  async function created() { await Promise.all([loadStudents(),loadMarketing()]); setToast("Alumno provisional creado correctamente."); setNewOpen(false); replaceView("students"); }
+  async function classSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Clase programada correctamente."); setScheduleOpen(false); setScheduleStudentId(null); replaceView("classes"); }
+  async function creditSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Bono creado correctamente."); setCreditOpen(false); setCreditStudentId(null); replaceView("credits"); }
   const styles = catalog.filter((term) => term.taxonomy === "dance_style");
-  function goLive(id?: number) { if (id) setLiveClassId(id); setView("live"); }
+  function goLive(id?: number) { navigateView("live", { liveClassId: id ?? liveClassId }); }
   function goTarget(target: string) {
-    if (target === "admin") { if (activeIdentity.can_admin) { setExperienceState("admin"); setView("admin"); } return; }
+    if (target === "admin") { if (activeIdentity.can_admin) navigateView("admin", { experience: "admin" }); return; }
     if (target === "live") { goLive(); return; }
-    if (["home", "students", "classes", "credits", "agenda", "teaching", "marketing"].includes(target)) setView(target as View);
+    if (["home", "students", "classes", "credits", "agenda", "teaching", "marketing"].includes(target)) navigateView(target as View);
   }
   const studentArea = ["students", "classes", "credits", "agenda"].includes(view);
   const activeNav = (id: string) => id === "students" ? studentArea : view === id;
   return <div className="shell">
-    <aside className="sidebar"><Brand /><nav>{nav.map(([id, label, Icon]) => <button key={id} className={activeNav(id) ? "active" : ""} onClick={() => setView(id)}><Icon />{label}</button>)}</nav>
+    <aside className="sidebar"><Brand /><nav>{nav.map(([id, label, Icon]) => <button key={id} className={activeNav(id) ? "active" : ""} onClick={() => navigateView(id)}><Icon />{label}</button>)}</nav>
       <div className="side-bottom"><ContextSelector identity={identity} value={experience} onChange={setExperience} /></div>
       <div className="side-user"><CircleUserRound /><div><strong>{identity.display_name}</strong><span>{identity.roles.map((role) => roleLabel(role)).join(" · ")}</span></div><button onClick={() => db?.auth.signOut()} aria-label="Cerrar sesión"><LogOut /></button></div>
     </aside>
-    <div><header className="mobile-head"><div className="mobile-head-left"><Brand /></div><div /><div className="mobile-head-actions"><button className="icon-btn" onClick={() => setView("home")} aria-label="Notificaciones"><Bell /></button>{identity.can_admin ? <button className="icon-btn" onClick={() => goTarget("admin")} aria-label="Cuenta y administración"><CircleUserRound /></button> : null}</div></header>
+    <div><header className="mobile-head"><div className="mobile-head-left"><Brand /></div><div /><div className="mobile-head-actions"><button className="icon-btn" onClick={() => navigateView("home")} aria-label="Notificaciones"><Bell /></button>{identity.can_admin ? <button className="icon-btn" onClick={() => goTarget("admin")} aria-label="Cuenta y administración"><CircleUserRound /></button> : null}</div></header>
       <main className="main"><div className="content">
+        {view !== "home" && view !== "live" ? <button className="app-back" type="button" onClick={() => goBack("home")}><ArrowLeft size={18} /> Volver</button> : null}
         {view !== "live" ? <div className="context-toolbar"><ContextSelector identity={identity} value={experience} onChange={setExperience} compact /></div> : null}
-        {studentArea ? <nav className="module-tabs" aria-label="Alumnado"><button className={view === "students" ? "active" : ""} onClick={() => setView("students")}><UsersRound /> Alumnos</button><button className={view === "classes" ? "active" : ""} onClick={() => setView("classes")}><CalendarDays /> Clases</button><button className={view === "credits" ? "active" : ""} onClick={() => setView("credits")}><WalletCards /> Bonos</button><button className={view === "agenda" ? "active" : ""} onClick={() => setView("agenda")}><CalendarDays /> Agenda</button></nav> : null}
-        {view === "home" && db ? <HomeView client={db} identity={identity} studentCount={students.length} classes={classes} students={students} go={goTarget} goLive={goLive} addStudent={() => setNewOpen(true)} scheduleClass={() => { setScheduleStudentId(null); setScheduleOpen(true); }} notify={setToast} /> : null}
-        {view === "students" ? <StudentsView students={students} query={query} setQuery={setQuery} add={() => setNewOpen(true)} open={setSelected} schedule={(student) => { setScheduleStudentId(student.id); setScheduleOpen(true); }} credit={(student) => { setCreditStudentId(student.id); setCreditOpen(true); }} /> : null}
-        {view === "classes" ? <ClassesView classes={classes} students={students} schedule={() => { setScheduleStudentId(null); setScheduleOpen(true); }} goLive={goLive} /> : null}
-        {view === "credits" ? <CreditsView credits={credits} students={students} add={() => { setCreditStudentId(null); setCreditOpen(true); }} /> : null}
-        {view === "agenda" && db ? <AgendaView client={db} timezone={identity.timezone} schedule={() => { setScheduleStudentId(null); setScheduleOpen(true); }} openClass={goLive} notify={setToast} /> : null}
-        {view === "live" ? <LiveClassView classes={classes} students={students} credits={credits} terms={catalog} library={teachingContents} relations={teachingRelations} selectedClassId={liveClassId} selectClass={setLiveClassId} refresh={refreshLive} notify={setToast} exit={() => setView("home")} /> : null}
+        {studentArea ? <nav className="module-tabs" aria-label="Alumnado"><button className={view === "students" ? "active" : ""} onClick={() => navigateView("students")}><UsersRound /> Alumnos</button><button className={view === "classes" ? "active" : ""} onClick={() => navigateView("classes")}><CalendarDays /> Clases</button><button className={view === "credits" ? "active" : ""} onClick={() => navigateView("credits")}><WalletCards /> Bonos</button><button className={view === "agenda" ? "active" : ""} onClick={() => navigateView("agenda")}><CalendarDays /> Agenda</button></nav> : null}
+        {view === "home" && db ? <HomeView client={db} identity={identity} studentCount={students.length} classes={classes} students={students} go={goTarget} goLive={goLive} addStudent={openNewStudent} scheduleClass={() => openSchedule(null)} notify={setToast} /> : null}
+        {view === "students" ? <StudentsView students={students} query={query} setQuery={setQuery} add={openNewStudent} open={openStudentDetail} schedule={(student) => openSchedule(student.id)} credit={(student) => openCredit(student.id)} /> : null}
+        {view === "classes" ? <ClassesView classes={classes} students={students} schedule={() => openSchedule(null)} goLive={goLive} /> : null}
+        {view === "credits" ? <CreditsView credits={credits} students={students} add={() => openCredit(null)} /> : null}
+        {view === "agenda" && db ? <AgendaView client={db} timezone={identity.timezone} schedule={() => openSchedule(null)} openClass={goLive} notify={setToast} /> : null}
+        {view === "live" ? <LiveClassView classes={classes} students={students} credits={credits} terms={catalog} library={teachingContents} relations={teachingRelations} selectedClassId={liveClassId} selectClass={setLiveClassId} refresh={refreshLive} notify={setToast} exit={() => goBack("home")} /> : null}
         {view === "teaching" ? <TeachingView contents={teachingContents} relations={teachingRelations} assignments={teachingAssignments} students={students} terms={catalog} refresh={loadTeaching} notify={setToast} /> : null}
         {view === "admin" && db && identity.can_admin ? <AdminView client={db} identity={identity} terms={catalog} notify={setToast} leave={() => { setExperienceState("teacher"); setView("home"); }} /> : null}
         {view === "marketing" && db ? <MarketingView db={db} contacts={crmContacts} rates={marketingRates} content={marketingContent} events={marketingEvents} campaigns={marketingCampaigns} metrics={campaignMetrics} recipients={communicationRecipients} refresh={refreshMarketing} notify={setToast} /> : null}
       </div></main>
-      {view !== "live" ? <nav className="mobile-nav">{nav.map(([id, label, Icon]) => <button key={id} className={`${activeNav(id) ? "active" : ""} ${id === "live" ? "primary" : ""}`} onClick={() => setView(id)}><Icon /><span>{label}</span></button>)}</nav> : null}
+      {view !== "live" ? <nav className="mobile-nav">{nav.map(([id, label, Icon]) => <button key={id} className={`${activeNav(id) ? "active" : ""} ${id === "live" ? "primary" : ""}`} onClick={() => navigateView(id)}><Icon /><span>{label}</span></button>)}</nav> : null}
     </div>
-    {newOpen ? <AddStudent close={() => setNewOpen(false)} created={created} /> : null}
-    {scheduleOpen ? <ScheduleClass students={students} styles={styles} initialStudentId={scheduleStudentId} close={() => { setScheduleOpen(false); setScheduleStudentId(null); }} saved={classSaved} /> : null}
-    {creditOpen ? <AddCredit students={students} initialStudentId={creditStudentId} close={() => { setCreditOpen(false); setCreditStudentId(null); }} saved={creditSaved} /> : null}
+    {newOpen ? <AddStudent close={() => goBack(view)} created={created} /> : null}
+    {scheduleOpen ? <ScheduleClass students={students} styles={styles} initialStudentId={scheduleStudentId} close={() => goBack(view)} saved={classSaved} /> : null}
+    {creditOpen ? <AddCredit students={students} initialStudentId={creditStudentId} close={() => goBack(view)} saved={creditSaved} /> : null}
     {selected && db ? <StudentMasterDetail
       client={db}
       student={selected}
@@ -1197,10 +1299,10 @@ function StaffApp({ session }: { session: Session }) {
       teachingContents={teachingContents}
       crmContact={crmContacts.find((contact) => contact.id === selected.id) ?? null}
       rates={marketingRates}
-      close={() => setSelected(null)}
-      schedule={() => { setSelected(null); setScheduleStudentId(selected.id); setScheduleOpen(true); }}
-      addCredit={() => { setSelected(null); setCreditStudentId(selected.id); setCreditOpen(true); }}
-      openClass={(id) => { setSelected(null); goLive(id); }}
+      close={() => goBack(view)}
+      schedule={() => openSchedule(selected.id)}
+      addCredit={() => openCredit(selected.id)}
+      openClass={(id) => goLive(id)}
     /> : null}{toast ? <div className="toast">{toast}</div> : null}
   </div>;
 }
