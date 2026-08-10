@@ -6,6 +6,7 @@ export type IdentityContext = {
   user_id: string;
   display_name: string;
   profile_name: string;
+  avatar_url: string | null;
   person_id: number | null;
   roles: AppRole[];
   timezone: string;
