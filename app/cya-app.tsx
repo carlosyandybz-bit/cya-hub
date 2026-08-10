@@ -803,7 +803,7 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
   const firstParticipant = item.class_participants[0], firstPerson = firstParticipant?.person_id || 0;
   const [activePersonId, setActivePersonId] = useState(firstPerson), [notes, setNotes] = useState<ClassNote[]>([]), [evaluations, setEvaluations] = useState<StudentEvaluation[]>([]), [assignments, setAssignments] = useState<ContentAssignment[]>([]);
   const [search, setSearch] = useState(""), [searchKind, setSearchKind] = useState<"all" | "correction" | "explanation" | "exercise" | "sequence">("all"), [showAll, setShowAll] = useState(false), [noteText, setNoteText] = useState(""), [newCorrection, setNewCorrection] = useState("");
-  const [quickType, setQuickType] = useState<"correction" | "explanation" | "exercise" | "sequence">("correction"), [quickTitle, setQuickTitle] = useState("");
+  const [quickType, setQuickType] = useState<"explanation" | "exercise" | "sequence">("explanation"), [quickTitle, setQuickTitle] = useState("");
   const [measurementMode, setMeasurementMode] = useState<"frequency" | "importance" | "both" | "none">("both"), [frequency, setFrequency] = useState(50), [importance, setImportance] = useState(50);
   const [contextRole, setContextRole] = useState(() => firstParticipant?.role_term_id ? String(firstParticipant.role_term_id) : ""), [contextLevel, setContextLevel] = useState(() => firstParticipant?.level_term_id ? String(firstParticipant.level_term_id) : ""), [busy, setBusy] = useState(""), [syncError, setSyncError] = useState(""), [finishOpen, setFinishOpen] = useState(false);
   const personKey = item.class_participants.map((p) => p.person_id).sort((a, b) => a - b).join(",");
@@ -824,7 +824,9 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
   const roles = terms.filter((term) => term.taxonomy === "dance_role"), levels = terms.filter((term) => term.taxonomy === "dance_level"), style = terms.find((term) => term.id === item.style_term_id), levelTerm = terms.find((term) => term.id === participant?.level_term_id);
   const aptitudes = terms.filter((term) => term.taxonomy === "aptitude" && Array.isArray(term.metadata.levels) && (term.metadata.levels as unknown[]).includes(levelTerm?.term_key ?? ""));
   const scale = terms.filter((term) => term.taxonomy === "evaluation_scale").map((term) => ({ term, score: Number(term.metadata.score) })).sort((a, b) => a.score - b.score);
-  const personAssignments = assignments.filter((assignment) => assignment.person_id === activePersonId);
+  const personAssignments = assignments
+    .filter((assignment) => assignment.person_id === activePersonId)
+    .filter((assignment, index, rows) => rows.findIndex((candidate) => candidate.content_id === assignment.content_id) === index);
   const currentCorrections = personAssignments.filter((assignment) => assignment.teaching_contents.content_type === "correction").filter((assignment) => showAll || assignment.assignment_status !== "corrected");
   const contextReady = Boolean(participant?.role_term_id && participant?.level_term_id && item.style_term_id), personNotes = notes.filter((note) => note.person_id === activePersonId || note.person_id === null);
   const assignedContentIds = new Set(personAssignments.map((assignment) => assignment.content_id));
@@ -876,20 +878,6 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
   async function createQuickContent() {
     if (!db || !participant || !quickTitle.trim() || !contextReady || !item.style_term_id || !participant.role_term_id || !participant.level_term_id) return;
     setBusy("quick-create");
-    if (quickType === "correction") {
-      const result = await db.rpc("create_class_correction", {
-        p_class_id: item.id,
-        p_person_id: participant.person_id,
-        p_title: quickTitle.trim(),
-        p_measurement_mode: "both",
-        p_frequency: 50,
-        p_importance: 50,
-      });
-      if (result.error) notify(result.error.message);
-      else { setQuickTitle(""); await loadLive(); await refresh(); notify("Corrección rápida añadida al alumno."); }
-      setBusy("");
-      return;
-    }
     const result = await db.rpc("save_teaching_content_with_media", {
       p_content_id: null,
       p_content_type: quickType,
@@ -947,11 +935,11 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
     </div>
     <main className="live-body">
       <section className="live-unified-search card">
-        <details className="quick-content-create"><summary><Plus /> Crear rápido</summary><div><select value={quickType} onChange={(event) => setQuickType(event.target.value as typeof quickType)}><option value="correction">Corrección</option><option value="explanation">Explicación</option><option value="exercise">Ejercicio</option><option value="sequence">Secuencia</option></select><input value={quickTitle} onChange={(event) => setQuickTitle(event.target.value)} placeholder="Título corto para no detener la clase" /><button className="btn" onClick={createQuickContent} disabled={!contextReady || !quickTitle.trim() || busy === "quick-create"}>{busy === "quick-create" ? "Guardando…" : "Guardar"}</button></div><small>{quickType === "correction" ? "Se añade al alumno con medición inicial 50/50." : "Queda en Incompletas, vinculada al contexto actual, para terminarla después."}</small></details>
+        <details className="quick-content-create"><summary><Plus /> Crear rápido</summary><div><select value={quickType} onChange={(event) => setQuickType(event.target.value as typeof quickType)}><option value="explanation">Explicación</option><option value="exercise">Ejercicio</option><option value="sequence">Secuencia</option></select><input value={quickTitle} onChange={(event) => setQuickTitle(event.target.value)} placeholder="Título corto para no detener la clase" /><button className="btn" onClick={createQuickContent} disabled={!contextReady || !quickTitle.trim() || busy === "quick-create"}>{busy === "quick-create" ? "Guardando…" : "Guardar"}</button></div><small>Queda en Incompletas, vinculada al contexto actual, para terminarla después.</small></details>
         {normalizedSearch || searchKind !== "all" ? <div className="unified-results"><div className="unified-result-head"><strong>Resultados</strong><span>{unifiedAssigned.length + unifiedLibrary.length}</span></div>{unifiedAssigned.map((assignment) => <article className="unified-result assigned" key={`assigned-${assignment.id}`}><span className="content-kind">{teachingKindLabels[assignment.teaching_contents.content_type]}</span><div><strong>{assignment.teaching_contents.title}</strong><small>Ya está en la formación del alumno · {assignmentOptions(assignment.teaching_contents.content_type).find(([value]) => value === assignment.assignment_status)?.[1] ?? assignment.assignment_status}</small></div><CheckCircle2 /></article>)}{unifiedLibrary.slice(0,12).map((content) => { const ready = content.completion_status === "complete" && content.publication_status === "published"; return <article className="unified-result" key={`library-${content.id}`}><span className="content-kind">{teachingKindLabels[content.content_type]}</span><div><strong>{content.title}</strong><small>{ready ? "Biblioteca · compatible con esta clase" : "Incompleta · solo profesores"}</small></div>{ready ? <button className="btn" disabled={busy === `assign-${content.id}`} onClick={() => assignGuideContent(content)}><Plus /> Añadir</button> : <span className="badge">Completar después</span>}</article>; })}{!unifiedAssigned.length && !unifiedLibrary.length ? <div className="compact-empty"><Search /><span>No hay coincidencias. Puedes crear el contenido rápidamente.</span></div> : null}</div> : null}
       </section>
       {item.class_participants.length > 1 ? <div className="participant-tabs">{item.class_participants.map((p) => <button key={p.person_id} className={activePersonId === p.person_id ? "active" : ""} onClick={() => chooseParticipant(p.person_id)}>{students.find((person) => person.id === p.person_id)?.display_name || "Alumno"}</button>)}</div> : null}
-      <section className="student-context card"><div className="student-context-main"><span className="avatar"><CircleUserRound /></span><div><p className="eyebrow">Alumno</p><h2>{student?.display_name || "Alumno"}</h2><p>{student?.auth_user_id ? "Con acceso al portal" : "Provisional · trabaja igual que cualquier alumno"}</p></div></div><div className="context-controls"><label className="field"><span>Rol</span><select value={contextRole} onChange={(e) => setContextRole(e.target.value)}><option value="">Seleccionar</option>{roles.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label className="field"><span>Nivel</span><select value={contextLevel} onChange={(e) => setContextLevel(e.target.value)}><option value="">Seleccionar</option>{levels.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><button className="btn context-save" onClick={saveContext} disabled={!contextRole || !contextLevel || busy === "context"}>{busy === "context" ? "Guardando…" : "Guardar contexto"}</button></div></section>
+      <section className="student-context card"><div className="student-context-main"><span className="avatar"><CircleUserRound /></span><div><p className="eyebrow">Alumno</p><h2>{student?.display_name || "Alumno"}</h2></div></div><div className="context-controls"><label className="field"><span>Rol</span><select value={contextRole} onChange={(e) => setContextRole(e.target.value)}><option value="">Seleccionar</option>{roles.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label className="field"><span>Nivel</span><select value={contextLevel} onChange={(e) => setContextLevel(e.target.value)}><option value="">Seleccionar</option>{levels.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><button className="btn context-save" onClick={saveContext} disabled={!contextRole || !contextLevel || busy === "context"}>{busy === "context" ? "Guardando…" : "Guardar contexto"}</button></div></section>
       {!contextReady ? <p className="live-hint">Indica rol y nivel una sola vez. A partir de ahí CYA puede relacionar evaluación y correcciones con el contexto correcto.</p> : null}
       {syncError ? <p className="error">{syncError}</p> : null}
       <section className="live-grid">
@@ -961,7 +949,7 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
             key={assignment.id}
             kindLabel="Corrección"
             title={assignment.teaching_contents.title}
-            subtitle={`${correctionStateLabel(assignment.assignment_status)}${assignment.current_frequency !== null ? ` · Frec. ${assignment.current_frequency}` : ""}${assignment.current_importance !== null ? ` · Importancia ${assignment.current_importance}` : ""}`}
+            subtitle={[assignment.current_frequency !== null ? `Frec. ${assignment.current_frequency}` : "", assignment.current_importance !== null ? `Importancia ${assignment.current_importance}` : ""].filter(Boolean).join(" · ") || null}
             statusLabel={correctionStateLabel(assignment.assignment_status)}
             statusTone={assignment.assignment_status === "corrected" ? "success" : "default"}
             description={assignment.teaching_contents.description}
@@ -993,7 +981,6 @@ function LiveSession({ item, students, credits, terms, library, relations, refre
           {guideCandidates.length ? <section className="guide-suggestions"><span className="guide-label">Siguiente contenido disponible</span><div>{guideCandidates.map((content) => <button key={content.id} onClick={() => assignGuideContent(content)} disabled={busy === `assign-${content.id}`}><span>{teachingKindLabels[content.content_type]}</span><strong>{content.title}</strong><Plus /></button>)}</div></section> : null}
         </>}
       </article>
-      <section className={`live-bottom ${finished ? "finished" : ""}`}><div><strong>{finished ? "Parte administrativa lista" : "Cuando acabéis de bailar…"}</strong><span>{finished ? "Puedes terminar notas, evaluación y correcciones antes del cierre pedagógico." : "Duración, bono y cobro se confirman juntos antes de cerrar."}</span></div>{finished ? <button className="btn" onClick={closePedagogy} disabled={busy === "close"}><CheckCircle2 size={18} /> Cerrar clase</button> : <button className="btn" onClick={() => setFinishOpen(true)}>Terminar clase</button>}</section>
     </main>
     {finishOpen ? <FinishClassModal item={item} students={students} credits={credits} library={library} close={() => setFinishOpen(false)} finished={async () => { await refresh(); await loadLive(); notify("Clase terminada. Saldo, cobro e incidencias actualizados."); }} /> : null}
   </div>;
