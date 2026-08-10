@@ -35,7 +35,7 @@ type Student = {
   active: boolean;
 };
 
-type Term = { id: number; label: string; taxonomy: string };
+type Term = { id: number; label: string; term_key?: string; taxonomy: string; metadata?: Record<string, unknown>; sort_order?: number };
 type ClassItem = {
   id: number;
   class_type: "individual" | "pair";
@@ -120,6 +120,7 @@ type DanceProfile = {
 };
 type Evaluation = {
   id: number;
+  session_id: number | null;
   person_id: number;
   class_id: number | null;
   style_term_id: number | null;
@@ -284,6 +285,13 @@ export function StudentMasterDetail({
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [danceProfiles, setDanceProfiles] = useState<DanceProfile[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+  const [evaluationDraftOpen,setEvaluationDraftOpen]=useState(false);
+  const [evaluationProfileId,setEvaluationProfileId]=useState<number|null>(null);
+  const [evaluationLevelId,setEvaluationLevelId]=useState<number|null>(null);
+  const [evaluationKind,setEvaluationKind]=useState<"manual"|"reevaluation">("manual");
+  const [evaluationSessionId,setEvaluationSessionId]=useState<number|null>(null);
+  const [evaluationScores,setEvaluationScores]=useState<Record<number,number>>({});
+  const [evaluationBusy,setEvaluationBusy]=useState("");
   const [crmActivities, setCrmActivities] = useState<CrmActivity[]>([]);
   const [incidents, setIncidents] = useState<StudentIncident[]>([]);
   const [liveBalances, setLiveBalances] = useState<Record<number, number>>({});
@@ -306,7 +314,7 @@ export function StudentMasterDetail({
       const [profileResult, danceResult, evaluationResult, activityResult] = await Promise.all([
         client.from("student_profiles").select("person_id,student_since,goals,teacher_notes,active").eq("person_id", student.id).maybeSingle(),
         client.from("student_dance_profiles").select("id,style_term_id,role_term_id,level_term_id,is_primary,active").eq("person_id", student.id).eq("active", true).order("is_primary", { ascending: false }),
-        client.from("student_evaluations").select("id,person_id,class_id,style_term_id,role_term_id,level_term_id,aptitude_term_id,score,evaluation_kind,note,created_at").eq("person_id", student.id).order("created_at", { ascending: false }),
+        client.from("student_evaluations").select("id,session_id,person_id,class_id,style_term_id,role_term_id,level_term_id,aptitude_term_id,score,evaluation_kind,note,created_at").eq("person_id", student.id).order("created_at", { ascending: false }),
         client.from("crm_activities").select("id,activity_type,summary,from_stage,to_stage,occurred_at").eq("person_id", student.id).order("occurred_at", { ascending: false }).limit(30),
       ]);
       if (!alive) return;
@@ -321,6 +329,13 @@ export function StudentMasterDetail({
     void load();
     return () => { alive = false; };
   }, [client, student.id]);
+
+  useEffect(() => {
+    const primary=danceProfiles.find((item) => item.is_primary) ?? danceProfiles[0];
+    if (!primary) return;
+    setEvaluationProfileId((current) => current ?? primary.id);
+    setEvaluationLevelId((current) => current ?? primary.level_term_id);
+  },[danceProfiles]);
 
   useEffect(() => {
     let alive = true;
@@ -447,6 +462,36 @@ export function StudentMasterDetail({
     setFinancialBusy("");
   }
 
+  const evaluationProfile=danceProfiles.find((item) => item.id===evaluationProfileId) ?? danceProfiles.find((item) => item.is_primary) ?? danceProfiles[0] ?? null;
+  const evaluationLevel=terms.find((term) => term.id===evaluationLevelId && term.taxonomy==='dance_level') ?? null;
+  const evaluationStyle=terms.find((term) => term.id===evaluationProfile?.style_term_id), evaluationRole=terms.find((term) => term.id===evaluationProfile?.role_term_id);
+  const evaluationAptitudes=terms.filter((term) => { if (term.taxonomy!=='aptitude' || !evaluationLevel) return false; const metadata=term.metadata ?? {}, levels=Array.isArray(metadata.levels)?metadata.levels as unknown[]:null, styles=Array.isArray(metadata.styles)?metadata.styles as unknown[]:null, roles=Array.isArray(metadata.roles)?metadata.roles as unknown[]:null; return (!levels || levels.includes(evaluationLevel.term_key ?? '')) && (!styles || styles.includes(evaluationStyle?.term_key ?? '')) && (!roles || roles.includes(evaluationRole?.term_key ?? '')); });
+  const evaluationScale=terms.filter((term) => term.taxonomy==='evaluation_scale').map((term) => ({term,score:Number(term.metadata?.score)})).filter(({score}) => [0,25,50,75,100].includes(score)).sort((a,b)=>a.score-b.score);
+  const hasPreviousContextEvaluation=Boolean(evaluationProfile && evaluations.some((item) => item.style_term_id===evaluationProfile.style_term_id && item.role_term_id===evaluationProfile.role_term_id));
+
+  async function startEvaluationCapture() {
+    if (!evaluationProfile || !evaluationLevelId) return setError('Selecciona primero el nivel y el contexto de baile.');
+    setEvaluationBusy('start'); setError('');
+    const kind=hasPreviousContextEvaluation?evaluationKind:'initial';
+    const result=await client.rpc('start_student_evaluation',{p_person_id:student.id,p_level_term_id:evaluationLevelId,p_evaluation_kind:kind,p_style_term_id:evaluationProfile.style_term_id,p_role_term_id:evaluationProfile.role_term_id,p_class_id:null,p_note:null});
+    if (result.error) setError(result.error.message); else { setEvaluationSessionId(Number((result.data as {id:number}).id)); setEvaluationScores({}); }
+    setEvaluationBusy('');
+  }
+
+  async function saveEvaluationCapture(aptitudeId:number,score:number) {
+    if (!evaluationSessionId) return; setEvaluationBusy(`score-${aptitudeId}`); setError('');
+    const result=await client.rpc('save_evaluation_score',{p_session_id:evaluationSessionId,p_aptitude_term_id:aptitudeId,p_score:score,p_note:null});
+    if (result.error) setError(result.error.message); else { const row=result.data as Evaluation; setEvaluationScores((current) => ({...current,[aptitudeId]:score})); setEvaluations((current) => [row,...current.filter((item) => item.id!==row.id)]); }
+    setEvaluationBusy('');
+  }
+
+  async function finishEvaluationCapture() {
+    if (!evaluationSessionId) return; setEvaluationBusy('finish'); setError('');
+    const result=await client.rpc('complete_evaluation_session',{p_session_id:evaluationSessionId});
+    if (result.error) setError(result.error.message); else { setEvaluationSessionId(null); setEvaluationDraftOpen(false); setEvaluationScores({}); }
+    setEvaluationBusy('');
+  }
+
   function renderSummary() {
     return <div className={styles.stack}>
       {issues.length ? <section className={`${styles.issueBox} ${styles.issueBad}`}><header><AlertTriangle /><div><strong>{issues.length === 1 ? "1 incidencia por revisar" : `${issues.length} incidencias por revisar`}</strong><span>CYA las obtiene de los datos actuales, sin duplicar estados.</span></div></header><div>{issues.map((issue) => <button key={issue.key} onClick={() => setTab(issue.tab)}><span>{issue.label}</span><ChevronRight /></button>)}</div></section>
@@ -500,9 +545,9 @@ export function StudentMasterDetail({
   }
 
   function renderEvaluation() {
-    return <div className={styles.evalGrid}>
-      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Último estado</span><h3>Evolución por aptitud</h3></div>{averageScore !== null ? <b>{averageScore}/100</b> : null}</div>{radarItems.length ? <StudentRadar items={radarItems} /> : <div className={styles.empty}><TrendingUp /><span>Todavía no hay evaluaciones.</span></div>}</section>
-      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Historial</span><h3>Evaluaciones registradas</h3></div><b>{evaluations.length}</b></div>{evaluations.length ? <div className={styles.historyList}>{evaluations.slice(0, 30).map((item) => <div key={item.id}><div><strong>{termLabel(item.aptitude_term_id, terms)}</strong><span>{dateLabel(item.created_at)} · {termLabel(item.style_term_id, terms)} · {termLabel(item.role_term_id, terms)}</span>{item.note ? <small>{item.note}</small> : null}</div><b>{item.score}</b></div>)}</div> : <div className={styles.empty}><TrendingUp /><span>Sin historial de evaluación.</span></div>}</section>
+    return <div className={styles.evalStack}>
+      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Evaluar</span><h3>Nueva evaluación</h3></div><button onClick={() => { setEvaluationDraftOpen(!evaluationDraftOpen); if (evaluationDraftOpen) { setEvaluationSessionId(null); setEvaluationScores({}); } }}>{evaluationDraftOpen?'Cancelar':'Empezar'}</button></div>{evaluationDraftOpen ? <div className={styles.evaluationCapture}>{!evaluationSessionId ? <><label><span>1. Nivel que estás evaluando</span><select value={evaluationLevelId ?? ''} onChange={(event) => setEvaluationLevelId(event.target.value?Number(event.target.value):null)}><option value="">Selecciona nivel</option>{terms.filter((term) => term.taxonomy==='dance_level').sort((a,b)=>(a.sort_order ?? 0)-(b.sort_order ?? 0)).map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label><span>Contexto de baile</span><select value={evaluationProfileId ?? ''} onChange={(event) => setEvaluationProfileId(Number(event.target.value))}>{danceProfiles.map((item) => <option key={item.id} value={item.id}>{termLabel(item.style_term_id,terms)} · {termLabel(item.role_term_id,terms)}</option>)}</select></label>{hasPreviousContextEvaluation ? <label><span>Tipo</span><select value={evaluationKind} onChange={(event) => setEvaluationKind(event.target.value as typeof evaluationKind)}><option value="manual">Seguimiento</option><option value="reevaluation">Reevaluación</option></select></label> : <div className={styles.evaluationHint}><strong>Evaluación inicial</strong><span>Será la primera referencia de este estilo y rol.</span></div>}<button className="btn" disabled={!evaluationLevelId || !evaluationProfile || evaluationBusy==='start'} onClick={() => void startEvaluationCapture()}>{evaluationBusy==='start'?'Preparando…':'Continuar'}</button></> : <><div className={styles.evaluationHint}><strong>{evaluationLevel?.label || 'Nivel'} · {evaluationStyle?.label || 'Estilo'} · {evaluationRole?.label || 'Rol'}</strong><span>Elige uno de los cinco niveles por parámetro. Los cambios se guardan al tocar.</span></div><div className={styles.evaluationParameterList}>{evaluationAptitudes.map((aptitude) => <article key={aptitude.id}><div><strong>{aptitude.label}</strong><span>{evaluationScores[aptitude.id]===undefined?'Sin evaluar':`${evaluationScores[aptitude.id]}/100`}</span></div><div className={styles.evaluationScale}>{evaluationScale.map(({term,score}) => <button key={term.id} className={evaluationScores[aptitude.id]===score?styles.evaluationSelected:''} title={term.label} disabled={evaluationBusy===`score-${aptitude.id}`} onClick={() => void saveEvaluationCapture(aptitude.id,score)}><b>{score}</b><small>{term.label}</small></button>)}</div></article>)}</div><button className="btn" disabled={!Object.keys(evaluationScores).length || evaluationBusy==='finish'} onClick={() => void finishEvaluationCapture()}>{evaluationBusy==='finish'?'Finalizando…':'Finalizar evaluación'}</button></>}</div> : null}</section>
+      <div className={styles.evalGrid}><section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Último estado</span><h3>Evolución por aptitud</h3></div>{averageScore !== null ? <b>{averageScore}/100</b> : null}</div>{radarItems.length ? <StudentRadar items={radarItems} /> : <div className={styles.empty}><TrendingUp /><span>Todavía no hay evaluaciones.</span></div>}</section><section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Historial</span><h3>Evaluaciones registradas</h3></div><b>{evaluations.length}</b></div>{evaluations.length ? <div className={styles.historyList}>{evaluations.slice(0, 30).map((item) => <div key={item.id}><div><strong>{termLabel(item.aptitude_term_id, terms)}</strong><span>{dateLabel(item.created_at)} · {termLabel(item.level_term_id,terms)} · {termLabel(item.style_term_id, terms)} · {termLabel(item.role_term_id, terms)}</span>{item.note ? <small>{item.note}</small> : null}</div><b>{item.score}</b></div>)}</div> : <div className={styles.empty}><TrendingUp /><span>Sin historial de evaluación.</span></div>}</section></div>
     </div>;
   }
 

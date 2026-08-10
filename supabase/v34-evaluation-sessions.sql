@@ -55,9 +55,14 @@ where e.session_id is null
   and s.evaluation_kind=e.evaluation_kind;
 
 alter table public.evaluation_sessions enable row level security;
-drop policy if exists evaluation_sessions_staff_all on public.evaluation_sessions;
-create policy evaluation_sessions_staff_all on public.evaluation_sessions for all to authenticated
-  using ((select private.is_staff())) with check ((select private.is_staff()) and evaluated_by=(select auth.uid()));
+drop policy if exists evaluation_sessions_staff_select on public.evaluation_sessions;
+create policy evaluation_sessions_staff_select on public.evaluation_sessions for select to authenticated using ((select private.is_staff()));
+drop policy if exists evaluation_sessions_staff_insert on public.evaluation_sessions;
+create policy evaluation_sessions_staff_insert on public.evaluation_sessions for insert to authenticated with check ((select private.is_staff()) and evaluated_by=(select auth.uid()));
+drop policy if exists evaluation_sessions_staff_update on public.evaluation_sessions;
+create policy evaluation_sessions_staff_update on public.evaluation_sessions for update to authenticated using ((select private.is_staff())) with check ((select private.is_staff()));
+drop policy if exists evaluation_sessions_staff_delete on public.evaluation_sessions;
+create policy evaluation_sessions_staff_delete on public.evaluation_sessions for delete to authenticated using ((select private.is_staff()));
 drop policy if exists evaluation_sessions_student_select on public.evaluation_sessions;
 create policy evaluation_sessions_student_select on public.evaluation_sessions for select to authenticated
   using (person_id=(select private.current_person_id()) and status='completed');
@@ -251,6 +256,13 @@ grant execute on function public.start_student_evaluation(bigint,bigint,text,big
 grant execute on function public.save_evaluation_score(bigint,bigint,smallint,text) to authenticated,service_role;
 grant execute on function public.complete_evaluation_session(bigint) to authenticated,service_role;
 grant execute on function public.save_class_evaluation_v2(bigint,bigint,bigint,bigint,smallint) to authenticated,service_role;
+
+do $$
+begin
+  if exists(select 1 from pg_publication where pubname='supabase_realtime') and not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='student_evaluations') then
+    alter publication supabase_realtime add table public.student_evaluations;
+  end if;
+end $$;
 
 -- El backup completo debe conservar el agrupador antes que sus puntuaciones.
 create or replace function private.backup_tables_for_domain(p_domain text)
