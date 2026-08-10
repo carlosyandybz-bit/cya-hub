@@ -715,3 +715,10 @@ body:has([role="dialog"]){overflow:hidden}
   .modal{width:min(94vw,520px);max-height:calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));border-radius:20px}
   .actions{flex-wrap:wrap}
 }
+
+
+/* v24 · avatar account menu integration */
+@media(max-width:900px){
+  .student-portal-head{display:flex;align-items:center;justify-content:space-between;grid-template-columns:none}
+  .student-portal-head>div:last-child{margin-left:auto;justify-self:auto}
+}
