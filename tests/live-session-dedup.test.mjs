@@ -11,9 +11,10 @@ test('live session deduplicates assignments per student and content', () => {
   assert.ok(live.includes('candidate.person_id===assignment.person_id && candidate.content_id===assignment.content_id'));
 });
 
-test('corrections have one creation path inside live session', () => {
-  assert.ok(live.includes('<summary><Plus/> Nueva corrección</summary>'));
-  assert.equal(live.includes('<option value="correction">Corrección</option>'), false);
+test('corrections have one creation path inside unified live search', () => {
+  assert.equal(live.includes('<summary><Plus/> Nueva corrección</summary>'), false);
+  assert.ok(live.includes('<option value="correction">Corrección</option>'));
+  assert.equal((live.match(/create_class_correction/g) ?? []).length, 1);
   assert.equal(live.includes('Corrección rápida añadida al alumno.'), false);
 });
 
