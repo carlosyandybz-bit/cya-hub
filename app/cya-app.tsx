@@ -21,7 +21,7 @@ import {
 } from "./marketing-view";
 import { AdminView } from "./admin-view";
 import { AgendaView } from "./agenda-view";
-import { ContextSelector } from "./context-selector";
+import { AccountMenu } from "./account-menu";
 import { HomeView } from "./home-view";
 import { StudentMasterDetail } from "./student-detail";
 import { TeachingContentCard, type TeachingCardMedia } from "./teaching-content-card";
@@ -1009,7 +1009,7 @@ function portalClassStatus(value: string) {
   return ({ scheduled: "Programada", active: "En curso", finished: "Realizada", cancelled: "Cancelada" } as Record<string, string>)[value] ?? value;
 }
 
-function StudentPortal({ identity, experience, onExperience }: { identity: IdentityContext; experience: ExperienceContext; onExperience: (value: ExperienceContext) => void }) {
+function StudentPortal({ identity, experience, onExperience, client, email, onIdentityPatch }: { identity: IdentityContext; experience: ExperienceContext; onExperience: (value: ExperienceContext) => void | Promise<void>; client: SupabaseClient; email: string; onIdentityPatch: (patch: Partial<IdentityContext>) => void }) {
   const [snapshot, setSnapshot] = useState<StudentPortalSnapshot | null>(null), [error, setError] = useState("");
   const [portalNow] = useState(() => Date.now());
   const load = useCallback(async () => {
@@ -1032,7 +1032,7 @@ function StudentPortal({ identity, experience, onExperience }: { identity: Ident
   const latestScores = [...snapshot.evaluations].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).reduce<Map<string, StudentPortalSnapshot["evaluations"][number]>>((map, item) => map.has(item.aptitude) ? map : map.set(item.aptitude, item), new Map());
   const totalScore = [...latestScores.values()].reduce((sum,item) => sum + Number(item.score || 0),0);
   const relativeRadar = [...latestScores.values()].map((item) => ({ label:item.aptitude, value:totalScore ? Number(item.score) / totalScore * 100 : 0 }));
-  return <div className="student-portal-shell"><header className="student-portal-head"><Brand /><ContextSelector identity={identity} value={experience} onChange={onExperience} compact /><div><span>{snapshot.profile.display_name || identity.display_name}</span><button className="icon-btn" onClick={() => db?.auth.signOut()} aria-label="Cerrar sesión"><LogOut /></button></div></header><main className="student-portal-main">
+  return <div className="student-portal-shell"><header className="student-portal-head"><Brand /><div><span>{identity.profile_name || snapshot.profile.display_name || identity.display_name}</span><AccountMenu client={client} identity={identity} experience={experience} email={email} variant="header" onExperience={onExperience} onIdentityPatch={onIdentityPatch} notify={() => undefined} /></div></header><main className="student-portal-main">
     <section className="portal-hero"><div><p className="eyebrow">Mi espacio</p><h1>Hola, {snapshot.profile.first_name || snapshot.profile.display_name}</h1><p>{nextClass ? `Tu próxima clase es ${dateLabel(nextClass.scheduled_start_at)}.` : "Aquí tienes tus clases, saldo y evolución al día."}</p></div><Sparkles /></section>
     <section className="portal-stats"><article><CalendarDays /><span>Próximas clases</span><strong>{upcoming.length}</strong></article><article><WalletCards /><span>Saldo neto</span><strong>{minutesLabel(balance)}</strong></article><article><BookOpen /><span>En formación</span><strong>{activeAssignments.length}</strong></article><article><TrendingUp /><span>Aptitudes evaluadas</span><strong>{latestScores.size}</strong></article></section>
     {pendingDebt > 0 ? <section className="card portal-next"><div><p className="eyebrow">Saldo pendiente</p><h2>{minutesLabel(pendingDebt)} por regularizar</h2><p>Una o más clases quedaron sin saldo suficiente. El profesor puede regularizarlas con un bono o dejar constancia de otra decisión.</p></div><AlertTriangle /></section> : null}
@@ -1250,8 +1250,8 @@ function StaffApp({ session }: { session: Session }) {
     const result = await db.from("user_preferences").upsert({ user_id: activeIdentity.user_id, preferred_context: value }, { onConflict: "user_id" });
     if (result.error) setToast("La vista ha cambiado, pero no se pudo guardar como preferencia.");
   }
-  if (experience === "student" && identity.can_study) return <StudentPortal identity={identity} experience={experience} onExperience={setExperience} />;
-  if (!identity.can_teach && !identity.can_admin) return <StudentPortal identity={identity} experience="student" onExperience={setExperience} />;
+  if (experience === "student" && identity.can_study) return <StudentPortal identity={identity} experience={experience} onExperience={setExperience} client={db!} email={session.user.email ?? ""} onIdentityPatch={(patch) => setIdentity((current) => current ? { ...current, ...patch } : current)} />;
+  if (!identity.can_teach && !identity.can_admin) return <StudentPortal identity={identity} experience="student" onExperience={setExperience} client={db!} email={session.user.email ?? ""} onIdentityPatch={(patch) => setIdentity((current) => current ? { ...current, ...patch } : current)} />;
   async function created() { await Promise.all([loadStudents(),loadMarketing()]); setToast("Alumno provisional creado correctamente."); setNewOpen(false); replaceView("students"); }
   async function classSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Clase programada correctamente."); setScheduleOpen(false); setScheduleStudentId(null); replaceView("classes"); }
   async function creditSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Bono creado correctamente."); setCreditOpen(false); setCreditStudentId(null); replaceView("credits"); }
@@ -1266,12 +1266,10 @@ function StaffApp({ session }: { session: Session }) {
   const activeNav = (id: string) => id === "students" ? studentArea : view === id;
   return <div className="shell">
     <aside className="sidebar"><Brand /><nav>{nav.map(([id, label, Icon]) => <button key={id} className={activeNav(id) ? "active" : ""} onClick={() => navigateView(id)}><Icon />{label}</button>)}</nav>
-      <div className="side-bottom"><ContextSelector identity={identity} value={experience} onChange={setExperience} /></div>
-      <div className="side-user"><CircleUserRound /><div><strong>{identity.display_name}</strong><span>{identity.roles.map((role) => roleLabel(role)).join(" · ")}</span></div><button onClick={() => db?.auth.signOut()} aria-label="Cerrar sesión"><LogOut /></button></div>
+      <AccountMenu client={db!} identity={identity} experience={experience} email={session.user.email ?? ""} variant="sidebar" onExperience={setExperience} onIdentityPatch={(patch) => setIdentity((current) => current ? { ...current, ...patch } : current)} notify={setToast} />
     </aside>
-    <div><header className="mobile-head"><div className="mobile-head-back">{view !== "home" ? <button className="mobile-back" type="button" onClick={() => goBack("home")} aria-label="Volver">‹</button> : null}</div><div className="mobile-head-brand"><Brand /></div><div className="mobile-head-actions"><button className="icon-btn" onClick={() => navigateView("home")} aria-label="Notificaciones"><Bell /></button>{identity.can_admin ? <button className="icon-btn" onClick={() => goTarget("admin")} aria-label="Cuenta y administración"><CircleUserRound /></button> : null}</div></header>
+    <div><header className="mobile-head"><div className="mobile-head-back">{view !== "home" ? <button className="mobile-back" type="button" onClick={() => goBack("home")} aria-label="Volver">‹</button> : null}</div><div className="mobile-head-brand"><Brand /></div><div className="mobile-head-actions"><button className="icon-btn" onClick={() => navigateView("home")} aria-label="Notificaciones"><Bell /></button><AccountMenu client={db!} identity={identity} experience={experience} email={session.user.email ?? ""} variant="header" onExperience={setExperience} onIdentityPatch={(patch) => setIdentity((current) => current ? { ...current, ...patch } : current)} notify={setToast} /></div></header>
       <main className="main"><div className="content">
-        {view !== "live" ? <div className="context-toolbar"><ContextSelector identity={identity} value={experience} onChange={setExperience} compact /></div> : null}
         {studentArea ? <nav className="module-tabs" aria-label="Alumnado"><button className={view === "students" ? "active" : ""} onClick={() => navigateView("students")}><UsersRound /> Alumnos</button><button className={view === "classes" ? "active" : ""} onClick={() => navigateView("classes")}><CalendarDays /> Clases</button><button className={view === "credits" ? "active" : ""} onClick={() => navigateView("credits")}><WalletCards /> Bonos</button><button className={view === "agenda" ? "active" : ""} onClick={() => navigateView("agenda")}><CalendarDays /> Agenda</button></nav> : null}
         {view === "home" && db ? <HomeView client={db} identity={identity} studentCount={students.length} classes={classes} students={students} go={goTarget} goLive={goLive} addStudent={openNewStudent} scheduleClass={() => openSchedule(null)} notify={setToast} /> : null}
         {view === "students" ? <StudentsView students={students} query={query} setQuery={setQuery} add={openNewStudent} open={openStudentDetail} schedule={(student) => openSchedule(student.id)} credit={(student) => openCredit(student.id)} /> : null}
