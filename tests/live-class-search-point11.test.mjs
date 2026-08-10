@@ -14,7 +14,8 @@ test('live search is contextual and server validated', () => {
   assert.match(live,/p_person_id:participant\.person_id/);
   assert.match(live,/p_content_type:searchKind==='all'\?null:searchKind/);
   assert.match(live,/window\.setTimeout\(async \(\) =>/);
-  assert.doesNotMatch(live,/contentFitsContext\(content,item\.style_term_id/);
+  assert.doesNotMatch(live,/const unifiedLibrary=/);
+  assert.doesNotMatch(live,/const matchesSearch=/);
 });
 
 test('all four teaching types use one quick creation area', () => {
