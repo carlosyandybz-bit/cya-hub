@@ -25,9 +25,10 @@ test("account menu is available in mobile, desktop and student portal", () => {
   assert.ok(occurrences >= 3, `expected at least 3 AccountMenu mounts, got ${occurrences}`);
 });
 
-test("account menu stays touch-safe and centered", () => {
+test("account dialogs remain inside the real iPhone viewport", () => {
   assert.match(css, /\.headerTrigger\{width:44px;height:44px/);
-  assert.match(css, /\.backdrop\{[^}]*place-items:center/);
-  assert.match(css, /\.dialog\{[^}]*max-height:calc\(100dvh/);
+  assert.match(css, /\.backdrop\{[^}]*align-items:start[^}]*overflow-y:auto/);
+  assert.match(css, /\.dialog\{[^}]*max-height:calc\(100svh[^}]*margin-block:auto/);
+  assert.match(css, /\.dialogHeader\{position:sticky;top:0/);
   assert.ok(!css.includes("align-items:end"));
 });
