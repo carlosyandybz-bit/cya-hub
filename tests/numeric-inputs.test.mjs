@@ -17,6 +17,7 @@ const all = [...sources.values()].join("\n");
 const cya = fs.readFileSync("app/cya-app.tsx", "utf8");
 const admin = fs.readFileSync("app/admin-view.tsx", "utf8");
 const marketing = fs.readFileSync("app/marketing-view-legacy.tsx", "utf8");
+const evaluationRadar = fs.readFileSync("app/evaluation-radar.tsx", "utf8");
 
 test("application does not use browser number steppers for editable numeric fields", () => {
   for (const [file, source] of sources) {
@@ -55,7 +56,10 @@ test("decimal inputs accept Spanish comma and validation happens at save time", 
   assert.match(admin, /Indica un número entre 1 y 50/);
 });
 
-test("evaluation discrete controls remain intact while numeric text fields are normalized", () => {
+test("evaluation keeps five discrete controls instead of a free numeric input", () => {
   assert.match(cya, /\[0,25,50,75,100\]/);
-  assert.match(cya, /score-grid/);
+  assert.match(cya, /<EvaluationRadar/);
+  assert.match(evaluationRadar, /scale\.map\(\(option\) => <button/);
+  assert.match(evaluationRadar, /onChange\?\.\(selected\.id, option\.score\)/);
+  assert.doesNotMatch(evaluationRadar, /<input\b/);
 });
