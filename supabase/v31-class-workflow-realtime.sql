@@ -75,7 +75,8 @@ create table if not exists public.class_preparation_requests(
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  check (body is not null or external_file_id is not null or content_id is not null)
+  check (body is not null or external_file_id is not null or content_id is not null),
+  check (external_file_id is null or external_file_id ~ '^[A-Za-z0-9_-]{10,200}$')
 );
 create index if not exists class_preparation_requests_class_idx on public.class_preparation_requests(class_id,created_at);
 
@@ -128,8 +129,8 @@ create policy class_preparation_requests_student_insert on public.class_preparat
   with check (person_id=(select private.current_person_id()) and exists(select 1 from public.classes c join public.class_participants cp on cp.class_id=c.id where c.id=class_id and cp.person_id=person_id and c.status='scheduled'));
 drop policy if exists class_preparation_requests_student_update on public.class_preparation_requests;
 create policy class_preparation_requests_student_update on public.class_preparation_requests for update to authenticated
-  using (person_id=(select private.current_person_id()) and exists(select 1 from public.classes c where c.id=class_id and c.status='scheduled'))
-  with check (person_id=(select private.current_person_id()));
+  using (person_id=(select private.current_person_id()) and exists(select 1 from public.classes c join public.class_participants cp on cp.class_id=c.id where c.id=class_id and cp.person_id=person_id and c.status='scheduled'))
+  with check (person_id=(select private.current_person_id()) and exists(select 1 from public.classes c join public.class_participants cp on cp.class_id=c.id where c.id=class_id and cp.person_id=person_id and c.status='scheduled'));
 drop policy if exists class_preparation_requests_student_delete on public.class_preparation_requests;
 create policy class_preparation_requests_student_delete on public.class_preparation_requests for delete to authenticated
   using (person_id=(select private.current_person_id()) and exists(select 1 from public.classes c where c.id=class_id and c.status='scheduled'));
@@ -154,7 +155,7 @@ create policy class_video_resources_student_select on public.class_video_resourc
   using (visibility_scope='private_student' and person_id=(select private.current_person_id()) and exists(select 1 from public.classes c where c.id=class_id and c.pedagogy_closed_at is not null));
 
 grant select,insert,update,delete on public.class_content_events,public.class_preparation_requests,public.class_pedagogy_summaries,public.class_media_resources to authenticated;
-grant usage,select on all sequences in schema public to authenticated;
+grant usage,select on sequence public.class_content_events_id_seq, public.class_preparation_requests_id_seq, public.class_media_resources_id_seq to authenticated;
 
 -- Realtime para dos profesores/dispositivos sobre la misma clase.
 do $$
@@ -474,3 +475,31 @@ begin
   ) into v_result;
   return v_result;
 end $$;
+
+
+-- v31 security closure: pending teaching data is not directly readable by students either.
+drop policy if exists student_content_assignments_select on public.student_content_assignments;
+create policy student_content_assignments_select on public.student_content_assignments for select to authenticated
+  using ((select private.is_staff()) or (
+    person_id=(select private.current_person_id())
+    and student_visible_at is not null
+    and assignment_status in ('corrected','explained','completed')
+  ));
+
+drop policy if exists student_content_measurements_select on public.student_content_measurements;
+create policy student_content_measurements_select on public.student_content_measurements for select to authenticated
+  using ((select private.is_staff()) or exists(
+    select 1 from public.student_content_assignments a
+    where a.id=student_content_measurements.assignment_id
+      and a.person_id=(select private.current_person_id())
+      and a.student_visible_at is not null
+      and a.assignment_status in ('corrected','explained','completed')
+  ));
+
+drop policy if exists class_notes_student_select on public.class_notes;
+create policy class_notes_student_select on public.class_notes for select to authenticated
+  using (
+    visibility_scope='student'
+    and person_id=(select private.current_person_id())
+    and exists(select 1 from public.classes c where c.id=class_id and c.pedagogy_closed_at is not null)
+  );
