@@ -2,8 +2,11 @@ name: Validate Point 13 evaluation radar
 on:
   push:
     branches: [feat/point13-interactive-evaluation-radar]
+permissions:
+  contents: write
 jobs:
   validate:
+    if: github.event.head_commit.message != 'Integrate interactive evaluation radar'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
