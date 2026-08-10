@@ -112,7 +112,7 @@ export function AccountMenu({
   function avatar(className?: string) {
     return (
       <span className={`${styles.avatar} ${className ?? ""}`} aria-hidden="true">
-        {showAvatarImage ? <img src={identity.avatar_url ?? ""} alt="" onError={() => setAvatarFailed(true)} /> : <UserRound />}
+        {showAvatarImage ? <img src={identity.avatar_url ?? ""} alt="" onError={() => setAvatarFailed(true)} /> : <span className={styles.avatarSilhouette}><span className={styles.avatarHead} /><span className={styles.avatarShoulders} /></span>}
       </span>
     );
   }
