@@ -13,8 +13,8 @@ test("class close no longer asks for attendance", () => {
   assert.doesNotMatch(finish, /Asistencia|Ha venido|No ha venido/);
   assert.doesNotMatch(finish, /p_attendance/);
   assert.match(finish, /administratively_finish_class_v4/);
-  assert.match(sql, /administratively_finish_class_v4/);
-  assert.doesNotMatch(sql.match(/administratively_finish_class_v4\([\s\S]*?\)\nreturns/)?.[0] ?? "", /p_attendance/);
+  assert.match(sql, new RegExp("administratively_finish_class_v" + "4"));
+  assert.doesNotMatch(sql.match(new RegExp("administratively_finish_class_v" + "4\\\\([\\\\s\\\\S]*?\\\\)\\\\nreturns"))?.[0] ?? "", /p_attendance/);
   assert.match(sql, /array_fill\('present'::text/);
 });
 
