@@ -28,6 +28,7 @@ function recoverExactExcelRows(bundle: CyaDataBundle): CyaDataBundle {
   const tables = Object.fromEntries(Object.entries(bundle.tables).map(([table, rows]) => {
     const exact = rows.map((row) => {
       const raw = row.__record_json;
+      if (raw && typeof raw === "object" && !Array.isArray(raw)) return raw as Record<string, unknown>;
       if (typeof raw === "string" && raw.trim().startsWith("{")) {
         try { return JSON.parse(raw) as Record<string, unknown>; } catch { /* use visible values below */ }
       }
