@@ -4,14 +4,26 @@ import fs from "node:fs";
 
 const app = fs.readFileSync("app/cya-app.tsx", "utf8");
 const menu = fs.readFileSync("app/account-menu.tsx", "utf8");
+const pages = fs.readFileSync("app/account-pages.tsx", "utf8");
 const css = fs.readFileSync("app/account-menu.module.css", "utf8");
 
-test("avatar menu owns portal and account actions", () => {
+test("avatar menu owns portal and routes account actions", () => {
   for (const label of ["Cambiar de portal", "Editar perfil", "Preferencias", "Cuenta y sesión", "Cerrar sesión"]) {
     assert.ok(menu.includes(label), `missing ${label}`);
   }
-  assert.ok(menu.includes('user_profiles').valueOf());
-  assert.ok(menu.includes('user_preferences').valueOf());
+  assert.ok(menu.includes("onOpenProfile"));
+  assert.ok(menu.includes("onOpenPreferences"));
+  assert.ok(!menu.includes('name="avatar_url"'));
+});
+
+test("profile and preferences are independent screens", () => {
+  assert.ok(pages.includes("export function ProfileSettingsView"));
+  assert.ok(pages.includes("export function PreferencesSettingsView"));
+  assert.ok(pages.includes('type="file"'));
+  assert.ok(pages.includes('accept="image/*"'));
+  assert.ok(pages.includes('storage.from("avatars")'));
+  assert.ok(pages.includes("prepareAvatar"));
+  assert.ok(!pages.includes('name="avatar_url"'));
 });
 
 test("technical context selectors are removed from staff shell and student portal", () => {
