@@ -1,0 +1,45 @@
+name: Validate account session v25b
+
+on:
+  push:
+    branches:
+      - fix/account-session-layer-v25b
+
+permissions:
+  contents: write
+
+jobs:
+  validate-account-session:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/account-session-layer-v25b
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply account-session fix
+        run: node scripts/fix-account-session-v25b.mjs
+      - name: Remove integration helper
+        run: rm scripts/fix-account-session-v25b.mjs
+      - name: Install dependencies
+        run: npm ci
+      - name: Account session regression checks
+        run: node --test tests/account-session-layer.test.mjs tests/account-menu.test.mjs tests/notifications-view.test.mjs
+      - name: Visual integrity checks
+        run: node --test tests/visual-integrity.test.mjs
+      - name: Strict production build
+        run: npm run build
+      - name: Existing rendered HTML tests
+        run: npm test
+      - name: Commit validated fix
+        run: |
+          git config user.name "CYA Hub automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add app/account-menu.tsx app/account-pages.tsx app/notifications-view.tsx tests/account-session-layer.test.mjs
+          if ! git diff --cached --quiet; then
+            git commit -m "Keep account session above every screen [validated-v25b]"
+            git push origin HEAD:fix/account-session-layer-v25b
+          fi
