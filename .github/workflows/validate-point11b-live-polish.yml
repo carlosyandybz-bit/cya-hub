@@ -24,7 +24,8 @@ jobs:
           node --test tests/class-workflow-point10.test.mjs
           node --test tests/live-session-dedup.test.mjs
           node --test tests/no-real-time-class-duration.test.mjs
-          node --test tests/numeric-inputs-global.test.mjs
+          node --test tests/numeric-inputs.test.mjs
+          node --test tests/point8-final-close-v30.test.mjs
       - name: Strict production build
         run: npm run build
       - name: Existing suite
