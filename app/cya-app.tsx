@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  AlertTriangle, Archive, ArrowLeft, ArrowRight, Bell, BookOpen, CalendarDays, CheckCircle2, ChevronRight, CircleUserRound,
+  AlertTriangle, Archive, ArrowRight, Bell, BookOpen, CalendarDays, CheckCircle2, ChevronRight, CircleUserRound,
   Clock3, Dumbbell, Eye, EyeOff, GitBranch, GraduationCap, House,
   LibraryBig, Link2, LockKeyhole, LogOut, Megaphone, NotebookPen,
   Pencil, Play, Plus, Search, Sparkles, TrendingUp, UsersRound,
@@ -1269,9 +1269,8 @@ function StaffApp({ session }: { session: Session }) {
       <div className="side-bottom"><ContextSelector identity={identity} value={experience} onChange={setExperience} /></div>
       <div className="side-user"><CircleUserRound /><div><strong>{identity.display_name}</strong><span>{identity.roles.map((role) => roleLabel(role)).join(" · ")}</span></div><button onClick={() => db?.auth.signOut()} aria-label="Cerrar sesión"><LogOut /></button></div>
     </aside>
-    <div><header className="mobile-head"><div className="mobile-head-left"><Brand /></div><div /><div className="mobile-head-actions"><button className="icon-btn" onClick={() => navigateView("home")} aria-label="Notificaciones"><Bell /></button>{identity.can_admin ? <button className="icon-btn" onClick={() => goTarget("admin")} aria-label="Cuenta y administración"><CircleUserRound /></button> : null}</div></header>
+    <div><header className="mobile-head"><div className="mobile-head-back">{view !== "home" ? <button className="mobile-back" type="button" onClick={() => goBack("home")} aria-label="Volver">‹</button> : null}</div><div className="mobile-head-brand"><Brand /></div><div className="mobile-head-actions"><button className="icon-btn" onClick={() => navigateView("home")} aria-label="Notificaciones"><Bell /></button>{identity.can_admin ? <button className="icon-btn" onClick={() => goTarget("admin")} aria-label="Cuenta y administración"><CircleUserRound /></button> : null}</div></header>
       <main className="main"><div className="content">
-        {view !== "home" && view !== "live" ? <button className="app-back" type="button" onClick={() => goBack("home")}><ArrowLeft size={18} /> Volver</button> : null}
         {view !== "live" ? <div className="context-toolbar"><ContextSelector identity={identity} value={experience} onChange={setExperience} compact /></div> : null}
         {studentArea ? <nav className="module-tabs" aria-label="Alumnado"><button className={view === "students" ? "active" : ""} onClick={() => navigateView("students")}><UsersRound /> Alumnos</button><button className={view === "classes" ? "active" : ""} onClick={() => navigateView("classes")}><CalendarDays /> Clases</button><button className={view === "credits" ? "active" : ""} onClick={() => navigateView("credits")}><WalletCards /> Bonos</button><button className={view === "agenda" ? "active" : ""} onClick={() => navigateView("agenda")}><CalendarDays /> Agenda</button></nav> : null}
         {view === "home" && db ? <HomeView client={db} identity={identity} studentCount={students.length} classes={classes} students={students} go={goTarget} goLive={goLive} addStudent={openNewStudent} scheduleClass={() => openSchedule(null)} notify={setToast} /> : null}
