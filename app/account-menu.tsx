@@ -7,7 +7,7 @@ import {
   CircleUserRound,
   LogOut,
   Pencil,
-  Settings2,
+  Settings,
   ShieldCheck,
   UserRound,
   UsersRound,
@@ -190,7 +190,7 @@ export function AccountMenu({
             <ChevronRight />
           </button>
           <button type="button" className={styles.menuRow} onClick={() => openPage(onOpenPreferences)}>
-            <span className={styles.rowIcon}><Settings2 /></span>
+            <span className={styles.rowIcon}><Settings /></span>
             <span className={styles.rowText}><strong>Preferencias</strong><small>Configuración personal de CYA Hub</small></span>
             <ChevronRight />
           </button>
