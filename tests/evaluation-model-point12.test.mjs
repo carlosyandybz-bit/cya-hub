@@ -4,7 +4,6 @@ import fs from 'node:fs';
 
 const app=fs.readFileSync('app/cya-app.tsx','utf8');
 const detail=fs.readFileSync('app/student-detail.tsx','utf8');
-const css=fs.readFileSync('app/student-detail.module.css','utf8');
 const sql=fs.readFileSync('supabase/v34-evaluation-sessions.sql','utf8');
 const live=app.slice(app.indexOf('function LiveSession('),app.indexOf('\nfunction LiveClassView(',app.indexOf('function LiveSession(')));
 
@@ -21,7 +20,7 @@ test('Point 12 preserves the five discrete configured values',()=>{
   assert.match(sql,/p_score not in \(0,25,50,75,100\)/);
   assert.match(live,/taxonomy==='evaluation_scale'/);
   assert.match(live,/\[0,25,50,75,100\]\.includes\(score\)/);
-  assert.match(live,/<b>\{score\}<\/b><small>\{term\.label\}<\/small>/);
+  assert.match(live,/scale\.map\(\(\{term,score\}\) => \(\{score,label:term\.label\}\)\)/);
   assert.match(detail,/evaluationScale/);
 });
 
@@ -73,8 +72,8 @@ test('new evaluation grouping is included in backup domains',()=>{
   assert.match(sql,/when 'complete'.*evaluation_sessions.*student_evaluations/s);
 });
 
-test('Point 12 does not redesign radar/history ahead of Points 13 and 14',()=>{
-  assert.match(detail,/function StudentRadar/);
+test('Point 13 may replace the radar while Point 12 history remains intact',()=>{
+  assert.match(detail,/import \{ EvaluationRadar \} from "\.\/evaluation-radar"/);
   assert.match(detail,/Historial/);
-  assert.match(css,/\.radar\{/);
+  assert.match(detail,/Evaluaciones registradas/);
 });
