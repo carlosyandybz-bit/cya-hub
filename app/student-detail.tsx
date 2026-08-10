@@ -408,11 +408,6 @@ export function StudentMasterDetail({
     ...(upcoming.length && balance <= 0 ? [{ key: "balance", label: "Tiene una próxima clase y el saldo neto no es positivo", tab: "credits" as Tab }] : []),
   ];
 
-  function closeAnd(action: () => void) {
-    close();
-    action();
-  }
-
   function compatibleCredits(incident: StudentIncident) {
     const people = incident.student_incident_people.map((link) => link.person_id);
     return ownCredits.filter((grant) => grant.status === "active" && balanceFor(grant) > 0)
@@ -512,7 +507,7 @@ export function StudentMasterDetail({
   }
 
   function renderClasses() {
-    return <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Clases</span><h3>Historial y próximas</h3></div><button onClick={() => closeAnd(schedule)}>Programar clase</button></div>
+    return <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Clases</span><h3>Historial y próximas</h3></div><button onClick={schedule}>Programar clase</button></div>
       {ownClasses.length ? <div className={styles.classList}>{ownClasses.map((item) => {
         const participant = item.class_participants.find((value) => value.person_id === student.id);
         const financial = classFinancial[item.id];
@@ -521,7 +516,7 @@ export function StudentMasterDetail({
         const financialLabel = financial?.billing_status === "accepted_uncovered" && financial.uncovered_minutes
           ? ` · Aceptado sin regularizar ${minutesLabel(financial.uncovered_minutes)}`
           : financial?.uncovered_minutes ? ` · Pendiente ${minutesLabel(financial.uncovered_minutes)}` : "";
-        return <article key={item.id}><span className={styles.classIcon}><CalendarDays /></span><div><strong>{termLabel(item.style_term_id, terms)} · {item.class_type === "pair" ? "Pareja" : "Individual"}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(actualDuration)}{item.status === "finished" && actualDuration !== item.duration_minutes ? ` reales · prevista ${minutesLabel(item.duration_minutes)}` : ""}</span><small>{classLabels[item.status] ?? item.status} · {participant?.attendance_status === "present" ? "Asistió" : participant?.attendance_status === "absent" ? "Ausente" : "Asistencia pendiente"}{financialLabel}</small>{item.notes ? <p>{item.notes}</p> : null}</div>{actionable ? <button onClick={() => closeAnd(() => openClass(item.id))}>{item.status === "scheduled" ? "Dar clase" : "Abrir"}</button> : <span className={styles.statusPill}>{classLabels[item.status] ?? item.status}</span>}</article>;
+        return <article key={item.id}><span className={styles.classIcon}><CalendarDays /></span><div><strong>{termLabel(item.style_term_id, terms)} · {item.class_type === "pair" ? "Pareja" : "Individual"}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(actualDuration)}{item.status === "finished" && actualDuration !== item.duration_minutes ? ` reales · prevista ${minutesLabel(item.duration_minutes)}` : ""}</span><small>{classLabels[item.status] ?? item.status} · {participant?.attendance_status === "present" ? "Asistió" : participant?.attendance_status === "absent" ? "Ausente" : "Asistencia pendiente"}{financialLabel}</small>{item.notes ? <p>{item.notes}</p> : null}</div>{actionable ? <button onClick={() => openClass(item.id)}>{item.status === "scheduled" ? "Dar clase" : "Abrir"}</button> : <span className={styles.statusPill}>{classLabels[item.status] ?? item.status}</span>}</article>;
       })}</div> : <div className={styles.empty}><CalendarDays /><span>No hay clases registradas.</span></div>}
     </section>;
   }
@@ -546,7 +541,7 @@ export function StudentMasterDetail({
 
       {financialNotice ? <section className={`${styles.issueBox} ${styles.issueGood}`}><header><CheckCircle2 /><div><strong>Gestión guardada</strong><span>{financialNotice}</span></div></header></section> : null}
 
-      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Bonos</span><h3>Saldo e historial</h3></div><button onClick={() => closeAnd(addCredit)}>Añadir bono</button></div>
+      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Bonos</span><h3>Saldo e historial</h3></div><button onClick={addCredit}>Añadir bono</button></div>
         <div className={styles.metrics}><article><WalletCards /><span>Saldo en bonos</span><strong>{minutesLabel(availableBalance)}</strong></article><article><AlertTriangle /><span>Pendiente</span><strong>{minutesLabel(pendingDebt)}</strong></article><article><WalletCards /><span>Saldo neto</span><strong>{minutesLabel(balance)}</strong></article></div>
         {ownCredits.length ? <div className={styles.creditGrid}>{ownCredits.map((item) => { const itemBalance = balanceFor(item); return <article key={item.id} className={item.payment_status === "pending" ? styles.pendingCredit : ""}><div><span>{dateLabel(item.purchased_at, false)}</span><strong>{item.label || (item.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong></div><b>{minutesLabel(itemBalance)}</b><small>de {minutesLabel(item.total_minutes)} · {euros(item.price_cents)} · {item.payment_status === "paid" ? "Pagado" : item.payment_status === "pending" ? "Pago pendiente" : "Reembolsado"}</small></article>; })}</div> : <div className={styles.empty}><WalletCards /><span>No hay bonos registrados.</span></div>}
       </section>
@@ -572,7 +567,7 @@ export function StudentMasterDetail({
     <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="student-master-title">
       <header className={styles.header}>
         <div className={styles.hero}><span className={styles.avatar}><CircleUserRound /></span><div><span className={styles.kicker}>Ficha maestra del alumno</span><h2 id="student-master-title">{student.display_name}</h2><div className={styles.heroMeta}><span>{student.auth_user_id ? "Con portal" : "Provisional"}</span><span>{stageLabels[student.crm_stage] ?? student.crm_stage}</span>{issues.length ? <span className={styles.issueBadge}>{issues.length} por revisar</span> : <span className={styles.okBadge}>Sin incidencias</span>}</div></div></div>
-        <div className={styles.actions}><button onClick={() => closeAnd(schedule)}><CalendarDays /> Programar</button><button onClick={() => closeAnd(addCredit)}><WalletCards /> Bono</button><button className={styles.close} onClick={close} aria-label="Cerrar"><X /></button></div>
+        <div className={styles.actions}><button onClick={schedule}><CalendarDays /> Programar</button><button onClick={addCredit}><WalletCards /> Bono</button><button className={styles.close} onClick={close} aria-label="Cerrar"><X /></button></div>
       </header>
 
       <nav className={styles.tabs} aria-label="Ficha del alumno">{tabItems.map(([value, label]) => <button key={value} className={tab === value ? styles.activeTab : ""} onClick={() => setTab(value)}>{label}</button>)}</nav>
