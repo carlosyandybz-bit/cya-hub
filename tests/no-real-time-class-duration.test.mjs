@@ -22,8 +22,8 @@ test("Dar clase never calculates elapsed class duration", () => {
 test("finish flow defaults to the planned duration but permits an explicit manual edit", () => {
   assert.match(finishFlow, /useState\(item\.duration_minutes\)/);
   assert.match(finishFlow, /setDurationParts/);
-  assert.match(finishFlow, /administratively_finish_class_v3/);
-  assert.match(finishFlow, /p_actual_duration_minutes: manualDuration/);
+  assert.match(finishFlow, /administratively_finish_class_v4/);
+  assert.match(finishFlow, /p_duration_minutes: manualDuration/);
   assert.match(finishFlow, /saldo, incidencias e historial/);
 });
 

@@ -438,6 +438,27 @@ function defaultGrantSelection(item: ClassItem, credits: CreditItem[]) {
   return next;
 }
 
+function transferableIndividualCreditsForPair(item: ClassItem, credits: CreditItem[]) {
+  if (item.class_type !== "pair") return [];
+  const classPeople = new Set(item.class_participants.map((participant) => participant.person_id));
+  return credits.filter((grant) => {
+    if (grant.status !== "active" || grant.modality !== "individual" || creditBalance(grant) <= 0) return false;
+    if (grant.expires_at) {
+      const expiry = new Date(grant.expires_at).getTime();
+      if (Number.isFinite(expiry) && expiry <= Date.now()) return false;
+    }
+    const members = grant.credit_grant_members.map((member) => member.person_id);
+    return members.length === 1 && classPeople.has(members[0]);
+  }).sort((a, b) => {
+    const aExpiry = a.expires_at ? new Date(a.expires_at).getTime() : Number.POSITIVE_INFINITY;
+    const bExpiry = b.expires_at ? new Date(b.expires_at).getTime() : Number.POSITIVE_INFINITY;
+    const safeA = Number.isFinite(aExpiry) ? aExpiry : Number.POSITIVE_INFINITY;
+    const safeB = Number.isFinite(bExpiry) ? bExpiry : Number.POSITIVE_INFINITY;
+    if (safeA !== safeB) return safeA - safeB;
+    return new Date(a.purchased_at).getTime() - new Date(b.purchased_at).getTime();
+  });
+}
+
 function ManualStartClass({ students, styles, close, started }: { students: Person[]; styles: CatalogTerm[]; close: () => void; started: (id: number) => Promise<void> }) {
   const [type, setType] = useState<"individual" | "pair">("individual"), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [initialDate] = useState(() => localDateTime(new Date()));
@@ -478,19 +499,40 @@ function ManualStartClass({ students, styles, close, started }: { students: Pers
 function FinishClassModal({ item, students, credits, close, finished }: { item: ClassItem; students: Person[]; credits: CreditItem[]; close: () => void; finished: () => Promise<void> }) {
   const [localCredits, setLocalCredits] = useState<CreditItem[]>([]);
   const allCredits = useMemo(() => [...localCredits, ...credits], [localCredits, credits]);
-  const [attendance, setAttendance] = useState<Record<number, "present" | "absent">>(() => Object.fromEntries(item.class_participants.map((p) => [p.person_id, "present"])) as Record<number, "present" | "absent">);
   const [grantIds, setGrantIds] = useState<Record<number, string>>(() => defaultGrantSelection(item, credits));
   const [manualDuration, setManualDuration] = useState(item.duration_minutes);
-  const [billingMode, setBillingMode] = useState<"none" | "quick" | "direct">("none");
+  const [billingMode, setBillingMode] = useState<"none" | "quick" | "direct" | "transfer">("none");
   const [quickHours, setQuickHours] = useState(5), [quickMinutes, setQuickMinutes] = useState(0), [quickPrice, setQuickPrice] = useState("");
   const [quickPaymentStatus, setQuickPaymentStatus] = useState<"paid" | "pending">("paid");
+  const initialTransferSources = transferableIndividualCreditsForPair(item, credits);
+  const [transferSourceId, setTransferSourceId] = useState(() => initialTransferSources[0] ? String(initialTransferSources[0].id) : "");
+  const [transferFee, setTransferFee] = useState("0");
+  const [supplements, setSupplements] = useState<Array<{ id: number; concept: string; amount: string }>>([]);
+  const [nextSupplementId, setNextSupplementId] = useState(1);
+  const [quickCreatedChargeCents, setQuickCreatedChargeCents] = useState(0);
   const [quickBusy, setQuickBusy] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const plannedDuration = item.duration_minutes;
   const durationHours = Math.floor(manualDuration / 60), durationMinutes = manualDuration % 60;
   const classPersonIds = item.class_participants.map((participant) => participant.person_id);
   const hasSelectedGrant = item.class_participants.every((participant) => Boolean(grantIds[participant.person_id]));
+  const transferSources = useMemo(() => transferableIndividualCreditsForPair(item, allCredits), [item, allCredits]);
+  const transferSource = transferSources.find((grant) => String(grant.id) === transferSourceId) ?? null;
+  const transferAvailable = transferSource ? creditBalance(transferSource) : 0;
+  const transferMinutes = Math.min(Math.max(0, manualDuration), Math.max(0, transferAvailable));
+  const transferShortfall = Math.max(0, manualDuration - transferMinutes);
+  const selectedGrantId = Object.values(grantIds).find(Boolean) ?? "";
+  const selectedGrant = allCredits.find((grant) => String(grant.id) === selectedGrantId) ?? null;
+
   function setDurationParts(hours: number, minutes: number) {
     setManualDuration(Math.max(0, Math.min(480, Math.max(0, hours) * 60 + Math.max(0, Math.min(59, minutes)))));
+  }
+  function moneyCents(value: string) {
+    if (!value.trim()) return null;
+    const numeric = Number(value.replace(",", "."));
+    return Number.isFinite(numeric) && numeric >= 0 ? Math.round(numeric * 100) : null;
+  }
+  function euroLabel(cents: number) {
+    return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(cents / 100);
   }
   function eligibleCredits(personId: number) {
     return compatibleCreditsForClass(item, allCredits, personId);
@@ -504,6 +546,9 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
       return next;
     });
   }
+  function clearGrantSelection() {
+    setGrantIds(Object.fromEntries(item.class_participants.map((participant) => [participant.person_id, ""])) as Record<number, string>);
+  }
   function selectCreatedGrant(id: number) {
     setGrantIds((current) => {
       const next = { ...current };
@@ -516,16 +561,30 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
     if (!grant.expires_at) return "";
     return ` · caduca ${new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" }).format(new Date(grant.expires_at))}`;
   }
+  function ownerLabel(grant: CreditItem) {
+    const personId = grant.credit_grant_members[0]?.person_id;
+    return students.find((person) => person.id === personId)?.display_name || "Alumno";
+  }
+  function addSupplement() {
+    setSupplements((current) => [...current, { id: nextSupplementId, concept: "", amount: "" }]);
+    setNextSupplementId((current) => current + 1);
+  }
+  function updateSupplement(id: number, patch: Partial<{ concept: string; amount: string }>) {
+    setSupplements((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
+  }
+  function removeSupplement(id: number) {
+    setSupplements((current) => current.filter((item) => item.id !== id));
+  }
   async function createQuickBonus() {
     if (!db) return;
     const duration = Math.max(0, quickHours) * 60 + Math.max(0, Math.min(59, quickMinutes));
-    const price = Number(quickPrice.replace(",", "."));
+    const price = moneyCents(quickPrice);
     if (duration <= 0) return setError("Indica la duración del bono.");
-    if (!quickPrice.trim() || !Number.isFinite(price) || price < 0) return setError("Indica el importe del bono.");
+    if (price === null) return setError("Indica el importe del bono.");
     setQuickBusy(true); setError("");
     const result = await db.rpc("create_credit_grant", {
       p_student_ids: classPersonIds, p_modality: item.class_type, p_minutes: duration,
-      p_price_cents: Math.round(price * 100), p_label: "Bono rápido", p_payment_status: quickPaymentStatus,
+      p_price_cents: price, p_label: "Bono rápido", p_payment_status: quickPaymentStatus,
     });
     if (result.error) { setError(result.error.message); setQuickBusy(false); return; }
     const row = (result.data ?? {}) as Partial<CreditItem> & { id?: number };
@@ -533,35 +592,62 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
     if (!id) { setError("No se pudo seleccionar el bono creado."); setQuickBusy(false); return; }
     const created: CreditItem = {
       id, modality: item.class_type, label: row.label ?? "Bono rápido", total_minutes: duration,
-      price_cents: Math.round(price * 100), payment_status: quickPaymentStatus, status: row.status ?? "active",
+      price_cents: price, payment_status: quickPaymentStatus, status: row.status ?? "active",
       purchased_at: row.purchased_at ?? new Date().toISOString(), expires_at: row.expires_at ?? null,
       credit_grant_members: classPersonIds.map((person_id) => ({ person_id })), credit_movements: [{ delta_minutes: duration }],
     };
-    setLocalCredits((current) => [created, ...current]); selectCreatedGrant(id); setQuickBusy(false);
+    setLocalCredits((current) => [created, ...current]);
+    setQuickCreatedChargeCents((current) => current + price);
+    selectCreatedGrant(id); setQuickBusy(false);
   }
   function openDirectPayment() {
-    setGrantIds(Object.fromEntries(item.class_participants.map((participant) => [participant.person_id, ""])) as Record<number, string>);
-    setBillingMode("direct"); setQuickPrice(""); setError("");
+    clearGrantSelection(); setBillingMode("direct"); setQuickPrice(""); setError("");
   }
+  function openPairTransfer() {
+    clearGrantSelection();
+    const preferred = transferSources[0];
+    if (preferred) setTransferSourceId(String(preferred.id));
+    setBillingMode("transfer"); setTransferFee("0"); setError("");
+  }
+
+  const supplementTotalCents = supplements.reduce((sum, row) => sum + (moneyCents(row.amount) ?? 0), 0);
+  const directPriceCents = billingMode === "direct" ? (moneyCents(quickPrice) ?? 0) : 0;
+  const transferFeeCents = billingMode === "transfer" ? (moneyCents(transferFee) ?? 0) : 0;
+  const totalEconomicCents = quickCreatedChargeCents + directPriceCents + transferFeeCents + supplementTotalCents;
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!db) return;
     if (manualDuration <= 0 || manualDuration > 480) return setError("La duración debe estar entre 1 minuto y 8 horas.");
-    const directPrice = Number(quickPrice.replace(",", "."));
-    if (billingMode === "direct" && (!quickPrice.trim() || !Number.isFinite(directPrice) || directPrice < 0)) return setError("Indica el importe de la clase suelta.");
+    const directPrice = moneyCents(quickPrice);
+    if (billingMode === "direct" && directPrice === null) return setError("Indica el importe de la clase suelta.");
     if (billingMode === "quick") return setError("Crea el bono rápido o cancela esa opción antes de terminar la clase.");
+    const pairTransferFee = moneyCents(transferFee);
+    if (billingMode === "transfer" && (!transferSourceId || pairTransferFee === null)) return setError("Selecciona el bono individual y el coste adicional.");
+    if (billingMode === "transfer" && !transferSources.some((grant) => String(grant.id) === transferSourceId)) return setError("El bono individual seleccionado ya no está disponible.");
+    const supplementPayload: Array<{ concept: string; amount_cents: number }> = [];
+    for (const row of supplements) {
+      const concept = row.concept.trim(), amount = moneyCents(row.amount);
+      if (!concept && !row.amount.trim()) continue;
+      if (!concept) return setError("Indica el concepto de cada suplemento.");
+      if (amount === null || amount <= 0) return setError(`Indica un importe válido para ${concept}.`);
+      supplementPayload.push({ concept, amount_cents: amount });
+    }
     const personIds = item.class_participants.map((participant) => participant.person_id);
     setBusy(true); setError("");
-    const result = await db.rpc("administratively_finish_class_v3", {
+    const result = await db.rpc("administratively_finish_class_v4", {
       p_class_id: item.id,
       p_person_ids: personIds,
-      p_attendance: personIds.map((id) => attendance[id]),
-      p_grant_ids: billingMode === "direct" ? personIds.map(() => null) : personIds.map((id) => attendance[id] === "present" && grantIds[id] ? Number(grantIds[id]) : null),
-      p_actual_duration_minutes: manualDuration,
-      p_direct_payment_price_cents: billingMode === "direct" ? Math.round(directPrice * 100) : null,
+      p_grant_ids: billingMode === "direct" || billingMode === "transfer" ? personIds.map(() => null) : personIds.map((id) => grantIds[id] ? Number(grantIds[id]) : null),
+      p_duration_minutes: manualDuration,
+      p_direct_payment_price_cents: billingMode === "direct" ? directPrice : null,
+      p_pair_transfer_source_grant_id: billingMode === "transfer" ? Number(transferSourceId) : null,
+      p_pair_transfer_fee_cents: billingMode === "transfer" ? (pairTransferFee ?? 0) : 0,
+      p_supplements: supplementPayload,
     });
     if (result.error) { setError(result.error.message); setBusy(false); return; }
     await finished(); setBusy(false); close();
   }
+
   return <div className="backdrop"><section className="modal finish-modal" role="dialog" aria-modal="true">
     <header className="modal-head"><div><p className="eyebrow">Parte administrativa</p><h2>Terminar clase</h2></div><button className="icon-btn" onClick={close} aria-label="Cerrar"><X /></button></header>
     <form className="modal-body" onSubmit={submit}>
@@ -569,13 +655,22 @@ function FinishClassModal({ item, students, credits, close, finished }: { item: 
       <div className="finish-list">{item.class_participants.map((participant) => {
         const student = students.find((person) => person.id === participant.person_id), available = eligibleCredits(participant.person_id);
         return <section className="finish-person" key={participant.person_id}><strong>{student?.display_name || "Alumno"}</strong><div className="finish-grid">
-          <label className="field"><span>Asistencia</span><select value={attendance[participant.person_id]} onChange={(e) => { const value = e.target.value as "present" | "absent"; setAttendance((current) => ({ ...current, [participant.person_id]: value })); if (value === "absent") chooseGrant(participant.person_id, ""); }}><option value="present">Ha venido</option><option value="absent">No ha venido</option></select></label>
-          <label className="field"><span>Bono</span><select value={grantIds[participant.person_id] || ""} disabled={attendance[participant.person_id] === "absent" || billingMode === "direct"} onChange={(e) => chooseGrant(participant.person_id, e.target.value)}><option value="">Sin bono · dejar pendiente</option>{available.map((grant) => { const balance = creditBalance(grant), shortfall = Math.max(0, manualDuration - balance); return <option key={grant.id} value={grant.id}>{grant.label || (grant.modality === "pair" ? "Bono pareja" : "Bono individual")} · {minutesLabel(balance)}{expiryLabel(grant)}{shortfall ? ` · faltarán ${minutesLabel(shortfall)}` : ""}</option>; })}</select></label>
-        </div>{attendance[participant.person_id] === "present" && grantIds[participant.person_id] ? (() => { const selected = allCredits.find((grant) => String(grant.id) === grantIds[participant.person_id]); const remaining = selected ? Math.max(0, manualDuration - creditBalance(selected)) : manualDuration; return remaining ? <p className="modal-intro">Se consumirá el saldo disponible y quedarán {minutesLabel(remaining)} como incidencia.</p> : null; })() : null}</section>;
+          <label className="field"><span>Bono</span><select value={grantIds[participant.person_id] || ""} disabled={billingMode === "direct"} onChange={(event) => chooseGrant(participant.person_id, event.target.value)}><option value="">Sin bono</option>{available.map((grant) => { const balance = creditBalance(grant), shortfall = Math.max(0, manualDuration - balance); return <option key={grant.id} value={grant.id}>{grant.label || (grant.modality === "pair" ? "Bono pareja" : "Bono individual")} · {minutesLabel(balance)}{expiryLabel(grant)}{shortfall ? ` · faltarán ${minutesLabel(shortfall)}` : ""}</option>; })}</select></label>
+        </div>{grantIds[participant.person_id] ? (() => { const selected = allCredits.find((grant) => String(grant.id) === grantIds[participant.person_id]); const remaining = selected ? Math.max(0, manualDuration - creditBalance(selected)) : manualDuration; return remaining ? <p className="modal-intro">Se consumirá el saldo disponible y quedarán {minutesLabel(remaining)} como incidencia.</p> : null; })() : null}</section>;
       })}</div>
-      {!hasSelectedGrant && billingMode === "none" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Cobro</p><h2>Sin bono compatible</h2></div></div><div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("quick"); setQuickPrice(""); setError(""); }}><Plus size={17} /> Crear bono rápido</button><button className="btn" type="button" onClick={openDirectPayment}><WalletCards size={17} /> Pagar clase suelta</button></div></section> : null}
+
+      {!hasSelectedGrant && billingMode === "none" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Cobro</p><h2>Sin bono compatible</h2></div></div><div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("quick"); setQuickPrice(""); setError(""); }}><Plus size={17} /> Crear bono rápido</button>{item.class_type === "pair" && transferSources.length ? <button className="btn ghost" type="button" onClick={openPairTransfer}><WalletCards size={17} /> Transferir saldo individual</button> : null}<button className="btn" type="button" onClick={openDirectPayment}><WalletCards size={17} /> Pagar clase suelta</button></div></section> : null}
+
       {billingMode === "quick" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Bono rápido</p><h2>{item.class_type === "pair" ? "Bono de pareja" : "Bono individual"}</h2></div></div><div className="fields-2"><label className="field"><span>Horas</span><input type="number" min="0" max="1000" value={quickHours} onChange={(event) => setQuickHours(Number(event.target.value || 0))} /></label><label className="field"><span>Minutos</span><input type="number" min="0" max="59" value={quickMinutes} onChange={(event) => setQuickMinutes(Number(event.target.value || 0))} /></label><label className="field"><span>Importe (€)</span><input type="number" min="0" step="0.01" value={quickPrice} onChange={(event) => setQuickPrice(event.target.value)} /></label><label className="field"><span>Pago</span><select value={quickPaymentStatus} onChange={(event) => setQuickPaymentStatus(event.target.value as "paid" | "pending")}><option value="paid">Pagado</option><option value="pending">Pendiente</option></select></label></div><div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("none"); setError(""); }}>Cancelar</button><button className="btn" type="button" disabled={quickBusy} onClick={() => void createQuickBonus()}><Plus size={17} /> {quickBusy ? "Creando…" : "Crear y usar"}</button></div></section> : null}
+
       {billingMode === "direct" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Clase suelta</p><h2>{minutesLabel(manualDuration)}</h2></div><span className="badge">Pagado</span></div><label className="field"><span>Importe (€)</span><input type="number" min="0" step="0.01" value={quickPrice} onChange={(event) => setQuickPrice(event.target.value)} /></label><div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("none"); setError(""); }}>Cancelar</button></div></section> : null}
+
+      {billingMode === "transfer" ? <section className="card pad"><div className="card-head"><div><p className="eyebrow">Pareja</p><h2>Transferir saldo individual</h2></div><span className="badge">{minutesLabel(transferMinutes)}</span></div><div className="fields-2"><label className="field field-wide"><span>Bono individual</span><select value={transferSourceId} onChange={(event) => setTransferSourceId(event.target.value)}>{transferSources.map((grant) => <option key={grant.id} value={grant.id}>{ownerLabel(grant)} · {grant.label || "Bono individual"} · {minutesLabel(creditBalance(grant))}{expiryLabel(grant)}</option>)}</select></label><label className="field"><span>Coste adicional (€)</span><input type="number" min="0" step="0.01" value={transferFee} onChange={(event) => setTransferFee(event.target.value)} /></label></div>{transferSource ? <p className="modal-intro">Se moverán {minutesLabel(transferMinutes)} del bono individual a un bono de pareja para esta clase.{transferShortfall ? ` Quedarán ${minutesLabel(transferShortfall)} pendientes.` : ""}</p> : null}<div className="actions"><button className="btn ghost" type="button" onClick={() => { setBillingMode("none"); setError(""); }}>Cancelar</button></div></section> : null}
+
+      <section className="card pad"><div className="card-head"><div><p className="eyebrow">Extras</p><h2>Suplementos</h2></div><button className="btn ghost" type="button" onClick={addSupplement}><Plus size={17} /> Añadir</button></div>{supplements.length ? <div className="finish-list">{supplements.map((supplement) => <div className="fields-2" key={supplement.id}><label className="field"><span>Concepto</span><input value={supplement.concept} onChange={(event) => updateSupplement(supplement.id, { concept: event.target.value })} placeholder="Parking, desplazamiento…" /></label><label className="field"><span>Importe (€)</span><input type="number" min="0" step="0.01" value={supplement.amount} onChange={(event) => updateSupplement(supplement.id, { amount: event.target.value })} /></label><div className="actions"><button className="btn ghost" type="button" onClick={() => removeSupplement(supplement.id)}><X size={16} /> Eliminar</button></div></div>)}</div> : <p className="modal-intro">Sin suplementos.</p>}</section>
+
+      <section className="card pad"><div className="card-head"><div><p className="eyebrow">Resumen</p><h2>Cierre</h2></div></div><p className="modal-intro"><strong>Duración:</strong> {minutesLabel(manualDuration)}</p>{selectedGrant ? <p className="modal-intro"><strong>Bono:</strong> {selectedGrant.label || (selectedGrant.modality === "pair" ? "Bono de pareja" : "Bono individual")} · se consumirán hasta {minutesLabel(Math.min(manualDuration, creditBalance(selectedGrant)))}</p> : null}{billingMode === "direct" ? <p className="modal-intro"><strong>Clase suelta:</strong> {euroLabel(directPriceCents)}</p> : null}{billingMode === "transfer" && transferSource ? <p className="modal-intro"><strong>Conversión:</strong> {minutesLabel(transferMinutes)} desde {ownerLabel(transferSource)} · {euroLabel(transferFeeCents)}</p> : null}{supplementTotalCents ? <p className="modal-intro"><strong>Suplementos:</strong> {euroLabel(supplementTotalCents)}</p> : null}{quickCreatedChargeCents ? <p className="modal-intro"><strong>Bono creado ahora:</strong> {euroLabel(quickCreatedChargeCents)}</p> : null}<div className="card-head"><h2>Total económico registrado ahora</h2><strong>{euroLabel(totalEconomicCents)}</strong></div></section>
+
       {!hasSelectedGrant && billingMode === "none" ? <p className="modal-intro">Si terminas sin bono, la duración quedará pendiente como incidencia.</p> : null}
       {error ? <p className="error">{error}</p> : null}<div className="actions"><button className="btn ghost" type="button" onClick={close}>Seguir en clase</button><button className="btn" disabled={busy || manualDuration <= 0 || billingMode === "quick"}><CheckCircle2 size={17} /> {busy ? "Terminando…" : "Terminar clase"}</button></div>
     </form>
