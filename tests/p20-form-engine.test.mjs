@@ -34,7 +34,7 @@ test('published form fields are immutable and changes use draft then publish',()
   assert.match(admin,/La versión publicada es inmutable/);
 });
 
-test('runtime performs server validation, visibility and conditions',()=>{
+test('runtime performs server validation visibility and conditions',()=>{
   assert.match(sql,/form_normalize_value/);
   assert.match(sql,/form_condition_matches/);
   assert.match(sql,/form_field_visible/);
@@ -62,6 +62,26 @@ test('generic runtime cannot impersonate domain-service forms',()=>{
   assert.match(sql,/where form_key not in \('student_personal','student_dance','onboarding'\)/);
 });
 
+test('generic builder creates forms and configurable draft fields without SQL authoring',()=>{
+  assert.match(sql,/create or replace function public\.create_generic_form/);
+  assert.match(sql,/create or replace function public\.add_form_draft_field/);
+  assert.match(sql,/create or replace function public\.configure_form_draft_field/);
+  assert.match(sql,/Tipo de campo no soportado/);
+  assert.match(sql,/Ruta canónica no permitida/);
+  assert.match(sql,/condición que apunta a un campo inexistente/);
+  assert.match(admin,/create_generic_form/);
+  assert.match(admin,/add_form_draft_field/);
+  assert.match(admin,/configure_form_draft_field/);
+  assert.match(admin,/Nuevo formulario/);
+  assert.match(admin,/Añadir campo/);
+});
+
+test('teacher notes have a server-enforced staff-only visibility floor',()=>{
+  assert.ok((sql.match(/canonical_path='student_profiles\.teacher_notes'.*not v_staff/gms)||[]).length>=2);
+  assert.match(sql,/p_canonical_path='student_profiles\.teacher_notes'/);
+  assert.match(sql,/v_visibility='\{\\"audiences\\":\[\\"staff\\"\],\\"editable_by\\":\[\\"staff\\"\]\}'::jsonb/);
+});
+
 test('runtime renderer supports minimum field types and G3 numeric behavior',()=>{
   for (const type of ['information','text','textarea','select','multiselect','checkbox','number','date','email','phone']) assert.match(runtime,new RegExp(`\\"${type}\\"`));
   assert.match(runtime,/inputMode=\{decimal \? "decimal" : "numeric"\}/);
@@ -70,10 +90,22 @@ test('runtime renderer supports minimum field types and G3 numeric behavior',()=
   assert.match(runtime,/CYA ya conoce/);
 });
 
-test('Alumnado consumes the versioned runtime instead of handwritten canonical save',()=>{
-  assert.match(person,/RuntimeForm client=\{client\} formKey="student_personal"/);
-  const editor=person.slice(person.indexOf('export function StudentIdentityEditor'),person.indexOf('type QuickProvisionalStudentModalProps'));
-  assert.doesNotMatch(editor,/save_person_identity/);
+test('frontend remains functional before v48 and switches to runtime after cutover',()=>{
+  assert.match(runtime,/runtimeUnavailable/);
+  assert.match(runtime,/PGRST202/);
+  assert.match(runtime,/unavailableFallback/);
+  assert.match(person,/formKey="student_personal"/);
+  assert.match(person,/unavailableFallback=\{<LegacyStudentIdentityForm/);
+  assert.match(person,/client\.rpc\("save_person_identity"/);
+  assert.match(sql,/match_person_identity\(v_email,v_phone,p_person_id\)/);
+});
+
+test('admin builder is read-only until the P20 backend is actually active',()=>{
+  assert.match(admin,/type EngineState = "checking" \| "ready" \| "pending"/);
+  assert.match(admin,/PGRST202/);
+  assert.match(admin,/La biblioteca se muestra en modo lectura hasta que v48 esté activa/);
+  assert.match(admin,/engine==="ready"&&generic/);
+  assert.match(admin,/Contrato histórico de un flujo de negocio/);
 });
 
 test('P20 exposes a deployment marker for G1 before v48 cutover',()=>{
