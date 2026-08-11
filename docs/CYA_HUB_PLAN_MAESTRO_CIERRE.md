@@ -1,12 +1,12 @@
 # CYA HUB — PLAN MAESTRO ÚNICO DE CIERRE
 
-Versión: **3.4**  
+Versión: **3.5**  
 Fecha de corte: **2026-08-11**  
 Repositorio canónico: `carlosyandybz-bit/cya-hub`  
 Producción: `main` + Supabase `CyA hub 2` + Hostinger  
-Última actualización secuencial cerrada: **P17 / v43**  
+Última actualización secuencial cerrada: **P18 / v46**  
 Adelantos/correctivos cerrados durante P18: **F42/P32 v44–v44e + P21 v45/resumen editable + transición de inicio de clase**  
-Punto secuencial activo: **P18 — Identidad, roles, navegación y “Ver como”**
+Siguiente actualización: **P19 — Alumnado + persona única + identidades**
 
 ---
 
@@ -49,6 +49,7 @@ Cuando aparezca una mejora o error nuevo:
 - P15 — resumen real de progreso.
 - **P16 — límites RLS de alumnado/clases, migración v42, validación autenticada 17/17 en producción.**
 - **P17 — Evaluaciones: reconciliación, frontend guiado, runtime Hostinger demostrado y migración v43 aplicada en producción.**
+- **P18 — Identidad, roles, navegación y “Ver como”, con cambio de vista autorizado en servidor mediante v46.**
 - **Adelanto F42/P32 — Administración → Datos → Borrado y reinicio seguro, backend v44–v44e aplicado y frontend fusionado.**
 - **Correctivo adelantado P21 — resumen pedagógico editable antes del cierre, RLS recursiva corregida mediante v45 y búsqueda/creación postadministrativa habilitada.**
 - **Correctivo adelantado P21 — iniciar una clase preparada ya no depende de recargas de Marketing y no puede quedar bloqueado indefinidamente en “Abriendo…”.**
@@ -227,7 +228,7 @@ La sesión que había aparecido como borrador fue preservada durante la preparac
 
 ---
 
-## P18 — Identidad, roles, navegación y “Ver como” 🟣 ACTIVO
+## P18 — Identidad, roles, navegación y “Ver como” ✅ CERRADO
 
 Absorbe las reglas de navegación y multirol que deben quedar definitivas.
 
@@ -244,9 +245,25 @@ Absorbe las reglas de navegación y multirol que deben quedar definitivas.
 - acceso claro a Administración, cuenta y preferencias;
 - historial atrás coherente en todas las pantallas.
 
+### Evidencia de cierre P18
+
+- la identidad real vinculada en producción soporta simultáneamente roles `admin`, `teacher` y `student` sobre una única persona;
+- `identity_context()` deriva `can_admin`, `can_teach` y `can_study` desde permisos reales de servidor;
+- v46 `set_experience_context` valida en servidor Profesor / Alumno / Administrador antes de persistir la vista;
+- v46 solo escribe `user_preferences.preferred_context`: no crea, modifica ni eleva `app_member_roles`;
+- la UI usa `Ver como` y solo ofrece contextos autorizados;
+- Portal Alumno y Administración mantienen guards explícitos de permiso;
+- barra móvil definitiva de cinco accesos y DAR CLASE central/elevado preservados;
+- escritorio comparte la misma arquitectura de navegación;
+- historial real mediante `pushState`/`popstate` preservado;
+- migración v46 aplicada en producción con ledger `20260811183128`;
+- dry-run autenticado validó los tres contextos para una identidad multirol sin modificar roles;
+- CI final sobre el mismo head: regresiones P18 5/5, lint de AccountMenu y build Next.js correctos;
+- los workflows de resumen editable y comenzar clase también quedaron verdes sobre el head final de P18.
+
 ---
 
-## P19 — Alumnado + persona única + identidades ⏳
+## P19 — Alumnado + persona única + identidades 🟣 SIGUIENTE
 
 Absorbe F21–F25 excepto el motor reusable de formularios, que vive en P20.
 
@@ -880,10 +897,10 @@ Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P18�
 |---|---|
 | F1 Marketing no abría | ✅ cerrado |
 | F1B TypeScript estricto | ✅ cerrado |
-| F2 navegación atrás | ✅ base cerrada / P18 consolida |
+| F2 navegación atrás | ✅ cerrado y consolidado en P18 |
 | F3 visual global | ✅ base cerrada / QA permanente |
 | F3B inputs numéricos | → G3 + P20/P21/P29/P31 |
-| F4 avatar/perfil/preferencias/portal | ✅ base cerrada / P18 consolida multirol |
+| F4 avatar/perfil/preferencias/portal | ✅ multirol consolidado en P18 |
 | F5 centro de notificaciones | ✅ base; automatización → P27 |
 | F6 temporizadores/duración real | ✅ regla permanente P21 |
 | F7 duración prevista + bono | ✅ preservar/revalidar P21 |
@@ -949,12 +966,13 @@ Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P18�
 | recursión RLS en `student_content_assignments` / `teaching_contents` | ✅ v45, sin desactivar RLS |
 | búsqueda/creación de enseñanza no funcionaba tras cierre administrativo | ✅ v45 mientras `pedagogy_closed_at` siga vacío |
 | comenzar clase podía quedarse en `Abriendo…` por refrescos ajenos | ✅ correctivo adelantado P21; transición operativa desacoplada de Marketing |
+| `Ver como` solo confiaba en preferencia frontend | ✅ P18/v46; autorización de contexto en servidor sin escalada |
 
 ---
 
 # 6. Orden inmediato desde este corte
 
-**P18 → P19 → P20 → P21 → P22 → P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
+**P19 → P20 → P21 → P22 → P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
 
 Los adelantos F42/P32 y P21 realizados durante P18 **no modifican este orden**. Cuando llegue cada P original se revalida la implementación existente en lugar de recrearla.
 
