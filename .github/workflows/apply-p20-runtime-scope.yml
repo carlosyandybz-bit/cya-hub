@@ -1,32 +1,13 @@
-name: Apply P20 dry-run correction
+name: Retired P20 dry-run correction helper
 
 on:
-  push:
-    branches: [p20/formularios-versionados]
-    paths:
-      - '.github/workflows/apply-p20-runtime-scope.yml'
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  apply:
+  retired:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: p20/formularios-versionados
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Apply fully separated row loading
-        run: python scripts/patch-p20-runtime-scope.py
-      - name: Commit corrected v48
-        run: |
-          if git diff --quiet -- supabase/v48_p20_form_engine.sql; then exit 0; fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add supabase/v48_p20_form_engine.sql
-          git commit -m 'fix: fully separate P20 row loading'
-          git push origin HEAD:p20/formularios-versionados
+      - run: echo 'P20 dry-run correction is fully persisted; this workflow performs no mutation.'
