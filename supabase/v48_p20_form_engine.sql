@@ -711,10 +711,13 @@ declare
   v_visibility jsonb:=coalesce(p_visibility,'{}'::jsonb);
 begin
   if not (select private.is_admin()) then raise exception 'Solo administración puede configurar campos.' using errcode='42501'; end if;
-  select ff,fv.status,fd into v_field,v_status,v_form
-  from public.form_fields ff join public.form_versions fv on fv.id=ff.form_version_id join public.form_definitions fd on fd.id=fv.form_id
-  where ff.id=p_field_id for update of ff;
+  select ff.* into v_field
+  from public.form_fields ff
+  where ff.id=p_field_id for update;
   if not found then raise exception 'El campo no existe.' using errcode='P0002'; end if;
+  select fv.status,fd.* into v_status,v_form
+  from public.form_versions fv join public.form_definitions fd on fd.id=fv.form_id
+  where fv.id=v_field.form_version_id;
   if v_status<>'draft' then raise exception 'Una versión publicada es inmutable.' using errcode='55000'; end if;
   if coalesce(v_form.settings->>'runtime_engine','')<>'generic_v1' then raise exception 'Este formulario pertenece a un servicio de dominio.' using errcode='0A000'; end if;
   if p_field_type not in ('information','text','textarea','select','multiselect','checkbox','number','date','email','phone','hidden','search') then raise exception 'Tipo de campo no soportado.' using errcode='22023'; end if;
@@ -783,8 +786,9 @@ declare
   v_status text;
 begin
   if not (select private.is_admin()) then raise exception 'Solo administración puede editar formularios.' using errcode='42501'; end if;
-  select ff,fv.status into v_field,v_status from public.form_fields ff join public.form_versions fv on fv.id=ff.form_version_id where ff.id=p_field_id for update of ff;
+  select ff.* into v_field from public.form_fields ff where ff.id=p_field_id for update;
   if not found then raise exception 'El campo no existe.' using errcode='P0002'; end if;
+  select status into v_status from public.form_versions where id=v_field.form_version_id;
   if v_status<>'draft' then raise exception 'Una versión publicada es inmutable. Crea primero una nueva versión.' using errcode='55000'; end if;
   update public.form_fields set
     label=coalesce(nullif(btrim(coalesce(p_label,'')),''),label),
