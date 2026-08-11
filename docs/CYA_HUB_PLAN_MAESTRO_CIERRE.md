@@ -1,12 +1,12 @@
 # CYA HUB — PLAN MAESTRO ÚNICO DE CIERRE
 
-Versión: **3.3**  
+Versión: **3.4**  
 Fecha de corte: **2026-08-11**  
 Repositorio canónico: `carlosyandybz-bit/cya-hub`  
 Producción: `main` + Supabase `CyA hub 2` + Hostinger  
 Última actualización secuencial cerrada: **P17 / v43**  
-Adelanto controlado cerrado: **F42 / P32 — borrado y reinicio seguro v44–v44d**  
-Siguiente actualización: **P18 — Identidad, roles, navegación y “Ver como”**
+Adelantos/correctivos cerrados durante P18: **F42/P32 v44–v44e + P21 v45/resumen editable + transición de inicio de clase**  
+Punto secuencial activo: **P18 — Identidad, roles, navegación y “Ver como”**
 
 ---
 
@@ -49,7 +49,9 @@ Cuando aparezca una mejora o error nuevo:
 - P15 — resumen real de progreso.
 - **P16 — límites RLS de alumnado/clases, migración v42, validación autenticada 17/17 en producción.**
 - **P17 — Evaluaciones: reconciliación, frontend guiado, runtime Hostinger demostrado y migración v43 aplicada en producción.**
-- **Adelanto F42/P32 — Administración → Datos → Borrado y reinicio seguro, backend v44–v44d aplicado y frontend fusionado.**
+- **Adelanto F42/P32 — Administración → Datos → Borrado y reinicio seguro, backend v44–v44e aplicado y frontend fusionado.**
+- **Correctivo adelantado P21 — resumen pedagógico editable antes del cierre, RLS recursiva corregida mediante v45 y búsqueda/creación postadministrativa habilitada.**
+- **Correctivo adelantado P21 — iniciar una clase preparada ya no depende de recargas de Marketing y no puede quedar bloqueado indefinidamente en “Abriendo…”.**
 - Marketing vuelve a abrir.
 - Build TypeScript estricto recuperado.
 - Navegación atrás e historial real.
@@ -225,7 +227,7 @@ La sesión que había aparecido como borrador fue preservada durante la preparac
 
 ---
 
-## P18 — Identidad, roles, navegación y “Ver como” 🟣 SIGUIENTE
+## P18 — Identidad, roles, navegación y “Ver como” 🟣 ACTIVO
 
 Absorbe las reglas de navegación y multirol que deben quedar definitivas.
 
@@ -391,6 +393,21 @@ No ocultar una corrección por estar ya asignada.
 - clasificar recurso como Corrección / Explicación / Secuencia cuando proceda;
 - estos vídeos **no crean nodos, relaciones ni prerrequisitos de árboles**;
 - reabrir clase debe revertir coherentemente artefactos de cierre y dejar auditoría.
+
+### Correctivos adelantados ya implementados durante P18
+
+Estos cambios pertenecen funcionalmente a P21, pero fueron adelantados por incidencias bloqueantes y **deben revalidarse cuando P21 sea el paquete secuencial activo**:
+
+- el resumen pedagógico final incluye `Revisar contenido trabajado` antes de cerrar;
+- desde el resumen se puede añadir contenido olvidado y crear contenido rápido;
+- una Corrección puede volver de `corregida` a `pendiente` y ajustar frecuencia/importancia;
+- Explicaciones/Secuencias y Ejercicios pueden corregir su estado antes del cierre;
+- en pareja, la edición sigue siendo individual por alumno;
+- v45 eliminó la recursión RLS entre `student_content_assignments` y `teaching_contents` sin desactivar RLS;
+- `search_class_teaching_content` y la creación rápida funcionan también tras el cierre administrativo mientras el cierre pedagógico siga abierto;
+- comenzar una clase preparada refresca primero el estado operativo y ya no depende de Marketing;
+- el botón de inicio usa `try/catch/finally`, por lo que un error no lo deja permanentemente en `Abriendo…`;
+- `start_class` fue probado autenticadamente con `ROLLBACK` sobre una clase preparada válida.
 
 ### Concurrencia de clases
 
@@ -927,6 +944,11 @@ Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P18�
 | reinicio operativo/completo con backup previo | ✅ base F42/P32; reauditar en P32 |
 | borrar todos los alumnos elimina sus personas de prueba | ✅ v44d; identidades staff protegidas |
 | backup completo histórico omitía 5 tablas actuales | ✅ v44c; cobertura real = 0 ausencias |
+| copia descargada no habilitaba el reinicio tras rerender/recarga | ✅ v44e; validez consultada en servidor durante 30 min |
+| resumen final no permitía corregir/añadir contenido olvidado | ✅ correctivo adelantado P21; editor de resumen fusionado |
+| recursión RLS en `student_content_assignments` / `teaching_contents` | ✅ v45, sin desactivar RLS |
+| búsqueda/creación de enseñanza no funcionaba tras cierre administrativo | ✅ v45 mientras `pedagogy_closed_at` siga vacío |
+| comenzar clase podía quedarse en `Abriendo…` por refrescos ajenos | ✅ correctivo adelantado P21; transición operativa desacoplada de Marketing |
 
 ---
 
@@ -934,7 +956,7 @@ Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P18�
 
 **P18 → P19 → P20 → P21 → P22 → P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
 
-El adelanto F42/P32 **no modifica este orden**. Cuando llegue P32 se valida la implementación existente en lugar de recrearla.
+Los adelantos F42/P32 y P21 realizados durante P18 **no modifican este orden**. Cuando llegue cada P original se revalida la implementación existente en lugar de recrearla.
 
 No volver al antiguo orden F8 → F3B → F9… como secuencia de implementación: esos requisitos siguen vigentes, pero están absorbidos en la secuencia P moderna.
 
