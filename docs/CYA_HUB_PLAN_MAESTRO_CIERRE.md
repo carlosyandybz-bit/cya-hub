@@ -1,385 +1,336 @@
 # CYA HUB — PLAN MAESTRO ÚNICO DE CIERRE
 
-Versión: **3.6**  
+Versión: **3.7**  
 Fecha de corte: **2026-08-11**  
 Repositorio canónico: `carlosyandybz-bit/cya-hub`  
 Producción: `main` + Supabase `CyA hub 2` + Hostinger  
-Última actualización secuencial cerrada: **P19 / v47**  
-Adelantos/correctivos preservados: **F42/P32 v44–v44e + P21 v45/resumen editable + transición fiable de inicio + alta rápida provisional P19↔P21**  
-Siguiente actualización: **P20 — Formularios versionados + datos canónicos**
+Dominio CYA Hub: `app.carlosyandy.com`  
+Última actualización secuencial cerrada: **P20 / v48 + v48b**  
+Siguiente actualización: **P21 — DAR CLASE definitivo**
+
+Adelantos/correctivos que deben preservarse y revalidarse en su punto original: **F42/P32 v44–v44e + P21 v45/resumen pedagógico editable + transición fiable de inicio + alta rápida provisional P19↔P21**.
 
 ---
 
-## 0. Regla de continuidad
+# 0. Regla de continuidad
 
 Este documento es la **única hoja operativa de cierre** de CYA Hub.
 
 Se separan permanentemente dos numeraciones:
 
 - **F1–F46** = auditoría funcional histórica: requisitos, errores y módulos del producto.
-- **P12–P32** = secuencia técnica actual de ejecución: paquetes de trabajo que absorben y cierran los F correspondientes.
+- **P12–P32** = secuencia técnica actual de ejecución: paquetes que absorben y cierran los F correspondientes.
 
-`P16` no significa `F16`: P16 fue el hotfix RLS/v42. Esta separación es permanente.
+`P16` no significa `F16`. Esta separación es permanente.
 
-Antes de empezar cada nueva actualización se debe comunicar:
+Antes de iniciar cada paquete debe comunicarse:
 
-1. qué está cerrado;
-2. qué P está activo;
-3. qué queda después;
-4. qué correctivos nuevos se han incorporado y en qué punto viven.
+1. **CERRADO** — qué paquetes están finalizados;
+2. **AHORA** — qué P está activo;
+3. **FALTA DESPUÉS** — secuencia restante completa;
+4. **GATES/RIESGOS** — qué condiciones pueden impedir el cierre.
 
-Cuando aparezca una mejora o error nuevo:
+Cuando aparezca una incidencia nueva:
 
-- se asigna al P/F correspondiente;
-- si el área ya pasó, se registra como **correctivo**;
-- no se rompe el orden por conveniencia;
-- una incidencia de seguridad o pérdida de datos puede activar un hotfix, pero debe volver a integrarse en esta hoja;
-- un adelanto pedido explícitamente por el usuario puede implementarse antes de su P, pero **no cambia el siguiente punto secuencial** y debe volver a auditarse cuando llegue su P original.
+- se asigna al P/F correcto;
+- si el área ya pasó, se registra como correctivo;
+- un hotfix no altera arbitrariamente la secuencia;
+- los adelantos se revalidan al llegar a su P original;
+- no se reconstruye lo que ya funciona solo por cambiar de paquete.
 
 ---
 
 # 1. Estado ejecutivo
 
-## ✅ Cerrado y validado
+## ✅ Cerrado secuencialmente
 
-- Base de migraciones reconciliada y fuentes históricas recuperadas.
-- P12 — modelo de evaluación base.
-- P13 — radar de evaluación.
-- P14 — histórico de evaluación.
+- P12 — modelo base de evaluación.
+- P13 — radar.
+- P14 — histórico.
 - P15 — resumen real de progreso.
-- **P16 — límites RLS de alumnado/clases, migración v42, validación autenticada 17/17 en producción.**
-- **P17 — Evaluaciones: reconciliación, frontend guiado, runtime Hostinger demostrado y migración v43 aplicada en producción.**
-- **P18 — Identidad, roles, navegación y “Ver como”, con cambio de vista autorizado en servidor mediante v46.**
-- **P19 — Alumnado + persona única + identidades, lifecycle derivado y protección de identidad mediante v47.**
-- **Adelanto F42/P32 — Administración → Datos → Borrado y reinicio seguro, backend v44–v44e aplicado y frontend fusionado.**
-- **Correctivo adelantado P21 — resumen pedagógico editable antes del cierre, RLS recursiva corregida mediante v45 y búsqueda/creación postadministrativa habilitada.**
-- **Correctivo adelantado P21 — iniciar una clase preparada ya no depende de recargas de Marketing y no puede quedar bloqueado indefinidamente en “Abriendo…”.**
-- Marketing vuelve a abrir.
-- Build TypeScript estricto recuperado.
-- Navegación atrás e historial real.
-- principales defectos visuales globales ya corregidos.
-- avatar, perfil, preferencias y cambio de portal.
-- centro de notificaciones base.
-- eliminación del cálculo de duración de clase por tiempo transcurrido.
-- duración prevista/manual y selección compatible de bono.
-- arquitectura amplia del cierre administrativo de clase ya implementada.
+- P16 — RLS alumnado/clases, v42.
+- P17 — evaluaciones definitivas y cutover v43.
+- P18 — identidad, multirol, navegación y `Ver como`, v46.
+- P19 — persona única + identidades + lifecycle derivado, v47.
+- **P20 — formularios versionados + datos canónicos, v48 + v48b.**
 
-### Evidencia de cierre de P17
+## ✅ Adelantos/correctivos ya implementados
 
-- Hostinger sirve `app.carlosyandy.com` desde `main` y marcó como **Actual / completado** el commit `cae0f009986240d0a945cabd16d00f20376e753b` (`P17: prepare safe evaluation cutover`) antes de aplicar v43.
-- Supabase registra `v43_evaluation_final_cutover` con versión `20260811151901`.
-- Antes y después del cutover se conservaron **6 `evaluation_sessions`** y **48 `student_evaluations`**.
-- En el preflight final no quedaban sesiones sin completar; la antigua sesión de clase 23 quedó completada de forma explícita antes del corte, no por SQL silencioso.
-- `save_class_evaluation` y `save_class_evaluation_v2` ya no son ejecutables por `authenticated`.
-- `start_student_evaluation`, `save_evaluation_score` y `complete_evaluation_session` siguen ejecutables por `authenticated`.
-- las RPC guiadas iniciales/postclase siguen ejecutables.
-- `trg_complete_class_evaluation_sessions` fue retirado.
-- `trg_require_final_evaluation` está activo.
-- smoke autenticado: `prepare_post_class_evaluation(23,2)` reutiliza la sesión completada correspondiente y el guard permite un cierre válido dentro de transacción con `ROLLBACK`.
-- PR #1 `Point 12R — evaluation engine rebuild` fue cerrada como **supersedida** y no fusionada.
-- Correctivo P17 posterior: la revisión postclase ya no reaparece cuando la evaluación está completada y dejó de recargar/reconstruir la pantalla periódicamente durante el trabajo.
+- Administración → Datos → borrado/reinicio seguro: v44–v44e.
+- Resumen pedagógico editable y corrección RLS enseñanza: v45.
+- Inicio de clase preparado desacoplado de Marketing y protegido contra `Abriendo…` infinito.
+- Creación/reutilización de provisional dentro de Dar clase.
 
-### Evidencia del adelanto F42/P32 — borrado y reinicio
+Estos adelantos **no cambian el orden**. P21 y P32 deben revalidarlos, no recrearlos.
 
-- interfaz integrada en `Administración → Datos → Borrado y reinicio`;
-- búsqueda y borrado selectivo de persona/alumno y contenido pedagógico;
-- borrados por áreas y dos niveles de reinicio (`operational` / `full`);
-- previsualización con impacto antes de borrar;
-- frase contextual exacta + segunda confirmación final;
-- preparación con caducidad de 30 minutos;
-- `operational` y `full` exigen copia completa reciente del mismo administrador también en servidor;
-- copia completa reconciliada contra esquema real: **0 tablas reseteables ausentes**;
-- identidades activas del equipo protegidas;
-- borrado de todos los alumnos elimina también sus personas de prueba no protegidas;
-- ejecución serializada y transaccional;
-- auditoría de borrados;
-- dry-run autenticado con persona temporal ejecutado dentro de `BEGIN/ROLLBACK` sin dejar datos;
-- guard de reinicio completo probado sin backup y bloquea correctamente;
-- migraciones Supabase: `v44_admin_data_reset`, `v44b_admin_data_reset_backup_guard`, `v44c_admin_reset_backup_coverage`, `v44d_admin_reset_student_people`;
-- tras validación, `admin_reset_jobs` permanecía en **0**: desplegar la herramienta no ejecutó ningún borrado;
-- contrato funcional detallado en `docs/ADMIN_BORRADO_Y_REINICIO_DATOS.md`.
+## 🟣 AHORA
 
-## 🟣 Siguiente punto
+### P21 — DAR CLASE definitivo
 
-### P20 — Formularios versionados + datos canónicos
+P21 debe consolidar en una sola experiencia rápida y móvil todo el flujo real de clase, eliminando duplicaciones y manteniendo intactas las reglas financieras, pedagógicas y de concurrencia ya aprobadas.
 
-P20 debe convertir formularios y datos repetidos en un sistema reusable y versionado, apoyado en la persona canónica cerrada en P19. Debe auditar primero qué formularios históricos siguen aportando valor, reutilizar datos ya conocidos y evitar que una misma respuesta se almacene o pregunte dos veces.
+## ⏳ FALTA DESPUÉS
+
+**P22 → P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
 
 ---
 
-# 2. Gates permanentes
-
-Estos gates atraviesan todos los P restantes.
+# 2. Gates permanentes G1–G8
 
 ## G1 — Evidencia de runtime Hostinger
 
-No basta con que un commit esté en `main`.
+No basta con que un commit esté en `main`. Antes de un backend incompatible se demuestra qué frontend sirve producción.
 
-Para cambios incompatibles de backend/frontend hay que demostrar qué versión sirve producción antes de cortar APIs antiguas.
+Evidencias ya obtenidas:
 
-**P17 dejó este gate probado por primera vez con evidencia directa del panel de Hostinger.**
+- P17: Hostinger mostró el commit de evaluación como Actual/completado antes de v43.
+- P20: `https://app.carlosyandy.com/api/build-info` devolvió:
+  `{"app":"cya-hub","release":"p20-form-runtime-v48-ready"}` antes de aplicar v48.
+
+Regla permanente: **frontend compatible primero; cutover backend después**.
 
 ## G2 — Seguridad de autenticación
 
-Pendiente conocido de Supabase:
+Pendiente conocido para P32:
 
-- Leaked Password Protection está desactivado.
+- Supabase Leaked Password Protection está desactivado.
 
-Debe resolverse dentro de P32 antes de lanzamiento.
+Debe resolverse antes del lanzamiento final.
 
 ## G3 — iPhone + densidad + inputs
 
 El iPhone es referencia principal.
 
-Todo formulario nuevo o modificado debe cumplir:
+Todo formulario/control nuevo o modificado debe cumplir:
 
 - safe areas;
 - targets táctiles cómodos;
-- sin controles cortados;
-- scroll correcto;
-- teclado numérico cuando corresponde;
-- teclado decimal para importes;
-- un campo vacío puede quedarse vacío;
-- nunca forzar `0` mientras se edita;
-- escribir `5` produce `5`, no `05` ni `050`.
-
-El antiguo F3B queda absorbido como regla global, no como arreglo puntual.
+- scroll estable;
+- nada cortado por teclado/barra inferior;
+- `inputMode=numeric` o `decimal` cuando corresponda;
+- un campo vacío puede seguir vacío;
+- nunca forzar `0` durante edición;
+- escribir `5` produce `5`, nunca `05`/`050`.
 
 ## G4 — Regresión antes de merge
 
-Cada P debe añadir o actualizar pruebas de las reglas que toca. Build limpio no sustituye QA funcional.
+Cada P debe probar las reglas que modifica. Un build verde no sustituye QA funcional.
 
 ## G5 — Integridad de datos y multimedia
 
 - no resetear Supabase por conveniencia;
-- migraciones incrementales e idempotentes cuando corresponda;
-- no guardar vídeos en GitHub;
-- no guardar binarios pesados en PostgreSQL;
-- no depender de WordPress;
-- Drive/almacenamiento externo conserva el archivo;
-- CYA conserva IDs, permisos, metadatos y relaciones.
+- migraciones incrementales;
+- esquema real antes de asumir historial;
+- vídeos y binarios pesados fuera de PostgreSQL/GitHub/WordPress;
+- Drive/almacenamiento externo conserva archivo;
+- CYA conserva IDs, permisos, metadata y relaciones.
 
 ## G6 — Acciones destructivas
 
-Para información relevante:
-
-- preferir archivar cuando sea razonable;
-- ofrecer deshacer cuando sea viable;
-- eliminación definitiva solo cuando tenga sentido;
+- archivar/deshacer cuando sea razonable;
+- eliminación definitiva solo cuando corresponda;
 - doble confirmación contextual;
-- la segunda confirmación debe identificar exactamente qué se eliminará.
+- segunda confirmación identifica exactamente lo que se elimina.
 
-El reset masivo es la excepción deliberada de borrado definitivo: por ello añade previsualización, backup obligatorio, frase exacta, segunda confirmación, transacción y auditoría.
+El reset masivo es excepción deliberada: exige backup reciente, preview, frase exacta, segunda confirmación, transacción y auditoría.
 
-## G7 — Fuente única de verdad / no volver a preguntar
+## G7 — Fuente única de verdad / no preguntar dos veces
 
-Jerarquía de datos operativos:
+Jerarquía operativa:
 
-`override de clase → preferencia específica de estilo/rol → valor global → preguntar si realmente falta`.
+`override de clase → preferencia estilo/rol → valor global → preguntar solo si falta`.
 
-CYA reutiliza alumno, nivel, estilo, rol, duración, ubicación y demás datos conocidos. No duplica formularios ni hace rellenar dos veces el mismo hecho canónico.
+P19 fijó persona canónica. P20 fijó formularios canónicos. Los P siguientes deben reutilizar esa información.
 
 ## G8 — Esquema real > historial supuesto
 
-Gate derivado de P17.
+Antes de una migración sensible se comparan:
 
-El registro de migraciones puede no reflejar todos los SQL que históricamente se ejecutaron. Antes de una migración sensible se compara:
-
-1. migraciones registradas;
+1. ledger de migraciones;
 2. funciones/triggers/policies reales;
 3. código de `main`;
-4. datos existentes.
+4. datos reales.
 
-La verdad final del runtime es el esquema real, no el nombre de un archivo.
-
-El adelanto F42/P32 aplicó este gate al backup completo y descubrió cinco tablas actuales ausentes del mapa histórico; quedaron incorporadas antes de habilitar el reset masivo.
+La verdad final es el runtime/esquema real.
 
 ---
 
-# 3. Secuencia única restante
+# 3. Reglas maestras que no pueden volver a romperse
 
-## P17 — Evaluaciones + reconciliación PR #1 ✅ CERRADO
+1. **Dar clase no usa tiempo transcurrido para calcular duración o cobro.**
+2. **No existe fase obligatoria ni temporizador de 3 minutos.**
+3. **CYA reutiliza datos ya conocidos.**
+4. **Una clase abierta no bloquea iniciar otra.**
+5. **Un bono de pareja es un único bono compartido.**
+6. **Vídeos de clase no entran en árboles por el mero hecho de asociarse a contenido.**
+7. **Provisionales son operativos desde el lado del profesor.**
+8. **Evaluaciones usan el modelo guiado aprobado, no el formulario numérico antiguo.**
+9. **Las estadísticas se definen con el usuario antes de implementarse.**
+10. **Eliminar información relevante aplica G6.**
+11. **Backend incompatible solo tras demostrar frontend productivo.**
+12. **Supabase se valida por esquema real, no solo por nombres de migración.**
+13. **Reset masivo exige backup reciente + impacto + frase exacta + segunda confirmación.**
+14. **Reset no elimina Auth, roles, migraciones ni configuración técnica imprescindible.**
+15. **Una identidad humana = una persona canónica.**
+16. **Potencial / Provisional / Registrado se deriva de datos reales.**
+17. **`Realizar en pareja / Necesita pareja` existe solo para Ejercicios.**
+18. **Crear provisional desde Dar clase no abandona el flujo.**
 
-### Resultado final
+---
 
-- evaluación inicial guiada durante una clase activa;
-- no pedir al profesor números como flujo pedagógico principal;
-- histórico preservado;
-- radar y progreso derivados de datos reales;
-- revisión postclase explícita;
-- ninguna sesión se autocompleta para aparentar cierre;
-- Bachazouk exige la base de Bachata cuando corresponda;
-- Bachata y Bachazouk conservan niveles independientes;
-- si ambos contextos existen para el rol, la revisión dual se conserva;
-- wrappers numéricos antiguos retirados de `authenticated`;
+# 4. Evidencia de P17–P20 cerrados
+
+## P17 — Evaluaciones ✅
+
+- frontend guiado inicial/postclase activo;
+- wrappers `save_class_evaluation` y `save_class_evaluation_v2` retirados de `authenticated`;
 - motor moderno por sesiones conservado;
-- cierre pedagógico protegido por evaluación explícita;
-- PR #1 cerrada como supersedida.
+- evaluación inicial durante clase activa;
+- cierre pedagógico exige evaluación explícita;
+- no autocompletar sesiones para aparentar cierre;
+- Bachazouk conserva dependencia inicial de Bachata cuando corresponde;
+- v43 ledger `20260811151901`;
+- revisión postclase no reaparece tras completarse y no hace polling disruptivo;
+- PR histórica #1 cerrada como supersedida.
 
-### Correctivo de clase 23
+## P18 — Identidad/roles/navegación ✅
 
-La sesión que había aparecido como borrador fue preservada durante la preparación de v43 y posteriormente quedó **completada explícitamente antes del cutover**. v43 no la borró ni la autocompletó.
-
-### Correctivo de estabilidad postclase
-
-- una revisión `completed` no reaparece porque falte el cierre pedagógico posterior;
-- sin polling disruptivo mientras la revisión está abierta;
-- cuando no hay revisión visible, comprobación discreta y al volver a primer plano;
-- cada respuesta actualiza solo su estado local, sin reconstruir la pantalla completa.
-
----
-
-## P18 — Identidad, roles, navegación y “Ver como” ✅ CERRADO
-
-Absorbe las reglas de navegación y multirol que deben quedar definitivas.
-
-### Debe cerrar
-
-- una sola persona puede ser profesor + alumno + admin si está autorizada;
-- `Ver como` Profesor / Alumno / Administrador sin escalada de privilegios;
-- servidor verifica permisos reales;
-- barra móvil definitiva:
+- una persona puede ser admin + teacher + student según permisos reales;
+- `set_experience_context` valida servidor y no eleva roles;
+- `Ver como` solo ofrece contextos autorizados;
+- navegación móvil definitiva:
   `Inicio | Alumnado | DAR CLASE | Enseñanza | Marketing`;
-- DAR CLASE central, mayor y elevado;
+- DAR CLASE central/elevado;
 - sin hamburguesa para funciones clave;
-- escritorio con arquitectura equivalente;
-- acceso claro a Administración, cuenta y preferencias;
-- historial atrás coherente en todas las pantallas.
+- historial atrás real;
+- v46 ledger `20260811183128`.
 
-### Evidencia de cierre P18
+## P19 — Persona única ✅
 
-- la identidad real vinculada en producción soporta simultáneamente roles `admin`, `teacher` y `student` sobre una única persona;
-- `identity_context()` deriva `can_admin`, `can_teach` y `can_study` desde permisos reales de servidor;
-- v46 `set_experience_context` valida en servidor Profesor / Alumno / Administrador antes de persistir la vista;
-- v46 solo escribe `user_preferences.preferred_context`: no crea, modifica ni eleva `app_member_roles`;
-- la UI usa `Ver como` y solo ofrece contextos autorizados;
-- Portal Alumno y Administración mantienen guards explícitos de permiso;
-- barra móvil definitiva de cinco accesos y DAR CLASE central/elevado preservados;
-- escritorio comparte la misma arquitectura de navegación;
-- historial real mediante `pushState`/`popstate` preservado;
-- migración v46 aplicada en producción con ledger `20260811183128`;
-- dry-run autenticado validó los tres contextos para una identidad multirol sin modificar roles;
-- CI final sobre el mismo head: regresiones P18 5/5, lint de AccountMenu y build Next.js correctos;
-- los workflows de resumen editable y comenzar clase también quedaron verdes sobre el head final de P18.
+- `people` es persona canónica;
+- CRM, alumnado, Auth y operaciones comparten `person_id`;
+- coincidencia inequívoca por identidad reutiliza persona;
+- coincidencia ambigua se bloquea;
+- Potencial/Provisional/Registrado es lifecycle derivado;
+- edición de ficha no crea otra persona;
+- Auth se vincula a persona existente cuando corresponde;
+- provisional puede crearse desde Dar clase y queda seleccionado;
+- v47 ledger `20260811192818`.
 
----
+## P20 — Formularios versionados + datos canónicos ✅ CERRADO
 
-## P19 — Alumnado + persona única + identidades ✅ CERRADO
+### Arquitectura
 
-Absorbe F21–F25 excepto el motor reusable de formularios, que vive en P20.
+P20 reutiliza las tablas v14:
 
-### Estados de persona
+- `form_definitions`;
+- `form_versions`;
+- `form_fields`;
+- `form_submissions`.
 
-- potencial;
-- provisional;
-- registrado.
+No crea una biblioteca paralela.
 
-### Reglas
+### Runtime genérico real
 
-- potencial → provisional → registrado sin perder datos;
-- nunca degradar el nombre a “Persona”;
-- no duplicar ficha al habilitar funciones;
-- profesor puede editar la ficha completa;
-- autenticación se vincula a persona existente cuando corresponda;
-- provisional puede, desde el lado del profesor, usar prácticamente las mismas funciones operativas que un registrado.
+Activos:
 
-### Regla cruzada con P21
+- `onboarding`;
+- `student_personal`;
+- `student_dance`.
 
-En `Dar clase → Seleccionar alumno` debe existir:
+Los otros 15 formularios históricos representan servicios de dominio y quedan `inactive` con `runtime_engine=domain_service`; no se simulan como simples JSON.
 
-`+ Crear alumno provisional`
+### Canonicalidad
 
-sin abandonar el flujo. Al crearlo queda seleccionado y puede recibir clase, bono, evaluación y enseñanza inmediatamente.
+Allowlist:
 
-### Evidencia de cierre P19
+- nombre/apellidos/email/teléfono/país de `people`;
+- fecha de nacimiento/objetivos/motivación/salud/notas internas de `student_profiles`.
 
-- `public.people` queda como persona canónica; CRM, alumnado, Auth y operaciones se relacionan con el mismo `person_id`;
-- el ciclo Potencial / Provisional / Registrado es **derivado**, no una columna mutable duplicada:
-  - potencial = persona activa sin `student_profiles` activo;
-  - provisional = ficha alumno activa sin `auth_user_id`;
-  - registrado = ficha alumno activa con `auth_user_id`;
-- `crm_stage` permanece separado como estado comercial;
-- v47 normaliza email/teléfono y reutiliza una coincidencia única en altas CRM/alumnado;
-- coincidencias ambiguas se bloquean: CYA no fusiona automáticamente dos personas distintas;
-- advisory locks transaccionales reducen carreras de dos altas simultáneas de la misma identidad;
-- `create_student`, `save_crm_contact` y `enable_provisional_student` conservan/reutilizan la persona existente;
-- `save_person_identity` permite editar desde Alumnado nombre, apellidos, email, teléfono, país, objetivos, notas internas y salud sin crear otra ficha;
-- `private.link_confirmed_student` vincula Auth a la persona existente cuando la coincidencia por email es inequívoca y ya no usa nombres genéricos como fallback;
-- Marketing/CRM muestra Potencial / Provisional / Registrado aparte del estado comercial;
-- `Dar clase → Empezar otra clase` permite `Crear alumno provisional` sin abandonar el flujo y lo selecciona tras crear/reutilizar la persona;
-- el refresco de inicio de clase incluye Operaciones + Alumnado, mantiene Enseñanza secundaria y **Marketing sigue fuera** de la transición;
-- dry-run autenticado v47 dentro de `BEGIN/ROLLBACK`: Potencial → Provisional reutilizó el mismo `person_id`, la edición conservó identidad y una colisión fue bloqueada;
-- v47 aplicada en producción con ledger `20260811192818`;
-- smoke autenticado posterior volvió a probar Potencial → Provisional sobre el mismo ID y el rollback dejó exactamente las 3 personas previas;
-- PR #17 fusionada a `main` mediante squash commit `cb3ba79df13f46cf233290a8df6e37153d18a8d9`;
-- CI final del mismo head: P19 6/6 + lint + build, P18 + build, resumen editable + build e inicio de clase + build, todos correctos;
-- contrato técnico detallado en `docs/P19_PERSONA_UNICA_IDENTIDADES.md`.
+Los datos canónicos actualizan su tabla real. `form_submissions.answers` queda para información no canónica y `canonical_snapshot` aporta trazabilidad.
 
----
+### Versionado
 
-## P20 — Formularios versionados + datos canónicos 🟣 SIGUIENTE
+- publicado = inmutable;
+- cambios mediante nueva versión `draft`;
+- publicación sustituye versión activa sin alterar envíos históricos;
+- trigger de inmutabilidad verificado con SQLSTATE `55000`.
 
-### Objetivo
+### Constructor administrativo
 
-Recuperar lo útil del plugin histórico sin volver a construir formularios duplicados.
+Permite crear formularios genéricos y campos con:
 
-### Motor reusable
-
-- definición;
-- versión;
-- campos;
+- tipos, orden, obligatorio, ayuda;
 - opciones;
-- requerido;
 - visibilidad;
-- condición;
-- validación;
-- orden.
+- condiciones;
+- validaciones;
+- mapping canónico.
 
-Tipos mínimos:
+### Seguridad
 
-- información;
-- texto;
-- textarea;
-- select;
-- multiselect;
-- checkbox;
-- número;
-- fecha;
-- email;
-- teléfono.
+- `authenticated` sin INSERT/UPDATE/DELETE directo sobre tablas del motor;
+- `anon` sin EXECUTE sobre runtime/submit/constructor;
+- `authenticated` ejecuta RPCs previstas con guards internos;
+- `teacher_notes` forzado a solo-equipo;
+- `canonical_path` no usa SQL dinámico;
+- `domain_service` no puede activarse/publicarse desde motor genérico.
 
-### Reglas
+Las advertencias Advisor sobre RPC `SECURITY DEFINER` son deliberadas en P20 porque cada RPC valida autorización y las tablas no permiten escritura directa de cliente. Reauditar en P32.
 
-- validación de servidor;
-- datos canónicos reutilizados;
-- onboarding progresivo;
-- no mostrar todas las preguntas de golpe;
-- separar información interna de lo visible al alumno;
-- heredar G3 para entradas numéricas.
+### QA/cutover
+
+- P20 13/13 + lint + build;
+- P19 6/6 + lint + build sobre el corte previo;
+- dry-run integral v48 pasó y terminó en rollback;
+- G1 demostrado por `/api/build-info` = `p20-form-runtime-v48-ready`;
+- v48 aplicada: ledger **`20260811213826`**;
+- post-cutover: **3 personas / 18 definiciones / 21 versiones / 89 campos / 0 envíos**;
+- 3 genéricos activos / 15 domain_service inactivos;
+- una llamada sin sesión al runtime se rechaza `42501`;
+- sin datos temporales residuales.
+
+### v48b
+
+Advisor detectó la FK nueva `form_versions.published_by` sin índice. Se corrigió dentro de P20:
+
+- PR #21;
+- merge `e1d7e9c69d44d155bf9594c86a22892479bb714e`;
+- migración `v48b_p20_form_versions_published_by_index`;
+- ledger **`20260811214312`**;
+- `form_versions_published_by_idx` verificado.
+
+La herramienta de sesión bloqueó la fabricación artificial de una JWT para un smoke adicional; no se intentó eludir el control. Las pruebas autorizadas restantes quedaron verdes y el flujo autenticado volverá a revalidarse en paquetes posteriores y P32.
+
+Contrato detallado: `docs/P20_FORMULARIOS_VERSIONADOS_DATOS_CANONICOS.md`.
 
 ---
 
-## P21 — DAR CLASE definitivo ⏳
+# 5. P21 — DAR CLASE definitivo 🟣 AHORA
 
-Absorbe F3B + F6–F11 y los correctivos posteriores de F8/F10.
+Absorbe F3B + F6–F11 y la revalidación de los correctivos adelantados de F8/F10.
 
-### Regla innegociable de duración
+## Objetivo
 
-CYA **nunca** calcula lo cobrado por el tiempo que una clase lleva abierta.
+Convertir Dar clase en una experiencia integrada, rápida y táctil que permita observar, enseñar, asignar, evaluar y cerrar sin pantallas redundantes ni interrupciones.
+
+## 5.1 Duración — regla innegociable
+
+CYA **nunca** cobra por tiempo transcurrido desde `started_at`.
 
 - sin cronómetro operativo;
 - sin contador de 3 minutos;
-- sin fase obligatoria independiente de 3 minutos;
-- `started_at` puede existir como dato técnico, nunca como duración facturable;
+- sin fase obligatoria de 3 minutos;
+- `started_at` solo dato técnico;
 - duración prevista cargada por defecto;
-- duración manual editable es la operativa.
+- duración manual editable = duración operativa/facturable.
 
-### Espacio dinámico de clase
+## 5.2 Espacio dinámico de clase
 
-Una experiencia integrada debe reunir:
+Debe reunir:
 
-- alumno/pareja;
-- resumen y contexto previo;
+- alumno/pareja y contexto;
+- resumen previo;
 - correcciones activas;
 - progreso relevante;
 - explicaciones/secuencias recientes;
@@ -388,16 +339,14 @@ Una experiencia integrada debe reunir:
 - guía de hoy;
 - creación rápida;
 - notas;
-- cambio entre alumnos de una pareja;
-- evaluación guiada cuando corresponda;
+- cambio entre miembros de pareja;
+- evaluación guiada cuando proceda;
 - cierre administrativo;
-- cierre pedagógico.
+- resumen/cierre pedagógico.
 
-No se conservan pantallas artificiales solo porque el plugin histórico las tuviera.
+No conservar pantallas artificiales solo por herencia del plugin.
 
-### Buscador de Dar clase
-
-Primero es **contextual a Dar clase**, no un buscador universal inventado para toda CYA.
+## 5.3 Buscador contextual
 
 Busca Correcciones / Explicaciones / Ejercicios / Secuencias por:
 
@@ -407,173 +356,156 @@ Busca Correcciones / Explicaciones / Ejercicios / Secuencias por:
 - descripción;
 - relaciones.
 
-Orden prioritario:
+Orden:
 
 1. ya activo del alumno;
 2. correcciones activas;
 3. relevante al contexto;
 4. compatible de biblioteca;
-5. otros.
+5. resto.
 
 No ocultar una corrección por estar ya asignada.
 
-### Cierre administrativo — reglas que se deben preservar y revalidar
+## 5.4 Inicio de clase
 
-- si la clase llegó a iniciarse, no volver a preguntar asistencia;
+Revalidar el correctivo existente:
+
+- refresco operativo sin depender de Marketing;
+- `try/catch/finally` para que el botón nunca quede en `Abriendo…`;
+- una clase abierta no impide abrir otra;
+- crear provisional sin salir del flujo;
+- datos conocidos precargados vía G7.
+
+## 5.5 Cierre administrativo
+
+Preservar y revalidar:
+
+- no volver a preguntar asistencia si la clase ya se inició;
 - bono compatible activo por defecto;
-- prioridad al que antes caduca;
-- bono de pareja aparece **una sola vez**;
+- prioridad al bono que antes caduca;
+- bono de pareja una sola vez;
 - crear bono rápido;
-- pagar clase suelta mediante saldo exacto;
-- saldo insuficiente permite pendiente o regularización exacta;
-- transferencia individual → pareja con minutos elegibles y coste adicional;
+- pagar clase suelta;
+- saldo insuficiente: pendiente o regularización exacta;
+- transferencia individual → pareja por minutos elegibles;
 - suplementos compactos editables;
 - pago total / mitad / otra cantidad / nada ahora;
-- persistir deuda;
-- varios vídeos/archivos por clase;
-- pareja: “Ambos” por defecto, con cambio a A/B;
-- clasificar recurso como Corrección / Explicación / Secuencia cuando proceda;
-- estos vídeos **no crean nodos, relaciones ni prerrequisitos de árboles**;
-- reabrir clase debe revertir coherentemente artefactos de cierre y dejar auditoría.
+- persistencia de deuda;
+- varios vídeos/archivos;
+- pareja: `Ambos` por defecto, cambio A/B;
+- recursos pueden clasificarse cuando proceda;
+- vídeos no crean nodos/prerrequisitos de árboles;
+- reabrir clase revierte coherentemente artefactos de cierre y audita.
 
-### Correctivos adelantados ya implementados durante P18/P19
+## 5.6 Resumen pedagógico editable
 
-Estos cambios pertenecen funcionalmente a P21, pero fueron adelantados por incidencias bloqueantes y **deben revalidarse cuando P21 sea el paquete secuencial activo**:
+Revalidar v45/editor existente:
 
-- P19 ya permite crear/reutilizar un provisional dentro de `Empezar otra clase`, refrescar Alumnado y seleccionarlo sin abandonar el flujo; P21 debe conservarlo y revalidarlo dentro del Dar clase definitivo;
+- añadir contenido olvidado después del cierre administrativo y antes del pedagógico;
+- crear contenido rápido;
+- Corrección: `corregida` puede volver a `pendiente` y ajustar frecuencia/importancia;
+- Explicaciones/Secuencias/Ejercicios pueden corregir su estado;
+- pareja sigue siendo individual por alumno;
+- búsqueda y creación permitidas mientras `pedagogy_closed_at` siga vacío;
+- RLS sin recursión.
 
-- el resumen pedagógico final incluye `Revisar contenido trabajado` antes de cerrar;
-- desde el resumen se puede añadir contenido olvidado y crear contenido rápido;
-- una Corrección puede volver de `corregida` a `pendiente` y ajustar frecuencia/importancia;
-- Explicaciones/Secuencias y Ejercicios pueden corregir su estado antes del cierre;
-- en pareja, la edición sigue siendo individual por alumno;
-- v45 eliminó la recursión RLS entre `student_content_assignments` y `teaching_contents` sin desactivar RLS;
-- `search_class_teaching_content` y la creación rápida funcionan también tras el cierre administrativo mientras el cierre pedagógico siga abierto;
-- comenzar una clase preparada refresca primero el estado operativo y ya no depende de Marketing;
-- el botón de inicio usa `try/catch/finally`, por lo que un error no lo deja permanentemente en `Abriendo…`;
-- `start_class` fue probado autenticadamente con `ROLLBACK` sobre una clase preparada válida.
+## 5.7 Limpieza P21
 
-### Concurrencia de clases
-
-Una clase abierta **no bloquea iniciar otra**.
-
-Cada sesión se mantiene independiente. Una clase olvidada se resuelve con P27 Notificaciones, no con un bloqueo.
-
-### Limpieza de duplicaciones
-
-Antes de considerar P21 cerrado se eliminan:
+Eliminar físicamente duplicaciones y legado muerto:
 
 - correcciones repetidas;
-- estados mostrados dos veces;
-- datos de alumno redundantes;
-- bloques con la misma información;
-- controles heredados ocultos que ya no tengan función, incluida la eliminación física del JSX numérico viejo de evaluación.
+- estados duplicados;
+- datos del alumno repetidos;
+- bloques informativos equivalentes;
+- controles ocultos sin función;
+- JSX numérico viejo de evaluación que ya no pertenece al flujo final.
+
+## Gate de cierre P21
+
+No cerrar hasta probar como mínimo:
+
+- clase individual y pareja;
+- programada y manual;
+- provisional creado in-flow;
+- dos clases abiertas independientes;
+- búsqueda de los cuatro tipos;
+- contenido añadido/rectificado en resumen;
+- evaluación guiada cuando corresponda;
+- cierre administrativo con variantes financieras;
+- cierre pedagógico;
+- reapertura/rollback cuando corresponda;
+- iPhone y desktop;
+- regresiones P17–P20 relevantes.
 
 ---
 
-## P22 — Portal del alumno ⏳
+# 6. P22 — Portal del alumno ⏳
 
-### Debe incluir
+Debe cerrar:
 
 - próxima clase;
-- clases;
-- bonos y saldo;
-- formación asignada;
-- Correcciones / Explicaciones / Ejercicios / Secuencias;
+- clases e historial;
+- bonos/saldo;
+- formación asignada: Correcciones/Explicaciones/Ejercicios/Secuencias;
 - multimedia autorizada;
 - evolución;
 - evaluaciones;
 - perfil;
-- información autorizada por RLS.
+- solo información permitida por RLS.
 
-### Reglas
+Reglas:
 
-- alumno solo ve lo que le corresponde;
+- alumno solo ve lo suyo;
 - borradores/incompletos internos no se filtran;
-- multirol no implica escalada;
-- el profesor puede entrar en modo Alumno para verificar UX usando su rol real autorizado.
+- multirol no escala privilegios;
+- profesor con rol alumno puede validar UX mediante `Ver como`.
 
 ---
 
-## P23 — Enseñanza + relaciones + árboles ⏳
+# 7. P23 — Enseñanza + relaciones + árboles ⏳
 
 Absorbe F16–F20.
 
-### Contenidos
+Contenidos:
 
 - Correcciones;
 - Explicaciones;
 - Ejercicios;
 - Secuencias;
-- categorías;
-- etiquetas;
+- categorías/etiquetas;
 - relaciones;
 - multimedia externa.
 
-### Regla exclusiva de ejercicios
+Reglas:
 
-`Realizar en pareja` existe **solo para Ejercicios**.
+- `Realizar en pareja / Necesita pareja` solo para Ejercicios;
+- explicación Leader/Follower homóloga sin mezclar asignaciones individuales;
+- contenido reutilizable en diferentes rutas;
+- vídeo asociado no entra automáticamente en grafo.
 
-Al activarlo:
+Ocho árboles conceptuales:
 
-- compatible Leader + Follower según contexto;
-- indicador visible `Necesita pareja`.
+1. Bachata Leader
+2. Bachata Follower
+3. Salsa Leader
+4. Salsa Follower
+5. Zouk Leader
+6. Zouk Follower
+7. Bachazouk Leader
+8. Bachazouk Follower
 
-No propagar esta propiedad automáticamente a Correcciones, Explicaciones o Secuencias.
-
-### Homólogos Leader/Follower
-
-Consolidar:
-
-- explicación Leader;
-- homóloga Follower;
-- visibilidad;
-- asignación individual;
-- reglas de aprendizaje por persona.
-
-### Ocho árboles conceptuales
-
-1. Bachata · Leader
-2. Bachata · Follower
-3. Salsa · Leader
-4. Salsa · Follower
-5. Zouk · Leader
-6. Zouk · Follower
-7. Bachazouk · Leader
-8. Bachazouk · Follower
-
-Un contenido puede reutilizarse; las rutas pueden variar por árbol.
-
-### Mapa móvil
-
-- táctil;
-- zoom;
-- pan;
-- centrar;
-- ruta;
-- volver/reset;
-- filtros estilo/rol/nivel/tipo;
-- búsqueda;
-- zonas/categorías legibles;
-- revisar varios mapas: no asumir uno único.
-
-### Regla multimedia
-
-Un vídeo de clase asociado a un contenido no entra automáticamente en el grafo pedagógico.
+UX móvil: pan, zoom, centrar, ruta, volver/reset, filtros estilo/rol/nivel/tipo y búsqueda.
 
 ---
 
-## P24 — Inicio contextual ⏳
+# 8. P24 — Inicio contextual ⏳
 
-### Objetivo
+Inicio = lanzador inteligente.
 
-Inicio funciona como lanzador inteligente, no como panel estático.
+Debe incluir:
 
-### Debe incluir
-
-- saludo por franja horaria;
-- nombre del perfil;
-- frase diaria persistente por día;
+- saludo por franja horaria y nombre;
+- frase diaria persistente;
 - siguiente acción;
 - misiones;
 - agenda/calendario;
@@ -581,91 +513,60 @@ Inicio funciona como lanzador inteligente, no como panel estático.
 - accesos rápidos;
 - resumen del día.
 
-### Regla de clase próxima
+Clase próxima domina Inicio **30 minutos antes**.
 
-Una clase próxima pasa a dominar Inicio **30 minutos antes**.
-
-### Frases
+Frases:
 
 - mañana 05:00–11:59;
 - tarde 12:00–19:59;
 - noche 20:00–04:59;
 - activar/desactivar;
 - CSV;
-- sustitución por fecha;
+- fecha específica;
 - evitar duplicados;
-- previsualización.
+- preview.
 
 ---
 
-## P25 — Misiones + worker ⏳
+# 9. P25 — Misiones + worker ⏳
 
 Absorbe F32–F33.
 
-### Tipos
+Tipos: principal / diaria / crecimiento.
 
-- principal;
-- diaria;
-- crecimiento.
+Estados: próxima / disponible / en progreso / bloqueada / pospuesta / completada / no realizada / no aplicable / cancelada / automática.
 
-### Estados
+Prioridad: normal / prioritaria / urgente.
 
-próxima / disponible / en progreso / bloqueada / pospuesta / completada / no realizada / no aplicable / cancelada / automática.
+El motor corre en servidor, no depende de abrir la app.
 
-### Prioridades
-
-normal / prioritaria / urgente.
-
-### Motor
-
-Debe ejecutarse en servidor cuando corresponda; no depender de abrir la app para que “ocurra”.
-
-Incluye reglas de cierre, bonos, perfiles, preparación de clase, contenido, revisión y vencimientos.
+Reglas iniciales: cierre de clases, bonos, perfiles incompletos, preparación, contenido pendiente, revisión y vencimientos.
 
 ---
 
-## P26 — Agenda + Google Calendar ⏳
+# 10. P26 — Agenda + Google Calendar ⏳
 
-Absorbe F35.
+Vistas: Día / Semana / Mes / Lista.
 
-### Vistas
+Capas: clases / misiones / eventos.
 
-- Día;
-- Semana;
-- Mes;
-- Lista.
+Sync:
 
-### Capas
-
-- clases;
-- misiones;
-- eventos.
-
-### Sincronización
-
-- ID externo;
-- última sync;
-- estado;
-- errores;
+- external ID;
+- última sincronización;
+- estado/error;
 - conflictos;
 - idempotencia.
 
-La sincronización nunca destruye participantes, saldos, estado pedagógico ni historia de una clase.
+Nunca destruir participantes, saldo, estado pedagógico ni historial por sincronizar.
 
 ---
 
-## P27 — Notificaciones automáticas ⏳
+# 11. P27 — Notificaciones automáticas ⏳
 
-El centro de notificaciones base ya existe. P27 construye el motor automático.
+El centro base ya existe.
 
-### Regla prioritaria
-
-Si una clase se inicia y no se termina:
-
-- aviso de urgencia alta;
-- acceso directo a esa clase;
-- persiste hasta resolver;
-- **no bloquea iniciar otra clase**.
+Prioridad: clase iniciada y no terminada → alerta urgente persistente con acceso directo, **sin bloquear otra clase**.
 
 Después:
 
@@ -678,122 +579,91 @@ Después:
 
 ---
 
-## P28 — Importación / exportación ⏳
+# 12. P28 — Importación / exportación ⏳
 
-### Alcance
+Alcance:
 
 - alumnos/personas;
-- correcciones;
-- explicaciones;
-- ejercicios;
-- secuencias;
+- Correcciones;
+- Explicaciones;
+- Ejercicios;
+- Secuencias;
 - configuraciones aplicables;
 - datos administrativos.
 
-Mantener JSON/CSV/XLSX ya construidos cuando sean válidos; no reescribir por estética.
-
-Debe existir trazabilidad de trabajos de transferencia y validación antes de alterar datos reales.
+Mantener JSON/CSV/XLSX existentes cuando sean válidos. Validar y registrar trabajos antes de modificar datos reales.
 
 ---
 
-## P29 — Marketing / CRM / tarifas / campañas / eventos / multimedia ⏳
+# 13. P29 — Marketing / CRM / tarifas / campañas / eventos ⏳
 
-Absorbe F26–F31.
+CRM:
 
-### CRM
-
-- potenciales;
-- alumnos;
+- potenciales/alumnos;
 - procedencia;
 - qué buscaban;
 - reservó;
-- bono;
-- importe;
+- bono/importe;
 - observaciones;
 - tarifa;
-- estados comerciales;
-- estadísticas de captación.
+- estado comercial;
+- captación.
 
-Sin “próxima acción” obligatoria.
+Sin `próxima acción` obligatoria.
 
-### Contenido de redes
+Contenido social:
 
 - ideas;
-- contenido;
 - planificación;
 - calendario;
 - archivos;
 - estados.
 
-### Campañas
+Campañas:
 
-- segmentación;
-- audiencia;
-- contenido;
-- estado;
-- resultados;
+- audiencia/segmentación;
 - texto;
-- imágenes;
-- vídeos.
+- imágenes/vídeos;
+- estado;
+- resultados.
 
-Canales futuros según integración aprobada: WhatsApp/email. YouTube y TikTok no son requisito.
+Eventos:
 
-### Eventos
-
-- crear;
-- gestionar;
+- creación/gestión;
 - promoción;
-- contenido asociado;
-- campañas;
+- contenido/campañas;
 - métricas.
 
-### Multimedia
+WhatsApp/email según integración aprobada. YouTube/TikTok no son requisito.
 
-Se aplica G5: archivos fuera de GitHub/Postgres pesado/WordPress.
+Multimedia aplica G5.
 
 ---
 
-## P30 — Estadísticas definidas con el usuario ⏳
+# 14. P30 — Estadísticas definidas con el usuario ⏳
 
 Absorbe F40–F41.
 
-**No implementar un dashboard de métricas inventadas.**
+**No implementar métricas inventadas.**
 
-Primero definir qué decisiones debe permitir tomar cada estadística. Después implementar solo las aprobadas.
+Primero definir con el usuario qué decisión debe permitir cada estadística. Después implementar únicamente las aprobadas.
 
-Ámbitos candidatos, no métricas preaprobadas:
-
-- alumnado;
-- enseñanza;
-- clases;
-- bonos;
-- marketing;
-- progreso;
-- finanzas;
-- campañas.
+Ámbitos candidatos: alumnado, enseñanza, clases, bonos, marketing, progreso, finanzas, campañas.
 
 ---
 
-## P31 — Administración + catálogos + integraciones + apariencia ⏳
+# 15. P31 — Administración + catálogos + integraciones + apariencia ⏳
 
-Absorbe F36–F39 y parte de F43.
+Administración:
 
-### Administración de datos
-
-- editar;
 - catálogos;
-- categorías;
-- etiquetas;
-- estilos;
-- niveles;
-- parámetros;
-- ubicaciones;
-- tarifas;
-- valores predeterminados.
+- categorías/etiquetas;
+- estilos/niveles/parámetros;
+- ubicaciones/tarifas;
+- defaults;
+- edición segura.
 
-### Integraciones
-
-Panel real de:
+Integraciones:
 
 - Drive;
 - Calendar;
@@ -801,108 +671,78 @@ Panel real de:
 - WhatsApp;
 - email.
 
-Nunca mostrar “conectado” si no existe una conexión real verificable.
+Nunca mostrar “conectado” sin conexión verificable.
 
-### Apariencia
+Apariencia configurable:
 
-Configurable de verdad:
-
-- colores CYA;
-- primario/secundario;
+- colores;
 - logo;
 - cabecera;
 - tipografías;
 - parámetros visuales aprobados.
 
-### Seguridad destructiva
-
-Aplicar G6 en todas las acciones administrativas.
+Todas las acciones destructivas aplican G6.
 
 ---
 
-## P32 — QA integral + seguridad + producción + release ⏳
+# 16. P32 — QA integral + seguridad + producción + release ⏳
 
 Absorbe F42–F46 y todos los gates pendientes.
 
-### Reset previo a lanzamiento — BASE IMPLEMENTADA ANTICIPADAMENTE
+## Reset final
 
-La infraestructura v44–v44e ya existe. P32 **no debe reconstruirla**: debe someterla a QA final y confirmar que sigue siendo compatible con el esquema que exista al final del proyecto.
+No reconstruir v44–v44e. Reauditar contra el esquema final:
 
-Base disponible:
+- backup completo obligatorio;
+- cobertura de todas las tablas reseteables;
+- preview;
+- supervivientes técnicos;
+- borrado selectivo/por áreas;
+- frase + segunda confirmación;
+- transacción/serialización;
+- auditoría;
+- protección de identidades staff;
+- restauración real.
 
-- backup completo previo obligatorio para reinicios masivos;
-- previsualización del alcance exacto;
-- supervivientes técnicos definidos;
-- búsqueda/borrado selectivo;
-- borrado por áreas;
-- frase escrita contextual;
-- segunda confirmación;
-- ejecución transaccional/serializada;
-- auditoría posterior;
-- protección de identidades del equipo;
-- restauración mediante el sistema de copias existente.
-
-En P32 se debe repetir G8 contra el esquema final y volver a comprobar que la copia completa contiene todas las tablas que el reset pueda eliminar.
-
-### Seguridad
+## Seguridad
 
 - RLS;
-- permisos;
+- roles/permisos;
 - funciones;
-- auth;
+- Auth;
 - Storage/Drive;
 - secretos;
 - sesiones;
-- acciones destructivas;
-- leaked password protection;
-- revisión de advisors;
-- revisar de nuevo las RPC `SECURITY DEFINER` del reset: su exposición a `authenticated` es deliberada porque cada RPC valida `private.is_admin()` en servidor, pero debe reauditarse en el release final.
+- destructivas;
+- activar leaked password protection;
+- advisors;
+- reauditar todas las RPC `SECURITY DEFINER`, incluidas P20 y reset.
 
-### Rendimiento
+## Rendimiento
 
-Los advisors actuales muestran deuda de índices/FKs y políticas permisivas múltiples. No borrar índices “no usados” por lectura superficial; analizar carga real y corregir solo lo demostrado.
+Existe deuda de FKs sin índice, múltiples policies permisivas e índices que Advisor aún considera no usados. Analizar carga real; no borrar índices automáticamente por aparecer `unused`.
 
-### QA integral
+## QA funcional
 
 Probar:
 
-- profesor;
-- alumno;
-- administrador;
-- potencial;
-- provisional;
-- registrado;
-- parejas;
-- bonos;
-- clases;
-- evaluaciones;
-- enseñanza;
-- marketing;
-- iPhone;
-- desktop;
-- borrado selectivo;
-- borrado por áreas;
-- backup + reinicio operativo;
-- backup + reinicio completo + restauración.
+- profesor/alumno/admin;
+- potencial/provisional/registrado;
+- individual/pareja;
+- clases/bonos/evaluaciones/enseñanza/marketing;
+- iPhone/desktop;
+- import/export;
+- integraciones;
+- notificaciones/misiones;
+- reset operativo/completo + restauración.
 
-### Auditoría funcional final
-
-Comparar:
+Auditoría final:
 
 `diseñado → implementado → comportamiento real`.
 
-Buscar:
+Buscar botones muertos, rutas erróneas, duplicaciones, guardados fallidos, errores silenciosos, pantallas inaccesibles, inconsistencias y endpoints obsoletos.
 
-- botones muertos;
-- rutas erróneas;
-- duplicaciones;
-- datos que no guardan;
-- errores silenciosos;
-- pantallas inaccesibles;
-- inconsistencias;
-- endpoints obsoletos aún invocables.
-
-### Release
+Release:
 
 - datos iniciales;
 - entorno;
@@ -916,118 +756,79 @@ Buscar:
 
 ---
 
-# 4. Mapa de la auditoría funcional histórica F1–F46
+# 17. Mapa F1–F46 → estado/destino
 
-Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P18–P32.
-
-| Auditoría histórica | Estado / destino actual |
+| Auditoría | Estado / destino |
 |---|---|
-| F1 Marketing no abría | ✅ cerrado |
+| F1 Marketing | ✅ cerrado |
 | F1B TypeScript estricto | ✅ cerrado |
-| F2 navegación atrás | ✅ cerrado y consolidado en P18 |
-| F3 visual global | ✅ base cerrada / QA permanente |
-| F3B inputs numéricos | → G3 + P20/P21/P29/P31 |
-| F4 avatar/perfil/preferencias/portal | ✅ multirol consolidado en P18 |
-| F5 centro de notificaciones | ✅ base; automatización → P27 |
-| F6 temporizadores/duración real | ✅ regla permanente P21 |
-| F7 duración prevista + bono | ✅ preservar/revalidar P21 |
-| F8 cierre administrativo amplio | → P21 |
-| F9 duplicaciones Dar clase | → P21 |
-| F10 espacio dinámico Dar clase | → P21 |
-| F11 buscador Dar clase | → P21 |
-| F12–F15 evaluaciones | ✅ cerrado en P17 |
+| F2 navegación atrás | ✅ P18 |
+| F3 visual global | ✅ base / QA permanente |
+| F3B inputs numéricos | G3 + revalidar P21/P29/P31 |
+| F4 perfil/preferencias/portal | ✅ P18 |
+| F5 centro notificaciones | ✅ base → automatización P27 |
+| F6 temporizadores | regla permanente P21 |
+| F7 duración prevista/bono | preservar P21 |
+| F8–F11 Dar clase | → P21 |
+| F12–F15 evaluaciones | ✅ P17 |
 | F16–F20 Enseñanza | → P23 |
-| F21–F25 Personas/Alumnado | ✅ persona/identidad base cerrada en P19; formularios → P20; alta rápida → revalidar P21 |
+| F21–F25 Personas/Alumnado | ✅ P19 + formularios ✅ P20 + alta rápida revalidar P21 |
 | F26–F31 Marketing | → P29 |
 | F32–F33 Misiones/worker | → P25 |
 | F34 notificaciones automáticas | → P27 |
 | F35 Agenda/Calendar | → P26 |
-| F36 formularios/admin/transferencia | → P20 + P28 + P31 |
+| F36 formularios/admin/transferencia | formularios ✅ P20; transferencia P28; admin P31 |
 | F37 catálogos | → P31 |
 | F38 integraciones | → P31 |
 | F39 apariencia | → P31 |
 | F40–F41 estadísticas | → P30 |
-| F42 reset | ✅ base implementada v44–v44e; reauditoría final → P32 |
-| F43 seguridad/destructivas | → G6 + P31 + P32; reset ya aplica G6 reforzado |
-| F44 QA integral | → P32 |
+| F42 reset | ✅ base v44–v44e; reauditar P32 |
+| F43 seguridad/destructivas | G6 + P31/P32 |
+| F44 QA | → P32 |
 | F45 auditoría funcional final | → P32 |
 | F46 producción | → P32 |
 
 ---
 
-# 5. Correctivos y novedades incorporados
+# 18. Correctivos/novedades que deben seguir presentes
 
-| Regla / error / mejora | Ubicación definitiva |
+| Regla / incidencia | Destino |
 |---|---|
-| `05` / `050` en horas-minutos | G3 + P21 |
-| teclado numérico/decimal | G3 |
+| `05`/`050` en campos numéricos | G3 + P21 |
 | varios vídeos por clase | P21 |
-| pareja → vídeo para Ambos por defecto | P21 |
-| vídeos de clase fuera de árboles | G5 + P21 + P23 |
-| reabrir clase y revertir cierre | P21 |
-| doble confirmación al eliminar | G6 + P31/P32 |
-| transferencia individual→pareja por minutos | P21 |
-| bono compartido mostrado una sola vez | P21 |
-| regularizar diferencia exacta | P21 |
-| suplementos compactos editables | P21 |
+| vídeo pareja → Ambos por defecto | P21 |
+| vídeos fuera de árboles | G5 + P21/P23 |
+| reabrir clase revierte cierre | P21 |
+| transferencia individual→pareja | P21 |
+| bono compartido una sola vez | P21 |
+| regularización exacta | P21 |
+| suplementos compactos | P21 |
 | pago parcial | P21 |
-| crear provisional desde Dar clase | P19 ↔ P21 |
-| una clase abierta no bloquea otra | P21 |
-| alerta urgente de clase olvidada | P27 |
-| ejercicio “Realizar en pareja / Necesita pareja” | P23 |
-| no fase obligatoria de 3 minutos | P21 |
-| no cronómetro facturable | P21 |
-| PR #1 no se fusiona por inercia | ✅ P17, cerrada supersedida |
-| v41b presente en esquema pero registro históricamente inconsistente | G8 + P32 |
-| borrador de evaluación clase 23 | ✅ preservado y completado explícitamente antes de v43 |
-| revisión postclase reaparecía/recargaba | ✅ correctivo P17, commit `d0f9bd49c82047bfacff12f68b46bd061650d98c` |
-| leaked password protection desactivado | G2 + P32 |
-| deuda de índices/policies detectada por advisor | P32 |
-| backend incompatible solo tras probar runtime | G1, validado operacionalmente en P17 |
-| borrado selectivo y por áreas desde Administración | ✅ adelanto F42/P32 v44–v44d |
-| reinicio operativo/completo con backup previo | ✅ base F42/P32; reauditar en P32 |
-| borrar todos los alumnos elimina sus personas de prueba | ✅ v44d; identidades staff protegidas |
-| backup completo histórico omitía 5 tablas actuales | ✅ v44c; cobertura real = 0 ausencias |
-| copia descargada no habilitaba el reinicio tras rerender/recarga | ✅ v44e; validez consultada en servidor durante 30 min |
-| resumen final no permitía corregir/añadir contenido olvidado | ✅ correctivo adelantado P21; editor de resumen fusionado |
-| recursión RLS en `student_content_assignments` / `teaching_contents` | ✅ v45, sin desactivar RLS |
-| búsqueda/creación de enseñanza no funcionaba tras cierre administrativo | ✅ v45 mientras `pedagogy_closed_at` siga vacío |
-| comenzar clase podía quedarse en `Abriendo…` por refrescos ajenos | ✅ correctivo adelantado P21; transición operativa desacoplada de Marketing |
-| `Ver como` solo confiaba en preferencia frontend | ✅ P18/v46; autorización de contexto en servidor sin escalada |
-| CRM/Alumnado podían crear fichas duplicadas por la misma identidad | ✅ P19/v47; reutilización conservadora por email/teléfono y bloqueo de ambigüedad |
-| Potencial / Provisional / Registrado podían convertirse en otro estado duplicado | ✅ P19; lifecycle derivado desde persona + ficha alumno + Auth |
-| ficha de Alumnado no permitía editar datos canónicos | ✅ P19; editor de identidad sobre la misma persona |
-| crear provisional obligaba a salir de Dar clase | ✅ P19↔P21; alta rápida in-flow implementada, revalidar en P21 |
+| provisional in-flow | P19↔P21 |
+| clase abierta no bloquea otra | P21 |
+| alerta clase olvidada | P27 |
+| ejercicio en pareja solo Ejercicios | P23 |
+| sin fase/cronómetro de 3 min | P21 |
+| revisión postclase reaparecía/recargaba | ✅ P17 |
+| leaked password protection | G2/P32 |
+| deuda de indexes/policies Advisor | P32 |
+| reset seguro | ✅ base v44–v44e / P32 final |
+| copia descargada no habilitaba reset | ✅ v44e |
+| resumen final editable | ✅ adelanto P21 / revalidar P21 |
+| recursión RLS enseñanza | ✅ v45 / revalidar P21/P23 |
+| inicio quedaba `Abriendo…` | ✅ adelanto P21 / revalidar P21 |
+| Ver como sin autoridad servidor | ✅ P18/v46 |
+| personas duplicadas | ✅ P19/v47 |
+| lifecycle duplicado | ✅ P19 |
+| formulario canónico/versionado | ✅ P20/v48 |
+| FK P20 `published_by` sin índice | ✅ P20/v48b |
 
 ---
 
-# 6. Orden inmediato desde este corte
+# 19. Orden inmediato desde este corte
 
-**P20 → P21 → P22 → P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
+**P21 → P22 → P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
 
-Los adelantos F42/P32 y P21 realizados durante P18/P19 **no modifican este orden**. Cuando llegue cada P original se revalida la implementación existente en lugar de recrearla.
+No volver a P20 salvo un correctivo demostrado. No volver al antiguo orden F8 → F3B → F9 como secuencia de implementación: esos requisitos están absorbidos por los P modernos.
 
-No volver al antiguo orden F8 → F3B → F9… como secuencia de implementación: esos requisitos siguen vigentes, pero están absorbidos en la secuencia P moderna.
-
----
-
-# 7. Reglas maestras que no se pueden volver a romper
-
-1. **Dar clase no usa tiempo real para calcular duración o cobro.**
-2. **No existe fase obligatoria ni temporizador de 3 minutos.**
-3. **CYA reutiliza datos ya conocidos y evita preguntar dos veces.**
-4. **Una clase abierta no bloquea otra.**
-5. **Un bono de pareja es un único bono compartido.**
-6. **Vídeos de clase no forman parte de árboles por el mero hecho de asociarse a contenido.**
-7. **Provisionales deben ser operativos desde el lado del profesor.**
-8. **Las evaluaciones se basan en el modelo guiado aprobado, no en reactivar formularios numéricos antiguos.**
-9. **Las estadísticas se definen con el usuario antes de implementarlas.**
-10. **Eliminar información relevante requiere la protección de G6.**
-11. **No aplicar un backend incompatible hasta demostrar el frontend de producción.**
-12. **La verdad de Supabase se comprueba en el esquema real, no solo en el historial de migraciones.**
-13. **Un reinicio masivo nunca se ejecuta sin copia completa reciente, impacto visible, frase exacta y segunda confirmación.**
-14. **El reinicio de datos nunca elimina Auth, roles de acceso, migraciones ni la configuración técnica necesaria para volver a entrar en CYA Hub.**
-15. **Una identidad humana se representa por una única persona canónica; habilitar CRM, alumno, Auth o nuevas capacidades no crea una ficha paralela.**
-16. **Potencial / Provisional / Registrado se deriva de datos reales; no se duplica como otro estado mutable que pueda desincronizarse.**
-
-Este documento sustituye las hojas parciales anteriores y será el listado que se actualice al inicio y cierre de cada P.
+Este documento sustituye las hojas parciales anteriores y debe actualizarse al inicio y cierre de cada paquete.
