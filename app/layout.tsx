@@ -4,6 +4,7 @@ import "./globals.css";
 import "./visual-audit-v21.css";
 import "./visual-density-v22.css";
 import "./evaluation-final-model.css";
+import "./area-separation-v36.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
