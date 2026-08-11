@@ -247,11 +247,12 @@ export function AdminDataReset({
   }, [client]);
 
   useEffect(() => {
-    void loadBackupStatus();
+    const initial = window.setTimeout(() => void loadBackupStatus(), 0);
     const timer = window.setInterval(() => void loadBackupStatus(), 30_000);
     const onVisible = () => { if (document.visibilityState === "visible") void loadBackupStatus(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
+      window.clearTimeout(initial);
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
