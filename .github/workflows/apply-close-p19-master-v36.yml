@@ -1,0 +1,43 @@
+name: Apply P19 closure to master plan
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  close:
+    if: github.head_ref == 'docs/close-p19-master-v36'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Close P19 in master plan
+        run: python scripts/close-p19-master-v36.py
+      - name: Validate closure markers
+        run: |
+          grep -F 'Versión: **3.6**' docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md
+          grep -F 'Última actualización secuencial cerrada: **P19 / v47**' docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md
+          grep -F '## P19 — Alumnado + persona única + identidades ✅ CERRADO' docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md
+          grep -F '## P20 — Formularios versionados + datos canónicos 🟣 SIGUIENTE' docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md
+          grep -F 'cb3ba79df13f46cf233290a8df6e37153d18a8d9' docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md
+          grep -F 'Una identidad humana se representa por una única persona canónica' docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md
+      - name: Commit master plan if needed
+        shell: bash
+        run: |
+          if git diff --quiet -- docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md; then
+            echo 'No patch needed'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md
+          git commit -m 'docs: close P19 and advance master plan to P20'
+          git push origin HEAD:${{ github.head_ref }}
