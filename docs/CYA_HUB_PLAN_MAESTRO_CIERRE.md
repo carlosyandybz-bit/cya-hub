@@ -1,11 +1,11 @@
 # CYA HUB — PLAN MAESTRO ÚNICO DE CIERRE
 
-Versión: **3.1**  
+Versión: **3.2**  
 Fecha de corte: **2026-08-11**  
 Repositorio canónico: `carlosyandybz-bit/cya-hub`  
 Producción: `main` + Supabase `CyA hub 2` + Hostinger  
-Última actualización cerrada: **P16 / v42**  
-Actualización en curso: **P17 — cierre real de Evaluaciones**
+Última actualización cerrada: **P17 / v43**  
+Siguiente actualización: **P18 — Identidad, roles, navegación y “Ver como”**
 
 ---
 
@@ -13,12 +13,12 @@ Actualización en curso: **P17 — cierre real de Evaluaciones**
 
 Este documento es la **única hoja operativa de cierre** de CYA Hub.
 
-A partir de esta versión se separan dos numeraciones que antes se mezclaron:
+Se separan permanentemente dos numeraciones:
 
 - **F1–F46** = auditoría funcional histórica: requisitos, errores y módulos del producto.
 - **P12–P32** = secuencia técnica actual de ejecución: paquetes de trabajo que absorben y cierran los F correspondientes.
 
-`P16` no significa `F16`: P16 fue el hotfix RLS/v42 ya cerrado. Esta separación es permanente.
+`P16` no significa `F16`: P16 fue el hotfix RLS/v42. Esta separación es permanente.
 
 Antes de empezar cada nueva actualización se debe comunicar:
 
@@ -46,6 +46,7 @@ Cuando aparezca una mejora o error nuevo:
 - P14 — histórico de evaluación.
 - P15 — resumen real de progreso.
 - **P16 — límites RLS de alumnado/clases, migración v42, validación autenticada 17/17 en producción.**
+- **P17 — Evaluaciones: reconciliación, frontend guiado, runtime Hostinger demostrado y migración v43 aplicada en producción.**
 - Marketing vuelve a abrir.
 - Build TypeScript estricto recuperado.
 - Navegación atrás e historial real.
@@ -56,37 +57,25 @@ Cuando aparezca una mejora o error nuevo:
 - duración prevista/manual y selección compatible de bono.
 - arquitectura amplia del cierre administrativo de clase ya implementada.
 
-## 🟣 En curso
+### Evidencia de cierre de P17
 
-### P17 — Evaluaciones: reconciliación + cutover final
+- Hostinger sirve `app.carlosyandy.com` desde `main` y marca como **Actual / completado** el commit `cae0f009986240d0a945cabd16d00f20376e753b` (`P17: prepare safe evaluation cutover`).
+- Supabase registra `v43_evaluation_final_cutover` con versión `20260811151901`.
+- Antes y después del cutover se conservaron **6 `evaluation_sessions`** y **48 `student_evaluations`**.
+- En el preflight final no quedaban sesiones sin completar; la antigua sesión de clase 23 quedó completada de forma explícita antes del corte, no por SQL silencioso.
+- `save_class_evaluation` y `save_class_evaluation_v2` ya no son ejecutables por `authenticated`.
+- `start_student_evaluation`, `save_evaluation_score` y `complete_evaluation_session` siguen ejecutables por `authenticated`.
+- las RPC guiadas iniciales/postclase siguen ejecutables.
+- `trg_complete_class_evaluation_sessions` fue retirado.
+- `trg_require_final_evaluation` está activo.
+- smoke autenticado: `prepare_post_class_evaluation(23,2)` reutiliza la sesión completada correspondiente y el guard permite un cierre válido dentro de transacción con `ROLLBACK`.
+- PR #1 `Point 12R — evaluation engine rebuild` fue cerrada como **supersedida** y no fusionada.
 
-Estado técnico comprobado:
+## 🟣 Siguiente punto
 
-- `main` monta `InitialEvaluationClassGate` y `EvaluationPostClassGate`.
-- la superficie numérica antigua ya está oculta mediante `evaluation-final-model.css`.
-- PR #1 `feat/point12r-evaluation-engine` está históricamente divergida y **no debe fusionarse como bloque**.
-- producción mantiene todavía RPC numéricas antiguas con permisos de `authenticated`.
-- producción mantiene todavía el trigger legado `trg_complete_class_evaluation_sessions`.
-- `prepare_post_class_evaluation` aún puede fabricar una evaluación inicial después de clase.
-- la revisión dual Bachata/Bachazouk sí existe en el esquema real aunque `v41b` no aparece de forma coherente en el registro de migraciones.
-- existen 6 sesiones de evaluación reales: 5 completadas y 1 borrador. El borrador pertenece a clase 23 y debe preservarse.
+### P18 — Identidad, roles, navegación y “Ver como”
 
-Preparado en rama `agent/p17-evaluation-cutover`:
-
-- `supabase/v43-evaluation-final-cutover.sql`;
-- regresión `tests/p17-evaluation-cutover.test.mjs`;
-- workflow CI específico;
-- informe `docs/P17_EVALUACIONES_RECONCILIACION_Y_CUTOVER.md`.
-
-**P17 no se considera cerrado hasta:**
-
-1. CI verde;
-2. merge a `main`;
-3. evidencia de que Hostinger sirve frontend compatible;
-4. aplicación de v43 en producción;
-5. smoke test de permisos, triggers y flujo final;
-6. resolución explícita —no silenciosa por SQL— de cualquier borrador real que corresponda;
-7. cierre de PR #1 como supersedida si ya no contiene nada útil exclusivo.
+P18 debe consolidar la arquitectura multirol y la navegación definitiva antes de continuar con Alumnado, Formularios y Dar clase.
 
 ---
 
@@ -98,7 +87,9 @@ Estos gates atraviesan todos los P restantes.
 
 No basta con que un commit esté en `main`.
 
-Para cambios incompatibles de backend/frontend hay que poder demostrar qué versión está sirviendo producción antes de cortar APIs antiguas.
+Para cambios incompatibles de backend/frontend hay que demostrar qué versión sirve producción antes de cortar APIs antiguas.
+
+**P17 dejó este gate probado por primera vez con evidencia directa del panel de Hostinger.**
 
 ## G2 — Seguridad de autenticación
 
@@ -160,7 +151,7 @@ CYA reutiliza alumno, nivel, estilo, rol, duración, ubicación y demás datos c
 
 ## G8 — Esquema real > historial supuesto
 
-Nuevo gate derivado de P17.
+Gate derivado de P17.
 
 El registro de migraciones puede no reflejar todos los SQL que históricamente se ejecutaron. Antes de una migración sensible se compara:
 
@@ -175,31 +166,31 @@ La verdad final del runtime es el esquema real, no el nombre de un archivo.
 
 # 3. Secuencia única restante
 
-## P17 — Evaluaciones + reconciliación PR #1 🟣 EN CURSO
+## P17 — Evaluaciones + reconciliación PR #1 ✅ CERRADO
 
-### Objetivo
-Dejar un único modelo de evaluación funcional y cerrar la divergencia histórica.
-
-### Reglas finales
+### Resultado final
 
 - evaluación inicial guiada durante una clase activa;
 - no pedir al profesor números como flujo pedagógico principal;
-- hitos/descriptores configurables;
 - histórico preservado;
 - radar y progreso derivados de datos reales;
 - revisión postclase explícita;
 - ninguna sesión se autocompleta para aparentar cierre;
 - Bachazouk exige la base de Bachata cuando corresponda;
 - Bachata y Bachazouk conservan niveles independientes;
-- si ambos contextos existen para el rol, la revisión dual se conserva.
+- si ambos contextos existen para el rol, la revisión dual se conserva;
+- wrappers numéricos antiguos retirados de `authenticated`;
+- motor moderno por sesiones conservado;
+- cierre pedagógico protegido por evaluación explícita;
+- PR #1 cerrada como supersedida.
 
-### Correctivo nuevo
+### Correctivo de clase 23
 
-La sesión borrador real de clase 23 se preserva. No se corrige por SQL silencioso.
+La sesión que había aparecido como borrador fue preservada durante la preparación de v43 y posteriormente quedó **completada explícitamente antes del cutover**. v43 no la borró ni la autocompletó.
 
 ---
 
-## P18 — Identidad, roles, navegación y “Ver como” ⏳
+## P18 — Identidad, roles, navegación y “Ver como” 🟣 SIGUIENTE
 
 Absorbe las reglas de navegación y multirol que deben quedar definitivas.
 
@@ -250,6 +241,7 @@ sin abandonar el flujo. Al crearlo queda seleccionado y puede recibir clase, bon
 ## P20 — Formularios versionados + datos canónicos ⏳
 
 ### Objetivo
+
 Recuperar lo útil del plugin histórico sin volver a construir formularios duplicados.
 
 ### Motor reusable
@@ -478,6 +470,7 @@ Un vídeo de clase asociado a un contenido no entra automáticamente en el grafo
 ## P24 — Inicio contextual ⏳
 
 ### Objetivo
+
 Inicio funciona como lanzador inteligente, no como panel estático.
 
 ### Debe incluir
@@ -816,13 +809,13 @@ Buscar:
 
 # 4. Mapa de la auditoría funcional histórica F1–F46
 
-Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P17–P32.
+Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P18–P32.
 
 | Auditoría histórica | Estado / destino actual |
 |---|---|
 | F1 Marketing no abría | ✅ cerrado |
 | F1B TypeScript estricto | ✅ cerrado |
-| F2 navegación atrás | ✅ cerrado / gate P18 |
+| F2 navegación atrás | ✅ base cerrada / P18 consolida |
 | F3 visual global | ✅ base cerrada / QA permanente |
 | F3B inputs numéricos | → G3 + P20/P21/P29/P31 |
 | F4 avatar/perfil/preferencias/portal | ✅ base cerrada / P18 consolida multirol |
@@ -833,7 +826,7 @@ Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P17�
 | F9 duplicaciones Dar clase | → P21 |
 | F10 espacio dinámico Dar clase | → P21 |
 | F11 buscador Dar clase | → P21 |
-| F12–F15 evaluaciones | → P17 |
+| F12–F15 evaluaciones | ✅ cerrado en P17 |
 | F16–F20 Enseñanza | → P23 |
 | F21–F25 Personas/Alumnado | → P19 + P20 + cruce P21 |
 | F26–F31 Marketing | → P29 |
@@ -875,19 +868,20 @@ Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P17�
 | ejercicio “Realizar en pareja / Necesita pareja” | P23 |
 | no fase obligatoria de 3 minutos | P21 |
 | no cronómetro facturable | P21 |
-| PR #1 no se fusiona por inercia | P17 |
-| v41b presente en esquema pero registro inconsistente | G8 + P17/P32 |
-| borrador real de evaluación clase 23 se preserva | P17 |
+| PR #1 no se fusiona por inercia | ✅ P17, cerrada supersedida |
+| v41b presente en esquema pero registro históricamente inconsistente | G8 + P32 |
+| borrador de evaluación clase 23 | ✅ preservado y completado explícitamente antes de v43 |
 | leaked password protection desactivado | G2 + P32 |
 | deuda de índices/policies detectada por advisor | P32 |
+| backend incompatible solo tras probar runtime | G1, validado operacionalmente en P17 |
 
 ---
 
 # 6. Orden inmediato desde este corte
 
-**P17 → P18 → P19 → P20 → P21 → P22 → P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
+**P18 → P19 → P20 → P21 → P22 → P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
 
-No volver al antiguo orden F8 → F3B → F9… como secuencia de implementación: esos requisitos siguen vigentes, pero el repositorio ya avanzó y ahora están absorbidos en la secuencia P moderna.
+No volver al antiguo orden F8 → F3B → F9… como secuencia de implementación: esos requisitos siguen vigentes, pero están absorbidos en la secuencia P moderna.
 
 ---
 
