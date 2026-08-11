@@ -1,13 +1,31 @@
-name: Retired P20 runtime scope helper
+name: Apply P20 runtime scope
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [p20/formularios-versionados]
+    paths:
+      - '.github/workflows/apply-p20-runtime-scope.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  retired:
+  apply:
     runs-on: ubuntu-latest
     steps:
-      - run: echo 'P20 runtime scope is already persisted; no mutation is performed.'
+      - uses: actions/checkout@v4
+        with:
+          ref: p20/formularios-versionados
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/patch-p20-runtime-scope.py
+      - name: Commit hardening
+        run: |
+          if git diff --quiet -- supabase/v48_p20_form_engine.sql; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase/v48_p20_form_engine.sql
+          git commit -m 'fix: harden P20 domain-service form boundary'
+          git push origin HEAD:p20/formularios-versionados
