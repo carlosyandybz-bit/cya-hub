@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const migration=fs.readFileSync('supabase/v47_p19_persona_unica.sql','utf8');
+const p20=fs.existsSync('supabase/v48_p20_form_engine.sql')?fs.readFileSync('supabase/v48_p20_form_engine.sql','utf8'):'';
 const app=fs.readFileSync('app/cya-app.tsx','utf8');
 const detail=fs.readFileSync('app/student-detail.tsx','utf8');
 const marketing=fs.readFileSync('app/marketing-view-legacy.tsx','utf8');
@@ -27,7 +28,14 @@ test('new CRM/student operations reuse a unique matching person and reject ambig
 test('editing identity cannot silently collide with another person',()=>{
   assert.match(migration,/create or replace function public\.save_person_identity/);
   assert.match(migration,/Ese email o teléfono pertenece a otra ficha/);
-  assert.match(editor,/save_person_identity/);
+  if(p20){
+    assert.match(editor,/RuntimeForm/);
+    assert.match(p20,/apply_form_canonical_updates/);
+    assert.match(p20,/match_person_identity\(v_email,v_phone,p_person_id\)/);
+    assert.match(p20,/Ese email o teléfono pertenece a otra ficha/);
+  }else{
+    assert.match(editor,/save_person_identity/);
+  }
   assert.match(detail,/StudentIdentityEditor/);
 });
 

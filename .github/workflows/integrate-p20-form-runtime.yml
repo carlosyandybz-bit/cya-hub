@@ -1,0 +1,38 @@
+name: Validate P20 form runtime
+
+on:
+  push:
+    branches: [p20/formularios-versionados]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/runtime-form.tsx'
+      - 'app/runtime-form.module.css'
+      - 'app/admin-form-library.tsx'
+      - 'app/person-identity-editor.tsx'
+      - 'app/admin-view.tsx'
+      - 'app/api/build-info/route.ts'
+      - 'supabase/v48_p20_form_engine.sql'
+      - 'tests/p20-form-engine.test.mjs'
+      - '.github/workflows/integrate-p20-form-runtime.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: P20 regressions
+        run: node --test tests/p20-form-engine.test.mjs
+      - name: Lint P20 surfaces
+        run: npx eslint app/runtime-form.tsx app/admin-form-library.tsx app/person-identity-editor.tsx app/admin-view.tsx app/api/build-info/route.ts
+      - name: Build Next.js application
+        run: npm run build

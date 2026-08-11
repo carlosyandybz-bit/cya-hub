@@ -20,6 +20,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { IdentityContext } from "./v14-types";
 import { AdminDataTransfer } from "./admin-data-transfer";
+import { AdminFormLibrary } from "./admin-form-library";
 
 type AdminSection = "general" | "team" | "forms" | "teaching" | "missions" | "notifications" | "data" | "integrations" | "appearance" | "security";
 
@@ -175,7 +176,7 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
   }
 
   function formsSection() {
-    return <div className="admin-split"><aside className="card admin-choice-list"><header><h2>Formularios</h2><span>{data.forms.length}</span></header>{data.forms.map((form) => <button key={form.id} className={selectedFormId === form.id ? "active" : ""} onClick={() => setSelectedFormId(form.id)}><FileText /><span><strong>{form.admin_name}</strong><small>{form.context_key} · v{form.active_version}</small></span><ChevronRight /></button>)}</aside><section className="card pad admin-form-editor">{selectedForm ? <><div className="card-head"><div><p className="eyebrow">Versión {selectedForm.active_version}</p><h2>{selectedForm.visible_title || selectedForm.admin_name}</h2></div><Switch checked={selectedForm.status === "active"} label="Activar formulario" onChange={(checked) => updateRow("form_definitions", "id", selectedForm.id, { status: checked ? "active" : "inactive" }, `form-${selectedForm.id}`)} /></div>{selectedForm.description ? <p className="admin-description">{selectedForm.description}</p> : null}<div className="form-field-admin-list">{selectedFields.map((field) => <div key={field.id} className={!field.active ? "inactive" : ""}><span className="field-order">{field.sort_order}</span><span><strong>{field.label}</strong><small>{field.field_type}{field.canonical_path ? ` · reutiliza ${field.canonical_path}` : ""}</small></span><label><small>Obligatorio</small><Switch checked={field.required} label={`Obligatorio: ${field.label}`} onChange={(checked) => updateRow("form_fields", "id", field.id, { required: checked }, `field-required-${field.id}`)} /></label><label><small>Activo</small><Switch checked={field.active} label={`Activo: ${field.label}`} onChange={(checked) => updateRow("form_fields", "id", field.id, { active: checked }, `field-active-${field.id}`)} /></label></div>)}</div></> : <div className="compact-empty"><FileText /><span>Selecciona un formulario.</span></div>}</section></div>;
+    return <AdminFormLibrary client={client} notify={notify} />;
   }
 
   function teachingSection() {
