@@ -35,13 +35,28 @@ jobs:
           text = path.read_text()
           old = 'app, setup_count = setup_pattern.subn(setup_replacement, app, count=1)'
           new = 'app, setup_count = setup_pattern.subn(lambda _match: setup_replacement, app, count=1)'
-          if text.count(old) != 1:
-              raise SystemExit(f'expected exactly one literal replacement target, got {text.count(old)}')
-          path.write_text(text.replace(old, new, 1))
+          if text.count(old) == 1:
+              text = text.replace(old, new, 1)
+          elif text.count(new) != 1:
+              raise SystemExit('could not establish literal-safe setup replacement')
+          path.write_text(text)
           PY
 
       - name: Apply guarded P21.3 and P21.4 transformation
         run: python tools/p21_finalize_setup_reopen.py
+
+      - name: Stabilize P21.3 source assertion
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/p21-dar-clase.test.mjs')
+          text = path.read_text()
+          old = "  assert.match(setup, /showContextFields=editKnown \\|\\| !roleValue \\|\\| !levelValue/);"
+          new = "  assert.ok(setup.includes('showContextFields=editKnown || !roleValue || !levelValue'));"
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one fragile assertion, got {text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          PY
 
       - name: P21 and financial regression gate
         run: >-
@@ -76,7 +91,7 @@ jobs:
             exit 0
           fi
           git config user.name 'carlosyandybz-bit'
-          git config user.email 'carlosyandybz@gmail.com'
+          git config user.email 'carlosyandy@gmail.com'
           git add app/cya-app.tsx tests/p21-dar-clase.test.mjs docs/P21_DAR_CLASE_RECONCILIACION.md
           git commit -m 'P21.4: finalize progressive setup and reopen guard'
           git push origin HEAD:p21/dar-clase-definitivo
