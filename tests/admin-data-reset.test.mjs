@@ -6,6 +6,8 @@ const reset=fs.readFileSync('app/admin-data-reset.tsx','utf8');
 const transfer=fs.readFileSync('app/admin-data-transfer.tsx','utf8');
 const sql=fs.readFileSync('supabase/v44_admin_data_reset.sql','utf8');
 const guard=fs.readFileSync('supabase/v44b_admin_data_reset_backup_guard.sql','utf8');
+const coverage=fs.readFileSync('supabase/v44c_admin_reset_backup_coverage.sql','utf8');
+const students=fs.readFileSync('supabase/v44d_admin_reset_student_people.sql','utf8');
 
 test('admin data page exposes selective, area and mass reset tools',()=>{
   assert.match(transfer,/AdminDataReset/);
@@ -25,6 +27,17 @@ test('mass resets require a complete backup in UI and server',()=>{
   assert.match(guard,/event_type='data_export_created'/);
   assert.match(guard,/entity_id='complete'/);
   assert.match(guard,/created_at>=now\(\)-interval '30 minutes'/);
+  assert.match(students,/v_job\.scope in \('operational','full'\)/);
+});
+
+test('complete backup covers every current resettable business table missing from legacy map',()=>{
+  for(const table of [
+    'class_content_events','class_media_resources','class_pedagogy_summaries',
+    'class_preparation_requests','data_transfer_jobs',
+  ]) {
+    assert.match(coverage,new RegExp(`'${table}'`));
+  }
+  assert.match(coverage,/restore_json_table/);
 });
 
 test('destructive reset uses expiring preview jobs and double confirmation',()=>{
@@ -43,7 +56,8 @@ test('reset backend is admin-only and not directly table-accessible',()=>{
   assert.match(sql,/revoke all on table public\.admin_reset_jobs from public, anon, authenticated/);
   assert.match(sql,/grant execute on function public\.search_admin_reset_targets/);
   assert.match(sql,/grant execute on function public\.preview_admin_data_reset/);
-  assert.match(guard,/grant execute on function public\.apply_admin_data_reset/);
+  assert.match(students,/grant execute on function public\.apply_admin_data_reset/);
+  assert.match(coverage,/revoke all on function private\.execute_admin_data_reset/);
 });
 
 test('full reset deletes operational business data but preserves technical foundation',()=>{
@@ -74,6 +88,14 @@ test('single person deletion protects active staff identity',()=>{
   assert.match(sql,/is_staff_identity_person/);
   assert.match(sql,/No se puede borrar una identidad activa del equipo/);
   assert.match(reset,/Protegido/);
+});
+
+test('delete all students removes their non-staff people but preserves team identities',()=>{
+  assert.match(students,/v_job\.scope='students'/);
+  assert.match(students,/array_agg\(sp\.person_id\)/);
+  assert.match(students,/not private\.is_staff_identity_person\(sp\.person_id\)/);
+  assert.match(students,/delete from public\.people p/);
+  assert.match(students,/student_people_removed/);
 });
 
 test('teaching content can be searched and safely removed with dependent progress awards first',()=>{
