@@ -16,7 +16,7 @@ import {
   UserRoundX,
   WalletCards,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { downloadBundle, type CyaDataBundle } from "./data-transfer-formats-safe";
 import styles from "./admin-data-reset.module.css";
 
@@ -57,6 +57,22 @@ type ResetPreview = {
     scope_label: string;
     preserves: string[];
   };
+};
+
+type BackupStatus = {
+  ready: boolean;
+  created_at: string | null;
+  expires_at: string | null;
+  seconds_remaining: number;
+  checksum: string | null;
+};
+
+const emptyBackupStatus: BackupStatus = {
+  ready: false,
+  created_at: null,
+  expires_at: null,
+  seconds_remaining: 0,
+  checksum: null,
 };
 
 const scopes: Array<{
@@ -183,6 +199,11 @@ function readableError(message: string) {
   return message;
 }
 
+function backupExpiryLabel(status: BackupStatus) {
+  if (!status.ready || !status.expires_at) return "Obligatoria antes de los dos reinicios masivos.";
+  return `Válida hasta ${new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit" }).format(new Date(status.expires_at))}.`;
+}
+
 export function AdminDataReset({
   client,
   refresh,
@@ -199,7 +220,8 @@ export function AdminDataReset({
   const [preview, setPreview] = useState<ResetPreview | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [finalArmed, setFinalArmed] = useState(false);
-  const [backupReady, setBackupReady] = useState(false);
+  const [backupStatus, setBackupStatus] = useState<BackupStatus>(emptyBackupStatus);
+  const [backupChecking, setBackupChecking] = useState(true);
   const [busy, setBusy] = useState("");
 
   const exactConfirmation = Boolean(preview && confirmation === preview.confirmation_phrase);
@@ -210,6 +232,31 @@ export function AdminDataReset({
         .sort((a, b) => Number(b[1]) - Number(a[1])),
     [preview],
   );
+
+  const loadBackupStatus = useCallback(async () => {
+    const result = await client.rpc("admin_reset_backup_status");
+    if (result.error) {
+      setBackupStatus(emptyBackupStatus);
+      setBackupChecking(false);
+      return emptyBackupStatus;
+    }
+    const next = { ...emptyBackupStatus, ...(result.data as Partial<BackupStatus> | null) } as BackupStatus;
+    setBackupStatus(next);
+    setBackupChecking(false);
+    return next;
+  }, [client]);
+
+  useEffect(() => {
+    const initial = window.setTimeout(() => void loadBackupStatus(), 0);
+    const timer = window.setInterval(() => void loadBackupStatus(), 30_000);
+    const onVisible = () => { if (document.visibilityState === "visible") void loadBackupStatus(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [loadBackupStatus]);
 
   function clearConfirmation() {
     setPreview(null);
@@ -235,6 +282,14 @@ export function AdminDataReset({
   }
 
   async function prepareReset(scope: ResetScope, targetId: number | null = null) {
+    if (scope === "operational" || scope === "full") {
+      const current = await loadBackupStatus();
+      if (!current.ready) {
+        notify("Descarga primero una copia completa. CYA la reconocerá automáticamente durante 30 minutos.");
+        return;
+      }
+    }
+
     setBusy(`preview-${scope}-${targetId ?? "all"}`);
     setPreview(null);
     setConfirmation("");
@@ -258,9 +313,9 @@ export function AdminDataReset({
       const result = await client.rpc("export_data_bundle", { p_domain: "complete" });
       if (result.error) throw result.error;
       downloadBundle(result.data as CyaDataBundle, "json");
-      setBackupReady(true);
-      notify("Copia completa descargada. Ya puedes preparar un reinicio masivo.");
-      await refresh();
+      const status = await loadBackupStatus();
+      if (!status.ready) throw new Error("La copia se descargó, pero el servidor no pudo validar todavía su registro. Vuelve a intentarlo.");
+      notify("Copia completa descargada y reconocida por el servidor. Ya puedes preparar un reinicio masivo.");
     } catch (error) {
       notify(readableError(error instanceof Error ? error.message : "No se pudo crear la copia de seguridad."));
     }
@@ -282,7 +337,7 @@ export function AdminDataReset({
       setResults([]);
       setSelected(null);
       setQuery("");
-      if (scope === "operational" || scope === "full") setBackupReady(false);
+      if (scope === "operational" || scope === "full") setBackupStatus(emptyBackupStatus);
       await refresh();
       notify(`Borrado completado: ${label}. Los datos derivados se recalcularán desde el estado actual.`);
     } catch (error) {
@@ -312,10 +367,7 @@ export function AdminDataReset({
 
       <article className={styles.block}>
         <div className={styles.blockHead}>
-          <div>
-            <p>Borrado selectivo</p>
-            <h3>Buscar un registro concreto</h3>
-          </div>
+          <div><p>Borrado selectivo</p><h3>Buscar un registro concreto</h3></div>
           <Search />
         </div>
 
@@ -343,10 +395,7 @@ export function AdminDataReset({
                 className={selected?.id === item.id && selected.kind === item.kind ? styles.selected : ""}
                 onClick={() => { setSelected(item); clearConfirmation(); }}
               >
-                <span>
-                  <strong>{item.label}</strong>
-                  <small>{item.subtype}{item.detail ? ` · ${item.detail}` : ""}</small>
-                </span>
+                <span><strong>{item.label}</strong><small>{item.subtype}{item.detail ? ` · ${item.detail}` : ""}</small></span>
                 {item.protected ? <b>Protegido</b> : <Trash2 />}
               </button>
             ))}
@@ -359,11 +408,7 @@ export function AdminDataReset({
               <strong>{selected.label}</strong>
               <span>{selected.protected ? "Identidad de profesor/administrador: la ficha técnica no puede eliminarse." : "Se borrará este registro y sus datos dependientes no compartidos."}</span>
             </div>
-            <button
-              type="button"
-              disabled={selected.protected || Boolean(busy)}
-              onClick={() => void prepareReset(selected.kind, selected.id)}
-            >
+            <button type="button" disabled={selected.protected || Boolean(busy)} onClick={() => void prepareReset(selected.kind, selected.id)}>
               <Trash2 /> Previsualizar borrado
             </button>
           </div>
@@ -372,10 +417,7 @@ export function AdminDataReset({
 
       <article className={styles.block}>
         <div className={styles.blockHead}>
-          <div>
-            <p>Borrado por áreas</p>
-            <h3>Vaciar un módulo completo</h3>
-          </div>
+          <div><p>Borrado por áreas</p><h3>Vaciar un módulo completo</h3></div>
           <RotateCcw />
         </div>
         <div className={styles.scopeGrid}>
@@ -393,20 +435,17 @@ export function AdminDataReset({
 
       <article className={`${styles.block} ${styles.resetBlock}`}>
         <div className={styles.blockHead}>
-          <div>
-            <p>Reinicio masivo</p>
-            <h3>Empezar de nuevo</h3>
-          </div>
+          <div><p>Reinicio masivo</p><h3>Empezar de nuevo</h3></div>
           <DatabaseBackup />
         </div>
 
         <button type="button" className={styles.backupButton} disabled={Boolean(busy)} onClick={() => void downloadSafetyBackup()}>
           <DatabaseBackup />
           <span>
-            <strong>{backupReady ? "Copia completa descargada" : "1. Descargar copia completa"}</strong>
-            <small>{backupReady ? "La protección previa está preparada para esta sesión." : "Obligatoria antes de los dos reinicios masivos."}</small>
+            <strong>{backupStatus.ready ? "Copia completa reconocida" : "1. Descargar copia completa"}</strong>
+            <small>{backupChecking ? "Comprobando la copia con el servidor…" : backupExpiryLabel(backupStatus)}</small>
           </span>
-          {backupReady ? <CheckCircle2 /> : null}
+          {backupStatus.ready ? <CheckCircle2 /> : null}
         </button>
 
         <div className={styles.massGrid}>
@@ -417,7 +456,7 @@ export function AdminDataReset({
                 type="button"
                 key={item.scope}
                 className={item.scope === "full" ? styles.fullReset : ""}
-                disabled={!backupReady || Boolean(busy)}
+                disabled={backupChecking || !backupStatus.ready || Boolean(busy)}
                 onClick={() => void prepareReset(item.scope)}
               >
                 <Icon />

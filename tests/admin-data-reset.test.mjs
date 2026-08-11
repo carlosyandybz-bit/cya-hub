@@ -8,6 +8,7 @@ const sql=fs.readFileSync('supabase/v44_admin_data_reset.sql','utf8');
 const guard=fs.readFileSync('supabase/v44b_admin_data_reset_backup_guard.sql','utf8');
 const coverage=fs.readFileSync('supabase/v44c_admin_reset_backup_coverage.sql','utf8');
 const students=fs.readFileSync('supabase/v44d_admin_reset_student_people.sql','utf8');
+const backupStatus=fs.readFileSync('supabase/v44e_admin_reset_backup_status.sql','utf8');
 
 test('admin data page exposes selective, area and mass reset tools',()=>{
   assert.match(transfer,/AdminDataReset/);
@@ -19,10 +20,32 @@ test('admin data page exposes selective, area and mass reset tools',()=>{
   assert.match(reset,/apply_admin_data_reset/);
 });
 
-test('mass resets require a complete backup in UI and server',()=>{
+test('mass reset backup readiness is persisted by the server, not transient React state',()=>{
+  assert.match(reset,/admin_reset_backup_status/);
+  assert.match(reset,/loadBackupStatus/);
+  assert.match(reset,/backupStatus\.ready/);
+  assert.doesNotMatch(reset,/useState\(false\).*backupReady/);
+  assert.doesNotMatch(reset,/setBackupReady/);
   assert.match(reset,/export_data_bundle/);
   assert.match(reset,/p_domain:\s*"complete"/);
-  assert.match(reset,/disabled=\{!backupReady/);
+  assert.match(backupStatus,/event_type='data_export_created'/);
+  assert.match(backupStatus,/entity_type='data_backup'/);
+  assert.match(backupStatus,/entity_id='complete'/);
+  assert.match(backupStatus,/actor_user_id=\(select auth\.uid\(\)\)/);
+  assert.match(backupStatus,/created_at>=now\(\)-interval '30 minutes'/);
+  assert.match(backupStatus,/grant execute on function public\.admin_reset_backup_status\(\) to authenticated/);
+});
+
+test('downloading the safety backup does not immediately refresh away its UI state',()=>{
+  const start=reset.indexOf('async function downloadSafetyBackup()');
+  const end=reset.indexOf('async function applyReset()',start);
+  const body=reset.slice(start,end);
+  assert.match(body,/downloadBundle/);
+  assert.match(body,/await loadBackupStatus\(\)/);
+  assert.doesNotMatch(body,/await refresh\(\)/);
+});
+
+test('mass resets still require the recent complete backup in the execution guard',()=>{
   assert.match(guard,/v_job\.scope in \('operational','full'\)/);
   assert.match(guard,/event_type='data_export_created'/);
   assert.match(guard,/entity_id='complete'/);
@@ -58,6 +81,7 @@ test('reset backend is admin-only and not directly table-accessible',()=>{
   assert.match(sql,/grant execute on function public\.preview_admin_data_reset/);
   assert.match(students,/grant execute on function public\.apply_admin_data_reset/);
   assert.match(coverage,/revoke all on function private\.execute_admin_data_reset/);
+  assert.match(backupStatus,/private\.is_admin\(\)/);
 });
 
 test('full reset deletes operational business data but preserves technical foundation',()=>{
