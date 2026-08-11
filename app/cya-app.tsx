@@ -1611,14 +1611,18 @@ function StaffApp({ session }: { session: Session }) {
   async function setExperience(value: ExperienceContext) {
     const allowed = value === "teacher" ? activeIdentity.can_teach : value === "student" ? activeIdentity.can_study : activeIdentity.can_admin;
     if (!allowed || !db) return;
+    const result = await db.rpc("set_experience_context", { p_context: value });
+    if (result.error) {
+      setToast(result.error.message || "No se pudo cambiar de vista.");
+      return;
+    }
+    if (result.data) setIdentity(result.data as IdentityContext);
     if (value === "admin") navigateView("admin", { experience: value });
     else if (value === "teacher" && view === "admin") navigateView("home", { experience: value });
     else {
       window.history.pushState(historyState(view, { experience: value }), "", window.location.href);
       setExperienceState(value);
     }
-    const result = await db.from("user_preferences").upsert({ user_id: activeIdentity.user_id, preferred_context: value }, { onConflict: "user_id" });
-    if (result.error) setToast("La vista ha cambiado, pero no se pudo guardar como preferencia.");
   }
   const accountEmail = session.user.email ?? "";
   if (view === "profile" || view === "preferences") return <div className="account-settings-shell">

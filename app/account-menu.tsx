@@ -65,7 +65,7 @@ export function AccountMenu({
   const [portalOpen, setPortalOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [avatarFailed, setAvatarFailed] = useState(false);
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null);
 
   const contexts = useMemo(() => {
     const values: ExperienceContext[] = [];
@@ -74,8 +74,6 @@ export function AccountMenu({
     if (identity.can_admin) values.push("admin");
     return values;
   }, [identity.can_admin, identity.can_study, identity.can_teach]);
-
-  useEffect(() => setAvatarFailed(false), [identity.avatar_url]);
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
@@ -108,12 +106,12 @@ export function AccountMenu({
   }, [accountOpen]);
 
   const displayName = identity.profile_name || identity.display_name;
-  const showAvatarImage = Boolean(identity.avatar_url && !avatarFailed);
+  const showAvatarImage = Boolean(identity.avatar_url && identity.avatar_url !== failedAvatarUrl);
 
   function avatar(className?: string) {
     return (
       <span className={`${styles.avatar} ${className ?? ""}`} aria-hidden="true">
-        {showAvatarImage ? <img src={identity.avatar_url ?? ""} alt="" onError={() => setAvatarFailed(true)} /> : <span className={styles.avatarSilhouette}><span className={styles.avatarHead} /><span className={styles.avatarShoulders} /></span>}
+        {showAvatarImage ? <img src={identity.avatar_url ?? ""} alt="" onError={() => setFailedAvatarUrl(identity.avatar_url)} /> : <span className={styles.avatarSilhouette}><span className={styles.avatarHead} /><span className={styles.avatarShoulders} /></span>}
       </span>
     );
   }
@@ -170,7 +168,7 @@ export function AccountMenu({
           <div className={styles.portalBlock}>
             <button type="button" className={styles.menuRow} onClick={() => setPortalOpen((value) => !value)} aria-expanded={portalOpen}>
               <span className={styles.rowIcon}><PortalIcon value={experience} /></span>
-              <span className={styles.rowText}><strong>Cambiar de portal</strong><small>{contextLabels[experience]}</small></span>
+              <span className={styles.rowText}><strong>Ver como</strong><small>{contextLabels[experience]}</small></span>
               <ChevronRight className={portalOpen ? styles.chevronOpen : ""} />
             </button>
             {portalOpen ? (
@@ -217,10 +215,10 @@ export function AccountMenu({
             <div className={styles.dialogBody}>
               <div className={styles.accountRows}>
                 <div><span>Email</span><strong>{email || "Sin email disponible"}</strong></div>
-                <div><span>Portal activo</span><strong>{contextLabels[experience]}</strong></div>
+                <div><span>Vista activa</span><strong>{contextLabels[experience]}</strong></div>
                 <div><span>Permisos</span><strong>{identity.roles.map((role) => roleLabels[role] ?? role).join(" · ")}</strong></div>
               </div>
-              <p className={styles.accountNote}>Tus permisos se mantienen al cambiar de portal.</p>
+              <p className={styles.accountNote}>Cambiar de vista no cambia tus permisos reales.</p>
               <div className={styles.dialogActions}><button type="button" className={styles.secondaryButton} onClick={() => setAccountOpen(false)}>Cerrar</button><button type="button" className={styles.dangerButton} disabled={busy} onClick={() => void signOut()}><LogOut /> Cerrar sesión</button></div>
             </div>
           </section>
