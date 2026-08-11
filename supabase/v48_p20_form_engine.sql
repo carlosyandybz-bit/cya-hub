@@ -187,7 +187,7 @@ begin
     elsif p_field_type='phone' then
       if length(regexp_replace(v_text,'[^0-9]','','g'))<7 then raise exception 'El teléfono no es válido.' using errcode='22023'; end if;
     elsif p_field_type='date' then
-      perform v_text::date;
+      perform cast(v_text as date);
       v_text:=(v_text::date)::text;
     end if;
     return to_jsonb(v_text);
@@ -586,7 +586,7 @@ begin
 
   insert into public.audit_events(event_type,entity_type,entity_id,summary,detail,actor_user_id)
   values('form_submitted','form_submission',v_submission_id::text,'Formulario guardado: '||v_form.admin_name,
-    jsonb_build_object('form_key',v_form.form_key,'version',v_version.version_number,'person_id',v_target,'canonical_fields',jsonb_object_keys(v_canonical_updates)),
+    jsonb_build_object('form_key',v_form.form_key,'version',v_version.version_number,'person_id',v_target,'canonical_fields',to_jsonb(array(select jsonb_object_keys(v_canonical_updates)))),
     (select auth.uid()));
 
   return jsonb_build_object('submission_id',v_submission_id,'form_key',v_form.form_key,'version_number',v_version.version_number,
@@ -646,7 +646,7 @@ declare
   v_status text;
 begin
   if not (select private.is_admin()) then raise exception 'Solo administración puede editar formularios.' using errcode='42501'; end if;
-  select ff.*,fv.status into v_field,v_status from public.form_fields ff join public.form_versions fv on fv.id=ff.form_version_id where ff.id=p_field_id for update of ff;
+  select ff,fv.status into v_field,v_status from public.form_fields ff join public.form_versions fv on fv.id=ff.form_version_id where ff.id=p_field_id for update of ff;
   if not found then raise exception 'El campo no existe.' using errcode='P0002'; end if;
   if v_status<>'draft' then raise exception 'Una versión publicada es inmutable. Crea primero una nueva versión.' using errcode='55000'; end if;
   update public.form_fields set

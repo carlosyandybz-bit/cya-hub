@@ -2,7 +2,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { FormEvent, useState } from "react";
-import { CheckCircle2, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import { RuntimeForm } from "./runtime-form";
 
 export type EditablePersonIdentity = {
   id: number;
@@ -29,61 +30,14 @@ type StudentIdentityEditorProps = {
   saved: () => Promise<void>;
 };
 
-export function StudentIdentityEditor({ client, person, profile, close, saved }: StudentIdentityEditorProps) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const first = String(form.get("first_name") ?? "").trim();
-    if (!first) return setError("El nombre es obligatorio.");
-    setBusy(true); setError("");
-    try {
-      const result = await client.rpc("save_person_identity", {
-        p_person_id: person.id,
-        p_first_name: first,
-        p_last_name: String(form.get("last_name") ?? "").trim() || null,
-        p_email: String(form.get("email") ?? "").trim() || null,
-        p_phone: String(form.get("phone") ?? "").trim() || null,
-        p_country_code: String(form.get("country_code") ?? "").trim() || null,
-        p_goals: String(form.get("goals") ?? "").trim() || null,
-        p_teacher_notes: String(form.get("teacher_notes") ?? "").trim() || null,
-        p_health_notes: String(form.get("health_notes") ?? "").trim() || null,
-      });
-      if (result.error) throw result.error;
-      await saved();
-      close();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No se pudo guardar la ficha.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
+export function StudentIdentityEditor({ client, person, close, saved }: StudentIdentityEditorProps) {
   return <div className="backdrop" onMouseDown={(event) => event.target === event.currentTarget && close()}>
     <section className="modal" role="dialog" aria-modal="true" aria-labelledby="person-editor-title">
       <header className="modal-head"><div><p className="eyebrow">Alumnado</p><h2 id="person-editor-title">Editar ficha</h2></div><button type="button" className="icon-btn" onClick={close} aria-label="Cerrar"><X /></button></header>
-      <form className="modal-body" onSubmit={submit}>
-        <div className="fields-2">
-          <label className="field"><span>Nombre *</span><input name="first_name" required autoFocus defaultValue={person.first_name ?? person.display_name} /></label>
-          <label className="field"><span>Apellidos</span><input name="last_name" defaultValue={person.last_name ?? ""} /></label>
-          <label className="field"><span>Teléfono</span><input name="phone" type="tel" defaultValue={person.phone ?? ""} /></label>
-          <label className="field"><span>País</span><input name="country_code" maxLength={2} placeholder="ES" defaultValue={person.country_code ?? ""} /></label>
-          <label className="field field-wide"><span>Email</span><input name="email" type="email" defaultValue={person.email ?? ""} /></label>
-        </div>
-        <details className="progressive-fields" open>
-          <summary>Información pedagógica</summary>
-          <div className="fields-2">
-            <label className="field field-wide"><span>Objetivos</span><textarea name="goals" rows={3} defaultValue={profile?.goals ?? ""} /></label>
-            <label className="field field-wide"><span>Notas internas</span><textarea name="teacher_notes" rows={3} defaultValue={profile?.teacher_notes ?? ""} /></label>
-            <label className="field field-wide"><span>Salud / a tener en cuenta</span><textarea name="health_notes" rows={3} defaultValue={profile?.health_notes ?? ""} /></label>
-          </div>
-        </details>
-        <p className="modal-intro">Esta edición modifica la misma persona. No crea otra ficha ni cambia sus clases, bonos, CRM o acceso.</p>
-        {error ? <p className="error">{error}</p> : null}
-        <div className="actions"><button className="btn ghost" type="button" onClick={close}>Cancelar</button><button className="btn" disabled={busy}><CheckCircle2 size={17} /> {busy ? "Guardando…" : "Guardar ficha"}</button></div>
-      </form>
+      <div className="modal-body">
+        <RuntimeForm client={client} formKey="student_personal" personId={person.id} mode="edit" submitLabel="Guardar ficha" onSaved={async () => { await saved(); close(); }} />
+        <p className="modal-intro">Los datos conocidos se editan en su fuente real. El envío conserva la versión utilizada, pero no duplica nombre, teléfono, objetivos ni otros hechos canónicos.</p>
+      </div>
     </section>
   </div>;
 }
