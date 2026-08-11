@@ -27,6 +27,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Make guarded replacement literal-safe
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tools/p21_finalize_setup_reopen.py')
+          text = path.read_text()
+          old = 'app, setup_count = setup_pattern.subn(setup_replacement, app, count=1)'
+          new = 'app, setup_count = setup_pattern.subn(lambda _match: setup_replacement, app, count=1)'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one literal replacement target, got {text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
       - name: Apply guarded P21.3 and P21.4 transformation
         run: python tools/p21_finalize_setup_reopen.py
 
