@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CheckCircle2, LockKeyhole, Settings2, TrendingUp, XCircle } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getRuntimeSupabaseClient } from "./supabase-runtime";
 import styles from "./evaluation-post-class.module.css";
@@ -54,7 +55,9 @@ export function EvaluationPostClassGate() {
 
   useEffect(() => {
     let cancelled=false;
+    let resolved=false;
     const inspect=async () => {
+      if (resolved) return;
       const runtime=getRuntimeSupabaseClient();
       if (!runtime) return;
       const sessionResult=await runtime.auth.getSession();
@@ -63,7 +66,8 @@ export function EvaluationPostClassGate() {
       const roleResult=await runtime.from("app_member_roles").select("role,active").eq("user_id",userId).eq("active",true);
       if (cancelled || roleResult.error) return;
       const roles=(roleResult.data ?? []).map((row) => String(row.role));
-      if (!roles.some((role) => staffRoles.has(role))) return;
+      if (!roles.some((role) => staffRoles.has(role))) { resolved=true; return; }
+      resolved=true;
       setIsAdmin(roles.includes("admin") || roles.includes("teacher_admin"));
       setClient(runtime);
     };
@@ -88,9 +92,9 @@ export function EvaluationPostClassGate() {
 
   useEffect(() => {
     if (!client) return;
-    void findPendingClass();
+    const first=window.setTimeout(() => void findPendingClass(),0);
     const timer=window.setInterval(() => void findPendingClass(),5000);
-    return () => window.clearInterval(timer);
+    return () => { window.clearTimeout(first); window.clearInterval(timer); };
   },[client,findPendingClass]);
 
   const loadEvaluation=useCallback(async (item:PendingClass) => {
@@ -132,8 +136,9 @@ export function EvaluationPostClassGate() {
   },[client]);
 
   useEffect(() => {
-    if (!pendingClass) { setSessions([]); setProgress([]); setMilestones([]); setDescriptors([]); setPeople([]); setTerms([]); return; }
-    void loadEvaluation(pendingClass);
+    if (!pendingClass) return;
+    const timer=window.setTimeout(() => void loadEvaluation(pendingClass),0);
+    return () => window.clearTimeout(timer);
   },[loadEvaluation,pendingClass]);
 
   const pendingProgress=progress.filter((row) => row.pending_milestone_id!==null);
@@ -183,7 +188,7 @@ export function EvaluationPostClassGate() {
       </header>
       <div className={styles.notice}><LockKeyhole/><div><strong>Sin números manuales</strong><span>CYA calcula el progreso. Solo intervienes cuando un alumno alcanza un hito configurado.</span></div></div>
       {busy==="prepare" ? <div className={styles.loading}><span/><p>Preparando la evaluación posterior a la clase…</p></div> : null}
-      {!busy || busy!=="prepare" ? <div className={styles.people}>{pendingClass.class_participants.map((participant) => {
+      {busy!=="prepare" ? <div className={styles.people}>{pendingClass.class_participants.map((participant) => {
         const rows=progress.filter((row) => row.person_id===participant.person_id);
         const pending=rows.filter((row) => row.pending_milestone_id!==null);
         return <article key={participant.person_id} className={styles.personCard}>
@@ -199,7 +204,7 @@ export function EvaluationPostClassGate() {
           </div>; })}</div>
         </article>;
       })}</div> : null}
-      {error ? <div className={styles.error}>{error}{isAdmin ? <a href="/evaluation-settings"><Settings2/> Configurar evaluación</a> : null}</div> : null}
+      {error ? <div className={styles.error}>{error}{isAdmin ? <Link href="/evaluation-settings"><Settings2/> Configurar evaluación</Link> : null}</div> : null}
       {!pendingProgress.length && !busy.includes("decision") && busy!=="prepare" ? <div className={styles.ready}><CheckCircle2/><div><strong>Evaluación lista</strong><span>El estado de todas las aptitudes queda registrado en esta clase. No necesitas introducir ninguna puntuación.</span></div></div> : null}
       <footer className={styles.footer}><span>La documentación y el mensaje al alumno se cierran después, en el resumen pedagógico.</span><button type="button" disabled={!canFinish || busy==="finish"} onClick={() => void finish()}>{busy==="finish"?"Guardando…":"Registrar evaluación y continuar"}</button></footer>
     </section>
