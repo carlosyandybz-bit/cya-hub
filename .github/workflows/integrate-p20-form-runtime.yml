@@ -1,0 +1,60 @@
+name: Integrate P20 form runtime
+
+on:
+  push:
+    branches: [p20/formularios-versionados]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/runtime-form.tsx'
+      - 'app/runtime-form.module.css'
+      - 'app/admin-form-library.tsx'
+      - 'app/person-identity-editor.tsx'
+      - 'app/admin-view.tsx'
+      - 'app/api/build-info/route.ts'
+      - 'supabase/v48_p20_form_engine.sql'
+      - 'tests/p20-form-engine.test.mjs'
+      - 'scripts/integrate-p20-form-runtime.py'
+      - '.github/workflows/integrate-p20-form-runtime.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref_name || github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Integrate P20 runtime into existing surfaces
+        run: python scripts/integrate-p20-form-runtime.py
+      - name: Install dependencies
+        run: npm ci
+      - name: P20 regressions
+        run: node --test tests/p20-form-engine.test.mjs
+      - name: Lint P20 surfaces
+        run: npx eslint app/runtime-form.tsx app/admin-form-library.tsx app/person-identity-editor.tsx app/admin-view.tsx app/api/build-info/route.ts
+      - name: Build Next.js application
+        run: npm run build
+      - name: Commit integration if needed
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          if git diff --quiet -- app/person-identity-editor.tsx app/admin-view.tsx; then
+            echo 'Integration already present'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/person-identity-editor.tsx app/admin-view.tsx
+          git commit -m 'feat: integrate P20 runtime forms'
+          git push origin HEAD:${{ github.ref_name }}
