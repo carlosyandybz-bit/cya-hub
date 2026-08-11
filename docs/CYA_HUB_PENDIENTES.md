@@ -1,226 +1,272 @@
 # CYA HUB — PENDIENTES VIVOS
 
-**Versión:** 1.2  
-**Fecha de corte:** 11 de agosto de 2026 — 15:14+ (Europe/Madrid)  
-**Baseline funcional:** P16/v42 verificada en Supabase producción  
-**Baseline GitHub previo a este bloque:** `a8acf2bf161535d4b84be1ae651d530ddc9248c5`
+**Versión:** 1.3  
+**Fecha de corte:** 11 de agosto de 2026  
+**Hoja de ruta operativa:** `docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md`  
+**Actualización en curso:** **P17 — Cierre real de Evaluaciones + reconciliación Point12R**
 
-## Regla de uso
+> Este archivo es el tablero vivo que debe actualizarse y entregarse al usuario después de cada implementación. El orden de ejecución lo gobierna el Plan Maestro P17→P32.
 
-Este archivo es el tablero maestro de pendientes. Después de cada implementación se actualiza el estado, se añade evidencia, se registran regresiones/deudas nuevas, se mueven los elementos cerrados y se entrega al usuario una copia actualizada.
+## Estados
 
-Estados: 🔴 PENDIENTE · 🟠 REQUIERE VERIFICACIÓN · 🟡 PARCIAL · 🟢 CERRADO · ⚫ DESCARTADO.
+- 🟢 **CERRADO / VERIFICADO**
+- ▶ **EN CURSO**
+- 🟡 **PARCIAL / BLOQUEADO POR SUBTAREA**
+- ⏳ **PENDIENTE EN SECUENCIA**
+- 🔴 **GATE/RIESGO ABIERTO**
+- ⚫ **DESCARTADO / NO REINTRODUCIR**
 
-Prioridades: P0 seguridad/producción/pérdida de datos · P1 flujo esencial · P2 paridad/UX importante · P3 acabado/deuda.
+---
 
-# Baseline cerrado
+# 1. CERRADO
 
-## C-001 — P16/v42 RLS alumno–clases
-**Estado:** 🟢 CERRADO · **Prioridad histórica:** P0
+## P12 — Modelo de evaluaciones
+**Estado:** 🟢 recorrido históricamente; sujeto a reconciliación final P17.
 
-Evidencia: dry-run 11/11; producción 17/17; migración `20260811124729 / v42_rls_student_class_correlation`; PR #2 fusionada; merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`; `student_message` preservado; `internal_note` aislada; operaciones ajenas bloqueadas; acceso staff preservado.
+## P13 — Radar interactivo
+**Estado:** 🟢 recorrido históricamente; sujeto a reconciliación final P17.
 
-## P-003 — Consolidar cadena SQL/migraciones documentada
-**Estado:** 🟢 CERRADO · **Prioridad:** P2
+## P14 — Historial/evolución de evaluaciones
+**Estado:** 🟢 implementado/validado en código; sujeto a P17.
 
-Cerrado el 11/08/2026 mediante auditoría directa de `supabase_migrations.schema_migrations` y del árbol `supabase/` del repositorio.
+## P15 — Resumen real de progreso
+**Estado:** 🟢 implementado/validado en código; sujeto a P17.
 
-Evidencia:
-
-- 52 migraciones registradas en producción.
-- Primera: `20260808214303 / teaching_module`.
-- Última: `20260811124729 / v42_rls_student_class_correlation`.
-- Se distinguen migraciones registradas, SQL conservados, bootstrap pre-registro y SQL preparados/no aplicados.
-- `v35c-enforce-post-class-evaluation.sql` existe en GitHub pero no figura aplicada.
-- `v41c-final-evaluation-cutover-PREPARED-NOT-APPLIED.sql` está explícitamente marcada como no aplicada y tampoco figura en producción.
-- Referencia canónica: `docs/DATABASE_MIGRATION_BASELINE.md`.
-- PR #3 fusionada en `main`, squash `a8acf2bf161535d4b84be1ae651d530ddc9248c5`.
-
-## P-025 — Recuperar 18 SQL aplicados sin archivo independiente
-**Estado:** 🟢 CERRADO · **Prioridad:** P2
-
-Cerrado el 11/08/2026 como **archivo histórico**, sin ejecutar ni reaplicar SQL.
+## P16 — Seguridad RLS alumno–clases / v42
+**Estado:** 🟢 CERRADO EN PRODUCCIÓN
 
 Evidencia:
 
-- Se extrajeron exclusivamente de `supabase_migrations.schema_migrations.statements[1]` las 18 fuentes que no tenían archivo independiente.
-- Se conservaron versión y nombre originales en `supabase/applied-history/`.
-- El directorio está marcado **ARCHIVO HISTÓRICO — NO APLICAR / NO EJECUTAR**.
-- Para cada fuente se calculó en producción el SHA-1 de objeto Git `blob` sobre los bytes originales.
-- Los **18/18 SHA calculados desde Supabase coinciden exactamente con los `sha` de los archivos de GitHub**: verificación byte por byte.
-- También se conserva un MD5 auxiliar por migración en el manifiesto.
-- No se modificó el esquema, no se creó ninguna entrada nueva en `schema_migrations` y no se ejecutó ninguna sentencia archivada.
+- migración `20260811124729 / v42_rls_student_class_correlation`;
+- dry-run 11/11;
+- producción 17/17;
+- PR #2 fusionada;
+- merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`;
+- `student_message` preservado;
+- `internal_note` aislada;
+- operaciones ajenas bloqueadas;
+- acceso staff preservado.
+
+## Baseline de migraciones
+**Estado:** 🟢 CERRADO
 
-# Pendientes activos confirmados
+- 52 migraciones registradas en producción;
+- primera `20260808214303 / teaching_module`;
+- última v42;
+- baseline en `docs/DATABASE_MIGRATION_BASELINE.md`;
+- PR #3 / `a8acf2bf161535d4b84be1ae651d530ddc9248c5`.
 
-## P-001 — Verificar despliegue Hostinger después de P16
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P0
+## Recuperación de 18 SQL históricos
+**Estado:** 🟢 CERRADO
 
-Comprobado el 11/08/2026:
+- 18/18 recuperados desde `schema_migrations.statements[1]`;
+- archivados en `supabase/applied-history/` como **NO EJECUTAR / NO REAPLICAR**;
+- 18/18 verificados byte por byte mediante Git blob SHA;
+- PR #4 / `5999542e6b4bb258aff93aee3b96f6f0d255dda8`;
+- ningún SQL histórico fue reejecutado.
 
-- GitHub `main` contiene P16 mediante el merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`.
-- El baseline documental posterior fue fusionado en `a8acf2bf161535d4b84be1ae651d530ddc9248c5`.
-- El conector Hostinger disponible en esta sesión no expone hosting Node.js, despliegues ni logs; por rigor, no se declara el runtime actualizado.
+---
 
-**Cierre:** comprobar commit desplegado, `/`, `/api/runtime-config` (`configured:true`), login/sesión Supabase, Inicio, Alumnado, Enseñanza, Dar clase, Marketing, Administración, portal alumno, ausencia de secretos y errores runtime relevantes.
+# 2. AHORA — P17
 
-## P-002 — Protección de contraseñas filtradas en Supabase Auth
-**Estado:** 🔴 PENDIENTE CONFIRMADO · **Prioridad:** P1
+# P17 — Cierre real de Evaluaciones + reconciliación Point12R
+**Prioridad:** P1  
+**Estado global:** ▶ EN CURSO
 
-Security Advisors de `CyA hub 2` confirma el warning **`Leaked Password Protection Disabled`**. Es una configuración de Supabase Auth y no debe intentarse corregir mediante SQL.
+## P17.1 — Auditoría/reconciliación de Point12R
+**Estado:** 🟢 CERRADO EN AUDITORÍA
 
-**Cierre:** habilitar Leaked Password Protection cuando el plan/configuración lo permita, volver a ejecutar Security Advisors y verificar login/recuperación.
+Hallazgos verificados:
 
-# Fuera de alcance de auditoría visual v23
+- PR #1 `agent/point12r-evaluations` sigue abierta, draft y no mergeable;
+- no debe fusionarse como bloque sobre `main`;
+- su arquitectura usa APIs/modelos anteriores y quedó parcialmente absorbida/superada por v34–v41;
+- el motor actual usa `evaluation_sessions` + `student_evaluations` + `student_aptitude_progress`;
+- `save_class_evaluation_v2` no es un segundo motor: delega en `save_evaluation_score`;
+- producción conserva escala activa `0/25/50/75/100` y niveles Inicio/Intermedio/Avanzado;
+- datos actuales: 6 sesiones, 5 completadas, 48 puntuaciones, 8 filas de progreso;
+- `evaluation_milestones` activos: 0;
+- `evaluation_descriptors` activos: 0;
+- v36 ya oculta borradores al alumno mediante sesión completada + cierre pedagógico;
+- v40 ya soporta revisión formal postclase del profesor;
+- v41a ya soporta evaluación inicial guiada durante clase cuando corresponde;
+- `v35c-enforce-post-class-evaluation.sql` no está aplicada;
+- `v41c-final-evaluation-cutover-PREPARED-NOT-APPLIED.sql` sigue correctamente sin aplicar.
 
-## P-004 — Identidad visual definitiva
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P2
+Documento de evidencia: `docs/P17_EVALUATION_RECONCILIATION.md`.
 
-Colores CYA, logo, cabecera y coherencia visual global.
+## P17.2 — Frontend final de Evaluaciones
+**Estado:** ⏳ PENDIENTE · **bloquea P17.3**
 
-## P-005 — Tipografía/apariencia desde Administración
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P3
+Debe:
 
-Debe respetar la identidad definida y no reintroducir modo oscuro/contrastes no deseados sin decisión expresa.
+1. retirar la evaluación formal genérica de cualquier clase activa;
+2. usar evaluación inicial guiada durante clase solo cuando corresponda;
+3. integrar revisión postclase entre cierre administrativo y cierre pedagógico;
+4. migrar la ficha del alumno fuera de RPC que el cutover final pretende retirar, o definir una API final compatible para evaluación manual fuera de clase si sigue siendo requisito;
+5. conservar 0/25/50/75/100 y cinco opciones táctiles;
+6. conservar radar, historial y evolución;
+7. validar Bachata/Bachazouk;
+8. añadir regresión que impida reintroducir `save_class_evaluation_v2` en el flujo vivo;
+9. ejecutar build + pruebas antes de tocar producción.
 
-## P-006 — Rediseño definitivo de Evaluaciones
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P1
+## P17.3 — Cutover final v41c
+**Estado:** 🟡 BLOQUEADO POR P17.2
 
-Conservar INICIO/INTERMEDIO/AVANZADO, valores 0/25/50/75/100, cinco opciones rápidas por parámetro, experiencia táctil, persistencia y radares según contrato pedagógico.
+**No aplicar ahora.** El frontend actual todavía depende de RPC que v41c revoca, entre ellas:
 
-## P-007 — Rediseño definitivo de Dar clase
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P1
+- `start_student_evaluation`;
+- `save_evaluation_score`;
+- `complete_evaluation_session`;
+- `save_class_evaluation_v2`.
 
-Validar paridad completa: programada/manual; 3 minutos iniciales; notas rápidas; correcciones anteriores; buscador unificado Correcciones/Explicaciones/Ejercicios/Secuencias; Crear rápido; pareja; evaluación; Guía; Trabajo de hoy; terminar/cerrar; asistencia; pago/bono; persistencia; concurrencia prevista; navegación sin regresiones.
+Condición de apertura:
 
-## P-008 — Árboles/mapas táctiles de Enseñanza
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P1
+- búsqueda frontend = cero dependencias de RPC revocadas;
+- tests verdes;
+- dry-run transaccional;
+- pruebas Profesor/Alumno/Admin;
+- solo entonces decidir/aplicar migración incremental y advisors.
 
-Relaciones entre tipos, prerequisitos, homólogas L/F, estilos, niveles, zoom/pan/centrar/ruta/reset/búsqueda y UX iPhone.
+---
 
-## P-009 — Rediseño funcional de Marketing
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P2
+# 3. SECUENCIA PENDIENTE DESPUÉS DE P17
 
-Experiencia integrada para CRM, contactos, tarifas, contenido, campañas, comunicaciones, multimedia, eventos y métricas.
+## P18 — Identidad, roles, navegación y “Ver como”
+**Estado:** ⏳ PENDIENTE
 
-## P-010 — Rediseño de Estadísticas
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P2
+Absorbe navegación principal, multirol y una persona única. Debe cerrar Profesor+Alumno+Admin sin escalada y navegación `Inicio | Alumnado | DAR CLASE | Enseñanza | Marketing`.
 
-Definir KPIs, jerarquía, filtros, navegación táctil y relaciones con alumnado, enseñanza, CRM y negocio. La corrección responsive no equivale a diseño funcional final.
+## P19 — Alumnado y modelo único de personas
+**Estado:** ⏳ PENDIENTE
 
-# Paridad funcional — requiere verificación actual
+Debe cerrar contacto→provisional→alumno→registrado sin pérdida/duplicación, nombres correctos, clases, bonos, formación, evaluación, CRM e incidencias sobre una persona canónica.
 
-Estos requisitos están consolidados en conversaciones y/o tuvieron trabajo previo, pero no se declaran cerrados sin evidencia reciente contra la app web actual.
+## P20 — Formularios versionables y datos canónicos
+**Estado:** ⏳ PENDIENTE
 
-## P-011 — Inicio contextual
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
+Debe convertir el catálogo de formularios/versiones/campos en renderer reusable real, con validación servidor y reutilización de datos conocidos.
 
-Saludo por hora/nombre; frase diaria persistente; clase próxima dominante 30 min antes; siguiente acción; avisos; accesos rápidos; resumen del día; Administración; Ver como; cuenta/perfil.
+## P21 — Dar clase definitivo
+**Estado:** ⏳ PENDIENTE · Prioridad P0/P1
 
-## P-012 — Motor de Misiones
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
+Flujo: **Seleccionar → Preparar → Diagnóstico 3 min → Trabajar → Terminar/Cerrar**, con buscador unificado, pareja, saldo, persistencia, idempotencia y evaluación reconciliada con P17.
 
-Tipos, estados, prioridades, reglas iniciales, vencimientos, bloqueo, duplicados, destinatarios, canales, horas silenciosas, configuración servidor/BD e integración Inicio/calendario.
+## P22 — Portal alumno completo
+**Estado:** ⏳ PENDIENTE
 
-## P-013 — Multirol real y Ver como
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
+Próxima clase, historial, bonos/saldo, formación, multimedia, evolución, evaluaciones, perfil, preparación previa y RLS sin notas internas.
 
-Profesor+Alumno simultáneo; Administrador autorizado; profesor autoevaluable; portal alumno; Ver como Profesor/Alumno/Administrador; sin escalada; seguridad server-side/RLS.
+## P23 — Enseñanza, relaciones y árboles táctiles
+**Estado:** ⏳ PENDIENTE
 
-## P-014 — Agenda/calendario
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
+Biblioteca, Correcciones/Explicaciones/Ejercicios/Secuencias, relaciones, prerequisitos, L/F, estilos/niveles, árbol táctil y Drive.
 
-Día/Semana/Mes/Lista; clases/misiones/eventos; conflictos; Google Calendar; id externo; sync idempotente; errores; no destruir participantes/saldos/historia.
+## P24 — Inicio contextual definitivo
+**Estado:** ⏳ PENDIENTE
 
-## P-015 — Formularios versionables
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
+Saludo, frase, clase dominante 30 min antes, siguiente acción, avisos, accesos, Administración, Ver como y cuenta/perfil.
 
-Definición/versión, campos/opciones, requerido, visibilidad, condiciones, validación, orden, formularios históricos, validación servidor, datos canónicos y ausencia de preguntas duplicadas.
+## P25 — Motor de Misiones
+**Estado:** ⏳ PENDIENTE
 
-## P-016 — Importación/exportación integral
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
+Tipos/estados/prioridades, reglas, vencimientos, duplicados, evidencia, canales/destinatarios, horas silenciosas y configuración servidor/BD.
 
-Alumnos, contactos, clases, bonos, Correcciones, Explicaciones, Ejercicios, Secuencias, evaluaciones y configuración relevante; operaciones transaccionales y sin duplicación.
+## P26 — Agenda, calendario y Google Calendar
+**Estado:** ⏳ PENDIENTE
 
-## P-017 — Notificaciones
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P2
+Día/Semana/Mes/Lista, clases/misiones/eventos, conflictos y sync Google Calendar idempotente.
 
-Eventos, destinatarios, canales, persistencia, lectura, deduplicación e integración misiones/clases/bonos.
+## P27 — Notificaciones
+**Estado:** ⏳ PENDIENTE
 
-## P-018 — Portal alumno completo
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
+Evento→destinatario→canal, persistencia, lectura, deduplicación y privacidad por rol.
 
-Próxima clase, historial, bonos/saldo, formación, multimedia, evolución, evaluaciones, perfil, preparación de clase, aislamiento de notas internas y RLS. P16 cerró seguridad concreta, no toda la paridad funcional.
+## P28 — Importación/exportación integral
+**Estado:** ⏳ PENDIENTE
 
-## P-019 — Alumnado como módulo único
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
+Personas, clases, bonos, enseñanza, evaluaciones, configuración y relaciones; preview, duplicados, errores e idempotencia.
 
-Potenciales/provisionales/registrados, conversiones sin pérdida, nombres correctos, clases, bonos, saldo, historial, formación, incidencias, programar, añadir bono e identidad unificada.
+## P29 — Marketing, CRM, tarifas, campañas, eventos y multimedia
+**Estado:** ⏳ PENDIENTE
 
-## P-020 — Navegación principal definitiva
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
+Persona canónica, CRM, tarifas, campañas, comunicaciones, eventos, promoción y Drive.
 
-Contrato: **Inicio | Alumnado | DAR CLASE | Enseñanza | Marketing**. Sin hamburguesa para funciones clave; DAR CLASE central; back/contexto correcto; iPhone y escritorio coherentes.
+## P30 — Estadísticas y métricas
+**Estado:** ⏳ PENDIENTE
 
-# Datos y almacenamiento — controles permanentes
+KPIs reales y trazables para alumnado, clases, bonos, enseñanza, CRM/Marketing y evolución, con UX iPhone.
 
-## P-021 — Multimedia por referencias externas
-**Estado:** 🟠 REQUIERE VERIFICACIÓN CONTINUA · **Prioridad:** P1
+## P31 — Administración, identidad visual y configuración final
+**Estado:** ⏳ PENDIENTE
 
-Fotos/vídeos en Google Drive; Supabase solo referencias/IDs/metadatos; sin multimedia operativa pesada en GitHub/DB.
+Configuración, roles, misiones, formularios, integraciones, seguridad/diagnóstico y cierre visual CYA coherente.
 
-## P-022 — Fuente única de verdad de datos canónicos
-**Estado:** 🟠 REQUIERE VERIFICACIÓN CONTINUA · **Prioridad:** P1
+## P32 — Auditoría transversal final, producción y release
+**Estado:** ⏳ PENDIENTE FINAL
 
-Evitar duplicar personas/roles, volver a pedir datos, divergencias CRM/alumno/clase o mezclar expediente comercial/pedagógico.
+Cierra flujos E2E, seguridad, Hostinger, Auth, iPhone y regresión transversal. Solo entonces CYA Hub puede declararse listo para uso real.
 
-# QA permanente
+---
 
-## P-023 — Smoke test iPhone real por release
-**Estado:** 🔴 PENDIENTE COMO PROCESO · **Prioridad:** P1
+# 4. GATES PERMANENTES
 
-Safe areas, scroll, teclado, zoom Safari, modales, formularios, barra inferior, Dar clase, árboles, evaluación, ficha alumno, navegación/retorno y orientación cuando corresponda.
+## G1 — Hostinger runtime
+**Estado:** 🔴 ABIERTO
 
-## P-024 — Regresión transversal de flujos
-**Estado:** 🔴 PENDIENTE COMO PROCESO · **Prioridad:** P1
+El conector actual no expone despliegues/logs Node.js. Antes de P32 debe verificarse commit desplegado, `/`, `/api/runtime-config`, login/sesión, rutas, secretos y runtime.
 
-Antes de cerrar fase: crear persona, convertir contacto, programar clase, dar/cerrar clase, consumir bono, consultar/asignar formación, evaluar, portal alumno, CRM/Marketing, import/export y permisos Profesor/Alumno/Admin.
+## G2 — Supabase Auth / leaked passwords
+**Estado:** 🔴 ABIERTO CONFIRMADO
 
-# Descartados — no reabrir sin decisión nueva
+Security Advisors: `Leaked Password Protection Disabled`. Requiere ajuste de Auth, no SQL.
 
-- D-001 WordPress como backend canónico — ⚫ DESCARTADO.
-- D-002 ChatGPT Sites como producción — ⚫ DESCARTADO.
-- D-003 versión móvil 9.3.0 — ⚫ DESCARTADO.
-- D-004 20.14/20.15 como base Dar clase — ⚫ DESCARTADO.
-- D-005 hamburguesa para funciones principales — ⚫ DESCARTADO.
-- D-006 amarillo fluorescente — ⚫ DESCARTADO.
-- D-007 YouTube/TikTok como requisito obligatorio — ⚫ DESCARTADO.
+## G3 — Smoke iPhone
+**Estado:** 🔴 GATE PERMANENTE
 
-# Orden operativo actual
+Safe-area, scroll, teclado, Safari, modales, formularios, barra inferior y navegación tras cambios UI.
 
-1. P-001 verificar Hostinger cuando exista acceso a despliegues/logs.
-2. P-002 cerrar protección de contraseñas filtradas cuando exista acceso al ajuste Auth correspondiente.
-3. Auditar P-011 a P-022 para convertir “requiere verificación” en cerrado, parcial o pendiente real.
-4. Priorizar núcleo: P-007 Dar clase, P-006 Evaluaciones, P-008 Árboles, P-018 Portal, P-019 Alumnado.
-5. Cerrar experiencia: P-004/P-005 Identidad y P-009/P-010 Marketing/Estadísticas.
-6. Mantener P-023/P-024 como gates de release.
+## G4 — Regresión transversal
+**Estado:** 🔴 GATE PERMANENTE
 
-# Registro
+Persona, conversión, bono, clase, cierre, formación, evaluación, portal, CRM/Marketing, import/export y permisos.
 
-## 11/08/2026 — v1.0
+## G5 — Datos y multimedia
+**Estado:** 🔴 GATE PERMANENTE
 
-Creado a partir del historial recuperado de conversaciones, decisiones del plugin, migración web, arquitectura GitHub/Supabase/Hostinger/Drive, auditoría visual v23 y estado P16/PR #2.
+Persona canónica, datos no duplicados, datos conocidos reutilizados, Drive para multimedia pesada, sin secretos ni blobs operativos pesados.
 
-## 11/08/2026 — v1.1
+---
 
-- P-001 auditado: GitHub correcto; Hostinger sigue pendiente de evidencia de runtime.
-- P-002 confirmado contra Security Advisors: `Leaked Password Protection Disabled`.
-- P-003 cerrado: baseline real de 52 migraciones documentado.
-- P-025 abierto: recuperar 18 fuentes SQL aplicadas que producción conserva pero GitHub no tiene como archivos independientes.
+# 5. DESCARTADOS / NO REINTRODUCIR
 
-## 11/08/2026 — v1.2
+- ⚫ WordPress como backend/identidad canónica.
+- ⚫ ChatGPT Sites como producción.
+- ⚫ versión móvil 9.3.0.
+- ⚫ 20.14/20.15 como base de Dar clase.
+- ⚫ hamburguesa para funciones principales.
+- ⚫ amarillo fluorescente.
+- ⚫ YouTube/TikTok como requisitos obligatorios.
+- ⚫ PR #1 Point12R como merge íntegro automático.
+- ⚫ SQL `PREPARED-NOT-APPLIED` aplicado por inercia.
 
-- P-025 cerrado.
-- Recuperadas las 18/18 fuentes desde `schema_migrations.statements[1]` a `supabase/applied-history/`.
-- Verificación byte por byte 18/18 mediante SHA de objeto Git calculado en Supabase y contrastado con GitHub.
-- Ningún SQL histórico fue ejecutado; producción no cambió en este bloque.
+---
+
+# 6. SIGUIENTE TRABAJO EXACTO
+
+**P17.2 — Frontend final de Evaluaciones.**
+
+No empezar P18 hasta cerrar P17.2, validar regresión y resolver P17.3 con evidencia.
+
+---
+
+# 7. REGISTRO
+
+## 11/08/2026 — v1.3
+
+- Plan vivo alineado con secuencia P17→P32.
+- P17.1 cerrado como auditoría/reconciliación.
+- PR #1 clasificada como referencia histórica no fusionable en bloque.
+- v41c permanece bloqueada correctamente.
+- P17.2 pasa a ser el siguiente trabajo exacto.
+- P18→P32 permanecen pendientes en orden.
