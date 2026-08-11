@@ -1,0 +1,29 @@
+name: Validate P16 RLS hotfix
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/v42-rls-student-class-correlation.sql"
+      - "tests/rls-class-correlation-p16.test.mjs"
+      - ".github/workflows/validate-p16-rls.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - name: Run P16 RLS regression contract
+        run: node --test tests/rls-class-correlation-p16.test.mjs
+      - name: Build Next.js application
+        run: npm run build
