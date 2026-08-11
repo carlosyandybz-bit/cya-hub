@@ -715,8 +715,12 @@ begin
   from public.form_fields ff
   where ff.id=p_field_id for update;
   if not found then raise exception 'El campo no existe.' using errcode='P0002'; end if;
-  select fv.status,fd.* into v_status,v_form
-  from public.form_versions fv join public.form_definitions fd on fd.id=fv.form_id
+  select fv.status into v_status
+  from public.form_versions fv
+  where fv.id=v_field.form_version_id;
+  select fd.* into v_form
+  from public.form_versions fv
+  join public.form_definitions fd on fd.id=fv.form_id
   where fv.id=v_field.form_version_id;
   if v_status<>'draft' then raise exception 'Una versión publicada es inmutable.' using errcode='55000'; end if;
   if coalesce(v_form.settings->>'runtime_engine','')<>'generic_v1' then raise exception 'Este formulario pertenece a un servicio de dominio.' using errcode='0A000'; end if;
