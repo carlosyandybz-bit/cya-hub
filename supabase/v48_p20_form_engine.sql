@@ -506,6 +506,9 @@ begin
 
   select * into v_form from public.form_definitions where form_key=p_form_key and status='active' for share;
   if not found then raise exception 'El formulario no está disponible.' using errcode='P0002'; end if;
+  if coalesce(v_form.settings->>'runtime_engine','')<>'generic_v1' then
+    raise exception 'Este formulario pertenece a un flujo de negocio específico y no se ejecuta con el motor genérico.' using errcode='0A000';
+  end if;
   if v_form.form_type='admin' and not v_admin then raise exception 'Este formulario es solo para administración.' using errcode='42501'; end if;
   if v_form.form_type in ('teacher','internal') and not v_staff then raise exception 'Este formulario es interno del equipo.' using errcode='42501'; end if;
   if v_form.form_type='student' then
@@ -612,6 +615,9 @@ begin
   if not (select private.is_admin()) then raise exception 'Solo administración puede crear versiones de formularios.' using errcode='42501'; end if;
   select * into v_form from public.form_definitions where id=p_form_id for update;
   if not found then raise exception 'El formulario no existe.' using errcode='P0002'; end if;
+  if coalesce(v_form.settings->>'runtime_engine','')<>'generic_v1' then
+    raise exception 'Este formulario pertenece a un servicio de dominio y no se versiona desde el editor genérico.' using errcode='0A000';
+  end if;
   select * into v_draft from public.form_versions where form_id=p_form_id and status='draft' order by version_number desc limit 1;
   if found then return v_draft; end if;
   select * into v_source from public.form_versions where form_id=p_form_id and version_number=v_form.active_version;
@@ -681,6 +687,9 @@ begin
   if not (select private.is_admin()) then raise exception 'Solo administración puede publicar formularios.' using errcode='42501'; end if;
   select * into v_form from public.form_definitions where id=p_form_id for update;
   if not found then raise exception 'El formulario no existe.' using errcode='P0002'; end if;
+  if coalesce(v_form.settings->>'runtime_engine','')<>'generic_v1' then
+    raise exception 'Este formulario pertenece a un servicio de dominio y no se publica desde el editor genérico.' using errcode='0A000';
+  end if;
   select * into v_version from public.form_versions where form_id=p_form_id and version_number=p_version_number for update;
   if not found or v_version.status<>'draft' then raise exception 'Solo se puede publicar una versión en borrador.' using errcode='55000'; end if;
   if not exists(select 1 from public.form_fields where form_version_id=v_version.id and active) then raise exception 'El formulario necesita al menos un campo activo.' using errcode='22023'; end if;
