@@ -9,6 +9,7 @@ on:
       - "app/evaluation-final-model.css"
       - "app/evaluation-settings/**"
       - "app/evaluation-history/**"
+      - "app/progress-summary/**"
       - "app/page.tsx"
       - "app/layout.tsx"
       - "supabase/v35*.sql"
@@ -30,7 +31,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Lint evaluation changes
-        run: npx eslint app/evaluation-post-class.tsx app/evaluation-settings/evaluation-settings-client.tsx app/evaluation-history/evaluation-history-client.tsx app/evaluation-history/page.tsx app/page.tsx app/layout.tsx
+        run: npx eslint app/evaluation-post-class.tsx app/evaluation-settings/evaluation-settings-client.tsx app/evaluation-history/evaluation-history-client.tsx app/evaluation-history/page.tsx app/progress-summary/progress-summary-client.tsx app/progress-summary/page.tsx app/page.tsx app/layout.tsx
       - name: Record legacy lint debt
         continue-on-error: true
         run: npm run lint
