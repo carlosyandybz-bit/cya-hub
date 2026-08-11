@@ -1,7 +1,7 @@
 # CYA HUB — SECUENCIA MAESTRA DEL PROYECTO
 
-**Versión:** 1.0  
-**Fecha de corte:** 11 de agosto de 2026 — 15:01 (Europe/Madrid)  
+**Versión:** 1.1  
+**Fecha de corte:** 11 de agosto de 2026 — 15:14 (Europe/Madrid)  
 **Repositorio canónico:** `carlosyandybz-bit/cya-hub`  
 **Producción:** rama `main`
 
@@ -180,6 +180,38 @@ P16 cierra fronteras RLS alumno/clases: se retira SELECT directo de alumno sobre
 
 Validación: dry-run 11/11; producción 17/17; migración `20260811124729 / v42_rls_student_class_correlation`; PR #2 fusionada; merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`. **Estado: VERIFICADO PRODUCCIÓN para P16.**
 
+# 11/08/2026 — control post-P16 y baseline de migraciones
+
+## P-001 — Hostinger
+
+Se comprueba que `main` contiene P16 y que los commits posteriores auditados hasta `d757cc85ccb832be35b621834ea2ec3ece5be3b5` son documentales. La integración Hostinger disponible en esta sesión no ofrece las acciones de hosting Node.js, despliegues o logs necesarias para demostrar qué commit sirve el runtime. P-001 permanece abierto por falta de evidencia, no por un fallo detectado.
+
+## P-002 — Auth
+
+Security Advisors de `CyA hub 2` confirma **`Leaked Password Protection Disabled`**. Se clasifica como pendiente real de configuración Auth. No se debe resolver mediante SQL.
+
+## P-003 — baseline real de Supabase
+
+Se audita `supabase_migrations.schema_migrations` de producción:
+
+- **52 migraciones registradas**;
+- primera: `20260808214303 / teaching_module`;
+- última: `20260811124729 / v42_rls_student_class_correlation`.
+
+Cruce con `supabase/`:
+
+- 34 migraciones registradas tienen fuente/archivo equivalente identificable en el repositorio;
+- 18 migraciones registradas carecen de archivo SQL independiente;
+- esas 18 conservan sus sentencias en `schema_migrations.statements` y son recuperables sin inferencia ni reejecución;
+- `foundation.sql`, `classes-and-credits.sql`, `live-class.sql` y `marketing-crm.sql` se clasifican como bootstrap/pre-registro;
+- `v21-data-transfer-followups.sql` es un agregado histórico de varios follow-ups;
+- `v35c-enforce-post-class-evaluation.sql` está presente pero no registrado como aplicado;
+- `v41c-final-evaluation-cutover-PREPARED-NOT-APPLIED.sql` está presente, explícitamente marcado como no aplicado y tampoco figura en producción.
+
+Se crea `docs/DATABASE_MIGRATION_BASELINE.md` como referencia canónica. **P-003 queda CERRADO.**
+
+Se abre **P-025** para recuperar las 18 fuentes SQL independientes desde el registro de producción, sin ejecutarlas.
+
 # Decisiones descartadas / no reintroducir
 
 - WordPress como backend/identidad canónica de la app web.
@@ -216,4 +248,13 @@ PENDIENTES NUEVOS:
 PENDIENTES CERRADOS:
 ```
 
-Último punto conocido: P16/v42 verificada en Supabase producción y PR #2 fusionada en `main`; el siguiente control operativo es verificar el despliegue Hostinger resultante y ejecutar el smoke test completo.
+El archivo `docs/CYA_HUB_PENDIENTES.md` es el tablero operativo y debe actualizarse en el mismo ciclo.
+
+# Último punto conocido
+
+- P16/v42: verificada en Supabase producción.
+- PR #2: fusionada en `main`.
+- P-003: cerrado mediante baseline real de 52 migraciones.
+- P-001: pendiente de evidencia de runtime Hostinger.
+- P-002: warning Auth confirmado.
+- P-025: pendiente de recuperar 18 fuentes SQL históricas desde producción.
