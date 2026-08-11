@@ -15,7 +15,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Fix temporary integration matcher
+      - name: Fix temporary integration matchers
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -24,13 +24,29 @@ jobs:
           old="re.subn(r'<ClassFinalSummary\\b[^>]*?/>',add_terms,s,count=1)"
           new="re.subn(r'<ClassFinalSummary\\b.*?/>',add_terms,s,count=1)"
           if old not in s:
-              raise SystemExit('temporary matcher not found')
+              raise SystemExit('temporary ClassFinalSummary matcher not found')
+          p.write_text(s.replace(old,new,1))
+
+          p=Path('scripts/apply-point12r-regressions.py')
+          s=p.read_text()
+          old="r'''type MediaDraft\\s*=\\s*\\{id:string;file:File;title:string;kind:\"class_document\"\\|\"final_dance\";audience:string;saved:boolean\\};'''"
+          new="r'''type MediaDraft\\s*=\\s*\\{\\s*id:string;\\s*file:File;\\s*title:string;\\s*kind:\"class_document\"\\|\"final_dance\";\\s*audience:string;\\s*saved:boolean\\s*\\};'''"
+          if old not in s:
+              raise SystemExit('temporary MediaDraft matcher not found')
           p.write_text(s.replace(old,new,1))
           PY
       - name: Apply Point 12R integration
         run: |
           python3 scripts/apply-point12r.py
           python3 scripts/apply-point12r-regressions.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/cya-app.tsx')
+          s=p.read_text()
+          s=s.replace('<RadarChart items={relativeRadar} scaleLabel="Porcentaje de tus puntos totales en cada aptitud" />','<RadarChart items={relativeRadar} showValues={false} scaleLabel="Tu forma de progreso muestra fortalezas relativas y áreas a trabajar, sin compararte con otros alumnos." />',1)
+          s=s.replace('<strong>{item.score}</strong>','<strong>Valoración guardada</strong>',1)
+          p.write_text(s)
+          PY
       - name: Install dependencies
         run: npm ci
       - name: Point 12R and no-function-loss regressions
