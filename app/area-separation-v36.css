@@ -1,0 +1,79 @@
+/* CYA Hub · separación estructural de áreas
+   Decisión cerrada: Profesor, Alumno y Administración son experiencias distintas.
+   El cambio entre ellas vive en la cuenta/perfil y nunca concede permisos nuevos. */
+
+/* Administración conserva identidad/cuenta, pero no la navegación funcional del Profesor. */
+.shell:has(.admin-page-head) {
+  grid-template-columns: 220px minmax(0, 1fr);
+  background: #f7f5f8;
+}
+
+.shell:has(.admin-page-head) .sidebar {
+  border-right-color: #e3dbe7;
+  background: #f3eff5;
+}
+
+.shell:has(.admin-page-head) .sidebar nav {
+  display: none !important;
+}
+
+.shell:has(.admin-page-head) .sidebar > .brand {
+  padding-bottom: 18px;
+}
+
+.shell:has(.admin-page-head) .sidebar > .brand::after {
+  content: "Administración";
+  display: block;
+  margin-left: 2px;
+  color: #76647f;
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.shell:has(.admin-page-head) .main {
+  padding-top: 30px;
+}
+
+.shell:has(.admin-page-head) .content {
+  width: min(100%, 1320px);
+}
+
+/* El área se abandona desde Cuenta/Perfil, no mediante un acceso permanente en la pantalla. */
+.shell:has(.admin-page-head) .admin-page-head > .btn.ghost {
+  display: none !important;
+}
+
+/* La barra inferior pertenece al Profesor y no debe aparecer dentro de Administración. */
+.shell:has(.admin-page-head) .mobile-nav {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .shell:has(.admin-page-head) {
+    display: block;
+  }
+
+  .shell:has(.admin-page-head) .mobile-head {
+    grid-template-columns: 48px minmax(0, 1fr) 88px;
+  }
+
+  /* Evita que el botón atrás actúe como un segundo selector de área. */
+  .shell:has(.admin-page-head) .mobile-head-back {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .shell:has(.admin-page-head) .main {
+    padding-top: 22px;
+    padding-bottom: calc(40px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 560px) {
+  .shell:has(.admin-page-head) .main {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}
