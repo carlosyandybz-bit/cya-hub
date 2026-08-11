@@ -1,0 +1,34 @@
+name: Validate P17 evaluation cutover
+
+# Validates the exact P17 head that is eligible for merge.
+on:
+  pull_request:
+    paths:
+      - "app/evaluation-**"
+      - "app/page.tsx"
+      - "app/layout.tsx"
+      - "supabase/v43-evaluation-final-cutover.sql"
+      - "tests/p17-evaluation-cutover.test.mjs"
+      - ".github/workflows/validate-p17-evaluation-cutover.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - name: P17 regression tests
+        run: node --test tests/p17-evaluation-cutover.test.mjs
+      - name: Lint final evaluation surfaces
+        run: npx eslint app/evaluation-initial-class.tsx app/evaluation-post-class.tsx app/page.tsx app/layout.tsx
+      - name: Build Next.js application
+        run: npm run build
