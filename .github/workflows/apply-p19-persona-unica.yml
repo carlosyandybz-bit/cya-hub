@@ -1,0 +1,31 @@
+name: Validate P19 persona unica
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/cya-app.tsx'
+      - 'app/student-detail.tsx'
+      - 'app/person-identity-editor.tsx'
+      - 'app/marketing-view-legacy.tsx'
+      - 'supabase/v47_p19_persona_unica.sql'
+      - 'tests/p19-persona-unica.test.mjs'
+      - 'docs/P19_PERSONA_UNICA_IDENTIDADES.md'
+      - '.github/workflows/apply-p19-persona-unica.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: P19 regressions
+        run: node --test tests/p19-persona-unica.test.mjs
+      - name: Lint new identity editor
+        run: npx eslint app/person-identity-editor.tsx
+      - name: Build Next.js application
+        run: npm run build

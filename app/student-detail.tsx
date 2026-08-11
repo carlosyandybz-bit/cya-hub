@@ -13,6 +13,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  Pencil,
   Target,
   TrendingUp,
   WalletCards,
@@ -21,6 +22,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { TeachingContentCard, type TeachingCardMedia } from "./teaching-content-card";
 import { EvaluationRadar } from "./evaluation-radar";
+import { StudentIdentityEditor } from "./person-identity-editor";
 import styles from "./student-detail.module.css";
 
 type Student = {
@@ -109,6 +111,7 @@ type StudentProfile = {
   student_since: string | null;
   goals: string | null;
   teacher_notes: string | null;
+  health_notes?: string | null;
   active: boolean;
 };
 type DanceProfile = {
@@ -242,6 +245,7 @@ export function StudentMasterDetail({
   teachingContents,
   crmContact,
   rates,
+  refresh,
   close,
   schedule,
   addCredit,
@@ -256,6 +260,7 @@ export function StudentMasterDetail({
   teachingContents: LibraryContent[];
   crmContact: CrmContact | null;
   rates: Rate[];
+  refresh: () => Promise<void>;
   close: () => void;
   schedule: () => void;
   addCredit: () => void;
@@ -263,6 +268,8 @@ export function StudentMasterDetail({
 }) {
   const [tab, setTab] = useState<Tab>("summary");
   const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [identityEditorOpen,setIdentityEditorOpen] = useState(false);
+  const [profileRefresh,setProfileRefresh] = useState(0);
   const [danceProfiles, setDanceProfiles] = useState<DanceProfile[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [evaluationDraftOpen,setEvaluationDraftOpen]=useState(false);
@@ -292,7 +299,7 @@ export function StudentMasterDetail({
       setLoading(true);
       setError("");
       const [profileResult, danceResult, evaluationResult, activityResult] = await Promise.all([
-        client.from("student_profiles").select("person_id,student_since,goals,teacher_notes,active").eq("person_id", student.id).maybeSingle(),
+        client.from("student_profiles").select("person_id,student_since,goals,teacher_notes,health_notes,active").eq("person_id", student.id).maybeSingle(),
         client.from("student_dance_profiles").select("id,style_term_id,role_term_id,level_term_id,is_primary,active").eq("person_id", student.id).eq("active", true).order("is_primary", { ascending: false }),
         client.from("student_evaluations").select("id,session_id,person_id,class_id,style_term_id,role_term_id,level_term_id,aptitude_term_id,score,evaluation_kind,note,created_at").eq("person_id", student.id).order("created_at", { ascending: false }),
         client.from("crm_activities").select("id,activity_type,summary,from_stage,to_stage,occurred_at").eq("person_id", student.id).order("occurred_at", { ascending: false }).limit(30),
@@ -308,7 +315,7 @@ export function StudentMasterDetail({
     }
     void load();
     return () => { alive = false; };
-  }, [client, student.id]);
+  }, [client, student.id, profileRefresh]);
 
   useEffect(() => {
     const primary=danceProfiles.find((item) => item.is_primary) ?? danceProfiles[0];
@@ -575,9 +582,9 @@ export function StudentMasterDetail({
 
   function renderData() {
     return <div className={styles.dataGrid}>
-      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Identidad</span><h3>Datos principales</h3></div></div><div className={styles.readGrid}><div><Phone /><span>Teléfono</span><strong>{student.phone || "Sin indicar"}</strong></div><div><Mail /><span>Email</span><strong>{student.email || "Sin indicar"}</strong></div><div><MapPin /><span>País</span><strong>{student.country_code || "Sin indicar"}</strong></div><div><CircleUserRound /><span>Portal</span><strong>{student.auth_user_id ? "Registrado" : "Provisional"}</strong></div><div><CalendarDays /><span>Alumno desde</span><strong>{dateLabel(profile?.student_since ?? null, false)}</strong></div><div><CheckCircle2 /><span>Estado</span><strong>{student.active && profile?.active !== false ? "Activo" : "Inactivo"}</strong></div></div></section>
+      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Identidad</span><h3>Datos principales</h3></div><button onClick={() => setIdentityEditorOpen(true)}><Pencil size={15}/> Editar</button></div><div className={styles.readGrid}><div><Phone /><span>Teléfono</span><strong>{student.phone || "Sin indicar"}</strong></div><div><Mail /><span>Email</span><strong>{student.email || "Sin indicar"}</strong></div><div><MapPin /><span>País</span><strong>{student.country_code || "Sin indicar"}</strong></div><div><CircleUserRound /><span>Portal</span><strong>{student.auth_user_id ? "Registrado" : "Provisional"}</strong></div><div><CalendarDays /><span>Alumno desde</span><strong>{dateLabel(profile?.student_since ?? null, false)}</strong></div><div><CheckCircle2 /><span>Estado</span><strong>{student.active && profile?.active !== false ? "Activo" : "Inactivo"}</strong></div></div></section>
       <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Baile</span><h3>Contextos guardados</h3></div></div>{danceProfiles.length ? <div className={styles.danceGrid}>{danceProfiles.map((item) => <div key={item.id} className={item.is_primary ? styles.primaryDance : ""}><strong>{termLabel(item.style_term_id, terms)}</strong><span>{termLabel(item.role_term_id, terms)} · {termLabel(item.level_term_id, terms)}</span>{item.is_primary ? <small>Principal</small> : null}</div>)}</div> : <div className={styles.empty}><GraduationCap /><span>Sin contexto de baile.</span></div>}</section>
-      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Objetivos</span><h3>Información pedagógica</h3></div></div><div className={styles.longText}><strong>Objetivos</strong><p>{profile?.goals || "Sin objetivos guardados."}</p><strong>Notas internas</strong><p>{profile?.teacher_notes || "Sin notas internas."}</p></div></section>
+      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Objetivos</span><h3>Información pedagógica</h3></div></div><div className={styles.longText}><strong>Objetivos</strong><p>{profile?.goals || "Sin objetivos guardados."}</p><strong>Notas internas</strong><p>{profile?.teacher_notes || "Sin notas internas."}</p><strong>Salud / a tener en cuenta</strong><p>{profile?.health_notes || "Sin indicaciones."}</p></div></section>
     </div>;
   }
 
@@ -608,5 +615,6 @@ export function StudentMasterDetail({
         {!loading && tab === "crm" ? renderCrm() : null}
       </div>
     </section>
+    {identityEditorOpen ? <StudentIdentityEditor client={client} person={student} profile={profile} close={() => setIdentityEditorOpen(false)} saved={async () => { await refresh(); setProfileRefresh((value) => value + 1); }} /> : null}
   </div>;
 }

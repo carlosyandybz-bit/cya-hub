@@ -4,10 +4,14 @@ import fs from 'node:fs';
 
 const app=fs.readFileSync('app/cya-app.tsx','utf8');
 
-test('starting a class refreshes operational state before optional teaching refresh',()=>{
-  assert.match(app,/const refreshLive = useCallback\(async \(\) => \{\s*await loadOperations\(\);/s);
-  assert.match(app,/try \{ await loadTeaching\(\); \}\s*catch \(error\)/s);
-  assert.doesNotMatch(app,/Promise\.all\(\[loadOperations\(\),loadTeaching\(\),loadMarketing\(\)\]\)/);
+test('starting a class refreshes required operational and student state before optional teaching refresh',()=>{
+  const start=app.indexOf('const refreshLive = useCallback');
+  const end=app.indexOf('const refreshMarketing',start);
+  assert.ok(start >= 0 && end > start);
+  const body=app.slice(start,end);
+  assert.match(body,/await Promise\.all\(\[loadOperations\(\),loadStudents\(\)\]\)/);
+  assert.match(body,/try \{ await loadTeaching\(\); \}\s*catch \(error\)/s);
+  assert.doesNotMatch(body,/loadMarketing\(\)/);
 });
 
 test('class start always releases busy state and surfaces failures',()=>{
