@@ -29,11 +29,17 @@ jobs:
 
           p=Path('scripts/apply-point12r-regressions.py')
           s=p.read_text()
-          old="r'''type MediaDraft\\s*=\\s*\\{id:string;file:File;title:string;kind:\"class_document\"\\|\"final_dance\";audience:string;saved:boolean\\};'''"
-          new="r'''type MediaDraft\\s*=\\s*\\{\\s*id:string;\\s*file:File;\\s*title:string;\\s*kind:\"class_document\"\\|\"final_dance\";\\s*audience:string;\\s*saved:boolean\\s*\\};'''"
-          if old not in s:
+          media_old="r'''type MediaDraft\\s*=\\s*\\{id:string;file:File;title:string;kind:\"class_document\"\\|\"final_dance\";audience:string;saved:boolean\\};'''"
+          media_new="r'''type MediaDraft\\s*=\\s*\\{\\s*id:string;\\s*file:File;\\s*title:string;\\s*kind:\"class_document\"\\|\"final_dance\";\\s*audience:string;\\s*saved:boolean\\s*\\};'''"
+          if media_old not in s:
               raise SystemExit('temporary MediaDraft matcher not found')
-          p.write_text(s.replace(old,new,1))
+          s=s.replace(media_old,media_new,1)
+          state_old='''  const [events,setEvents]=useState<ClassContentEvent[]>([]), [media,setMedia]=useState<MediaDraft[]>([]), [studentMessage,setStudentMessage]=useState(""), [internalNote,setInternalNote]=useState(""), [busy,setBusy]=useState(false), [error,setError]=useState("");'''
+          state_real='''  const [events,setEvents]=useState<ClassContentEvent[]>([]), [studentMessage,setStudentMessage] = useState(""), [internalNote,setInternalNote] = useState(""), [media,setMedia] = useState<MediaDraft[]>([]), [busy,setBusy] = useState(false), [error,setError] = useState("");'''
+          if state_old not in s:
+              raise SystemExit('temporary summary-state matcher not found')
+          s=s.replace(state_old,state_real,1)
+          p.write_text(s)
           PY
       - name: Apply Point 12R integration
         run: |
