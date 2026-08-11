@@ -26,7 +26,7 @@ export function AdminFormLibrary({ client, notify }: Props) {
     setForms((f.data??[]) as FormDefinition[]); setVersions((v.data??[]) as FormVersion[]); setFields((ff.data??[]) as FormField[]);
     setSelectedId((current)=>current??((f.data?.[0] as FormDefinition|undefined)?.id??null)); setLoading(false);
   },[client,notify]);
-  useEffect(()=>{void load();},[load]);
+  useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[load]);
 
   const selected=forms.find((form)=>form.id===selectedId)??null;
   const activeVersion=selected?versions.find((version)=>version.form_id===selected.id&&version.version_number===selected.active_version)??null:null;
@@ -48,14 +48,13 @@ export function AdminFormLibrary({ client, notify }: Props) {
       <div className="admin-read-list"><div><span>Estado</span><strong>{selected.status}</strong></div><div><span>Tipo</span><strong>{selected.form_type}</strong></div><div><span>Versión publicada</span><strong>v{selected.active_version}</strong></div></div>
       <div className="actions">{!draftVersion?<button type="button" className="btn" disabled={busy==="draft"} onClick={createDraft}><CopyPlus size={17}/>{busy==="draft"?"Creando…":"Crear nueva versión"}</button>:<button type="button" className="btn" disabled={busy==="publish"} onClick={publish}><CheckCircle2 size={17}/>{busy==="publish"?"Publicando…":`Publicar v${draftVersion.version_number}`}</button>}</div>
       <p className="modal-intro">{draftVersion?"Estás editando un borrador. Los envíos y la versión publicada no cambian hasta que pulses Publicar.":"La versión publicada es inmutable. Crea una nueva versión para cambiar campos."}</p>
-      <div className="form-field-admin-list">{workingFields.map((field)=><FieldRow key={field.id} field={field} editable={Boolean(draftVersion)} busy={busy===`field-${field.id}`} save={(changes)=>updateField(field,changes)}/>)}</div>
+      <div className="form-field-admin-list">{workingFields.map((field)=><FieldRow key={`${field.id}-${field.label}-${field.help_text??""}-${field.sort_order}-${field.required}-${field.active}`} field={field} editable={Boolean(draftVersion)} busy={busy===`field-${field.id}`} save={(changes)=>updateField(field,changes)}/>)}</div>
     </>:<div className="compact-empty"><FileText/><span>Selecciona un formulario.</span></div>}</section>
   </div>;
 }
 
 function FieldRow({field,editable,busy,save}:{field:FormField;editable:boolean;busy:boolean;save:(changes:Record<string,unknown>)=>Promise<void>}){
   const [label,setLabel]=useState(field.label), [help,setHelp]=useState(field.help_text??""), [order,setOrder]=useState(String(field.sort_order));
-  useEffect(()=>{setLabel(field.label);setHelp(field.help_text??"");setOrder(String(field.sort_order));},[field]);
   if(!editable)return <div className={!field.active?"inactive":""}><span className="field-order">{field.sort_order}</span><span><strong>{field.label}</strong><small>{field.field_type}{field.canonical_path?` · reutiliza ${field.canonical_path}`:""}{field.required?" · obligatorio":""}</small></span></div>;
   return <div className={!field.active?"inactive":""}><span className="field-order">{field.sort_order}</span><span className="field"><input value={label} onChange={(event)=>setLabel(event.target.value)}/><input value={help} onChange={(event)=>setHelp(event.target.value)} placeholder="Ayuda opcional"/><small>{field.field_type}{field.canonical_path?` · ${field.canonical_path}`:" · respuesta específica"}</small></span><label><small>Obligatorio</small><input type="checkbox" checked={field.required} onChange={(event)=>void save({required:event.target.checked})}/></label><label><small>Activo</small><input type="checkbox" checked={field.active} onChange={(event)=>void save({active:event.target.checked})}/></label><span className="field"><small>Orden</small><input type="text" inputMode="numeric" pattern="[0-9]*" value={order} onChange={(event)=>setOrder(event.target.value.replace(/\D/g,""))}/></span><button type="button" className="icon-btn" disabled={busy||!label.trim()} aria-label={`Guardar ${field.label}`} onClick={()=>void save({label:label.trim(),help_text:help.trim()||null,sort_order:Number(order||0)})}><Save size={17}/></button></div>;
 }
