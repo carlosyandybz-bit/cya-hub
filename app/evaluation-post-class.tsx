@@ -3,7 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CheckCircle2, CircleDot, LockKeyhole, Settings2, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getRuntimeSupabaseClient } from "./supabase-runtime";
 import styles from "./evaluation-post-class.module.css";
 
@@ -81,6 +81,10 @@ function dateLabel(value:string) {
   return new Intl.DateTimeFormat("es-ES", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" }).format(new Date(value));
 }
 
+function contextKey(personId:number,styleId:number,roleId:number,levelId:number) {
+  return `${personId}:${styleId}:${roleId}:${levelId}`;
+}
+
 export function EvaluationPostClassGate() {
   const [client,setClient]=useState<SupabaseClient|null>(null);
   const [isAdmin,setIsAdmin]=useState(false);
@@ -155,18 +159,25 @@ export function EvaluationPostClassGate() {
         setBusy("");
         return;
       }
-      const result=await client.rpc("prepare_post_class_evaluation",{
+      const result=await client.rpc("prepare_post_class_evaluations",{
         p_class_id:item.id,
         p_person_id:participant.person_id,
       });
       if (result.error) { setError(result.error.message); setBusy(""); return; }
-      prepared.push(result.data as SessionRow);
+      const rows=Array.isArray(result.data) ? result.data : result.data ? [result.data] : [];
+      prepared.push(...(rows as SessionRow[]));
+    }
+    if (!prepared.length) {
+      setError("No se ha podido preparar ninguna revisión para esta clase.");
+      setBusy("");
+      return;
     }
     setSessions(prepared);
 
-    const personIds=item.class_participants.map((row) => row.person_id);
-    const roleIds=item.class_participants.map((row) => row.role_term_id).filter((value):value is number => Boolean(value));
-    const levelIds=item.class_participants.map((row) => row.level_term_id).filter((value):value is number => Boolean(value));
+    const personIds=[...new Set(item.class_participants.map((row) => row.person_id))];
+    const styleIds=[...new Set(prepared.map((row) => row.style_term_id))];
+    const roleIds=[...new Set(prepared.map((row) => row.role_term_id))];
+    const levelIds=[...new Set(prepared.map((row) => row.level_term_id))];
 
     const [progressResult,peopleResult,scaleResult,eventResult]=await Promise.all([
       client.from("student_aptitude_progress")
@@ -179,13 +190,9 @@ export function EvaluationPostClassGate() {
     const baseError=progressResult.error || peopleResult.error || scaleResult.error || eventResult.error;
     if (baseError) { setError(baseError.message); setBusy(""); return; }
 
+    const preparedContexts=new Set(prepared.map((row) => contextKey(row.person_id,row.style_term_id,row.role_term_id,row.level_term_id)));
     const exact=((progressResult.data ?? []) as ProgressRow[]).filter((row) =>
-      row.style_term_id===item.style_term_id &&
-      item.class_participants.some((participant) =>
-        participant.person_id===row.person_id &&
-        participant.role_term_id===row.role_term_id &&
-        participant.level_term_id===row.level_term_id
-      )
+      preparedContexts.has(contextKey(row.person_id,row.style_term_id,row.role_term_id,row.level_term_id))
     );
     setProgress(exact);
     setPeople((peopleResult.data ?? []) as Person[]);
@@ -195,9 +202,10 @@ export function EvaluationPostClassGate() {
     const aptitudeIds=[...new Set(exact.map((row) => row.aptitude_term_id))];
     const sessionIds=prepared.map((row) => row.id);
     const contentIds=[...new Set(((eventResult.data ?? []) as ClassEvent[]).map((row) => row.content_id))];
+    const termIds=[...new Set([...aptitudeIds,...styleIds])];
 
-    const termResult=aptitudeIds.length
-      ? await client.from("catalog_terms").select("id,label").in("id",aptitudeIds)
+    const termResult=termIds.length
+      ? await client.from("catalog_terms").select("id,label").in("id",termIds)
       : {data:[],error:null};
     if (termResult.error) { setError(termResult.error.message); setBusy(""); return; }
     setTerms((termResult.data ?? []) as Term[]);
@@ -210,10 +218,10 @@ export function EvaluationPostClassGate() {
     if (evaluationResult.error) { setError(evaluationResult.error.message); setBusy(""); return; }
     setEvaluations((evaluationResult.data ?? []) as EvaluationRow[]);
 
-    const milestoneResult=aptitudeIds.length && roleIds.length && levelIds.length
+    const milestoneResult=aptitudeIds.length && styleIds.length && roleIds.length && levelIds.length
       ? await client.from("evaluation_milestones")
         .select("id,style_term_id,role_term_id,level_term_id,aptitude_term_id,label,threshold_score")
-        .eq("style_term_id",item.style_term_id)
+        .in("style_term_id",styleIds)
         .in("role_term_id",roleIds)
         .in("level_term_id",levelIds)
         .in("aptitude_term_id",aptitudeIds)
@@ -234,11 +242,11 @@ export function EvaluationPostClassGate() {
     if (descriptorResult.error) { setError(descriptorResult.error.message); setBusy(""); return; }
     setDescriptors((descriptorResult.data ?? []) as Descriptor[]);
 
-    const recommendationResult=contentIds.length && aptitudeIds.length && roleIds.length && levelIds.length
+    const recommendationResult=contentIds.length && aptitudeIds.length && styleIds.length && roleIds.length && levelIds.length
       ? await client.from("teaching_content_evaluation_recommendations")
         .select("id,content_id,style_term_id,role_term_id,level_term_id,aptitude_term_id")
         .in("content_id",contentIds)
-        .eq("style_term_id",item.style_term_id)
+        .in("style_term_id",styleIds)
         .in("role_term_id",roleIds)
         .in("level_term_id",levelIds)
         .in("aptitude_term_id",aptitudeIds)
@@ -255,7 +263,9 @@ export function EvaluationPostClassGate() {
     return () => window.clearTimeout(timer);
   },[loadEvaluation,pendingClass]);
 
-  const aptitudeLabel=(id:number) => terms.find((term) => term.id===id)?.label ?? "Aptitud";
+  const termLabel=(id:number) => terms.find((term) => term.id===id)?.label ?? "—";
+  const aptitudeLabel=(id:number) => termLabel(id)==="—" ? "Aptitud" : termLabel(id);
+  const styleLabel=(id:number) => termLabel(id)==="—" ? "Estilo" : termLabel(id);
   const personName=(id:number) => people.find((person) => person.id===id)?.display_name ?? "Alumno";
   const sessionFor=(row:ProgressRow) => sessions.find((session) =>
     session.person_id===row.person_id &&
@@ -322,11 +332,13 @@ export function EvaluationPostClassGate() {
     setBusy("");
   }
 
-  const reviewedCount=useMemo(() => progress.filter((row) => Boolean(evaluationFor(row)?.reviewed_at)).length,[progress,evaluations,sessions]);
+  const reviewedCount=progress.reduce((count,row) => count+(evaluationFor(row)?.reviewed_at ? 1 : 0),0);
+  const everyParticipantPrepared=Boolean(pendingClass?.class_participants.every((participant) => sessions.some((session) => session.person_id===participant.person_id)));
+  const dualReview=Boolean(pendingClass && sessions.length>pendingClass.class_participants.length);
   const canFinish=Boolean(
     pendingClass &&
     progress.length>0 &&
-    sessions.length===pendingClass.class_participants.length &&
+    everyParticipantPrepared &&
     reviewedCount===progress.length &&
     busy!=="prepare"
   );
@@ -351,19 +363,22 @@ export function EvaluationPostClassGate() {
       <div className={styles.notice}>
         <LockKeyhole/>
         <div>
-          <strong>La evaluación la fija el profesor</strong>
-          <span>Responde cada pregunta con lo que observas. El contenido solo puede recomendar qué conviene revisar; nunca suma puntos.</span>
+          <strong>{dualReview ? "Revisión dual Bachata + Bachazouk" : "La evaluación la fija el profesor"}</strong>
+          <span>{dualReview ? "Este alumno ya tiene ambos estilos evaluados para el mismo rol. CYA revisa los dos contextos y conserva el nivel independiente de cada uno." : "Responde cada pregunta con lo que observas. El contenido solo puede recomendar qué conviene revisar; nunca suma puntos."}</span>
         </div>
       </div>
 
       {busy==="prepare" ? <div className={styles.loading}><span/><p>Preparando las preguntas de la clase…</p></div> : null}
 
       {busy!=="prepare" ? <div className={styles.people}>{pendingClass.class_participants.map((participant) => {
-        const rows=progress.filter((row) => row.person_id===participant.person_id);
+        const rows=progress
+          .filter((row) => row.person_id===participant.person_id)
+          .sort((a,b) => styleLabel(a.style_term_id).localeCompare(styleLabel(b.style_term_id),"es") || aptitudeLabel(a.aptitude_term_id).localeCompare(aptitudeLabel(b.aptitude_term_id),"es"));
         const reviewed=rows.filter((row) => Boolean(evaluationFor(row)?.reviewed_at)).length;
+        const personStyles=[...new Set(rows.map((row) => styleLabel(row.style_term_id)))];
         return <article key={participant.person_id} className={styles.personCard}>
           <div className={styles.personHead}>
-            <div><span>Alumno</span><h2>{personName(participant.person_id)}</h2></div>
+            <div><span>Alumno</span><h2>{personName(participant.person_id)}</h2>{personStyles.length>1 ? <small className={styles.personContexts}>{personStyles.join(" + ")}</small> : null}</div>
             <b>{reviewed}/{rows.length} revisadas</b>
           </div>
           <div className={styles.questionList}>{rows.map((row) => {
@@ -378,6 +393,7 @@ export function EvaluationPostClassGate() {
             return <div className={`${styles.questionRow} ${evaluation?.reviewed_at ? styles.questionReviewed : ""}`} key={row.id}>
               <div className={styles.questionHead}>
                 <div>
+                  <span className={styles.styleChip}>{styleLabel(row.style_term_id)}</span>
                   <strong>{aptitudeLabel(row.aptitude_term_id)}</strong>
                   {recommended ? <span className={styles.recommended}><Sparkles/> Recomendado revisar por el contenido trabajado</span> : <span className={styles.standardReview}><CircleDot/> Revisión obligatoria</span>}
                 </div>
