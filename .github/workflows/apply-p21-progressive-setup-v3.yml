@@ -1,0 +1,58 @@
+name: Apply P21 progressive setup v3
+
+on:
+  push:
+    branches:
+      - p21/dar-clase-definitivo
+    paths:
+      - '.github/workflows/apply-p21-progressive-setup-v3.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p21/dar-clase-definitivo
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Correct P21.3 helper and regression scope
+        shell: python
+        run: |
+          from pathlib import Path
+          path=Path('tools/p21_apply_progressive_setup.py')
+          text=path.read_text()
+          old_sub="app,count=pattern.subn(replacement,app,count=1)"
+          new_sub="app,count=pattern.subn(lambda _match: replacement,app,count=1)"
+          if text.count(old_sub) != 1:
+              raise SystemExit(f'subn marker expected once, got {text.count(old_sub)}')
+          text=text.replace(old_sub,new_sub,1)
+          old_test="""test('P21.3 manual class creation promises canonical reuse instead of re-asking everything', () => {\n  const draft = sliceBetween(app, 'function ManualClassDraft(', 'function ClassSetupStage(');\n  assert.match(draft, /CYA reutilizará fecha, duración y el contexto de baile que ya conozca/);\n  assert.doesNotMatch(draft, /Después confirmarás fecha, duración, estilo, rol, nivel, lugar y bono/);\n});"""
+          new_test="""test('P21.3 manual class creation promises canonical reuse instead of re-asking everything', () => {\n  assert.match(app, /CYA reutilizará fecha, duración y el contexto de baile que ya conozca/);\n  assert.doesNotMatch(app, /Después confirmarás fecha, duración, estilo, rol, nivel, lugar y bono/);\n});"""
+          if text.count(old_test) != 1:
+              raise SystemExit(f'test marker expected once, got {text.count(old_test)}')
+          path.write_text(text.replace(old_test,new_test,1))
+      - name: Apply progressive setup
+        run: python tools/p21_apply_progressive_setup.py
+      - name: Regressions
+        run: node --test tests/p21-dar-clase.test.mjs tests/start-class-transition.test.mjs tests/class-summary-content-editor.test.mjs tests/p19-persona-unica.test.mjs tests/p17-evaluation-cutover.test.mjs
+      - name: Lint
+        run: npx eslint app/cya-app.tsx app/class-summary-content-editor.tsx app/person-identity-editor.tsx
+      - name: Build
+        run: npm run build
+      - name: Persist P21.3
+        run: |
+          git config user.name 'cya-hub-automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add app/cya-app.tsx tests/p21-dar-clase.test.mjs docs/P21_DAR_CLASE_RECONCILIACION.md tools/p21_apply_progressive_setup.py
+          git commit -m 'P21.3: make class setup progressive'
+          git push origin HEAD:p21/dar-clase-definitivo
