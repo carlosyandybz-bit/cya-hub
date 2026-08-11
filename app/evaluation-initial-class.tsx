@@ -142,7 +142,7 @@ export function InitialEvaluationClassGate(){
   },[client]);
 
   useEffect(()=>{
-    if(!candidate){setSession(null);setProgress([]);setEvaluations([]);setPerson(null);setCurrentAptitudeId(null);return;}
+    if(!candidate)return;
     const timer=window.setTimeout(()=>void loadSession(candidate),0);
     return()=>window.clearTimeout(timer);
   },[candidate,loadSession]);
@@ -165,8 +165,8 @@ export function InitialEvaluationClassGate(){
     setBusy("answer");setError("");
     const result=await client.rpc("review_evaluation_question",{p_session_id:session.id,p_progress_id:current.id,p_scale_term_id:scaleId,p_descriptor_id:descriptorId,p_note:null});
     if(result.error){setError(result.error.message);setBusy("");return;}
-    await loadSession(candidate);
     const nextIndex=sortedProgress.findIndex((row,index)=>index>currentIndex&&!evaluations.find((evaluation)=>evaluation.aptitude_term_id===row.aptitude_term_id)?.reviewed_at);
+    await loadSession(candidate);
     if(nextIndex>=0)setCurrentAptitudeId(sortedProgress[nextIndex].aptitude_term_id);
     setBusy("");
   }
