@@ -1,5 +1,6 @@
 name: Validate P17 evaluation cutover
 
+# Validates the exact P17 head that is eligible for merge.
 on:
   pull_request:
     paths:
