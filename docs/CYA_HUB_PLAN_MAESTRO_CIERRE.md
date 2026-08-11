@@ -1,12 +1,12 @@
 # CYA HUB — PLAN MAESTRO ÚNICO DE CIERRE
 
-Versión: **3.5**  
+Versión: **3.6**  
 Fecha de corte: **2026-08-11**  
 Repositorio canónico: `carlosyandybz-bit/cya-hub`  
 Producción: `main` + Supabase `CyA hub 2` + Hostinger  
-Última actualización secuencial cerrada: **P18 / v46**  
-Adelantos/correctivos cerrados durante P18: **F42/P32 v44–v44e + P21 v45/resumen editable + transición de inicio de clase**  
-Siguiente actualización: **P19 — Alumnado + persona única + identidades**
+Última actualización secuencial cerrada: **P19 / v47**  
+Adelantos/correctivos preservados: **F42/P32 v44–v44e + P21 v45/resumen editable + transición fiable de inicio + alta rápida provisional P19↔P21**  
+Siguiente actualización: **P20 — Formularios versionados + datos canónicos**
 
 ---
 
@@ -50,6 +50,7 @@ Cuando aparezca una mejora o error nuevo:
 - **P16 — límites RLS de alumnado/clases, migración v42, validación autenticada 17/17 en producción.**
 - **P17 — Evaluaciones: reconciliación, frontend guiado, runtime Hostinger demostrado y migración v43 aplicada en producción.**
 - **P18 — Identidad, roles, navegación y “Ver como”, con cambio de vista autorizado en servidor mediante v46.**
+- **P19 — Alumnado + persona única + identidades, lifecycle derivado y protección de identidad mediante v47.**
 - **Adelanto F42/P32 — Administración → Datos → Borrado y reinicio seguro, backend v44–v44e aplicado y frontend fusionado.**
 - **Correctivo adelantado P21 — resumen pedagógico editable antes del cierre, RLS recursiva corregida mediante v45 y búsqueda/creación postadministrativa habilitada.**
 - **Correctivo adelantado P21 — iniciar una clase preparada ya no depende de recargas de Marketing y no puede quedar bloqueado indefinidamente en “Abriendo…”.**
@@ -100,9 +101,9 @@ Cuando aparezca una mejora o error nuevo:
 
 ## 🟣 Siguiente punto
 
-### P18 — Identidad, roles, navegación y “Ver como”
+### P20 — Formularios versionados + datos canónicos
 
-P18 debe consolidar la arquitectura multirol y la navegación definitiva antes de continuar con Alumnado, Formularios y Dar clase.
+P20 debe convertir formularios y datos repetidos en un sistema reusable y versionado, apoyado en la persona canónica cerrada en P19. Debe auditar primero qué formularios históricos siguen aportando valor, reutilizar datos ya conocidos y evitar que una misma respuesta se almacene o pregunte dos veces.
 
 ---
 
@@ -263,7 +264,7 @@ Absorbe las reglas de navegación y multirol que deben quedar definitivas.
 
 ---
 
-## P19 — Alumnado + persona única + identidades 🟣 SIGUIENTE
+## P19 — Alumnado + persona única + identidades ✅ CERRADO
 
 Absorbe F21–F25 excepto el motor reusable de formularios, que vive en P20.
 
@@ -290,9 +291,33 @@ En `Dar clase → Seleccionar alumno` debe existir:
 
 sin abandonar el flujo. Al crearlo queda seleccionado y puede recibir clase, bono, evaluación y enseñanza inmediatamente.
 
+### Evidencia de cierre P19
+
+- `public.people` queda como persona canónica; CRM, alumnado, Auth y operaciones se relacionan con el mismo `person_id`;
+- el ciclo Potencial / Provisional / Registrado es **derivado**, no una columna mutable duplicada:
+  - potencial = persona activa sin `student_profiles` activo;
+  - provisional = ficha alumno activa sin `auth_user_id`;
+  - registrado = ficha alumno activa con `auth_user_id`;
+- `crm_stage` permanece separado como estado comercial;
+- v47 normaliza email/teléfono y reutiliza una coincidencia única en altas CRM/alumnado;
+- coincidencias ambiguas se bloquean: CYA no fusiona automáticamente dos personas distintas;
+- advisory locks transaccionales reducen carreras de dos altas simultáneas de la misma identidad;
+- `create_student`, `save_crm_contact` y `enable_provisional_student` conservan/reutilizan la persona existente;
+- `save_person_identity` permite editar desde Alumnado nombre, apellidos, email, teléfono, país, objetivos, notas internas y salud sin crear otra ficha;
+- `private.link_confirmed_student` vincula Auth a la persona existente cuando la coincidencia por email es inequívoca y ya no usa nombres genéricos como fallback;
+- Marketing/CRM muestra Potencial / Provisional / Registrado aparte del estado comercial;
+- `Dar clase → Empezar otra clase` permite `Crear alumno provisional` sin abandonar el flujo y lo selecciona tras crear/reutilizar la persona;
+- el refresco de inicio de clase incluye Operaciones + Alumnado, mantiene Enseñanza secundaria y **Marketing sigue fuera** de la transición;
+- dry-run autenticado v47 dentro de `BEGIN/ROLLBACK`: Potencial → Provisional reutilizó el mismo `person_id`, la edición conservó identidad y una colisión fue bloqueada;
+- v47 aplicada en producción con ledger `20260811192818`;
+- smoke autenticado posterior volvió a probar Potencial → Provisional sobre el mismo ID y el rollback dejó exactamente las 3 personas previas;
+- PR #17 fusionada a `main` mediante squash commit `cb3ba79df13f46cf233290a8df6e37153d18a8d9`;
+- CI final del mismo head: P19 6/6 + lint + build, P18 + build, resumen editable + build e inicio de clase + build, todos correctos;
+- contrato técnico detallado en `docs/P19_PERSONA_UNICA_IDENTIDADES.md`.
+
 ---
 
-## P20 — Formularios versionados + datos canónicos ⏳
+## P20 — Formularios versionados + datos canónicos 🟣 SIGUIENTE
 
 ### Objetivo
 
@@ -411,9 +436,11 @@ No ocultar una corrección por estar ya asignada.
 - estos vídeos **no crean nodos, relaciones ni prerrequisitos de árboles**;
 - reabrir clase debe revertir coherentemente artefactos de cierre y dejar auditoría.
 
-### Correctivos adelantados ya implementados durante P18
+### Correctivos adelantados ya implementados durante P18/P19
 
 Estos cambios pertenecen funcionalmente a P21, pero fueron adelantados por incidencias bloqueantes y **deben revalidarse cuando P21 sea el paquete secuencial activo**:
+
+- P19 ya permite crear/reutilizar un provisional dentro de `Empezar otra clase`, refrescar Alumnado y seleccionarlo sin abandonar el flujo; P21 debe conservarlo y revalidarlo dentro del Dar clase definitivo;
 
 - el resumen pedagógico final incluye `Revisar contenido trabajado` antes de cerrar;
 - desde el resumen se puede añadir contenido olvidado y crear contenido rápido;
@@ -799,7 +826,7 @@ Absorbe F42–F46 y todos los gates pendientes.
 
 ### Reset previo a lanzamiento — BASE IMPLEMENTADA ANTICIPADAMENTE
 
-La infraestructura v44–v44d ya existe. P32 **no debe reconstruirla**: debe someterla a QA final y confirmar que sigue siendo compatible con el esquema que exista al final del proyecto.
+La infraestructura v44–v44e ya existe. P32 **no debe reconstruirla**: debe someterla a QA final y confirmar que sigue siendo compatible con el esquema que exista al final del proyecto.
 
 Base disponible:
 
@@ -910,7 +937,7 @@ Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P18�
 | F11 buscador Dar clase | → P21 |
 | F12–F15 evaluaciones | ✅ cerrado en P17 |
 | F16–F20 Enseñanza | → P23 |
-| F21–F25 Personas/Alumnado | → P19 + P20 + cruce P21 |
+| F21–F25 Personas/Alumnado | ✅ persona/identidad base cerrada en P19; formularios → P20; alta rápida → revalidar P21 |
 | F26–F31 Marketing | → P29 |
 | F32–F33 Misiones/worker | → P25 |
 | F34 notificaciones automáticas | → P27 |
@@ -920,7 +947,7 @@ Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P18�
 | F38 integraciones | → P31 |
 | F39 apariencia | → P31 |
 | F40–F41 estadísticas | → P30 |
-| F42 reset | ✅ base implementada v44–v44d; reauditoría final → P32 |
+| F42 reset | ✅ base implementada v44–v44e; reauditoría final → P32 |
 | F43 seguridad/destructivas | → G6 + P31 + P32; reset ya aplica G6 reforzado |
 | F44 QA integral | → P32 |
 | F45 auditoría funcional final | → P32 |
@@ -967,14 +994,18 @@ Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P18�
 | búsqueda/creación de enseñanza no funcionaba tras cierre administrativo | ✅ v45 mientras `pedagogy_closed_at` siga vacío |
 | comenzar clase podía quedarse en `Abriendo…` por refrescos ajenos | ✅ correctivo adelantado P21; transición operativa desacoplada de Marketing |
 | `Ver como` solo confiaba en preferencia frontend | ✅ P18/v46; autorización de contexto en servidor sin escalada |
+| CRM/Alumnado podían crear fichas duplicadas por la misma identidad | ✅ P19/v47; reutilización conservadora por email/teléfono y bloqueo de ambigüedad |
+| Potencial / Provisional / Registrado podían convertirse en otro estado duplicado | ✅ P19; lifecycle derivado desde persona + ficha alumno + Auth |
+| ficha de Alumnado no permitía editar datos canónicos | ✅ P19; editor de identidad sobre la misma persona |
+| crear provisional obligaba a salir de Dar clase | ✅ P19↔P21; alta rápida in-flow implementada, revalidar en P21 |
 
 ---
 
 # 6. Orden inmediato desde este corte
 
-**P19 → P20 → P21 → P22 → P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
+**P20 → P21 → P22 → P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
 
-Los adelantos F42/P32 y P21 realizados durante P18 **no modifican este orden**. Cuando llegue cada P original se revalida la implementación existente en lugar de recrearla.
+Los adelantos F42/P32 y P21 realizados durante P18/P19 **no modifican este orden**. Cuando llegue cada P original se revalida la implementación existente en lugar de recrearla.
 
 No volver al antiguo orden F8 → F3B → F9… como secuencia de implementación: esos requisitos siguen vigentes, pero están absorbidos en la secuencia P moderna.
 
@@ -996,5 +1027,7 @@ No volver al antiguo orden F8 → F3B → F9… como secuencia de implementació
 12. **La verdad de Supabase se comprueba en el esquema real, no solo en el historial de migraciones.**
 13. **Un reinicio masivo nunca se ejecuta sin copia completa reciente, impacto visible, frase exacta y segunda confirmación.**
 14. **El reinicio de datos nunca elimina Auth, roles de acceso, migraciones ni la configuración técnica necesaria para volver a entrar en CYA Hub.**
+15. **Una identidad humana se representa por una única persona canónica; habilitar CRM, alumno, Auth o nuevas capacidades no crea una ficha paralela.**
+16. **Potencial / Provisional / Registrado se deriva de datos reales; no se duplica como otro estado mutable que pueda desincronizarse.**
 
 Este documento sustituye las hojas parciales anteriores y será el listado que se actualice al inicio y cierre de cada P.
