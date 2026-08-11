@@ -86,6 +86,12 @@ test('teacher notes have a server-enforced staff-only visibility floor',()=>{
   assert.match(builder,/audiences[^\n]*staff[^\n]*editable_by[^\n]*staff/);
 });
 
+test('PLpgSQL row values are loaded separately from scalar status values',()=>{
+  assert.doesNotMatch(sql,/select\s+ff\s*,\s*fv\.status/i);
+  assert.doesNotMatch(sql,/select\s+fv\.status\s*,\s*fd\.\*/i);
+  assert.match(sql,/select ff\.\* into v_field[\s\S]*select fv\.status into v_status[\s\S]*select fd\.\* into v_form/);
+});
+
 test('runtime renderer supports minimum field types and G3 numeric behavior',()=>{
   for (const type of ['information','text','textarea','select','multiselect','checkbox','number','date','email','phone']) assert.match(runtime,new RegExp(`\\"${type}\\"`));
   assert.match(runtime,/inputMode=\{decimal \? "decimal" : "numeric"\}/);
