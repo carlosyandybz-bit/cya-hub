@@ -15,6 +15,18 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Fix temporary integration matcher
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/apply-point12r.py')
+          s=p.read_text()
+          old="re.subn(r'<ClassFinalSummary\\b[^>]*?/>',add_terms,s,count=1)"
+          new="re.subn(r'<ClassFinalSummary\\b.*?/>',add_terms,s,count=1)"
+          if old not in s:
+              raise SystemExit('temporary matcher not found')
+          p.write_text(s.replace(old,new,1))
+          PY
       - name: Apply integration patch
         run: python3 scripts/apply-point12r.py
       - name: Install dependencies
