@@ -49,7 +49,15 @@ test('student personal v2 is canonical and reconciles historical stale fields',(
   assert.match(sql,/\('student_personal','birth_date','date'/);
   assert.match(sql,/\('student_personal','motivation','textarea'/);
   assert.match(sql,/\('student_dance','context_info','information'/);
-  assert.match(sql,/form_key in \('teacher_profile','onboarding_additional'\)/);
+  assert.match(sql,/active_version=2/);
+});
+
+test('generic runtime cannot impersonate domain-service forms',()=>{
+  assert.match(sql,/runtime_engine','generic_v1'/);
+  assert.match(sql,/runtime_engine','domain_service'/);
+  assert.match(sql,/flujo de negocio específico y no se ejecuta con el motor genérico/);
+  assert.match(sql,/flujo de negocio específico y no puede activarse en el motor genérico/);
+  assert.match(sql,/where form_key not in \('student_personal','student_dance','onboarding'\)/);
 });
 
 test('runtime renderer supports minimum field types and G3 numeric behavior',()=>{
