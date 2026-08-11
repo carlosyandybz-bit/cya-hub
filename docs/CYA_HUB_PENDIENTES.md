@@ -1,226 +1,220 @@
 # CYA HUB — PENDIENTES VIVOS
 
-**Versión:** 1.2  
-**Fecha de corte:** 11 de agosto de 2026 — 15:14+ (Europe/Madrid)  
-**Baseline funcional:** P16/v42 verificada en Supabase producción  
-**Baseline GitHub previo a este bloque:** `a8acf2bf161535d4b84be1ae651d530ddc9248c5`
+**Versión:** 1.3  
+**Fecha de corte:** 11 de agosto de 2026  
+**Plan operativo:** `docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md` (B00–B12)  
+**Auditoría de evidencia:** `docs/PARITY_AUDIT_2026-08-11.md`
 
-## Regla de uso
+> Este archivo se mantiene como registro vivo de estados/evidencias porque el usuario exige recibirlo actualizado después de cada implementación. El **orden de ejecución** lo gobierna el Plan Maestro B00–B12.
 
-Este archivo es el tablero maestro de pendientes. Después de cada implementación se actualiza el estado, se añade evidencia, se registran regresiones/deudas nuevas, se mueven los elementos cerrados y se entrega al usuario una copia actualizada.
+Estados: 🔴 PENDIENTE · 🟠 REQUIERE PRODUCCIÓN/E2E · 🟡 PARCIAL · 🟢 CERRADO/VERIFICADO · ⚫ DESCARTADO.
 
-Estados: 🔴 PENDIENTE · 🟠 REQUIERE VERIFICACIÓN · 🟡 PARCIAL · 🟢 CERRADO · ⚫ DESCARTADO.
-
-Prioridades: P0 seguridad/producción/pérdida de datos · P1 flujo esencial · P2 paridad/UX importante · P3 acabado/deuda.
-
-# Baseline cerrado
+# Cerrado
 
 ## C-001 — P16/v42 RLS alumno–clases
-**Estado:** 🟢 CERRADO · **Prioridad histórica:** P0
+**Estado:** 🟢 CERRADO / PRODUCCIÓN
 
-Evidencia: dry-run 11/11; producción 17/17; migración `20260811124729 / v42_rls_student_class_correlation`; PR #2 fusionada; merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`; `student_message` preservado; `internal_note` aislada; operaciones ajenas bloqueadas; acceso staff preservado.
+- dry-run 11/11;
+- producción 17/17;
+- `20260811124729 / v42_rls_student_class_correlation`;
+- PR #2;
+- merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`.
 
-## P-003 — Consolidar cadena SQL/migraciones documentada
-**Estado:** 🟢 CERRADO · **Prioridad:** P2
+## P-003 — Baseline de migraciones
+**Estado:** 🟢 CERRADO
 
-Cerrado el 11/08/2026 mediante auditoría directa de `supabase_migrations.schema_migrations` y del árbol `supabase/` del repositorio.
+- 52 migraciones registradas;
+- primera `20260808214303 / teaching_module`;
+- última `20260811124729 / v42_rls_student_class_correlation`;
+- PR #3, squash `a8acf2bf161535d4b84be1ae651d530ddc9248c5`;
+- `docs/DATABASE_MIGRATION_BASELINE.md`.
 
-Evidencia:
+## P-025 — 18 fuentes SQL históricas
+**Estado:** 🟢 CERRADO
 
-- 52 migraciones registradas en producción.
-- Primera: `20260808214303 / teaching_module`.
-- Última: `20260811124729 / v42_rls_student_class_correlation`.
-- Se distinguen migraciones registradas, SQL conservados, bootstrap pre-registro y SQL preparados/no aplicados.
-- `v35c-enforce-post-class-evaluation.sql` existe en GitHub pero no figura aplicada.
-- `v41c-final-evaluation-cutover-PREPARED-NOT-APPLIED.sql` está explícitamente marcada como no aplicada y tampoco figura en producción.
-- Referencia canónica: `docs/DATABASE_MIGRATION_BASELINE.md`.
-- PR #3 fusionada en `main`, squash `a8acf2bf161535d4b84be1ae651d530ddc9248c5`.
+- 18/18 recuperadas desde `schema_migrations.statements[1]`;
+- archivadas en `supabase/applied-history/`;
+- 18/18 verificadas byte por byte mediante Git blob SHA;
+- ninguna fue reejecutada;
+- PR #4, merge `5999542e6b4bb258aff93aee3b96f6f0d255dda8`.
 
-## P-025 — Recuperar 18 SQL aplicados sin archivo independiente
-**Estado:** 🟢 CERRADO · **Prioridad:** P2
+# B00 — base técnica / bloqueos externos
 
-Cerrado el 11/08/2026 como **archivo histórico**, sin ejecutar ni reaplicar SQL.
-
-Evidencia:
-
-- Se extrajeron exclusivamente de `supabase_migrations.schema_migrations.statements[1]` las 18 fuentes que no tenían archivo independiente.
-- Se conservaron versión y nombre originales en `supabase/applied-history/`.
-- El directorio está marcado **ARCHIVO HISTÓRICO — NO APLICAR / NO EJECUTAR**.
-- Para cada fuente se calculó en producción el SHA-1 de objeto Git `blob` sobre los bytes originales.
-- Los **18/18 SHA calculados desde Supabase coinciden exactamente con los `sha` de los archivos de GitHub**: verificación byte por byte.
-- También se conserva un MD5 auxiliar por migración en el manifiesto.
-- No se modificó el esquema, no se creó ninguna entrada nueva en `schema_migrations` y no se ejecutó ninguna sentencia archivada.
-
-# Pendientes activos confirmados
-
-## P-001 — Verificar despliegue Hostinger después de P16
+## P-001 — runtime Hostinger
 **Estado:** 🔴 PENDIENTE · **Prioridad:** P0
 
-Comprobado el 11/08/2026:
+GitHub está identificado, pero el conector Hostinger cargado en esta sesión no expone despliegues/logs Node.js. No se declarará producción verificada sin evidencia.
 
-- GitHub `main` contiene P16 mediante el merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`.
-- El baseline documental posterior fue fusionado en `a8acf2bf161535d4b84be1ae651d530ddc9248c5`.
-- El conector Hostinger disponible en esta sesión no expone hosting Node.js, despliegues ni logs; por rigor, no se declara el runtime actualizado.
+**Cierre:** commit desplegado + `/` + `/api/runtime-config` + login/sesión + smoke de módulos/portal + secretos/runtime.
 
-**Cierre:** comprobar commit desplegado, `/`, `/api/runtime-config` (`configured:true`), login/sesión Supabase, Inicio, Alumnado, Enseñanza, Dar clase, Marketing, Administración, portal alumno, ausencia de secretos y errores runtime relevantes.
-
-## P-002 — Protección de contraseñas filtradas en Supabase Auth
+## P-002 — Leaked Password Protection
 **Estado:** 🔴 PENDIENTE CONFIRMADO · **Prioridad:** P1
 
-Security Advisors de `CyA hub 2` confirma el warning **`Leaked Password Protection Disabled`**. Es una configuración de Supabase Auth y no debe intentarse corregir mediante SQL.
+Security Advisors confirma `Leaked Password Protection Disabled`. Es ajuste de Supabase Auth, no SQL.
 
-**Cierre:** habilitar Leaked Password Protection cuando el plan/configuración lo permita, volver a ejecutar Security Advisors y verificar login/recuperación.
+# B01/B02 — navegación, multirol, personas
 
-# Fuera de alcance de auditoría visual v23
+## P-020 — navegación principal
+**Estado:** 🟠 VERIFICADO CÓDIGO / FALTA E2E
 
-## P-004 — Identidad visual definitiva
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P2
+Implementado: **Inicio | Alumnado | DAR CLASE | Enseñanza | Marketing**. Falta gate Hostinger/iPhone.
 
-Colores CYA, logo, cabecera y coherencia visual global.
+## P-013 — multirol / Ver como
+**Estado:** 🟠 VERIFICADO CÓDIGO+BD / FALTA E2E
 
-## P-005 — Tipografía/apariencia desde Administración
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P3
+- selector Profesor/Alumno/Administrador condicionado por capacidades reales;
+- producción tiene una identidad con `admin + teacher + student` activos;
+- cambio de portal no modifica permisos reales.
 
-Debe respetar la identidad definida y no reintroducir modo oscuro/contrastes no deseados sin decisión expresa.
+## P-022 — fuente canónica de personas
+**Estado:** 🟡 PARCIAL · **Prioridad:** P1
 
-## P-006 — Rediseño definitivo de Evaluaciones
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P1
+Correcto hoy:
 
-Conservar INICIO/INTERMEDIO/AVANZADO, valores 0/25/50/75/100, cinco opciones rápidas por parámetro, experiencia táctil, persistencia y radares según contrato pedagógico.
+- CRM y alumnado comparten `people`;
+- `auth_user_id` único;
+- 0 grupos duplicados por email normalizado;
+- 0 grupos duplicados por teléfono normalizado.
 
-## P-007 — Rediseño definitivo de Dar clase
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P1
+Brecha real:
 
-Validar paridad completa: programada/manual; 3 minutos iniciales; notas rápidas; correcciones anteriores; buscador unificado Correcciones/Explicaciones/Ejercicios/Secuencias; Crear rápido; pareja; evaluación; Guía; Trabajo de hoy; terminar/cerrar; asistencia; pago/bono; persistencia; concurrencia prevista; navegación sin regresiones.
+- email no es UNIQUE;
+- `create_student` inserta persona nueva sin resolver coincidencia;
+- `save_crm_contact` hace lo mismo cuando `p_person_id` es null.
 
-## P-008 — Árboles/mapas táctiles de Enseñanza
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P1
-
-Relaciones entre tipos, prerequisitos, homólogas L/F, estilos, niveles, zoom/pan/centrar/ruta/reset/búsqueda y UX iPhone.
-
-## P-009 — Rediseño funcional de Marketing
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P2
-
-Experiencia integrada para CRM, contactos, tarifas, contenido, campañas, comunicaciones, multimedia, eventos y métricas.
-
-## P-010 — Rediseño de Estadísticas
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P2
-
-Definir KPIs, jerarquía, filtros, navegación táctil y relaciones con alumnado, enseñanza, CRM y negocio. La corrección responsive no equivale a diseño funcional final.
-
-# Paridad funcional — requiere verificación actual
-
-Estos requisitos están consolidados en conversaciones y/o tuvieron trabajo previo, pero no se declaran cerrados sin evidencia reciente contra la app web actual.
-
-## P-011 — Inicio contextual
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
-
-Saludo por hora/nombre; frase diaria persistente; clase próxima dominante 30 min antes; siguiente acción; avisos; accesos rápidos; resumen del día; Administración; Ver como; cuenta/perfil.
-
-## P-012 — Motor de Misiones
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
-
-Tipos, estados, prioridades, reglas iniciales, vencimientos, bloqueo, duplicados, destinatarios, canales, horas silenciosas, configuración servidor/BD e integración Inicio/calendario.
-
-## P-013 — Multirol real y Ver como
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
-
-Profesor+Alumno simultáneo; Administrador autorizado; profesor autoevaluable; portal alumno; Ver como Profesor/Alumno/Administrador; sin escalada; seguridad server-side/RLS.
-
-## P-014 — Agenda/calendario
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
-
-Día/Semana/Mes/Lista; clases/misiones/eventos; conflictos; Google Calendar; id externo; sync idempotente; errores; no destruir participantes/saldos/historia.
-
-## P-015 — Formularios versionables
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
-
-Definición/versión, campos/opciones, requerido, visibilidad, condiciones, validación, orden, formularios históricos, validación servidor, datos canónicos y ausencia de preguntas duplicadas.
-
-## P-016 — Importación/exportación integral
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
-
-Alumnos, contactos, clases, bonos, Correcciones, Explicaciones, Ejercicios, Secuencias, evaluaciones y configuración relevante; operaciones transaccionales y sin duplicación.
-
-## P-017 — Notificaciones
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P2
-
-Eventos, destinatarios, canales, persistencia, lectura, deduplicación e integración misiones/clases/bonos.
-
-## P-018 — Portal alumno completo
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
-
-Próxima clase, historial, bonos/saldo, formación, multimedia, evolución, evaluaciones, perfil, preparación de clase, aislamiento de notas internas y RLS. P16 cerró seguridad concreta, no toda la paridad funcional.
+**Siguiente corrección recomendada:** endurecer identidad/deduplicación antes de ampliar conversiones/formularios.
 
 ## P-019 — Alumnado como módulo único
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
+**Estado:** 🟡 PARCIAL
 
-Potenciales/provisionales/registrados, conversiones sin pérdida, nombres correctos, clases, bonos, saldo, historial, formación, incidencias, programar, añadir bono e identidad unificada.
+Existe ficha maestra con Resumen/Formación/Evaluación/Clases/Bonos/Datos/CRM, perfiles de baile, incidencias y acciones. No se cierra hasta resolver P-022 y ejecutar conversión contacto→provisional→alumno→registrado sin duplicación/pérdida.
 
-## P-020 — Navegación principal definitiva
-**Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
+# B03 — formularios e import/export
 
-Contrato: **Inicio | Alumnado | DAR CLASE | Enseñanza | Marketing**. Sin hamburguesa para funciones clave; DAR CLASE central; back/contexto correcto; iPhone y escritorio coherentes.
+## P-015 — formularios versionables
+**Estado:** 🟡 PARCIAL
 
-# Datos y almacenamiento — controles permanentes
+Producción: 18 formularios activos, 18 versiones activas, 68 campos activos. Administración gestiona parte del catálogo, pero los formularios operativos siguen mayoritariamente codificados en React: falta renderer reusable que aplique opciones/condiciones/visibilidad/validación/canonical_path.
 
-## P-021 — Multimedia por referencias externas
-**Estado:** 🟠 REQUIERE VERIFICACIÓN CONTINUA · **Prioridad:** P1
+## P-016 — importación/exportación integral
+**Estado:** 🟠 VERIFICADO CÓDIGO+BD / FALTA E2E
 
-Fotos/vídeos en Google Drive; Supabase solo referencias/IDs/metadatos; sin multimedia operativa pesada en GitHub/DB.
+Existe XLSX/CSV/JSON, preview, estrategias de duplicados, exportación por dominios y backup/restore completo no destructivo con cobertura de personas, clases, bonos, enseñanza, evaluaciones, CRM, misiones, formularios y configuración.
 
-## P-022 — Fuente única de verdad de datos canónicos
-**Estado:** 🟠 REQUIERE VERIFICACIÓN CONTINUA · **Prioridad:** P1
+# B04/B05/B07/B09/B11 — pendientes de rediseño/validación ya conocidos
 
-Evitar duplicar personas/roles, volver a pedir datos, divergencias CRM/alumno/clase o mezclar expediente comercial/pedagógico.
+## P-007 — Dar clase
+**Estado:** 🔴 PENDIENTE FINAL · **Prioridad:** P1
+
+Validar/rediseñar el flujo completo de selección→3 min→trabajo→terminar/cerrar, buscador unificado, pareja, evaluación, saldo y persistencia.
+
+## P-006 — Evaluaciones
+**Estado:** 🔴 PENDIENTE FINAL · **Prioridad:** P1
+
+Contrato 0/25/50/75/100, niveles, persistencia, radares, reevaluación y UX táctil.
+
+## P-008 — Árboles de Enseñanza
+**Estado:** 🔴 PENDIENTE FINAL · **Prioridad:** P1
+
+Relaciones, prerequisitos, L/F, estilos/niveles, zoom/pan/rutas y UX iPhone.
+
+## P-009 — Marketing
+**Estado:** 🔴 PENDIENTE DE REDISEÑO FUNCIONAL · **Prioridad:** P2
+
+## P-010 — Estadísticas
+**Estado:** 🔴 PENDIENTE DE REDISEÑO FUNCIONAL · **Prioridad:** P2
+
+## P-004 — identidad visual
+**Estado:** 🔴 PENDIENTE · **Prioridad:** P2
+
+## P-005 — tipografía/apariencia admin
+**Estado:** 🔴 PENDIENTE · **Prioridad:** P3
+
+# B06 — portal alumno
+
+## P-018 — Portal alumno
+**Estado:** 🟡 PARCIAL
+
+Verificado: clases, bonos/saldo, formación, multimedia autorizada, evaluación/evolución y mensajes filtrados; P16 protege `internal_note`.
+
+Brecha: existe `class_preparation_requests` y el profesor las lee, pero no se localiza UI de alumno para crear/editar la preparación previa.
+
+# B08 — Inicio, Misiones, Agenda, Notificaciones
+
+## P-011 — Inicio contextual
+**Estado:** 🟠 VERIFICADO CÓDIGO+BD / FALTA HOSTINGER
+
+Verificado: saludo por nombre/hora, frase diaria, próxima clase dominante ±30 min, siguiente misión, accesos rápidos, resumen, Administración, notificaciones, cuenta/perfil y cambio de portal. Producción contiene 15 frases activas.
+
+## P-012 — Motor de Misiones
+**Estado:** 🟡 PARCIAL
+
+Backend/BD: 8 reglas iniciales activas y soporte de frecuencia, días/hora, peso, anticipación, máximo, duplicados, fallo, evidencia, auto-completar, calendario, canales/destinatarios/escalado y horas silenciosas.
+
+Brecha: Administración solo expone una parte de esos parámetros.
+
+## P-014 — Agenda / Google Calendar
+**Estado:** 🟡 PARCIAL
+
+Día/Semana/Mes/Lista y filtros de clases/misiones/eventos/externos existen. Producción tiene 0 `calendar_connections`; falta flujo real OAuth/sincronización Google Calendar.
+
+## P-017 — Notificaciones
+**Estado:** 🟡 PARCIAL
+
+Centro interno funcional (pendientes, historial, lectura y navegación contextual). Producción tiene 13 reglas activas, actualmente con canal automático `internal` solamente. Falta motor externo email/WhatsApp si debe formar parte de notificaciones automáticas.
+
+# B10 — almacenamiento/integraciones
+
+## P-021 — multimedia por referencias externas
+**Estado:** 🟡 PARCIAL
+
+Correcto: enseñanza/clases/marketing sirven Drive mediante `external_file_id` y tickets autenticados; no se detectaron columnas `bytea` operativas.
+
+Excepción actual: la foto de perfil se guarda en bucket público Supabase Storage `avatars` (5 MB). Debe formalizarse como excepción permitida o migrarse al contrato Drive/serving seguro.
 
 # QA permanente
 
-## P-023 — Smoke test iPhone real por release
-**Estado:** 🔴 PENDIENTE COMO PROCESO · **Prioridad:** P1
+## P-023 — smoke iPhone
+**Estado:** 🔴 GATE PERMANENTE
 
-Safe areas, scroll, teclado, zoom Safari, modales, formularios, barra inferior, Dar clase, árboles, evaluación, ficha alumno, navegación/retorno y orientación cuando corresponda.
+## P-024 — regresión transversal
+**Estado:** 🔴 GATE PERMANENTE
 
-## P-024 — Regresión transversal de flujos
-**Estado:** 🔴 PENDIENTE COMO PROCESO · **Prioridad:** P1
+# Descartados
 
-Antes de cerrar fase: crear persona, convertir contacto, programar clase, dar/cerrar clase, consumir bono, consultar/asignar formación, evaluar, portal alumno, CRM/Marketing, import/export y permisos Profesor/Alumno/Admin.
+- D-001 WordPress como backend canónico — ⚫.
+- D-002 ChatGPT Sites como producción — ⚫.
+- D-003 móvil 9.3.0 — ⚫.
+- D-004 20.14/20.15 como base Dar clase — ⚫.
+- D-005 hamburguesa principal — ⚫.
+- D-006 amarillo fluorescente — ⚫.
+- D-007 YouTube/TikTok obligatorios — ⚫.
 
-# Descartados — no reabrir sin decisión nueva
+# Próximo trabajo ejecutable
 
-- D-001 WordPress como backend canónico — ⚫ DESCARTADO.
-- D-002 ChatGPT Sites como producción — ⚫ DESCARTADO.
-- D-003 versión móvil 9.3.0 — ⚫ DESCARTADO.
-- D-004 20.14/20.15 como base Dar clase — ⚫ DESCARTADO.
-- D-005 hamburguesa para funciones principales — ⚫ DESCARTADO.
-- D-006 amarillo fluorescente — ⚫ DESCARTADO.
-- D-007 YouTube/TikTok como requisito obligatorio — ⚫ DESCARTADO.
+B00.1/B00.2 siguen bloqueados por acceso/configuración externa. El siguiente defecto técnico que puede prepararse sin fingir cierres es:
 
-# Orden operativo actual
+1. **B01.3/B02.2 — deduplicación canónica de personas (P-022/P-019).**
+2. B08.2 — completar configuración administrativa de Misiones.
+3. B03.1 — renderer reusable de formularios.
+4. B06 — UI de preparación del alumno.
+5. B08.3 — Google Calendar real.
+6. B08.4 — canales externos automáticos.
+7. B10 — política definitiva de avatar.
 
-1. P-001 verificar Hostinger cuando exista acceso a despliegues/logs.
-2. P-002 cerrar protección de contraseñas filtradas cuando exista acceso al ajuste Auth correspondiente.
-3. Auditar P-011 a P-022 para convertir “requiere verificación” en cerrado, parcial o pendiente real.
-4. Priorizar núcleo: P-007 Dar clase, P-006 Evaluaciones, P-008 Árboles, P-018 Portal, P-019 Alumnado.
-5. Cerrar experiencia: P-004/P-005 Identidad y P-009/P-010 Marketing/Estadísticas.
-6. Mantener P-023/P-024 como gates de release.
+No reimplementar Inicio, navegación, multirol o import/export: ya tienen base verificable y requieren gate E2E, no reconstrucción.
 
 # Registro
 
-## 11/08/2026 — v1.0
+## v1.0–v1.2
 
-Creado a partir del historial recuperado de conversaciones, decisiones del plugin, migración web, arquitectura GitHub/Supabase/Hostinger/Drive, auditoría visual v23 y estado P16/PR #2.
+Creación del registro, P16, baseline de migraciones y recuperación P-025.
 
-## 11/08/2026 — v1.1
+## 11/08/2026 — v1.3
 
-- P-001 auditado: GitHub correcto; Hostinger sigue pendiente de evidencia de runtime.
-- P-002 confirmado contra Security Advisors: `Leaked Password Protection Disabled`.
-- P-003 cerrado: baseline real de 52 migraciones documentado.
-- P-025 abierto: recuperar 18 fuentes SQL aplicadas que producción conserva pero GitHub no tiene como archivos independientes.
-
-## 11/08/2026 — v1.2
-
-- P-025 cerrado.
-- Recuperadas las 18/18 fuentes desde `schema_migrations.statements[1]` a `supabase/applied-history/`.
-- Verificación byte por byte 18/18 mediante SHA de objeto Git calculado en Supabase y contrastado con GitHub.
-- Ningún SQL histórico fue ejecutado; producción no cambió en este bloque.
+- integrada la numeración B00–B12 del Plan Maestro;
+- auditados P-011→P-022 contra `main` y Supabase producción;
+- P-011/P-013/P-016/P-020 pasan de “requiere verificación” a **verificado código/BD, pendiente E2E**;
+- P-012/P-014/P-015/P-017/P-018/P-019/P-021/P-022 pasan a **parcial** con brecha concreta;
+- se identifica P-022/B01.3 como siguiente corrección técnica prioritaria;
+- evidencia detallada en `docs/PARITY_AUDIT_2026-08-11.md`.
