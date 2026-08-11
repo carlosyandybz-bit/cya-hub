@@ -64,11 +64,6 @@ function optionValue(option: RuntimeOption) {
 function optionLabel(option: RuntimeOption) {
   return typeof option === "object" && option !== null ? option.label ?? option.key ?? String(option.value) : String(option);
 }
-function comparable(value: unknown) {
-  if (Array.isArray(value)) return value.map(String);
-  if (value === null || value === undefined) return "";
-  return String(value);
-}
 
 function conditionMatches(condition: Record<string, unknown>, values: Record<string, unknown>) {
   const field = typeof condition.field === "string" ? condition.field : "";
@@ -107,7 +102,10 @@ export function RuntimeForm({ client, formKey, personId = null, mode = "complete
     setRuntime(payload); setValues(next); setDirty(new Set()); setShowKnown(mode !== "complete_missing"); setLoading(false);
   }, [client, formKey, personId, mode]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const visibleFields = useMemo(() => (runtime?.fields ?? []).filter((field) => {
     if (!conditionMatches(field.condition, values)) return false;
