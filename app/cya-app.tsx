@@ -880,7 +880,21 @@ function ClassPreparationStage({ item, classes, students, assignments, terms, re
   const personIds = useMemo(() => item.class_participants.map((participant) => participant.person_id), [item.class_participants]);
   const [profiles,setProfiles] = useState<StudentPrepProfile[]>([]), [requests,setRequests] = useState<ClassPreparationRequest[]>([]), [busy,setBusy] = useState(false), [error,setError] = useState("");
   useEffect(() => { if (!db) return; let alive=true; void Promise.all([db.from("student_profiles").select("person_id,goals,teacher_notes,health_notes").in("person_id",personIds),db.from("class_preparation_requests").select("id,class_id,person_id,request_type,body,external_file_id,content_id,created_at").eq("class_id",item.id).order("created_at")]).then(([profileResult,requestResult]) => { if (!alive) return; if (!profileResult.error) setProfiles((profileResult.data ?? []) as StudentPrepProfile[]); if (!requestResult.error) setRequests((requestResult.data ?? []) as ClassPreparationRequest[]); }); return () => { alive=false; }; }, [item.id,personIds]);
-  async function begin() { if (!db) return; setBusy(true); setError(""); const result=await db.rpc("start_class",{p_class_id:item.id}); if (result.error) { setError(result.error.message); setBusy(false); return; } await refresh(); notify("Clase abierta."); setBusy(false); }
+  async function begin() {
+    if (!db || busy) return;
+    setBusy(true); setError("");
+    try {
+      const result=await db.rpc("start_class",{p_class_id:item.id});
+      if (result.error) throw result.error;
+      await refresh();
+      notify("Clase abierta.");
+    } catch (cause) {
+      const message=typeof cause === "object" && cause && "message" in cause ? String(cause.message) : "No se pudo iniciar la clase.";
+      setError(message);
+    } finally {
+      setBusy(false);
+    }
+  }
   const previous = [...classes].filter((candidate) => candidate.id!==item.id && candidate.status==='finished' && candidate.class_participants.some((p) => personIds.includes(p.person_id))).sort((a,b) => new Date(b.scheduled_start_at).getTime()-new Date(a.scheduled_start_at).getTime())[0] ?? null;
   return <div className="class-workflow-page"><header className="workflow-head"><button className="icon-btn" onClick={back} aria-label="Volver al centro de clases">‹</button><div><p className="eyebrow">2 · Preparar</p><h1>{namesFor(personIds,students)}</h1><p>Ubica al alumno antes de empezar a bailar.</p></div><button className="btn ghost workflow-edit-data" onClick={editData}>Editar datos</button></header><div className="workflow-stepbar"><span>Datos</span><span className="active">Preparar</span><span>Dar clase</span><span>Resumen</span></div>
     {previous ? <section className="card pad workflow-card previous-class"><div className="card-head"><h2>Última clase</h2><span>{dateLabel(previous.scheduled_start_at)}</span></div><p>{minutesLabel(previous.duration_minutes)}{terms.find((term) => term.id===previous.style_term_id) ? ` · ${terms.find((term) => term.id===previous.style_term_id)?.label}` : ""}</p></section> : null}
@@ -1474,7 +1488,11 @@ function StaffApp({ session }: { session: Session }) {
     setCampaignMetrics((metricResult.data ?? []) as CampaignMetric[]);
     setCommunicationRecipients((recipientResult.data ?? []) as unknown as CommunicationRecipient[]);
   }, []);
-  const refreshLive = useCallback(async () => { await Promise.all([loadOperations(),loadTeaching(),loadMarketing()]); }, [loadOperations,loadTeaching,loadMarketing]);
+  const refreshLive = useCallback(async () => {
+    await loadOperations();
+    try { await loadTeaching(); }
+    catch (error) { setToast(error instanceof Error ? error.message : "La clase está abierta, pero no se pudo actualizar la enseñanza."); }
+  }, [loadOperations,loadTeaching]);
   const refreshMarketing = useCallback(async () => { await Promise.all([loadMarketing(),loadStudents()]); }, [loadMarketing,loadStudents]);
   useEffect(() => {
     let alive = true;
