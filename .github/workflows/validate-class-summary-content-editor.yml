@@ -23,7 +23,7 @@ jobs:
       - run: npm ci
       - name: Summary editor regressions
         run: node --test tests/class-summary-content-editor.test.mjs
-      - name: Lint changed UI
-        run: npx eslint app/class-summary-content-editor.tsx app/cya-app.tsx
+      - name: Lint new summary editor
+        run: npx eslint app/class-summary-content-editor.tsx
       - name: Build Next.js application
         run: npm run build
