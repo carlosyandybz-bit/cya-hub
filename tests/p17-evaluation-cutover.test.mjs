@@ -75,3 +75,14 @@ test('P17 guided RPCs remain available to authenticated staff',()=>{
     assert.match(sql,new RegExp(`grant execute on function public\\.${rpc}`));
   }
 });
+
+test('P17 corrective: completed reviews do not reopen or continuously reload',()=>{
+  assert.match(post,/from\("evaluation_sessions"\)/);
+  assert.match(post,/session\.status==="completed"/);
+  assert.match(post,/prepared\.every\(\(session\) => session\.status==="completed"\)/);
+  assert.match(post,/if \(!client \|\| pendingClass\) return/);
+  assert.match(post,/window\.setInterval\(refresh,30000\)/);
+  assert.doesNotMatch(post,/window\.setInterval\(\(\) => void findPendingClass\(\),5000\)/);
+  assert.doesNotMatch(post,/await loadEvaluation\(pendingClass\)/);
+  assert.match(post,/setEvaluations\(\(current\) =>/);
+});
