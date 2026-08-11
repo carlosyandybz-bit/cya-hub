@@ -20,12 +20,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python scripts/patch-p20-runtime-scope.py
+      - name: Apply fully separated row loading
+        run: python scripts/patch-p20-runtime-scope.py
       - name: Commit corrected v48
         run: |
           if git diff --quiet -- supabase/v48_p20_form_engine.sql; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add supabase/v48_p20_form_engine.sql
-          git commit -m 'fix: correct P20 PLpgSQL row loading'
+          git commit -m 'fix: fully separate P20 row loading'
           git push origin HEAD:p20/formularios-versionados
