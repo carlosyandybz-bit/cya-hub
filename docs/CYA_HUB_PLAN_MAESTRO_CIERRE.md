@@ -1,10 +1,11 @@
 # CYA HUB — PLAN MAESTRO ÚNICO DE CIERRE
 
-Versión: **3.2**  
+Versión: **3.3**  
 Fecha de corte: **2026-08-11**  
 Repositorio canónico: `carlosyandybz-bit/cya-hub`  
 Producción: `main` + Supabase `CyA hub 2` + Hostinger  
-Última actualización cerrada: **P17 / v43**  
+Última actualización secuencial cerrada: **P17 / v43**  
+Adelanto controlado cerrado: **F42 / P32 — borrado y reinicio seguro v44–v44d**  
 Siguiente actualización: **P18 — Identidad, roles, navegación y “Ver como”**
 
 ---
@@ -32,7 +33,8 @@ Cuando aparezca una mejora o error nuevo:
 - se asigna al P/F correspondiente;
 - si el área ya pasó, se registra como **correctivo**;
 - no se rompe el orden por conveniencia;
-- una incidencia de seguridad o pérdida de datos puede activar un hotfix, pero debe volver a integrarse en esta hoja.
+- una incidencia de seguridad o pérdida de datos puede activar un hotfix, pero debe volver a integrarse en esta hoja;
+- un adelanto pedido explícitamente por el usuario puede implementarse antes de su P, pero **no cambia el siguiente punto secuencial** y debe volver a auditarse cuando llegue su P original.
 
 ---
 
@@ -47,6 +49,7 @@ Cuando aparezca una mejora o error nuevo:
 - P15 — resumen real de progreso.
 - **P16 — límites RLS de alumnado/clases, migración v42, validación autenticada 17/17 en producción.**
 - **P17 — Evaluaciones: reconciliación, frontend guiado, runtime Hostinger demostrado y migración v43 aplicada en producción.**
+- **Adelanto F42/P32 — Administración → Datos → Borrado y reinicio seguro, backend v44–v44d aplicado y frontend fusionado.**
 - Marketing vuelve a abrir.
 - Build TypeScript estricto recuperado.
 - Navegación atrás e historial real.
@@ -59,7 +62,7 @@ Cuando aparezca una mejora o error nuevo:
 
 ### Evidencia de cierre de P17
 
-- Hostinger sirve `app.carlosyandy.com` desde `main` y marca como **Actual / completado** el commit `cae0f009986240d0a945cabd16d00f20376e753b` (`P17: prepare safe evaluation cutover`).
+- Hostinger sirve `app.carlosyandy.com` desde `main` y marcó como **Actual / completado** el commit `cae0f009986240d0a945cabd16d00f20376e753b` (`P17: prepare safe evaluation cutover`) antes de aplicar v43.
 - Supabase registra `v43_evaluation_final_cutover` con versión `20260811151901`.
 - Antes y después del cutover se conservaron **6 `evaluation_sessions`** y **48 `student_evaluations`**.
 - En el preflight final no quedaban sesiones sin completar; la antigua sesión de clase 23 quedó completada de forma explícita antes del corte, no por SQL silencioso.
@@ -70,6 +73,27 @@ Cuando aparezca una mejora o error nuevo:
 - `trg_require_final_evaluation` está activo.
 - smoke autenticado: `prepare_post_class_evaluation(23,2)` reutiliza la sesión completada correspondiente y el guard permite un cierre válido dentro de transacción con `ROLLBACK`.
 - PR #1 `Point 12R — evaluation engine rebuild` fue cerrada como **supersedida** y no fusionada.
+- Correctivo P17 posterior: la revisión postclase ya no reaparece cuando la evaluación está completada y dejó de recargar/reconstruir la pantalla periódicamente durante el trabajo.
+
+### Evidencia del adelanto F42/P32 — borrado y reinicio
+
+- interfaz integrada en `Administración → Datos → Borrado y reinicio`;
+- búsqueda y borrado selectivo de persona/alumno y contenido pedagógico;
+- borrados por áreas y dos niveles de reinicio (`operational` / `full`);
+- previsualización con impacto antes de borrar;
+- frase contextual exacta + segunda confirmación final;
+- preparación con caducidad de 30 minutos;
+- `operational` y `full` exigen copia completa reciente del mismo administrador también en servidor;
+- copia completa reconciliada contra esquema real: **0 tablas reseteables ausentes**;
+- identidades activas del equipo protegidas;
+- borrado de todos los alumnos elimina también sus personas de prueba no protegidas;
+- ejecución serializada y transaccional;
+- auditoría de borrados;
+- dry-run autenticado con persona temporal ejecutado dentro de `BEGIN/ROLLBACK` sin dejar datos;
+- guard de reinicio completo probado sin backup y bloquea correctamente;
+- migraciones Supabase: `v44_admin_data_reset`, `v44b_admin_data_reset_backup_guard`, `v44c_admin_reset_backup_coverage`, `v44d_admin_reset_student_people`;
+- tras validación, `admin_reset_jobs` permanecía en **0**: desplegar la herramienta no ejecutó ningún borrado;
+- contrato funcional detallado en `docs/ADMIN_BORRADO_Y_REINICIO_DATOS.md`.
 
 ## 🟣 Siguiente punto
 
@@ -141,6 +165,8 @@ Para información relevante:
 - doble confirmación contextual;
 - la segunda confirmación debe identificar exactamente qué se eliminará.
 
+El reset masivo es la excepción deliberada de borrado definitivo: por ello añade previsualización, backup obligatorio, frase exacta, segunda confirmación, transacción y auditoría.
+
 ## G7 — Fuente única de verdad / no volver a preguntar
 
 Jerarquía de datos operativos:
@@ -161,6 +187,8 @@ El registro de migraciones puede no reflejar todos los SQL que históricamente s
 4. datos existentes.
 
 La verdad final del runtime es el esquema real, no el nombre de un archivo.
+
+El adelanto F42/P32 aplicó este gate al backup completo y descubrió cinco tablas actuales ausentes del mapa histórico; quedaron incorporadas antes de habilitar el reset masivo.
 
 ---
 
@@ -187,6 +215,13 @@ La verdad final del runtime es el esquema real, no el nombre de un archivo.
 ### Correctivo de clase 23
 
 La sesión que había aparecido como borrador fue preservada durante la preparación de v43 y posteriormente quedó **completada explícitamente antes del cutover**. v43 no la borró ni la autocompletó.
+
+### Correctivo de estabilidad postclase
+
+- una revisión `completed` no reaparece porque falte el cierre pedagógico posterior;
+- sin polling disruptivo mientras la revisión está abierta;
+- cuando no hay revisión visible, comprobación discreta y al volver a primer plano;
+- cada respuesta actualiza solo su estado local, sin reconstruir la pantalla completa.
 
 ---
 
@@ -728,17 +763,25 @@ Aplicar G6 en todas las acciones administrativas.
 
 Absorbe F42–F46 y todos los gates pendientes.
 
-### Reset previo a lanzamiento
+### Reset previo a lanzamiento — BASE IMPLEMENTADA ANTICIPADAMENTE
 
-Debe existir solo como operación peligrosa controlada:
+La infraestructura v44–v44d ya existe. P32 **no debe reconstruirla**: debe someterla a QA final y confirmar que sigue siendo compatible con el esquema que exista al final del proyecto.
 
-- backup previo;
-- alcance exacto;
-- supervivientes definidos;
-- frase escrita;
-- doble confirmación;
-- ejecución atómica cuando sea viable;
-- informe posterior.
+Base disponible:
+
+- backup completo previo obligatorio para reinicios masivos;
+- previsualización del alcance exacto;
+- supervivientes técnicos definidos;
+- búsqueda/borrado selectivo;
+- borrado por áreas;
+- frase escrita contextual;
+- segunda confirmación;
+- ejecución transaccional/serializada;
+- auditoría posterior;
+- protección de identidades del equipo;
+- restauración mediante el sistema de copias existente.
+
+En P32 se debe repetir G8 contra el esquema final y volver a comprobar que la copia completa contiene todas las tablas que el reset pueda eliminar.
 
 ### Seguridad
 
@@ -751,7 +794,8 @@ Debe existir solo como operación peligrosa controlada:
 - sesiones;
 - acciones destructivas;
 - leaked password protection;
-- revisión de advisors.
+- revisión de advisors;
+- revisar de nuevo las RPC `SECURITY DEFINER` del reset: su exposición a `authenticated` es deliberada porque cada RPC valida `private.is_admin()` en servidor, pero debe reauditarse en el release final.
 
 ### Rendimiento
 
@@ -774,7 +818,11 @@ Probar:
 - enseñanza;
 - marketing;
 - iPhone;
-- desktop.
+- desktop;
+- borrado selectivo;
+- borrado por áreas;
+- backup + reinicio operativo;
+- backup + reinicio completo + restauración.
 
 ### Auditoría funcional final
 
@@ -838,8 +886,8 @@ Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P18�
 | F38 integraciones | → P31 |
 | F39 apariencia | → P31 |
 | F40–F41 estadísticas | → P30 |
-| F42 reset | → P32 |
-| F43 seguridad/destructivas | → G6 + P31 + P32 |
+| F42 reset | ✅ base implementada v44–v44d; reauditoría final → P32 |
+| F43 seguridad/destructivas | → G6 + P31 + P32; reset ya aplica G6 reforzado |
 | F44 QA integral | → P32 |
 | F45 auditoría funcional final | → P32 |
 | F46 producción | → P32 |
@@ -871,15 +919,22 @@ Este mapa evita perder decisiones antiguas aunque la ejecución moderna use P18�
 | PR #1 no se fusiona por inercia | ✅ P17, cerrada supersedida |
 | v41b presente en esquema pero registro históricamente inconsistente | G8 + P32 |
 | borrador de evaluación clase 23 | ✅ preservado y completado explícitamente antes de v43 |
+| revisión postclase reaparecía/recargaba | ✅ correctivo P17, commit `d0f9bd49c82047bfacff12f68b46bd061650d98c` |
 | leaked password protection desactivado | G2 + P32 |
 | deuda de índices/policies detectada por advisor | P32 |
 | backend incompatible solo tras probar runtime | G1, validado operacionalmente en P17 |
+| borrado selectivo y por áreas desde Administración | ✅ adelanto F42/P32 v44–v44d |
+| reinicio operativo/completo con backup previo | ✅ base F42/P32; reauditar en P32 |
+| borrar todos los alumnos elimina sus personas de prueba | ✅ v44d; identidades staff protegidas |
+| backup completo histórico omitía 5 tablas actuales | ✅ v44c; cobertura real = 0 ausencias |
 
 ---
 
 # 6. Orden inmediato desde este corte
 
 **P18 → P19 → P20 → P21 → P22 → P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
+
+El adelanto F42/P32 **no modifica este orden**. Cuando llegue P32 se valida la implementación existente en lugar de recrearla.
 
 No volver al antiguo orden F8 → F3B → F9… como secuencia de implementación: esos requisitos siguen vigentes, pero están absorbidos en la secuencia P moderna.
 
@@ -899,5 +954,7 @@ No volver al antiguo orden F8 → F3B → F9… como secuencia de implementació
 10. **Eliminar información relevante requiere la protección de G6.**
 11. **No aplicar un backend incompatible hasta demostrar el frontend de producción.**
 12. **La verdad de Supabase se comprueba en el esquema real, no solo en el historial de migraciones.**
+13. **Un reinicio masivo nunca se ejecuta sin copia completa reciente, impacto visible, frase exacta y segunda confirmación.**
+14. **El reinicio de datos nunca elimina Auth, roles de acceso, migraciones ni la configuración técnica necesaria para volver a entrar en CYA Hub.**
 
 Este documento sustituye las hojas parciales anteriores y será el listado que se actualice al inicio y cierre de cada P.
