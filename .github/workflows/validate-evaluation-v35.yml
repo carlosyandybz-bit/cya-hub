@@ -1,18 +1,12 @@
-name: Validate evaluation v35
+name: Validate CYA Hub main
 
 on:
   push:
     branches: [main]
     paths:
-      - "app/evaluation-post-class.tsx"
-      - "app/evaluation-post-class.module.css"
-      - "app/evaluation-final-model.css"
-      - "app/evaluation-settings/**"
-      - "app/evaluation-history/**"
-      - "app/progress-summary/**"
-      - "app/page.tsx"
-      - "app/layout.tsx"
-      - "supabase/v35*.sql"
+      - "app/**/*.tsx"
+      - "app/**/*.css"
+      - "supabase/*.sql"
       - ".github/workflows/validate-evaluation-v35.yml"
   workflow_dispatch:
 
@@ -30,7 +24,7 @@ jobs:
           node-version: 22.13.0
           cache: npm
       - run: npm ci
-      - name: Lint evaluation changes
+      - name: Lint recently hardened surfaces
         run: npx eslint app/evaluation-post-class.tsx app/evaluation-settings/evaluation-settings-client.tsx app/evaluation-history/evaluation-history-client.tsx app/evaluation-history/page.tsx app/progress-summary/progress-summary-client.tsx app/progress-summary/page.tsx app/page.tsx app/layout.tsx
       - name: Record legacy lint debt
         continue-on-error: true
