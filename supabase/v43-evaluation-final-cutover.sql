@@ -1,50 +1,51 @@
--- CYA Hub · v43 · P17 · corte final del modelo de evaluaciones
+-- CYA Hub · v43 · P17 · corte seguro del modelo de evaluaciones
 --
 -- OBJETIVO
--- - dejar una única superficie funcional de evaluación para profesorado;
+-- - retirar la compatibilidad heredada que permite puntuar directamente desde
+--   cualquier clase activa;
+-- - conservar el motor moderno por sesiones para evaluación manual/reevaluación
+--   fuera de clase hasta que exista una decisión funcional expresa sobre él;
 -- - conservar evaluaciones históricas y borradores existentes;
 -- - impedir que una evaluación inicial se fabrique después de terminar la clase;
 -- - exigir la revisión final antes del cierre pedagógico;
--- - mantener la regla Bachata + Bachazouk cuando ambos contextos ya existen;
--- - retirar permisos de las RPC numéricas heredadas.
+-- - mantener la regla Bachata + Bachazouk cuando ambos contextos ya existen.
+--
+-- IMPORTANTE
+-- `start_student_evaluation`, `save_evaluation_score` y
+-- `complete_evaluation_session` NO son una segunda base de datos ni el antiguo
+-- wrapper de clase: forman el motor por sesiones que usa la ficha del alumno.
+-- P17 no elimina una capacidad manual/reevaluación sin decisión de producto.
 --
 -- PRECONDICIÓN DE DESPLIEGUE
 -- Aplicar únicamente cuando producción esté sirviendo un frontend que monte
 -- InitialEvaluationClassGate + EvaluationPostClassGate y oculte la superficie
--- numérica antigua. La migración NO borra ni autocompleta sesiones existentes.
+-- numérica genérica de Dar clase. La migración NO borra ni autocompleta sesiones.
 
 -- -----------------------------------------------------------------------------
--- 0. Fallar de forma explícita si falta alguna pieza del modelo final.
+-- 0. Fallar de forma explícita si falta alguna pieza que v43 necesita conservar.
 -- -----------------------------------------------------------------------------
 do $$
 begin
-  if to_regprocedure('public.start_initial_evaluation(bigint,bigint)') is null
+  if to_regprocedure('public.start_student_evaluation(bigint,bigint,text,bigint,bigint,bigint,text)') is null
+     or to_regprocedure('public.save_evaluation_score(bigint,bigint,smallint,text)') is null
+     or to_regprocedure('public.complete_evaluation_session(bigint)') is null
+     or to_regprocedure('public.start_initial_evaluation(bigint,bigint)') is null
      or to_regprocedure('public.review_evaluation_question(bigint,bigint,bigint,bigint,text)') is null
      or to_regprocedure('public.complete_initial_evaluation(bigint)') is null
      or to_regprocedure('public.prepare_post_class_evaluation(bigint,bigint)') is null
      or to_regprocedure('public.prepare_post_class_evaluations(bigint,bigint)') is null
      or to_regprocedure('public.complete_post_class_evaluation(bigint)') is null then
-    raise exception 'P17 no puede aplicarse: falta una RPC del modelo final de evaluaciones.' using errcode='55000';
+    raise exception 'P17 no puede aplicarse: falta una RPC necesaria del modelo de evaluaciones.' using errcode='55000';
   end if;
 end;
 $$;
 
 -- -----------------------------------------------------------------------------
--- A. Retirar superficies numéricas heredadas del cliente autenticado.
---    Se conserva la definición histórica por compatibilidad/auditoría, pero deja
---    de ser una API utilizable desde la aplicación.
+-- A. Retirar únicamente la compatibilidad numérica heredada de Dar clase.
 -- -----------------------------------------------------------------------------
 revoke all on function public.save_class_evaluation(bigint,bigint,bigint,smallint)
   from public,anon,authenticated;
 revoke all on function public.save_class_evaluation_v2(bigint,bigint,bigint,bigint,smallint)
-  from public,anon,authenticated;
-revoke all on function public.save_evaluation_score(bigint,bigint,smallint,text)
-  from public,anon,authenticated;
-revoke all on function public.start_student_evaluation(bigint,bigint,text,bigint,bigint,bigint,text)
-  from public,anon,authenticated;
-revoke all on function public.complete_evaluation_session(bigint)
-  from public,anon,authenticated;
-revoke all on function public.decide_evaluation_milestone(bigint,bigint,text,bigint,text)
   from public,anon,authenticated;
 
 -- El modelo antiguo cerraba borradores al cerrar pedagógicamente la clase.
@@ -298,8 +299,12 @@ before update of pedagogy_closed_at on public.classes
 for each row execute function private.require_final_evaluation_before_pedagogy_close();
 
 -- -----------------------------------------------------------------------------
--- D. Mantener exclusivamente la superficie final para authenticated.
+-- D. Conservar el motor por sesiones + exponer las superficies guiadas finales.
 -- -----------------------------------------------------------------------------
+grant execute on function public.start_student_evaluation(bigint,bigint,text,bigint,bigint,bigint,text) to authenticated;
+grant execute on function public.save_evaluation_score(bigint,bigint,smallint,text) to authenticated;
+grant execute on function public.complete_evaluation_session(bigint) to authenticated;
+
 grant execute on function public.start_initial_evaluation(bigint,bigint) to authenticated;
 grant execute on function public.review_evaluation_question(bigint,bigint,bigint,bigint,text) to authenticated;
 grant execute on function public.complete_initial_evaluation(bigint) to authenticated;
