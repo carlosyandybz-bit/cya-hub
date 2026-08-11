@@ -1,0 +1,29 @@
+name: Validate P18 identity and navigation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/cya-app.tsx'
+      - 'app/account-menu.tsx'
+      - 'app/globals.css'
+      - 'supabase/v46_p18_experience_context.sql'
+      - 'tests/p18-identity-navigation.test.mjs'
+      - '.github/workflows/validate-p18-identity-navigation.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: P18 regression tests
+        run: node --test tests/p18-identity-navigation.test.mjs
+      - name: Lint account menu
+        run: npx eslint app/account-menu.tsx
+      - name: Build Next.js application
+        run: npm run build
