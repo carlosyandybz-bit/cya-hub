@@ -2,6 +2,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { ArrowLeft, CheckCircle2, Plus, Settings2, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./evaluation-settings.module.css";
 
@@ -70,7 +71,11 @@ export default function EvaluationSettingsClient() {
     setBusy("");
   },[client]);
 
-  useEffect(() => { if (client) void load(); },[client,load]);
+  useEffect(() => {
+    if (!client) return;
+    const timer=window.setTimeout(() => void load(),0);
+    return () => window.clearTimeout(timer);
+  },[client,load]);
 
   const stylesList=terms.filter((term) => term.taxonomy==="dance_style"), rolesList=terms.filter((term) => term.taxonomy==="dance_role"), levelsList=terms.filter((term) => term.taxonomy==="dance_level"), aptitudes=terms.filter((term) => term.taxonomy==="aptitude");
   const currentMilestones=useMemo(() => milestones.filter((row) => row.style_term_id===styleId && row.role_term_id===roleId && row.level_term_id===levelId && row.aptitude_term_id===aptitudeId).sort((a,b) => a.threshold_score-b.threshold_score),[milestones,styleId,roleId,levelId,aptitudeId]);
@@ -152,10 +157,10 @@ export default function EvaluationSettingsClient() {
   }
 
   if (authorized===null) return <main className={styles.center}><span className={styles.spinner}/><p>Comprobando permisos…</p></main>;
-  if (!authorized) return <main className={styles.center}><Settings2/><h1>Configuración de evaluación</h1><p>Esta pantalla requiere permisos de administración.</p><a href="/">Volver a CYA Hub</a>{error?<small>{error}</small>:null}</main>;
+  if (!authorized) return <main className={styles.center}><Settings2/><h1>Configuración de evaluación</h1><p>Esta pantalla requiere permisos de administración.</p><Link href="/">Volver a CYA Hub</Link>{error?<small>{error}</small>:null}</main>;
 
   return <main className={styles.page}>
-    <header className={styles.top}><a href="/" aria-label="Volver"><ArrowLeft/></a><div><span>Administración · Enseñanza</span><h1>Evaluación y progreso</h1><p>Define qué significa avanzar. El profesorado observará descriptores; CYA gestionará los números internamente.</p></div></header>
+    <header className={styles.top}><Link href="/" aria-label="Volver"><ArrowLeft/></Link><div><span>Administración · Enseñanza</span><h1>Evaluación y progreso</h1><p>Define qué significa avanzar. El profesorado observará descriptores; CYA gestionará los números internamente.</p></div></header>
 
     <section className={styles.contextCard}><div><strong>Contexto pedagógico</strong><span>Los hitos y puntos cambian según estilo, rol, nivel y aptitud.</span></div><div className={styles.contextGrid}><label><span>Estilo</span><select value={styleId} onChange={(event)=>setStyleId(Number(event.target.value))}>{stylesList.map((term)=><option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label><span>Rol</span><select value={roleId} onChange={(event)=>setRoleId(Number(event.target.value))}>{rolesList.map((term)=><option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label><span>Nivel</span><select value={levelId} onChange={(event)=>setLevelId(Number(event.target.value))}>{levelsList.map((term)=><option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label><span>Aptitud</span><select value={aptitudeId} onChange={(event)=>setAptitudeId(Number(event.target.value))}>{aptitudes.map((term)=><option key={term.id} value={term.id}>{term.label}</option>)}</select></label></div></section>
 
