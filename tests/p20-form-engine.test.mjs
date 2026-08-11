@@ -55,7 +55,9 @@ test('student personal v2 is canonical and reconciles historical stale fields',(
 test('generic runtime cannot impersonate domain-service forms',()=>{
   assert.match(sql,/runtime_engine','generic_v1'/);
   assert.match(sql,/runtime_engine','domain_service'/);
-  assert.match(sql,/flujo de negocio específico y no se ejecuta con el motor genérico/);
+  assert.ok((sql.match(/flujo de negocio específico y no se ejecuta con el motor genérico/g)||[]).length>=2,'read and submit must both reject domain-service forms');
+  assert.match(sql,/servicio de dominio y no se versiona desde el editor genérico/);
+  assert.match(sql,/servicio de dominio y no se publica desde el editor genérico/);
   assert.match(sql,/flujo de negocio específico y no puede activarse en el motor genérico/);
   assert.match(sql,/where form_key not in \('student_personal','student_dance','onboarding'\)/);
 });
