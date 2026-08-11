@@ -35,7 +35,7 @@ jobs:
               raise SystemExit('temporary MediaDraft matcher not found')
           s=s.replace(media_old,media_new,1)
           state_old='''  const [events,setEvents]=useState<ClassContentEvent[]>([]), [media,setMedia]=useState<MediaDraft[]>([]), [studentMessage,setStudentMessage]=useState(""), [internalNote,setInternalNote]=useState(""), [busy,setBusy]=useState(false), [error,setError]=useState("");'''
-          state_real='''  const [events,setEvents]=useState<ClassContentEvent[]>([]), [studentMessage,setStudentMessage] = useState(""), [internalNote,setInternalNote] = useState(""), [media,setMedia] = useState<MediaDraft[]>([]), [busy,setBusy] = useState(false), [error,setError] = useState("");'''
+          state_real='''  const [events,setEvents] = useState<ClassContentEvent[]>([]), [studentMessage,setStudentMessage] = useState(""), [internalNote,setInternalNote] = useState(""), [media,setMedia] = useState<MediaDraft[]>([]), [busy,setBusy] = useState(false), [error,setError] = useState("");'''
           if state_old not in s:
               raise SystemExit('temporary summary-state matcher not found')
           s=s.replace(state_old,state_real,1)
