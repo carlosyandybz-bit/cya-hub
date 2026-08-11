@@ -1,317 +1,345 @@
-# CYA HUB — PLAN MAESTRO DE CIERRE
+# CYA HUB — PLAN MAESTRO ÚNICO DE CIERRE
 
-**Versión:** 2.0  
-**Fecha de corte:** 11 de agosto de 2026 — 15:55 (Europe/Madrid)  
+**Versión:** 3.0  
+**Fecha de corte:** 11 de agosto de 2026 — 16:01 (Europe/Madrid)  
 **Repositorio canónico:** `carlosyandybz-bit/cya-hub`  
-**Producción objetivo:** `main` + Supabase `CyA hub 2` + Hostinger  
-**Estado actual de referencia:** P16/v42 cerrado y PR #2 fusionada
+**Producción:** `main` + Supabase `CyA hub 2` + Hostinger  
+**Última actualización secuencial cerrada:** **P16 / v42**
 
 ---
 
-# 1. PROPÓSITO
+# 1. QUÉ ES ESTE DOCUMENTO
 
-Este documento sustituye la existencia de dos auditorías operativas paralelas y pasa a ser la **única hoja de ruta de cierre de CYA Hub**.
+Este documento **no crea una auditoría nueva** y **no reinicia la numeración**.
 
-Combina:
+Es la combinación operativa de:
 
-1. la secuencia histórica y funcional de `docs/CYA_HUB_SECUENCIA_MAESTRA.md`;
-2. el tablero técnico de `docs/CYA_HUB_PENDIENTES.md`;
-3. el estado real verificado de GitHub, Supabase y producción;
-4. los requisitos funcionales consolidados del proyecto;
-5. los controles permanentes de seguridad, datos, iPhone y regresión.
+1. `docs/CYA_HUB_SECUENCIA_MAESTRA.md` — historia, decisiones, arquitectura, requisitos y secuencia funcional;
+2. `docs/CYA_HUB_PENDIENTES.md` — pendientes técnicos, funcionales, visuales y de QA vivos;
+3. el estado real actual de GitHub y Supabase.
 
-Los dos documentos anteriores pueden seguir existiendo como histórico/evidencia, pero **no deben volver a utilizarse como planes paralelos**. Desde este punto, el orden de ejecución se rige por este archivo.
+La secuencia de trabajo continúa donde se quedó: **después de P16**.
+
+Por tanto:
+
+- P12, P13, P14, P15 y P16 conservan su significado histórico real;
+- los pendientes del tablero secundario no sustituyen esa numeración;
+- los pendientes se absorben desde **P17 en adelante** en el orden correcto de implementación;
+- los controles que no son una función concreta se convierten en **gates permanentes** y no rompen la secuencia.
+
+Este archivo es desde ahora la **única hoja de ruta operativa** para terminar CYA Hub.
 
 ---
 
-# 2. REGLA OBLIGATORIA AL EMPEZAR CADA ACTUALIZACIÓN
+# 2. REGLA OBLIGATORIA ANTES DE CADA ACTUALIZACIÓN
 
-Antes de modificar código, base de datos, configuración o producción, se debe mostrar al usuario el estado del plan con este formato:
+Antes de empezar cualquier actualización P17, P18, P19… se debe mostrar al usuario, sin que tenga que pedirlo de nuevo:
 
 ```text
-CYA HUB — ESTADO DEL PLAN ANTES DE LA ACTUALIZACIÓN
+CYA HUB — PLAN PENDIENTE ANTES DE EMPEZAR
 
-CERRADO:
-- bloques ya terminados relevantes
+✅ CERRADO
+- últimas actualizaciones ya terminadas
 
-AHORA:
-- bloque exacto que se va a ejecutar
+▶ AHORA
+- actualización exacta que empieza
 - objetivo
 - alcance
+- qué pendientes antiguos absorbe
 
-FALTA DESPUÉS:
-- lista ordenada de todos los bloques todavía abiertos
+⏳ FALTA DESPUÉS
+- TODAS las actualizaciones restantes, en orden
+- estado de cada una
 
-DEPENDENCIAS / RIESGOS:
-- migraciones
-- seguridad
+⚠ GATES / RIESGOS
 - producción
-- posibles regresiones
+- Supabase / RLS / Auth
+- migraciones
+- iPhone
+- regresiones
+- datos / multimedia
 ```
 
-Esta información **se entrega antes de cada nueva actualización** aunque el usuario no la vuelva a pedir.
+No basta con mostrar solo el siguiente punto: **debe mostrarse el resto completo del planning pendiente**.
 
-Al terminar cada actualización se debe registrar:
+Al terminar cada actualización se actualizará este archivo con:
 
 ```text
 FECHA/HORA:
-BLOQUE:
-REQUISITOS AFECTADOS:
-CAMBIO:
+ACTUALIZACIÓN:
+REQUISITOS/PENDIENTES ABSORBIDOS:
+CAMBIOS:
 BD/MIGRACIÓN:
 COMMIT/PR:
 PRUEBAS:
 PRODUCCIÓN:
 REGRESIONES:
-PENDIENTES NUEVOS:
 PENDIENTES CERRADOS:
-SIGUIENTE BLOQUE:
+PENDIENTES NUEVOS:
+SIGUIENTE ACTUALIZACIÓN:
 ```
 
 ---
 
-# 3. REGLA DE NUMERACIÓN
+# 3. BASELINE SECUENCIAL YA RECORRIDO
 
-Para evitar la confusión que existía entre `P16/v42` y el antiguo ticket `P-016`, desde ahora el plan usa identificadores **B00–B12**.
+El objetivo de esta sección no es reauditar todos los puntos anteriores, sino conservar el hilo real del trabajo.
 
-Los identificadores históricos `P-xxx` se conservan solamente como referencias internas dentro del bloque correspondiente.
+## P12 — Modelo de evaluaciones
 
-Ejemplo:
+**Estado:** implementado históricamente; queda sujeto al cierre/reconciliación final de P17.
 
-- `P16/v42` = cambio histórico de seguridad RLS ya cerrado.
-- antiguo `P-016` = importación/exportación y pasa a formar parte de **B03**.
+Evidencia GitHub: commit `b56bda2897242d1ed429c5b98f2141cd5d1a0add` — `Implement Point 12 evaluation model`.
 
-Nunca se volverá a usar un número `Pxx` aislado para indicar el orden de implementación.
+## P13 — Radar interactivo de evaluación
 
----
+**Estado:** implementado históricamente; queda sujeto al cierre/reconciliación final de P17.
 
-# 4. BASELINE YA CERRADO
+Evidencia GitHub: commit `d1bd7048cec15fee5fa987c946eb283bb1076e01` — `Implement Point 13 interactive evaluation radar`.
 
-## ✅ C-001 — P16/v42 Seguridad RLS alumno–clases
+## P14 — Historial/evolución de evaluaciones
 
-**Estado:** CERRADO / VERIFICADO PRODUCCIÓN.
+**Estado:** implementado y validado en código; queda sujeto al cierre/reconciliación final de P17.
 
-Cerrado:
+Evidencia GitHub: commit `10d91aff7ad571324ab95a894eb5f1a626c4884f` — `Validate evaluation history point 14`.
 
-- SELECT directo de alumno retirado sobre `class_pedagogy_summaries`;
-- `student_message` preservado mediante `student_portal_snapshot`;
-- `internal_note` aislada;
-- políticas vulnerables de preparación sustituidas;
-- helper privado de privilegio mínimo;
+## P15 — Resumen real de progreso
+
+**Estado:** implementado y validado en código; queda sujeto al cierre/reconciliación final de P17.
+
+Evidencia GitHub: commit `a57f89bf6d3704bb65226b0006e0aaa5f2cc59f1` — `Validate real progress summary point 15`.
+
+## P16 — Seguridad RLS alumno–clases / v42
+
+**Estado:** ✅ CERRADO Y VERIFICADO EN PRODUCCIÓN.
+
+Evidencia:
+
+- migración `20260811124729 / v42_rls_student_class_correlation`;
 - dry-run 11/11;
 - producción 17/17;
-- migración `20260811124729 / v42_rls_student_class_correlation`;
+- `student_message` preservado;
+- `internal_note` aislada;
+- operaciones ajenas bloqueadas;
+- acceso staff preservado;
 - PR #2 fusionada;
 - merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`.
 
-## ✅ C-002 — Baseline real de migraciones Supabase
+## Cierres técnicos posteriores que NO consumen número de actualización
 
-**Estado:** CERRADO.
+### Baseline de migraciones
 
-Cerrado:
+✅ CERRADO.
 
 - 52 migraciones registradas en producción;
-- primera `20260808214303 / teaching_module`;
-- última `20260811124729 / v42_rls_student_class_correlation`;
-- clasificación de bootstrap, registradas y preparadas/no aplicadas;
-- baseline documentado en `docs/DATABASE_MIGRATION_BASELINE.md`.
+- baseline canónico en `docs/DATABASE_MIGRATION_BASELINE.md`.
 
-Este baseline no significa que toda la aplicación esté terminada. Solo fija una base fiable desde la que continuar.
+### Recuperación de 18 SQL históricos — antiguo P-025
 
----
+✅ CERRADO.
 
-# 5. ORDEN MAESTRO DE IMPLEMENTACIÓN
-
-El orden siguiente no es una lista estética. Está organizado por **dependencias funcionales, integridad de datos, seguridad y riesgo de regresión**.
+- 18/18 fuentes recuperadas desde producción;
+- archivadas en `supabase/applied-history/`;
+- verificadas byte por byte;
+- no se ejecutó ni reaplicó SQL histórico.
 
 ---
 
-# B00 — BASE TÉCNICA, PRODUCCIÓN Y TRAZABILIDAD
+# 4. GATES PERMANENTES
 
-**Prioridad:** P0/P1  
-**Estado:** PENDIENTE  
-**Debe cerrarse antes de declarar fiables las pruebas funcionales posteriores.**
+Estos elementos pertenecen a la auditoría combinada, pero **no deben desplazar el orden funcional P17 → P32**.
 
-## B00.1 — Verificar runtime real de Hostinger
+## G1 — Producción Hostinger — antiguo P-001
 
-Origen: antiguo P-001.
+**Estado actual:** pendiente de evidencia completa del runtime.
+
+Debe verificarse cuando el conector/herramienta permita demostrarlo y es **obligatorio antes del cierre final P32**.
 
 Comprobar:
 
-- qué commit está realmente desplegado;
+- commit realmente desplegado;
 - `/`;
 - `/api/runtime-config` con `configured:true`;
-- conexión Supabase;
-- login/sesión;
-- Inicio;
-- Alumnado;
-- Enseñanza;
-- Dar clase;
-- Marketing;
-- Administración;
-- portal alumno;
-- ausencia de secretos en frontend;
+- login/sesión Supabase;
+- rutas principales;
+- ausencia de secretos cliente;
 - errores runtime relevantes.
 
-**Cierre:** producción identificada inequívocamente y reproducible.
+No bloqueará innecesariamente el desarrollo si la herramienta disponible no permite leer despliegues/logs, pero nunca podrá darse por cerrado P32 sin evidencia.
 
-## B00.2 — Supabase Auth: protección de contraseñas filtradas
+## G2 — Supabase Auth — antiguo P-002
 
-Origen: antiguo P-002.
+**Estado:** pendiente confirmado.
 
-Pendiente confirmado: `Leaked Password Protection Disabled`.
+Warning actual: `Leaked Password Protection Disabled`.
 
-Acciones:
+Debe activarse cuando la configuración/plan lo permita, probar login/recuperación y volver a pasar Security Advisors. Es requisito de release final.
 
-- habilitar la protección cuando la configuración/plan lo permita;
-- volver a ejecutar Security Advisors;
-- probar login;
-- probar recuperación de cuenta;
-- comprobar que no se rompe autenticación existente.
+## G3 — Smoke test iPhone — antiguo P-023
 
-## B00.3 — Recuperar 18 migraciones históricas sin SQL independiente
+**Estado:** permanente.
 
-Origen: antiguo P-025.
+Después de cada actualización que afecte UI/flujo móvil:
 
-Acciones:
+- safe areas;
+- scroll;
+- teclado;
+- zoom Safari;
+- modales;
+- formularios;
+- barra inferior;
+- navegación/retorno;
+- orientación cuando proceda.
 
-- extraer exclusivamente desde `supabase_migrations.schema_migrations.statements`;
-- conservar versión/nombre originales;
-- crear los 18 archivos fuente;
-- NO ejecutarlos de nuevo;
-- comparar 18/18 contra producción;
-- actualizar `DATABASE_MIGRATION_BASELINE.md`.
+## G4 — Regresión transversal — antiguo P-024
 
-## Gate de B00
+**Estado:** permanente.
 
-No se cierra B00 hasta conocer la versión de producción, tener seguridad Auth revisada y dejar la historia de migraciones reproducible.
+Antes de cerrar cada fase relevante y obligatoriamente en P32:
 
----
+- crear persona;
+- convertir contacto;
+- programar clase;
+- dar/cerrar clase;
+- consumir bono;
+- consultar/asignar formación;
+- evaluar;
+- portal alumno;
+- CRM/Marketing;
+- import/export;
+- permisos Profesor/Alumno/Admin.
 
-# B01 — ARQUITECTURA DE NAVEGACIÓN, IDENTIDAD Y PERMISOS
+## G5 — Datos y multimedia — antiguos P-021/P-022
 
-**Prioridad:** P1  
-**Estado:** REQUIERE VERIFICACIÓN + IMPLEMENTACIÓN
-
-Integra antiguos P-020, P-013 parcialmente, P-022 y controles de seguridad transversal.
-
-## B01.1 — Navegación principal definitiva
-
-Contrato obligatorio móvil:
-
-**Inicio | Alumnado | DAR CLASE | Enseñanza | Marketing**
-
-Requisitos:
-
-- DAR CLASE central, mayor y elevado;
-- sin hamburguesa para funciones principales;
-- back/contexto correcto;
-- durante clase puede ocultarse la navegación;
-- escritorio conserva la misma arquitectura conceptual;
-- iPhone como referencia móvil principal.
-
-## B01.2 — Multirol real y autorización
-
-Una misma persona puede ser:
-
-- Profesor;
-- Alumno;
-- Administrador cuando exista autorización.
-
-Requisitos:
-
-- roles simultáneos, no perfiles duplicados;
-- seguridad server-side;
-- RLS coherente;
-- “Ver como” no eleva permisos;
-- profesor puede tener expediente de alumno y autoevaluarse.
-
-## B01.3 — Fuente única de verdad
-
-Origen: antiguo P-022.
-
-Reglas:
+**Estado:** permanente.
 
 - una persona canónica;
 - no duplicar CRM/alumno/profesor;
-- no volver a pedir información ya conocida;
-- override de clase → preferencia estilo → global → preguntar si falta;
-- no mezclar notas comerciales con expediente pedagógico;
-- consistencia entre UI, API y Supabase.
-
-## Gate de B01
-
-Crear/ver persona con varios roles, navegar como cada rol y comprobar que ningún cambio de vista modifica permisos reales.
+- no volver a pedir información conocida;
+- multimedia pesada en Google Drive;
+- Supabase solo referencias/IDs/metadatos cuando corresponda;
+- no blobs operativos pesados en GitHub/DB;
+- no secretos administrativos en cliente/repositorio.
 
 ---
 
-# B02 — ALUMNADO Y MODELO DE PERSONAS
+# 5. SECUENCIA ÚNICA PENDIENTE — P17 A P32
+
+El orden siguiente es el orden de implementación. Un punto puede empezar auditando lo que ya existe, pero debe terminar **corrigiendo/completando y validando** su alcance; no se crearán implementaciones duplicadas si la función ya existe correctamente.
+
+---
+
+# P17 — CIERRE REAL DE EVALUACIONES Y RECONCILIACIÓN DE POINT 12R
 
 **Prioridad:** P1  
-**Estado:** REQUIERE VERIFICACIÓN + IMPLEMENTACIÓN
+**Estado:** ▶ SIGUIENTE ACTUALIZACIÓN  
+**Absorbe:** antiguo P-006 y la deuda abierta de la PR #1 `Point 12R — evaluation engine rebuild`.
 
-Integra antiguo P-019 y la parte operativa del CRM relativa a personas.
+## Por qué va primero
 
-## B02.1 — Estados de persona
+La secuencia real venía de P12 → P13 → P14 → P15 → P16. No tiene sentido abandonar ahora la línea de evaluación dejando una rama histórica divergente y dos SQL de cutover sin decisión final.
 
-- contacto/potencial;
+La PR #1 está actualmente divergida respecto a `main`: su rama está **21 commits por delante y 57 por detrás** de `main`. **No debe fusionarse a ciegas.**
+
+## Trabajo
+
+1. Comparar la PR #1/Point12R contra `main` actual.
+2. Determinar qué funcionalidad de sus 21 commits ya está incorporada/superada en `main`.
+3. Extraer solo cualquier comportamiento útil realmente ausente; no reintroducir regresiones.
+4. Revisar:
+   - `v35c-enforce-post-class-evaluation.sql` — presente pero no registrada como aplicada;
+   - `v41c-final-evaluation-cutover-PREPARED-NOT-APPLIED.sql` — preparada y no aplicada.
+5. No aplicar ninguna de las dos por inercia: decidir según esquema real y flujo actual.
+6. Validar el modelo final:
+   - INICIO / INTERMEDIO / AVANZADO;
+   - 0/25/50/75/100;
+   - cinco opciones táctiles por parámetro;
+   - persistencia;
+   - parámetros configurables;
+   - radar profesor;
+   - radar alumno;
+   - historial/evolución;
+   - reevaluación;
+   - evaluación inicial guiada;
+   - revisión postclase del profesor;
+   - Bachata/Bachazouk según reglas vigentes;
+   - visibilidad correcta para alumno.
+7. Resolver el estado de la PR #1 solo cuando exista evidencia de que su contenido está absorbido o descartado justificadamente.
+
+## Cierre
+
+Evaluaciones quedan con un único modelo activo, sin doble motor, sin ramas antiguas susceptibles de merge accidental y con regresiones cubiertas.
+
+---
+
+# P18 — IDENTIDAD, ROLES, NAVEGACIÓN Y “VER COMO”
+
+**Prioridad:** P1  
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguos P-013, P-020 y parte estructural de P-022.
+
+## Trabajo
+
+- navegación definitiva móvil: **Inicio | Alumnado | DAR CLASE | Enseñanza | Marketing**;
+- DAR CLASE central, mayor y elevado;
+- sin hamburguesa para funciones principales;
+- escritorio con la misma arquitectura conceptual;
+- roles simultáneos Profesor + Alumno + Administrador autorizado;
+- una sola identidad/persona;
+- “Ver como” Profesor/Alumno/Administrador;
+- “Ver como” cambia experiencia, nunca permisos reales;
+- profesor puede tener expediente de alumno y autoevaluarse;
+- RLS/server-side valida identidad real;
+- Administración separada de la navegación docente normal cuando corresponda.
+
+## Cierre
+
+Una persona multirol navega correctamente en los tres contextos sin duplicarse y sin escalada de permisos.
+
+---
+
+# P19 — ALUMNADO Y MODELO ÚNICO DE PERSONAS
+
+**Prioridad:** P1  
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguo P-019 y parte de P-022.
+
+## Trabajo
+
+- potencial/contacto;
 - provisional;
 - registrado;
-- alumno real cuando existe clase o bono comprado.
-
-## B02.2 — Conversión sin pérdida ni duplicación
-
-Comprobar y corregir:
-
-- potencial → provisional;
-- potencial → alumno;
-- provisional → registrado;
-- conservación de nombre, teléfono, país, observaciones y demás datos;
-- identidad estable;
-- nombres nunca sustituidos por “Persona”.
-
-## B02.3 — Perfil completo de alumno
-
-Debe reunir:
-
-- datos personales;
-- datos de baile;
+- alumno real cuando tiene clase o bono comprado;
+- conversiones sin pérdida de datos;
+- impedir nombres convertidos en `Persona`;
+- datos personales y de baile;
 - roles/estilos;
-- nivel;
-- evaluaciones;
-- evolución;
+- evaluaciones/evolución;
 - clases;
 - bonos/saldo;
 - historial;
-- Correcciones;
-- Explicaciones;
-- Ejercicios;
-- Secuencias;
+- formación;
 - feedback;
 - incidencias;
 - programar clase;
-- añadir bono.
+- añadir bono;
+- identidad única compartida con CRM sin mezclar expediente comercial/pedagógico.
 
-## B02.4 — Clases y bonos dentro de Alumnado
+## Cierre
 
-No deben volver a ser módulos principales independientes.
-
-## Gate de B02
-
-Crear contacto → convertir → completar perfil → añadir bono → programar clase → consultar toda la información sin pérdida ni duplicación.
+Crear contacto → convertir → completar perfil → añadir bono → programar clase → consultar historial/formación sin pérdida ni duplicación.
 
 ---
 
-# B03 — FORMULARIOS, VALIDACIÓN E IMPORTACIÓN/EXPORTACIÓN
+# P20 — FORMULARIOS VERSIONABLES Y DATOS CANÓNICOS
 
 **Prioridad:** P1  
-**Estado:** REQUIERE VERIFICACIÓN + IMPLEMENTACIÓN
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguo P-015 y reglas de P-022.
 
-Integra antiguos P-015 y P-016.
+## Trabajo
 
-## B03.1 — Sistema de formularios reusable y versionable
-
-Debe soportar:
+Sistema reusable/versionable con:
 
 - definición;
 - versión;
@@ -321,30 +349,256 @@ Debe soportar:
 - visibilidad;
 - condiciones;
 - validación;
-- orden.
+- orden;
+- info/texto/textarea/select/multiselect/checkbox/número/fecha/email/teléfono;
+- validación de servidor;
+- reutilización de formularios históricos útiles;
+- no volver a preguntar datos canónicos existentes;
+- jerarquía `override clase → preferencia estilo → global → preguntar si falta` cuando aplique.
 
-Tipos mínimos:
+## Cierre
 
-- información;
-- texto;
-- textarea;
-- select;
-- multiselect;
-- checkbox;
-- número;
-- fecha;
-- email;
-- teléfono.
+Los formularios relevantes funcionan con una única fuente de verdad, validación real y sin duplicar preguntas/datos.
 
-Reglas:
+---
 
-- validación real de servidor;
-- no preguntar datos canónicos existentes;
-- reutilizar formularios históricos útiles sin duplicarlos.
+# P21 — DAR CLASE: FLUJO OPERATIVO DEFINITIVO
 
-## B03.2 — Importación/exportación integral
+**Prioridad:** P0/P1  
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguo P-007.
 
-Debe cubrir:
+## Flujo obligatorio
+
+**Seleccionar alumno/clase → Preparar → Diagnóstico 3 min → Trabajar → Terminar/Cerrar**
+
+## Trabajo
+
+- clase programada/manual;
+- fecha/hora/duración heredadas;
+- ubicación cuando falte;
+- individual/pareja;
+- 3 minutos iniciales;
+- notas rápidas;
+- frecuencia/importancia;
+- correcciones anteriores;
+- progreso;
+- evaluación rápida;
+- buscador unificado Correcciones/Explicaciones/Ejercicios/Secuencias;
+- búsqueda por título/etiquetas/categoría/descripción/relaciones;
+- prioridad por activo del alumno/contexto;
+- Crear rápido;
+- incompleto/borrador/solo profesores;
+- Trabajo de hoy separado del histórico;
+- Guía;
+- cambio rápido entre integrantes de pareja;
+- concurrencia prevista;
+- Terminar clase: asistencia/cobro/bono/incidencias;
+- Cerrar clase: contenido/evaluación/cierre pedagógico;
+- persistencia e idempotencia;
+- consumo correcto de saldo;
+- pendientes/misiones si queda trabajo abierto.
+
+## Cierre
+
+Clase individual y clase en pareja completadas de principio a fin sin pérdida de datos ni regresiones.
+
+---
+
+# P22 — PORTAL ALUMNO COMPLETO
+
+**Prioridad:** P1  
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguo P-018 y parte funcional de P-013.
+
+## Trabajo
+
+- próxima clase;
+- historial;
+- bonos/saldo;
+- Correcciones;
+- Explicaciones;
+- Ejercicios;
+- Secuencias;
+- multimedia autorizada;
+- evolución;
+- evaluaciones;
+- perfil;
+- preparación previa de clase cuando corresponda;
+- mensajes del profesor autorizados;
+- ningún `internal_note`;
+- RLS real;
+- coherencia con “Ver como Alumno”.
+
+## Cierre
+
+Alumno real y profesor en “Ver como Alumno” ven la misma experiencia funcional permitida, sin exposición de datos internos.
+
+---
+
+# P23 — ENSEÑANZA, RELACIONES Y ÁRBOLES TÁCTILES
+
+**Prioridad:** P1  
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguo P-008.
+
+## Trabajo
+
+- Biblioteca;
+- Correcciones;
+- Explicaciones;
+- Ejercicios;
+- Secuencias;
+- categorías;
+- relaciones;
+- prerequisitos;
+- homólogas Leader/Follower;
+- estilos bachata/salsa/zouk/bachazouk;
+- niveles;
+- asignaciones;
+- incompletos;
+- búsqueda global;
+- filtros estilo/rol/nivel/tipo/búsqueda;
+- árbol/mapa táctil;
+- pan/zoom;
+- centrar;
+- ruta;
+- volver/reset;
+- UX iPhone;
+- multimedia Drive por referencias.
+
+## Cierre
+
+Contenido pedagógico puede crearse, relacionarse, buscarse, asignarse y recorrerse cómodamente en móvil sin romper visibilidad ni relaciones.
+
+---
+
+# P24 — INICIO CONTEXTUAL DEFINITIVO
+
+**Prioridad:** P1  
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguo P-011.
+
+## Trabajo
+
+- saludo por hora y nombre;
+- mañana 05:00–11:59;
+- tarde 12:00–19:59;
+- noche 20:00–04:59;
+- frase diaria persistente;
+- clase próxima domina 30 minutos antes;
+- siguiente acción;
+- avisos;
+- accesos rápidos;
+- resumen del día;
+- acceso Administración;
+- Ver como;
+- cuenta/perfil;
+- experiencia contextual y rápida, no dashboard sobrecargado.
+
+## Cierre
+
+Inicio prioriza de forma fiable lo que toca hacer y sirve como lanzador rápido real.
+
+---
+
+# P25 — MOTOR DE MISIONES
+
+**Prioridad:** P1  
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguo P-012.
+
+## Trabajo
+
+- tipos principal/diaria/crecimiento;
+- estados consolidados;
+- prioridades normal/prioritaria/urgente;
+- cierres de clase;
+- bono bajo/vencimiento;
+- perfil incompleto;
+- corrección sin explicación;
+- preparación de clase;
+- añadir contenido;
+- revisar información;
+- completar contenido interno;
+- vencimientos;
+- bloqueo;
+- duplicados;
+- destinatarios;
+- canales;
+- horas silenciosas;
+- evidencia;
+- configuración servidor/BD;
+- integración con Inicio y calendario.
+
+## Cierre
+
+Misiones se generan, priorizan, vencen, completan y muestran correctamente sin duplicados ni lógica solo cliente.
+
+---
+
+# P26 — AGENDA, CALENDARIO Y GOOGLE CALENDAR
+
+**Prioridad:** P1  
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguo P-014.
+
+## Trabajo
+
+- Día/Semana/Mes/Lista;
+- clases/misiones/eventos;
+- conflictos;
+- identificación clara de clases por alumno+fecha;
+- Google Calendar;
+- id externo;
+- última sincronización;
+- estado/error;
+- sync idempotente;
+- no destruir participantes, saldo, estado pedagógico ni historia.
+
+## Cierre
+
+Crear/editar/sincronizar calendario varias veces no duplica ni corrompe datos.
+
+---
+
+# P27 — NOTIFICACIONES
+
+**Prioridad:** P2  
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguo P-017.
+
+## Trabajo
+
+- eventos;
+- destinatarios;
+- canales;
+- persistencia;
+- leído/no leído;
+- deduplicación;
+- integración con clases;
+- bonos;
+- misiones;
+- calendario cuando corresponda;
+- privacidad por rol.
+
+## Cierre
+
+Matriz evento → destinatario → canal probada sin duplicados ni filtraciones entre usuarios.
+
+---
+
+# P28 — IMPORTACIÓN / EXPORTACIÓN INTEGRAL
+
+**Prioridad:** P1  
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguo P-016 del tablero de pendientes. **No confundir con P16/v42 histórico.**
+
+## Por qué va aquí
+
+Se implementa cuando personas, formularios, clases, evaluaciones y enseñanza ya tienen modelos estabilizados; hacerlo antes obligaría a rehacer importadores/exportadores cada vez que cambie una entidad.
+
+## Trabajo
 
 - alumnos;
 - contactos;
@@ -355,463 +609,88 @@ Debe cubrir:
 - Ejercicios;
 - Secuencias;
 - evaluaciones;
-- configuración relevante.
-
-Requisitos:
-
-- transaccional cuando corresponda;
-- idempotencia;
+- configuración relevante;
+- CSV/formatos necesarios;
 - vista previa;
 - detección de duplicados;
 - errores por fila/entidad;
-- no pérdida de relaciones.
-
-## Gate de B03
-
-Importar muestra de datos, modificarla, exportarla y verificar integridad de IDs, relaciones y datos canónicos.
-
----
-
-# B04 — DAR CLASE: FLUJO OPERATIVO COMPLETO
-
-**Prioridad:** P0/P1  
-**Estado:** PENDIENTE DE REDISEÑO/VALIDACIÓN FINAL
-
-Integra antiguo P-007 y el contrato histórico del flujo de clase.
-
-## Flujo obligatorio
-
-**Seleccionar alumno/clase → Preparar → Diagnóstico 3 min → Trabajar → Terminar/Cerrar**
-
-## B04.1 — Selección
-
-- clase programada del día o manual;
-- fecha/hora/duración heredadas;
-- ubicación cuando falte;
-- individual/pareja correctamente detectado.
-
-## B04.2 — 3 minutos iniciales
-
-Permitir sin fricción:
-
-- preguntar/adaptar sesión;
-- notas rápidas;
-- asociar notas con errores/correcciones;
-- frecuencia;
-- importancia;
-- revisar correcciones anteriores;
-- comprobar progreso;
-- detectar explicaciones necesarias;
-- primera evaluación rápida.
-
-## B04.3 — Buscador unificado
-
-Buscar simultáneamente:
-
-- Correcciones;
-- Explicaciones;
-- Ejercicios;
-- Secuencias.
-
-Por:
-
-- título;
-- etiquetas;
-- categoría;
-- descripción;
-- relaciones.
-
-Orden:
-
-1. activo del alumno;
-2. correcciones activas;
-3. relevante por contexto;
-4. biblioteca compatible;
-5. otros.
-
-No ocultar elementos ya asignados.
-
-## B04.4 — Crear rápido
-
-- mínimos obligatorios;
-- estado incompleta/borrador/solo profesores;
-- posibilidad de completar posteriormente;
-- sin cortar el ritmo de clase.
-
-## B04.5 — Trabajo de hoy vs histórico
-
-Separación visual clara.
-
-## B04.6 — Parejas
-
-- información individual;
-- cambio rápido entre alumnos;
-- ninguna pestaña innecesaria en clase individual;
-- coherencia si participan dos profesores/dispositivos cuando el flujo lo permita.
-
-## B04.7 — Cierre
-
-Diferenciar:
-
-- **Terminar clase:** asistencia, cobro, bono, incidencias administrativas;
-- **Cerrar clase:** contenido, evaluación y cierre pedagógico.
-
-Debe garantizar:
-
-- persistencia;
+- transaccionalidad;
 - idempotencia;
-- consumo correcto de saldo;
-- generación de pendientes/misiones cuando algo quede abierto;
-- ninguna pérdida de datos.
+- conservación de relaciones.
 
-## Gate de B04
+## Cierre
 
-Ejecutar una clase real completa individual y otra en pareja desde programación hasta cierre administrativo/pedagógico.
+Exportar → importar en entorno controlado → verificar entidades/relaciones/datos canónicos sin pérdidas ni duplicados.
 
 ---
 
-# B05 — EVALUACIONES Y EVOLUCIÓN PEDAGÓGICA
-
-**Prioridad:** P1  
-**Estado:** PENDIENTE DE REDISEÑO/VALIDACIÓN FINAL
-
-Integra antiguo P-006.
-
-Requisitos:
-
-- niveles INICIO / INTERMEDIO / AVANZADO;
-- cinco opciones táctiles por parámetro;
-- valores 0 / 25 / 50 / 75 / 100;
-- nombres de parámetros configurables;
-- persistencia inmediata y fiable;
-- impedir el bug histórico de valores que desaparecen;
-- radar profesor absoluto;
-- radar alumno relativo;
-- reevaluación al subir de nivel;
-- referencia del 75 % del contenido obligatorio cuando aplique;
-- usable desde clase y evaluación manual.
-
-## Gate de B05
-
-Crear evaluación, editarla, cerrar sesión, reabrir y comprobar persistencia, radar y evolución histórica.
-
----
-
-# B06 — PORTAL ALUMNO + MULTIROL COMPLETO + VER COMO
-
-**Prioridad:** P1  
-**Estado:** REQUIERE VERIFICACIÓN + IMPLEMENTACIÓN
-
-Integra antiguos P-018 y P-013 restante.
-
-Portal debe incluir:
-
-- próxima clase;
-- historial de clases;
-- bonos/saldo;
-- Correcciones;
-- Explicaciones;
-- Ejercicios;
-- Secuencias;
-- multimedia autorizada;
-- evolución;
-- evaluaciones;
-- perfil;
-- preparación de clase cuando proceda.
-
-Seguridad:
-
-- ninguna nota interna;
-- RLS por identidad real;
-- “Ver como Alumno” simula experiencia, no permisos;
-- profesor/alumno puede evaluarse si el modelo lo autoriza;
-- Admin ve solo lo permitido por sus privilegios reales.
-
-## Gate de B06
-
-Comparar la misma persona como Profesor, Alumno y Administrador y validar datos visibles/ocultos.
-
----
-
-# B07 — ENSEÑANZA, RELACIONES Y ÁRBOLES
-
-**Prioridad:** P1  
-**Estado:** REQUIERE VERIFICACIÓN + IMPLEMENTACIÓN
-
-Integra antiguo P-008 y la arquitectura completa de Enseñanza.
-
-Debe incluir:
-
-- Biblioteca;
-- Correcciones;
-- Explicaciones;
-- Ejercicios;
-- Secuencias;
-- categorías;
-- relaciones;
-- asignaciones;
-- búsqueda global;
-- incompletos;
-- configuración pedagógica.
-
-## Relaciones obligatorias
-
-- Correcciones ↔ Explicaciones;
-- Ejercicios ↔ Explicaciones;
-- Ejercicios ↔ Correcciones;
-- Secuencias ↔ pasos/contenidos;
-- prerequisitos;
-- homólogas Leader/Follower;
-- estilo;
-- rol;
-- nivel.
-
-## Reglas pedagógicas
-
-- filtros Leader/Follower/ambos;
-- bachata/salsa/zouk/bachazouk;
-- estados corrección: pendiente / en corrección / corregida;
-- término único: Importancia;
-- explicaciones Leader/Follower/ambos;
-- ejercicios vinculados a explicaciones y/o correcciones;
-- elementos incompletos no visibles/asignables al alumno cuando no proceda.
-
-## Árboles táctiles
-
-- mover/pan;
-- zoom;
-- centrar;
-- ruta;
-- volver/reset;
-- búsqueda;
-- filtros estilo/rol/nivel/tipo;
-- experiencia usable en iPhone.
-
-## Gate de B07
-
-Crear contenidos relacionados, visualizarlos en árbol, asignarlos a alumno y comprobar reflejo correcto en Dar clase y portal.
-
----
-
-# B08 — INICIO INTELIGENTE, MISIONES, AGENDA Y NOTIFICACIONES
-
-**Prioridad:** P1/P2  
-**Estado:** REQUIERE VERIFICACIÓN + IMPLEMENTACIÓN
-
-Integra antiguos P-011, P-012, P-014 y P-017.
-
-## B08.1 — Inicio contextual
-
-Debe incluir:
-
-- saludo por nombre/hora;
-- frase diaria persistente;
-- siguiente acción;
-- clase próxima dominante 30 minutos antes;
-- misiones;
-- agenda/calendario;
-- avisos;
-- accesos rápidos;
-- resumen del día;
-- Administración;
-- Ver como;
-- cuenta/perfil.
-
-Franjas saludo:
-
-- mañana 05:00–11:59;
-- tarde 12:00–19:59;
-- noche 20:00–04:59.
-
-Frases:
-
-- activar/desactivar;
-- calendario;
-- CSV;
-- sustitución por fecha;
-- evitar duplicados;
-- previsualización;
-- persistencia por día.
-
-## B08.2 — Motor de Misiones
-
-Tipos:
-
-- principal;
-- diaria;
-- crecimiento.
-
-Estados:
-
-- próxima;
-- disponible;
-- en progreso;
-- bloqueada;
-- pospuesta;
-- completada;
-- no realizada;
-- no aplicable;
-- cancelada;
-- automática.
-
-Prioridad:
-
-- normal;
-- prioritaria;
-- urgente.
-
-Casos iniciales:
-
-- cierre de clases;
-- bono bajo/vencimiento;
-- perfil incompleto;
-- corrección pendiente de explicación;
-- preparación de clase;
-- añadir contenido;
-- revisar información;
-- completar contenido interno.
-
-Configuración:
-
-- activación;
-- frecuencia;
-- días;
-- hora;
-- prioridad;
-- duración;
-- peso;
-- criterio;
-- máximo diario;
-- duplicados;
-- auto;
-- vencimiento;
-- evidencia;
-- anticipación;
-- escalado;
-- bloqueo;
-- destinatarios;
-- canales;
-- horas silenciosas.
-
-## B08.3 — Agenda/calendario
-
-Vistas:
-
-- Día;
-- Semana;
-- Mes;
-- Lista.
-
-Fuentes:
-
-- clases;
-- misiones;
-- eventos.
-
-Google Calendar:
-
-- id externo;
-- última sincronización;
-- estado;
-- errores;
-- conflictos;
-- operaciones idempotentes;
-- no destruir participantes, saldos, estado pedagógico ni historia.
-
-## B08.4 — Notificaciones
-
-- eventos;
-- destinatarios;
-- canales;
-- persistencia;
-- lectura;
-- deduplicación;
-- integración con misiones, clases y bonos.
-
-## Gate de B08
-
-Simular un día completo con clase cercana, misión, conflicto de calendario y notificación y validar prioridades de Inicio.
-
----
-
-# B09 — MARKETING, CRM, TARIFAS, CAMPAÑAS Y ESTADÍSTICAS
+# P29 — MARKETING, CRM, TARIFAS, CAMPAÑAS, EVENTOS Y MULTIMEDIA
 
 **Prioridad:** P2  
-**Estado:** PENDIENTE DE REDISEÑO FUNCIONAL
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguo P-009 y la implementación concreta relacionada con P-021.
 
-Integra antiguos P-009 y P-010.
+## Trabajo
 
-## B09.1 — CRM comercial
-
-Campos base:
-
-- Fecha;
-- Nombre;
-- Teléfono;
-- País;
-- Cómo nos conoció;
-- Qué quería;
-- Reservó;
-- Bono;
-- Importe;
-- Observaciones;
-- Tarifa.
-
-Debe usar la misma persona canónica de B02.
-
-## B09.2 — Tarifas
-
-- administración de tarifas;
-- uso en CRM y reservas;
-- evitar valores duplicados/manuales cuando exista tarifa registrada.
-
-## B09.3 — Contenido y campañas
-
-- creación de contenido;
-- planificación;
-- campañas;
-- comunicaciones;
-- WhatsApp/email cuando proceda;
-- adjuntar fotos/vídeos mediante almacenamiento externo;
-- eventos y promoción.
-
-YouTube/TikTok NO son requisitos obligatorios.
-
-## B09.4 — Estadísticas
-
-Definir KPIs útiles para:
-
-- alumnado;
-- clases;
-- bonos;
-- enseñanza;
-- evaluaciones;
 - CRM;
+- contactos;
+- tarifas;
+- captación;
+- creación/planificación de contenido;
 - campañas;
-- negocio.
+- comunicaciones WhatsApp/email cuando corresponda;
+- fotos/vídeos;
+- eventos;
+- promoción;
+- pipeline/estados útiles;
+- reutilizar la persona canónica;
+- multimedia en Google Drive por referencias/IDs;
+- no YouTube/TikTok obligatorio salvo decisión nueva.
 
-Requisitos:
+## Cierre
 
-- jerarquía visual;
-- filtros;
-- navegación táctil;
-- métricas accionables;
-- no mostrar gráficos solo por estética.
-
-## Gate de B09
-
-Contacto → campaña/evento → conversión → alumno → bono/clase debe conservar trazabilidad sin duplicar persona.
+Flujo contacto → seguimiento → tarifa/campaña/evento funciona sin duplicar persona ni almacenar multimedia pesada incorrectamente.
 
 ---
 
-# B10 — ADMINISTRACIÓN, INTEGRACIONES Y ALMACENAMIENTO
+# P30 — ESTADÍSTICAS Y MÉTRICAS
 
-**Prioridad:** P1/P2  
-**Estado:** REQUIERE VERIFICACIÓN + IMPLEMENTACIÓN
+**Prioridad:** P2  
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguo P-010.
 
-Integra antiguo P-021 y requisitos administrativos dispersos.
+## Trabajo
 
-Administración debe reunir:
+- definir KPIs reales;
+- alumnado;
+- clases;
+- bonos/negocio;
+- enseñanza;
+- evolución;
+- CRM;
+- marketing;
+- campañas/eventos cuando exista dato;
+- filtros;
+- jerarquía;
+- navegación táctil;
+- gráficos legibles en iPhone;
+- no mostrar métricas decorativas sin fuente real.
+
+## Cierre
+
+Cada KPI tiene fuente de datos verificable y la interfaz permite entender tendencias/estado sin inconsistencias.
+
+---
+
+# P31 — ADMINISTRACIÓN, IDENTIDAD VISUAL Y CONFIGURACIÓN FINAL
+
+**Prioridad:** P2/P3  
+**Estado:** ⏳ PENDIENTE  
+**Absorbe:** antiguos P-004 y P-005, más el cierre visual/administrativo consolidado.
+
+## Trabajo
+
+### Administración
 
 - configuración general;
 - roles/permisos;
@@ -822,228 +701,182 @@ Administración debe reunir:
 - integraciones;
 - seguridad/diagnóstico;
 - control administrativo;
-- configuración de apariencia permitida.
+- configuración persistida en servidor/BD cuando corresponda.
 
-## Multimedia
+### Identidad visual
 
-Regla permanente:
-
-- fotos/vídeos pesados en Google Drive u otro almacenamiento externo aprobado;
-- Supabase conserva referencias/IDs/metadatos;
-- no blobs pesados operativos en GitHub;
-- no blobs pesados operativos en tablas normales de Supabase.
-
-## Integraciones
-
-Verificar según corresponda:
-
-- Supabase;
-- GitHub;
-- Hostinger;
-- Google Drive;
-- Google Calendar;
-- Sentry/observabilidad;
-- servicios de comunicación que se activen.
-
-## Gate de B10
-
-Revisar cada integración desde UI/configuración y comprobar errores, credenciales públicas/privadas y recuperación ante fallo.
-
----
-
-# B11 — IDENTIDAD VISUAL Y ACABADO GLOBAL
-
-**Prioridad:** P2/P3  
-**Estado:** PENDIENTE
-
-Integra antiguos P-004 y P-005 y la auditoría visual v23 como baseline.
-
-Debe cerrar:
-
-- colores CYA definitivos;
+- colores CYA;
 - logo;
-- cabeceras;
-- jerarquía tipográfica;
-- espaciados;
-- tarjetas;
-- botones;
-- estados;
-- iconografía;
-- coherencia entre módulos;
-- apariencia configurable únicamente dentro de reglas aprobadas.
-
-Reglas existentes:
-
-- nada de amarillo fluorescente;
-- login no negro;
-- contraste suficiente;
+- cabecera;
+- tipografía;
+- coherencia visual;
+- botones morados con contraste correcto;
+- sin amarillo fluorescente;
+- sin fondos/login negros no solicitados;
 - iconos sin cuadrados decorativos sistemáticos;
 - DAR CLASE destacado;
-- no reintroducir modo oscuro sin decisión expresa;
-- iPhone como referencia principal;
-- no overflow horizontal;
-- safe areas correctas;
-- tamaños táctiles adecuados.
+- iPhone y escritorio;
+- apariencia configurable solo dentro de las decisiones vigentes, sin reintroducir modo oscuro por defecto.
 
-## Gate de B11
+## Cierre
 
-Auditoría visual completa en móvil y escritorio de todos los módulos ya funcionalmente cerrados.
+La aplicación se ve y se siente como un único producto terminado, no como módulos construidos en momentos distintos.
 
 ---
 
-# B12 — QA TRANSVERSAL, SEGURIDAD, REGRESIÓN Y RELEASE FINAL
+# P32 — AUDITORÍA TRANSVERSAL FINAL, PRODUCCIÓN Y RELEASE
 
 **Prioridad:** P0/P1  
-**Estado:** PENDIENTE COMO GATE FINAL
+**Estado:** ⏳ PENDIENTE FINAL
 
-Integra antiguos P-023 y P-024.
+## Trabajo obligatorio
 
-## B12.1 — Smoke test iPhone real
+### Flujos
 
-Comprobar:
+- crear persona;
+- convertir contacto;
+- añadir bono;
+- programar clase;
+- dar clase;
+- cerrar administrativa/pedagógicamente;
+- consumir saldo;
+- asignar formación;
+- evaluar;
+- consultar evolución;
+- portal alumno;
+- Inicio/Misiones/Agenda;
+- Enseñanza;
+- Marketing;
+- import/export;
+- Profesor/Alumno/Admin.
 
-- safe areas;
-- scroll;
-- teclado;
-- zoom Safari;
-- modales;
-- formularios;
-- barra inferior;
-- Dar clase;
-- árboles;
-- evaluación;
-- ficha alumno;
-- navegación/retorno;
-- orientación cuando corresponda.
+### Seguridad
 
-## B12.2 — Regresión transversal completa
+- RLS;
+- Auth;
+- funciones `SECURITY DEFINER`;
+- secretos;
+- roles;
+- Ver como;
+- aislamiento de notas internas;
+- permisos de multimedia.
 
-Flujo obligatorio:
+### Producción
 
-1. crear persona;
-2. convertir contacto;
-3. completar perfil;
-4. añadir bono;
-5. programar clase;
-6. dar clase;
-7. terminar/cerrar;
-8. consumir bono;
-9. consultar/asignar formación;
-10. evaluar;
-11. comprobar portal alumno;
-12. comprobar CRM/Marketing;
-13. importar/exportar;
-14. revisar Profesor/Alumno/Admin;
-15. revisar misiones/calendario/notificaciones;
-16. revisar seguridad/RLS.
+Cerrar G1:
 
-## B12.3 — Producción
+- commit de `main` identificado en Hostinger;
+- runtime config;
+- Supabase real;
+- login;
+- rutas;
+- errores/logs cuando haya acceso;
+- deploy reproducible.
 
-- commit/PR final identificados;
-- deploy Hostinger confirmado;
-- Supabase migrations alineadas;
-- configuración Auth revisada;
-- secretos ausentes del frontend/repositorio;
-- Sentry/logs sin errores bloqueantes;
-- smoke test producción aprobado.
+Cerrar G2:
 
-## B12.4 — Criterio de “aplicación lista”
+- protección de contraseñas filtradas resuelta o evidencia documentada de imposibilidad por plan/configuración y decisión explícita de release.
 
-CYA Hub solo se declara lista cuando:
+Cerrar G3/G4:
 
-- todos los bloques B00–B11 están cerrados o explícitamente descartados por decisión del usuario;
-- B12 pasa completo;
-- no quedan P0/P1 conocidos abiertos;
-- las funciones principales funcionan en producción real;
-- iPhone y escritorio están validados;
-- Profesor, Alumno y Administrador tienen flujos coherentes y seguros;
-- el estado documental coincide con GitHub/Supabase/Hostinger.
+- smoke test iPhone completo;
+- regresión transversal completa.
+
+## Cierre final
+
+Solo después de P32 puede declararse **CYA Hub listo para uso real/producción**.
 
 ---
 
-# 6. CONTROLES TRANSVERSALES QUE NO ESPERAN A SU BLOQUE
+# 6. MAPEO COMPLETO DE LA SEGUNDA AUDITORÍA AL PLAN ÚNICO
 
-Estas reglas se verifican en **cada actualización**, no solo al final:
+| Pendiente antiguo | Destino en plan único | Estado |
+|---|---|---|
+| P-001 Hostinger | G1 + P32 | Pendiente |
+| P-002 Auth leaked passwords | G2 + P32 | Pendiente |
+| P-003 baseline migraciones | Baseline cerrado | ✅ Cerrado |
+| P-004 identidad visual | P31 | Pendiente |
+| P-005 tipografía/apariencia | P31 | Pendiente |
+| P-006 evaluaciones | P17 | Siguiente |
+| P-007 Dar clase | P21 | Pendiente |
+| P-008 árboles Enseñanza | P23 | Pendiente |
+| P-009 Marketing | P29 | Pendiente |
+| P-010 Estadísticas | P30 | Pendiente |
+| P-011 Inicio contextual | P24 | Pendiente |
+| P-012 Misiones | P25 | Pendiente |
+| P-013 multirol/Ver como | P18 + P22 | Pendiente |
+| P-014 Agenda/calendario | P26 | Pendiente |
+| P-015 formularios | P20 | Pendiente |
+| P-016 import/export | P28 | Pendiente |
+| P-017 notificaciones | P27 | Pendiente |
+| P-018 portal alumno | P22 | Pendiente |
+| P-019 Alumnado | P19 | Pendiente |
+| P-020 navegación | P18 | Pendiente |
+| P-021 multimedia externa | G5 + P23/P29 | Permanente/Pendiente |
+| P-022 datos canónicos | G5 + P18/P19/P20 | Permanente/Pendiente |
+| P-023 iPhone smoke | G3 + P32 | Permanente |
+| P-024 regresión transversal | G4 + P32 | Permanente |
+| P-025 recuperar SQL | Baseline cerrado | ✅ Cerrado |
 
-1. seguridad/RLS;
-2. no secretos administrativos en cliente/repositorio;
-3. migraciones incrementales e idempotentes;
-4. no resetear Supabase producción;
-5. datos canónicos sin duplicación;
-6. no pérdida de relaciones;
-7. iPhone sin regresiones;
-8. accesibilidad táctil básica;
-9. no reintroducir elementos descartados;
-10. multimedia pesada fuera de GitHub/DB;
-11. actualización del plan maestro con evidencia.
-
----
-
-# 7. ELEMENTOS DESCARTADOS — NO REINTRODUCIR
-
-- WordPress como backend/identidad canónica;
-- ChatGPT Sites como producción;
-- versión móvil 9.3.0;
-- 20.14/20.15 como base Dar clase;
-- hamburguesa para funciones principales;
-- amarillo fluorescente;
-- login/fondos negros no solicitados;
-- iconos sistemáticamente dentro de cuadrados decorativos;
-- duplicar personas al convertirlas;
-- volver a preguntar datos canónicos ya conocidos;
-- mezclar expediente comercial y pedagógico sin separación adecuada;
-- exponer notas internas al alumno;
-- multimedia pesada en GitHub/DB;
-- secretos administrativos en frontend/GitHub;
-- YouTube/TikTok como integración obligatoria.
+Ningún pendiente de la segunda auditoría desaparece: todos quedan cerrados, asignados a una actualización o convertidos en gate permanente.
 
 ---
 
-# 8. ESTADO ACTUAL DEL PLAN — 11/08/2026 15:55
+# 7. RESUMEN DEL ORDEN QUE SE MOSTRARÁ AL USUARIO
 
-## Cerrado
+```text
+✅ P12 — Modelo de evaluaciones — recorrido
+✅ P13 — Radar interactivo — recorrido
+✅ P14 — Historial de evaluación — recorrido
+✅ P15 — Resumen real de progreso — recorrido
+✅ P16 — Seguridad RLS/v42 — CERRADO PRODUCCIÓN
 
-- ✅ C-001 / P16-v42 seguridad RLS alumno–clases.
-- ✅ C-002 / baseline de 52 migraciones Supabase.
-- ✅ PR #2 fusionada en `main`.
-- ✅ baseline visual v23 aplicado en las áreas incluidas en aquella auditoría.
+▶ P17 — Cierre real Evaluaciones + reconciliar Point12R
+⏳ P18 — Identidad + roles + navegación + Ver como
+⏳ P19 — Alumnado + persona única
+⏳ P20 — Formularios versionables + datos canónicos
+⏳ P21 — Dar clase definitivo
+⏳ P22 — Portal alumno completo
+⏳ P23 — Enseñanza + relaciones + árboles
+⏳ P24 — Inicio contextual
+⏳ P25 — Misiones
+⏳ P26 — Agenda + Google Calendar
+⏳ P27 — Notificaciones
+⏳ P28 — Importación/exportación integral
+⏳ P29 — Marketing + CRM + tarifas + campañas + eventos + multimedia
+⏳ P30 — Estadísticas
+⏳ P31 — Administración + identidad visual final
+⏳ P32 — QA transversal + Hostinger + seguridad + release final
+```
 
-## Siguiente bloque obligatorio
-
-### ▶ B00 — Base técnica, producción y trazabilidad
-
-Orden interno:
-
-1. B00.1 verificar runtime Hostinger;
-2. B00.2 protección de contraseñas filtradas Supabase Auth;
-3. B00.3 recuperar 18 SQL históricos.
-
-## Falta después
-
-- ⬜ B01 Navegación, identidad y permisos.
-- ⬜ B02 Alumnado y modelo de personas.
-- ⬜ B03 Formularios + import/export.
-- ⬜ B04 Dar clase.
-- ⬜ B05 Evaluaciones.
-- ⬜ B06 Portal alumno + multirol/Ver como.
-- ⬜ B07 Enseñanza + árboles.
-- ⬜ B08 Inicio + Misiones + Agenda + Notificaciones.
-- ⬜ B09 Marketing + CRM + Tarifas + Estadísticas.
-- ⬜ B10 Administración + Integraciones + Almacenamiento.
-- ⬜ B11 Identidad visual y acabado.
-- ⬜ B12 QA transversal + producción final.
+Este bloque se actualizará después de cada implementación y se utilizará como encabezado obligatorio al iniciar la siguiente.
 
 ---
 
-# 9. PRINCIPIO DE EJECUCIÓN
+# 8. REGLAS QUE NO SE PUEDEN ROMPER DURANTE LA SECUENCIA
 
-No se debe saltar a un bloque posterior solo porque resulte más visible o atractivo si existe una dependencia abierta anterior que pueda provocar pérdida de datos, problemas de permisos, regresiones o trabajo duplicado.
+- No reconstruir desde cero una función que ya esté correcta.
+- Auditar primero el estado actual de `main` y Supabase del punto que toca.
+- No resetear Supabase.
+- Migraciones nuevas incrementales, idempotentes cuando proceda y verificables.
+- No aplicar SQL `PREPARED-NOT-APPLIED` sin decisión/evidencia específica.
+- No fusionar ramas antiguas divergentes a ciegas.
+- No reintroducir WordPress como backend/identidad canónica.
+- No usar ChatGPT Sites como producción.
+- No reintroducir 9.3.0 móvil ni 20.14/20.15 como base de Dar clase.
+- No hamburguesa para módulos principales.
+- No amarillo fluorescente.
+- No duplicar personas.
+- No volver a preguntar datos canónicos ya conocidos.
+- No exponer notas internas al alumno.
+- No multimedia pesada en GitHub/DB.
+- No secretos administrativos en frontend/GitHub.
+- iPhone sigue siendo referencia móvil principal.
 
-Se permite trabajar en paralelo únicamente cuando:
+---
 
-- no exista dependencia técnica;
-- no se modifique la misma superficie crítica;
-- pueda probarse de forma independiente;
-- el plan maestro deje registrada la excepción.
+# 9. ESTADO DE ARRANQUE DESDE ESTE DOCUMENTO
 
-La prioridad es **terminar CYA Hub**, no acumular funciones parcialmente implementadas.
+**Último cierre real:** P16/v42.  
+**Siguiente actualización:** **P17 — Cierre real de Evaluaciones y reconciliación de Point12R.**  
+**Resto pendiente después de P17:** P18 → P32, más gates G1–G5 hasta su cierre correspondiente.
