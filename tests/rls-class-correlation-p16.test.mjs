@@ -7,6 +7,11 @@ const sql = fs.readFileSync(
     ?? 'supabase/v42-rls-student-class-correlation.sql',
   'utf8',
 );
+const app = fs.readFileSync('app/cya-app.tsx', 'utf8');
+const classWorkflow = fs.readFileSync(
+  'supabase/v31-class-workflow-realtime.sql',
+  'utf8',
+);
 const compact = sql.replace(/\s+/g, ' ').trim();
 
 function policy(name) {
@@ -31,19 +36,28 @@ test('P16.0 is an atomic, policy-only migration', () => {
   assert.doesNotMatch(compact, /drop policy if exists \S+_staff_/i);
 });
 
-test('student summaries are correlated to the outer summary class', () => {
-  const body = policy('class_pedagogy_summaries_student_select');
+test('student summaries use the filtered portal instead of direct table SELECT', () => {
+  assert.match(
+    compact,
+    /drop policy if exists class_pedagogy_summaries_student_select/i,
+  );
+  assert.doesNotMatch(
+    compact,
+    /create policy class_pedagogy_summaries_student_select/i,
+  );
 
-  assert.match(
-    body,
-    /c\.id = class_pedagogy_summaries\.class_id/i,
-  );
-  assert.match(
-    body,
-    /cp\.person_id = \(select private\.current_person_id\(\)\)/i,
-  );
-  assert.match(body, /c\.pedagogy_closed_at is not null/i);
-  assert.doesNotMatch(body, /where c\.id = cp\.class_id/i);
+  assert.match(app, /db\.rpc\("student_portal_snapshot"\)/);
+  assert.doesNotMatch(app, /\.from\("class_pedagogy_summaries"\)/);
+
+  const start = classWorkflow.indexOf("'class_summaries'");
+  const end = classWorkflow.indexOf("'class_media'", start);
+  assert.ok(start >= 0 && end > start, 'missing portal summary projection');
+  const projection = classWorkflow.slice(start, end);
+  assert.match(projection, /'student_message',s\.student_message/);
+  assert.match(projection, /join public\.class_participants cp on cp\.class_id=s\.class_id/);
+  assert.match(projection, /where cp\.person_id=p_person_id/);
+  assert.match(projection, /c\.pedagogy_closed_at is not null/);
+  assert.doesNotMatch(projection, /internal_note/);
 });
 
 test('student inserts require own identity and participation in that class', () => {
