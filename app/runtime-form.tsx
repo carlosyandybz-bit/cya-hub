@@ -2,7 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CheckCircle2, ChevronDown, ChevronUp, LoaderCircle } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./runtime-form.module.css";
 
 export type RuntimeFormMode = "complete_missing" | "edit" | "review";
@@ -47,6 +47,7 @@ type Props = {
   mode?: RuntimeFormMode;
   submitLabel?: string;
   compact?: boolean;
+  unavailableFallback?: ReactNode;
   onSaved?: (result: Record<string, unknown>) => Promise<void> | void;
 };
 
@@ -85,17 +86,27 @@ function initialValue(field: RuntimeFormField) {
   return scalar(field.value);
 }
 
-export function RuntimeForm({ client, formKey, personId = null, mode = "complete_missing", submitLabel = "Guardar", compact = false, onSaved }: Props) {
+function runtimeUnavailable(error: { code?: string | null; message?: string | null } | null) {
+  if (!error) return false;
+  const message = String(error.message ?? "").toLowerCase();
+  return error.code === "PGRST202" || (message.includes("form_runtime") && (message.includes("could not find") || message.includes("schema cache")));
+}
+
+export function RuntimeForm({ client, formKey, personId = null, mode = "complete_missing", submitLabel = "Guardar", compact = false, unavailableFallback = null, onSaved }: Props) {
   const [runtime, setRuntime] = useState<RuntimeFormPayload | null>(null);
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [showKnown, setShowKnown] = useState(mode !== "complete_missing");
+  const [unavailable, setUnavailable] = useState(false);
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setUnavailable(false);
     const result = await client.rpc("form_runtime", { p_form_key: formKey, p_person_id: personId, p_mode: mode });
-    if (result.error) { setError(result.error.message); setLoading(false); return; }
+    if (result.error) {
+      if (runtimeUnavailable(result.error)) { setUnavailable(true); setRuntime(null); setLoading(false); return; }
+      setError(result.error.message); setLoading(false); return;
+    }
     const payload = result.data as RuntimeFormPayload;
     const next: Record<string, unknown> = {};
     payload.fields.forEach((field) => { next[field.field_key] = initialValue(field); });
@@ -133,6 +144,7 @@ export function RuntimeForm({ client, formKey, personId = null, mode = "complete
   }
 
   if (loading) return <div className={styles.loading}><LoaderCircle className={styles.spin} size={19}/><span>Cargando datos…</span></div>;
+  if (unavailable) return <>{unavailableFallback ?? <p className="modal-intro">El nuevo motor de formularios todavía no está activo en el servidor.</p>}</>;
   if (!runtime) return <p className="error">{error || "No se pudo abrir el formulario."}</p>;
 
   return <form className={`${styles.form} ${compact ? styles.compact : ""}`} onSubmit={submit}>
