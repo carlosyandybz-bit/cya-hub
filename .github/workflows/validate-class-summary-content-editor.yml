@@ -1,0 +1,29 @@
+name: Validate class summary content editor
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/cya-app.tsx'
+      - 'app/class-summary-content-editor.tsx'
+      - 'app/class-summary-content-editor.module.css'
+      - 'supabase/v45_fix_teaching_rls_and_summary_edit.sql'
+      - 'tests/class-summary-content-editor.test.mjs'
+      - '.github/workflows/validate-class-summary-content-editor.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Summary editor regressions
+        run: node --test tests/class-summary-content-editor.test.mjs
+      - name: Lint changed UI
+        run: npx eslint app/class-summary-content-editor.tsx app/cya-app.tsx
+      - name: Build Next.js application
+        run: npm run build
