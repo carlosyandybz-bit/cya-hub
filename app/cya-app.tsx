@@ -32,6 +32,7 @@ import { SecureDriveAsset } from "./drive-media";
 import { TeachingMediaEditor, type TeachingMediaDraft } from "./teaching-media-editor";
 import { setRuntimeSupabaseClient } from "./supabase-runtime";
 import { ClassSummaryContentEditor } from "./class-summary-content-editor";
+import { QuickProvisionalStudentModal, type EditablePersonIdentity } from "./person-identity-editor";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 
 const TeachingGraph = lazy(() => import("./teaching-graph").then((module) => ({ default: module.TeachingGraph })));
@@ -348,7 +349,7 @@ function StudentsView({ students, query, setQuery, add, open, schedule, credit }
       <article className="student-row" key={student.id}>
         <button className="student-row-main" onClick={() => open(student)}>
           <span className="avatar"><UserRound /></span><span className="student-main"><strong>{student.display_name}</strong><span>{student.phone || student.email || "Sin datos de contacto"}</span></span>
-          <span className={`badge ${student.auth_user_id ? "portal" : ""}`}>{student.auth_user_id ? "Con portal" : "Provisional"}</span>
+          <span className={`badge ${student.auth_user_id ? "portal" : ""}`}>{student.auth_user_id ? "Registrado" : "Provisional"}</span>
         </button>
         <span className="student-row-actions"><button className="btn ghost" onClick={() => schedule(student)}><CalendarDays size={16} /> Programar</button><button className="btn ghost" onClick={() => credit(student)}><WalletCards size={16} /> Bono</button></span>
       </article>)}</div>
@@ -814,8 +815,10 @@ function FinishClassModal({ item, students, credits, library, close, finished }:
   </section></div>;
 }
 
-function ManualClassDraft({ students, close, created }: { students: Person[]; close: () => void; created: (id: number) => Promise<void> }) {
+function ManualClassDraft({ students, close, created, refresh }: { students: Person[]; close: () => void; created: (id: number) => Promise<void>; refresh: () => Promise<void> }) {
   const [type,setType] = useState<"individual"|"pair">("individual"), [busy,setBusy] = useState(false), [error,setError] = useState("");
+  const [firstId,setFirstId] = useState(""), [secondId,setSecondId] = useState("");
+  const [quickSlot,setQuickSlot] = useState<1|2|null>(null);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!db) return;
     const form = new FormData(event.currentTarget), first = Number(form.get("student_1")), second = Number(form.get("student_2") || 0);
@@ -827,10 +830,10 @@ function ManualClassDraft({ students, close, created }: { students: Person[]; cl
     if (id) await created(id);
     setBusy(false); close();
   }
-  return <div className="backdrop" onMouseDown={(event) => event.target === event.currentTarget && close()}><section className="modal" role="dialog" aria-modal="true">
+  return <><div className="backdrop" onMouseDown={(event) => event.target === event.currentTarget && close()}><section className="modal" role="dialog" aria-modal="true">
     <header className="modal-head"><h2>Empezar otra clase</h2><button className="icon-btn" onClick={close} aria-label="Cerrar"><X /></button></header>
-    <form className="modal-body" onSubmit={submit}><div className="segmented"><button type="button" className={type === "individual" ? "active" : ""} onClick={() => setType("individual")}>Individual</button><button type="button" className={type === "pair" ? "active" : ""} onClick={() => setType("pair")}>Pareja</button></div><div className="fields-2"><label className="field"><span>Alumno *</span><select name="student_1" required defaultValue=""><option value="" disabled>Seleccionar</option>{students.map((student) => <option key={student.id} value={student.id}>{student.display_name}</option>)}</select></label>{type === "pair" ? <label className="field"><span>Segundo alumno *</span><select name="student_2" required defaultValue=""><option value="" disabled>Seleccionar</option>{students.map((student) => <option key={student.id} value={student.id}>{student.display_name}</option>)}</select></label> : null}</div><p className="modal-intro">Después confirmarás fecha, duración, estilo, rol, nivel, lugar y bono antes de empezar a bailar.</p>{error ? <p className="error">{error}</p> : null}<div className="actions"><button className="btn ghost" type="button" onClick={close}>Cancelar</button><button className="btn" disabled={busy}><ArrowRight size={17} /> {busy ? "Creando…" : "Continuar"}</button></div></form>
-  </section></div>;
+    <form className="modal-body" onSubmit={submit}><div className="segmented"><button type="button" className={type === "individual" ? "active" : ""} onClick={() => setType("individual")}>Individual</button><button type="button" className={type === "pair" ? "active" : ""} onClick={() => setType("pair")}>Pareja</button></div><div className="fields-2"><div className="field"><span>Alumno *</span><select name="student_1" required value={firstId} onChange={(event) => setFirstId(event.target.value)}><option value="" disabled>Seleccionar</option>{students.map((student) => <option key={student.id} value={student.id}>{student.display_name}</option>)}</select><button type="button" className="text-button" onClick={() => setQuickSlot(1)}><Plus size={15}/> Crear alumno provisional</button></div>{type === "pair" ? <div className="field"><span>Segundo alumno *</span><select name="student_2" required value={secondId} onChange={(event) => setSecondId(event.target.value)}><option value="" disabled>Seleccionar</option>{students.map((student) => <option key={student.id} value={student.id}>{student.display_name}</option>)}</select><button type="button" className="text-button" onClick={() => setQuickSlot(2)}><Plus size={15}/> Crear alumno provisional</button></div> : null}</div><p className="modal-intro">Después confirmarás fecha, duración, estilo, rol, nivel, lugar y bono antes de empezar a bailar.</p>{error ? <p className="error">{error}</p> : null}<div className="actions"><button className="btn ghost" type="button" onClick={close}>Cancelar</button><button className="btn" disabled={busy}><ArrowRight size={17} /> {busy ? "Creando…" : "Continuar"}</button></div></form>
+  </section></div>{quickSlot && db ? <QuickProvisionalStudentModal client={db} close={() => setQuickSlot(null)} created={async (person: EditablePersonIdentity) => { await refresh(); if (quickSlot===1) setFirstId(String(person.id)); else setSecondId(String(person.id)); }} /> : null}</>;
 }
 
 function ClassSetupStage({ item, students, credits, terms, refresh, notify, back, next }: { item: ClassItem; students: Person[]; credits: CreditItem[]; terms: CatalogTerm[]; refresh: () => Promise<void>; notify: (message:string) => void; back: () => void; next: () => void }) {
@@ -1037,7 +1040,7 @@ function LiveClassView({ classes, students, credits, terms, library, relations, 
   return <><Header eyebrow="Dar clase" title="Centro de clases" description="Entra en cualquier clase abierta, deja otra pendiente o empieza una nueva sin bloquear tu trabajo." action={<button className="btn" onClick={() => setManualOpen(true)}><Plus/> Empezar otra clase</button>} />
     <section className="class-center-grid"><article className="card class-center-section"><header><div><p className="eyebrow">En curso</p><h2>Clases abiertas</h2></div><strong>{active.length}</strong></header>{active.length ? active.map((item) => row(item,'Abierta','active')) : <div className="class-center-empty">No hay clases abiertas.</div>}</article><article className="card class-center-section"><header><div><p className="eyebrow">Por terminar</p><h2>Cierre pendiente</h2></div><strong>{pending.length}</strong></header>{pending.length ? pending.map((item) => row(item,'Cerrar','pending')) : <div className="class-center-empty">Todo cerrado.</div>}</article></section>
     <section className="card class-center-section scheduled-section"><header><div><p className="eyebrow">Agenda</p><h2>Programadas</h2></div><strong>{scheduled.length}</strong></header>{scheduled.length ? scheduled.map((item) => row(item,item.workflow_stage==='prepare'?'Preparada':'Preparar','scheduled')) : <div className="class-center-empty">No hay clases programadas.</div>}</section>
-    <button className="text-button class-center-exit" onClick={exit}>Salir de Dar clase</button>{manualOpen ? <ManualClassDraft students={students} close={() => setManualOpen(false)} created={async (id) => { await refresh(); selectClass(id); }} /> : null}
+    <button className="text-button class-center-exit" onClick={exit}>Salir de Dar clase</button>{manualOpen ? <ManualClassDraft students={students} close={() => setManualOpen(false)} refresh={refresh} created={async (id) => { await refresh(); selectClass(id); }} /> : null}
   </>;
 }
 
@@ -1489,10 +1492,10 @@ function StaffApp({ session }: { session: Session }) {
     setCommunicationRecipients((recipientResult.data ?? []) as unknown as CommunicationRecipient[]);
   }, []);
   const refreshLive = useCallback(async () => {
-    await loadOperations();
+    await Promise.all([loadOperations(),loadStudents()]);
     try { await loadTeaching(); }
     catch (error) { setToast(error instanceof Error ? error.message : "La clase está abierta, pero no se pudo actualizar la enseñanza."); }
-  }, [loadOperations,loadTeaching]);
+  }, [loadOperations,loadStudents,loadTeaching]);
   const refreshMarketing = useCallback(async () => { await Promise.all([loadMarketing(),loadStudents()]); }, [loadMarketing,loadStudents]);
   useEffect(() => {
     let alive = true;
@@ -1707,6 +1710,7 @@ function StaffApp({ session }: { session: Session }) {
       teachingContents={teachingContents}
       crmContact={crmContacts.find((contact) => contact.id === selected.id) ?? null}
       rates={marketingRates}
+      refresh={async () => { await Promise.all([loadStudents(),loadMarketing()]); }}
       close={() => goBack(view)}
       schedule={() => openSchedule(selected.id)}
       addCredit={() => openCredit(selected.id)}
