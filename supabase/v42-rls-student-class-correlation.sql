@@ -5,6 +5,10 @@
 --    student_portal_snapshot, que proyecta student_message pero no internal_note;
 -- 2) un alumno solo puede crear o actualizar su propia solicitud de
 --    preparación para una clase programada en la que figura como participante.
+--
+-- classes y class_participants son staff-only por RLS. La comprobación de
+-- participación se realiza en un helper privado SECURITY DEFINER que valida
+-- primero la identidad del alumno y después consulta esas tablas sin abrirlas.
 
 begin;
 
@@ -15,6 +19,37 @@ on public.class_pedagogy_summaries;
 -- internal_note. El portal mantiene el comportamiento legítimo a través del RPC
 -- filtrado, mientras class_pedagogy_summaries_staff_all permanece intacta.
 
+create or replace function private.can_manage_own_scheduled_class_preparation(
+  p_class_id bigint,
+  p_person_id bigint
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select
+    (select auth.uid()) is not null
+    and p_person_id = (select private.current_person_id())
+    and exists (
+      select 1
+      from public.classes c
+      join public.class_participants cp on cp.class_id = c.id
+      where c.id = p_class_id
+        and cp.person_id = p_person_id
+        and c.status = 'scheduled'
+    );
+$function$;
+
+revoke all on function
+private.can_manage_own_scheduled_class_preparation(bigint,bigint)
+from public;
+
+grant execute on function
+private.can_manage_own_scheduled_class_preparation(bigint,bigint)
+to authenticated;
+
 drop policy if exists class_preparation_requests_student_insert
 on public.class_preparation_requests;
 
@@ -23,15 +58,10 @@ on public.class_preparation_requests
 for insert
 to authenticated
 with check (
-  class_preparation_requests.person_id = (select private.current_person_id())
-  and exists (
-    select 1
-    from public.classes c
-    join public.class_participants cp on cp.class_id = c.id
-    where c.id = class_preparation_requests.class_id
-      and cp.person_id = class_preparation_requests.person_id
-      and c.status = 'scheduled'
-  )
+  (select private.can_manage_own_scheduled_class_preparation(
+    class_preparation_requests.class_id,
+    class_preparation_requests.person_id
+  ))
 );
 
 drop policy if exists class_preparation_requests_student_update
@@ -42,26 +72,16 @@ on public.class_preparation_requests
 for update
 to authenticated
 using (
-  class_preparation_requests.person_id = (select private.current_person_id())
-  and exists (
-    select 1
-    from public.classes c
-    join public.class_participants cp on cp.class_id = c.id
-    where c.id = class_preparation_requests.class_id
-      and cp.person_id = class_preparation_requests.person_id
-      and c.status = 'scheduled'
-  )
+  (select private.can_manage_own_scheduled_class_preparation(
+    class_preparation_requests.class_id,
+    class_preparation_requests.person_id
+  ))
 )
 with check (
-  class_preparation_requests.person_id = (select private.current_person_id())
-  and exists (
-    select 1
-    from public.classes c
-    join public.class_participants cp on cp.class_id = c.id
-    where c.id = class_preparation_requests.class_id
-      and cp.person_id = class_preparation_requests.person_id
-      and c.status = 'scheduled'
-  )
+  (select private.can_manage_own_scheduled_class_preparation(
+    class_preparation_requests.class_id,
+    class_preparation_requests.person_id
+  ))
 );
 
 commit;
