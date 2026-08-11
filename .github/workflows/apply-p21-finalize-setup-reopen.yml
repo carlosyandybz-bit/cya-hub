@@ -1,0 +1,69 @@
+name: Apply P21 setup and reopen finalization
+
+on:
+  push:
+    branches:
+      - p21/dar-clase-definitivo
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'P21.4: add finalization workflow'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p21/dar-clase-definitivo
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply guarded P21.3 and P21.4 transformation
+        run: python tools/p21_finalize_setup_reopen.py
+
+      - name: P21 and financial regression gate
+        run: >-
+          node --test
+          tests/p21-dar-clase.test.mjs
+          tests/point8-final-close-v30.test.mjs
+          tests/class-close-extras.test.mjs
+          tests/class-close-partial-video.test.mjs
+          tests/compatible-credit-selection.test.mjs
+          tests/no-real-time-class-duration.test.mjs
+          tests/numeric-inputs.test.mjs
+          tests/live-session-dedup.test.mjs
+          tests/live-class-search-point11.test.mjs
+          tests/start-class-transition.test.mjs
+          tests/class-summary-content-editor.test.mjs
+          tests/p17-evaluation-cutover.test.mjs
+          tests/p19-persona-unica.test.mjs
+
+      - name: Lint application
+        run: npm run lint
+
+      - name: Production build
+        run: npm run build
+
+      - name: Reject whitespace errors
+        run: git diff --check
+
+      - name: Commit validated finalization
+        run: |
+          if git diff --quiet; then
+            echo 'No product changes to commit.'
+            exit 0
+          fi
+          git config user.name 'carlosyandybz-bit'
+          git config user.email 'carlosyandybz@gmail.com'
+          git add app/cya-app.tsx tests/p21-dar-clase.test.mjs docs/P21_DAR_CLASE_RECONCILIACION.md
+          git commit -m 'P21.4: finalize progressive setup and reopen guard'
+          git push origin HEAD:p21/dar-clase-definitivo
