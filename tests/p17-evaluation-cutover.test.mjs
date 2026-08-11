@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const page=fs.readFileSync('app/page.tsx','utf8');
+const cya=fs.readFileSync('app/cya-app.tsx','utf8');
 const css=fs.readFileSync('app/evaluation-final-model.css','utf8');
 const initial=fs.readFileSync('app/evaluation-initial-class.tsx','utf8');
 const post=fs.readFileSync('app/evaluation-post-class.tsx','utf8');
@@ -11,8 +12,11 @@ const sql=fs.readFileSync('supabase/v43-evaluation-final-cutover.sql','utf8');
 test('P17 keeps the final guided evaluation surfaces visible',()=>{
   assert.match(page,/InitialEvaluationClassGate/);
   assert.match(page,/EvaluationPostClassGate/);
-  assert.match(css,/live-work-tabs > button:nth-child\(3\)/);
-  assert.match(css,/live-evaluation/);
+  assert.doesNotMatch(cya,/liveTab==='evaluate'/);
+  assert.doesNotMatch(cya,/save_class_evaluation_v2/);
+  assert.doesNotMatch(css,/live-work-tabs > button:nth-child\(3\)/);
+  assert.doesNotMatch(css,/live-evaluation/);
+  assert.match(css,/evalStack/);
   assert.match(css,/display: none !important/);
   assert.match(initial,/start_initial_evaluation/);
   assert.match(initial,/review_evaluation_question/);

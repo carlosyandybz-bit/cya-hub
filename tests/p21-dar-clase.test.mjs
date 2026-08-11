@@ -83,3 +83,24 @@ test('v49 keeps scheduled data/prepare stages and normalizes operational stages'
 test('v49 private trigger helper is not callable by app roles', () => {
   assert.match(migration, /revoke all on function private\.sync_class_workflow_stage_p21\(\) from public,anon,authenticated/);
 });
+
+
+test('P21.2 physically removes the hidden numeric evaluation engine from Dar clase', () => {
+  const live = sliceBetween(app, 'function LiveSession(', 'function LiveClassView(');
+  assert.doesNotMatch(live, /liveTab==='evaluate'/);
+  assert.doesNotMatch(live, /save_class_evaluation_v2/);
+  assert.doesNotMatch(live, /EvaluationRadar/);
+  assert.doesNotMatch(live, /student_evaluations/);
+});
+
+test('P21.2 live fallback does not globally refresh CYA every 15 seconds', () => {
+  const live = sliceBetween(app, 'function LiveSession(', 'function LiveClassView(');
+  assert.doesNotMatch(live, /setInterval\(\(\) => \{ void loadLive\(\); void refresh\(\); \},15000\)/);
+  assert.match(live, /setInterval\(\(\) => void loadLive\(\),60000\)/);
+});
+
+test('P21.2 correction cards expose only one status-frequency-importance control set', () => {
+  const live = sliceBetween(app, 'function LiveSession(', 'function LiveClassView(');
+  assert.doesNotMatch(live, /correction-detail/);
+  assert.match(live, /correction-quick/);
+});

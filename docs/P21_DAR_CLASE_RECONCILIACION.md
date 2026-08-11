@@ -39,7 +39,7 @@ Reglas permanentes:
 | Contexto previo/última clase | EXISTE | compactar sin duplicar datos |
 | Correcciones activas | EXISTE | eliminar controles duplicados dentro de tarjeta |
 | Explicaciones/secuencias | EXISTE | preservar |
-| Ejercicios | EXISTE | deduplicar por último estado por contenido |
+| Ejercicios | EXISTE: usa el último evento por contenido | preservar + regresión |
 | Evaluación numérica antigua en Dar clase | CÓDIGO HEREDADO OCULTO | eliminar físicamente en P21.2 |
 | Evaluación guiada P17 | EXISTE fuera del tab legado | preservar |
 | Resumen pedagógico editable | EXISTE PR #12 / v45 | revalidar |
@@ -96,3 +96,12 @@ El backend y frontend ya precargan datos de la clase y `student_dance_profiles`.
 ## 7. Gate de cierre
 
 No cerrar P21 hasta probar: individual, pareja, programada, manual, provisional in-flow, dos clases abiertas, buscador 4 tipos, correcciones/explicaciones/ejercicios/secuencias, evaluación guiada, cierre financiero con variantes, resumen editable, cierre pedagógico, reapertura, iPhone y desktop.
+
+
+## 8. P21.2 — limpieza física iniciada
+
+- se retira el tab numérico `Evaluar` de `LiveSession`;
+- se conserva exclusivamente el flujo guiado de P17;
+- se elimina el refresco global cada 15 s: Realtime queda como vía principal y `loadLive()` como fallback discreto;
+- se elimina el segundo juego duplicado de controles de Correcciones;
+- se corrigen efectos React detectados por el lint sin desactivar reglas.

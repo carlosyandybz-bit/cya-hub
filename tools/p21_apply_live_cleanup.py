@@ -36,7 +36,7 @@ app = sub_once(app, r'\ntype StudentEvaluation = \{[^\n]+\};\n', '\n', 'remove S
 app = sub_once(app, r'\nfunction roleLabel\(role: string\) \{.*?\n\}\n', '\n', 'remove roleLabel')
 app = sub_once(app, r'\nfunction classToOpen\(classes: ClassItem\[\]\) \{.*?\n\}\n', '\n', 'remove classToOpen')
 app = sub_once(app, r'\nfunction assignmentIsDone\(assignment: ContentAssignment\) \{.*?\n\}\n', '\n', 'remove assignmentIsDone')
-app = sub_once(app, r'\nfunction ManualStartClass\(.*?\nfunction localDateTime', '\nfunction localDateTime', 'remove ManualStartClass')
+app = sub_once(app, r'\nfunction ManualStartClass\(.*?\nfunction FinishClassModal', '\nfunction FinishClassModal', 'remove ManualStartClass')
 
 # Defer async state-producing load so React effects remain subscriptions/schedulers.
 app = replace_once(
