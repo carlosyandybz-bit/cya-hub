@@ -406,6 +406,9 @@ begin
 
   select * into v_form from public.form_definitions where form_key=p_form_key and status='active';
   if not found then raise exception 'El formulario no está disponible.' using errcode='P0002'; end if;
+  if coalesce(v_form.settings->>'runtime_engine','')<>'generic_v1' then
+    raise exception 'Este formulario pertenece a un flujo de negocio específico y no se ejecuta con el motor genérico.' using errcode='0A000';
+  end if;
 
   if v_form.form_type='admin' and not v_admin then raise exception 'Este formulario es solo para administración.' using errcode='42501'; end if;
   if v_form.form_type in ('teacher','internal') and not v_staff then raise exception 'Este formulario es interno del equipo.' using errcode='42501'; end if;
@@ -701,6 +704,11 @@ declare v_form public.form_definitions;
 begin
   if not (select private.is_admin()) then raise exception 'Solo administración puede cambiar formularios.' using errcode='42501'; end if;
   if p_status not in ('active','inactive','draft','archived') then raise exception 'Estado de formulario no válido.' using errcode='22023'; end if;
+  select * into v_form from public.form_definitions where id=p_form_id for update;
+  if not found then raise exception 'El formulario no existe.' using errcode='P0002'; end if;
+  if p_status='active' and coalesce(v_form.settings->>'runtime_engine','')<>'generic_v1' then
+    raise exception 'Este formulario pertenece a un flujo de negocio específico y no puede activarse en el motor genérico.' using errcode='0A000';
+  end if;
   update public.form_definitions set status=p_status,updated_by=(select auth.uid()),updated_at=now() where id=p_form_id returning * into v_form;
   if not found then raise exception 'El formulario no existe.' using errcode='P0002'; end if;
   return v_form;
@@ -746,10 +754,20 @@ from seed s join public.form_definitions f on f.form_key=s.form_key
 join public.form_versions v on v.form_id=f.id and v.version_number=2
 on conflict(form_version_id,field_key) do nothing;
 
-update public.form_definitions set active_version=2,updated_at=now()
+update public.form_definitions set
+  active_version=2,
+  status='active',
+  settings=coalesce(settings,'{}'::jsonb)||jsonb_build_object('runtime_engine','generic_v1'),
+  updated_at=now()
 where form_key in ('student_personal','student_dance','onboarding');
-update public.form_definitions set status='inactive',updated_at=now()
-where form_key in ('teacher_profile','onboarding_additional') and status='active';
+
+-- Los demás formularios v14 son inventario histórico o contratos de acciones de negocio.
+-- Se conservan para trazabilidad, pero no se presentan como formularios genéricos operativos.
+update public.form_definitions set
+  status='inactive',
+  settings=coalesce(settings,'{}'::jsonb)||jsonb_build_object('runtime_engine','domain_service'),
+  updated_at=now()
+where form_key not in ('student_personal','student_dance','onboarding');
 
 create or replace function private.guard_published_form_fields()
 returns trigger
