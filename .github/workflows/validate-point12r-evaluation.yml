@@ -1,0 +1,51 @@
+name: Validate Point 12R evaluation engine
+on:
+  push:
+    branches: [feat/point12r-evaluation-engine]
+permissions:
+  contents: write
+jobs:
+  validate:
+    if: github.event.head_commit.message != 'Integrate Point 12R evaluation engine'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply integration patch
+        run: python3 scripts/apply-point12r.py
+      - name: Install dependencies
+        run: npm ci
+      - name: Point 12R and prior evaluation regressions
+        run: >-
+          node --test
+          tests/evaluation-engine-point12r.test.mjs
+          tests/evaluation-radar-point13.test.mjs
+          tests/evaluation-model-point12.test.mjs
+          tests/live-class-polish-point11b.test.mjs
+          tests/live-class-search-point11.test.mjs
+          tests/class-workflow-point10.test.mjs
+          tests/class-close-extras.test.mjs
+          tests/class-close-partial-video.test.mjs
+          tests/no-real-time-class-duration.test.mjs
+          tests/numeric-inputs.test.mjs
+      - name: Strict production build
+        run: npm run build
+      - name: Existing suite
+        run: npm test
+      - name: Diff integrity
+        run: git diff --check
+      - name: Show evaluation radar usages
+        run: grep -n "EvaluationRadar\|InitialEvaluationQuiz\|ClassEvaluationClose" app/cya-app.tsx app/student-detail.tsx || true
+      - name: Commit validated integration files
+        run: |
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add app/cya-app.tsx app/admin-view.tsx app/student-detail.tsx app/evaluation-engine.tsx
+          if ! git diff --cached --quiet; then
+            git commit -m "Integrate Point 12R evaluation engine"
+            git push
+          fi
