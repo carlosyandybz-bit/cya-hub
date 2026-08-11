@@ -1,255 +1,234 @@
 # CYA HUB — SECUENCIA MAESTRA DEL PROYECTO
 
-**Versión:** 1.2  
-**Fecha de corte:** 11 de agosto de 2026 — 15:14+ (Europe/Madrid)  
+**Versión:** 1.3  
+**Fecha de corte:** 11 de agosto de 2026  
 **Repositorio canónico:** `carlosyandybz-bit/cya-hub`  
-**Producción:** rama `main`
+**Plan de ejecución vigente:** `docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md` (B00–B12)
 
-## Objetivo
+## Función de este archivo
 
-Este documento es el registro histórico y funcional maestro de CYA Hub. Evita que requisitos, decisiones, regresiones, descartes o implementaciones queden aislados en un chat. Después de cada bloque de implementación deben actualizarse este archivo y `docs/CYA_HUB_PENDIENTES.md` con evidencia técnica, pruebas, producción, pendientes cerrados y pendientes nuevos.
+Registro histórico y de evidencia. El Plan Maestro B00–B12 gobierna el orden de cierre; `docs/CYA_HUB_PENDIENTES.md` conserva el estado vivo que se entrega al usuario tras cada implementación.
 
-Estados: **VERIFICADO PRODUCCIÓN**, **VERIFICADO CÓDIGO**, **PARCIAL**, **REQUIERE VERIFICACIÓN**, **PENDIENTE**, **DESCARTADO**, **HISTÓRICO**.
+# 1. Etapa histórica WordPress
 
-## Fuentes de verdad vigentes
+CYA Hub nació como plugin privado con alumnado, clases, bonos, Correcciones, Explicaciones, Ejercicios, Secuencias, evaluaciones, CRM, notificaciones, ubicaciones, contabilidad, administración, portal alumno y distintas iteraciones de misiones.
 
-1. Producción CYA Hub Web.
-2. GitHub `carlosyandybz-bit/cya-hub`, `main`.
-3. Supabase producción `CyA hub 2`.
-4. Decisiones funcionales consolidadas.
-5. Plugin e informes históricos como fuente de paridad.
-6. Versiones intermedias solo para reconstruir comportamiento/regresiones.
+Decisión preservada: conservar lógica pedagógica/operativa útil, no el desorden estructural ni duplicidades del plugin.
 
-Una petición antigua no se considera pendiente automáticamente: primero se contrasta con el estado actual.
+## 21/07/2026 — V4.1/V5
 
-# Secuencia histórica
+Se consolidaron modo clase, autosave transaccional, idempotencia, migraciones, misiones, analítica, búsqueda y seguridad. V5 amplió el portal y mantuvo evolución aditiva. PWA/offline compleja dejó de ser dependencia funcional.
 
-## Etapa WordPress / plugin histórico
+## 23–26/07/2026 — auditorías y regresiones
 
-CYA Hub nació como plugin privado de WordPress alojado en Hostinger. Sus áreas históricas incluían alumnado, clases, bonos, Correcciones, Explicaciones, Ejercicios, Secuencias, evaluaciones, CRM, notificaciones, ubicaciones, contabilidad, administración, portal del alumno y distintas iteraciones de misiones/gamificación.
+- 2.3.5/2.3.6: preservar compatibilidad y corregir privacidad, bonos/permisos e integraciones parciales.
+- 3.4.x: panel profesor y métricas táctiles.
+- 9.3.0: descartada por regresión móvil; 9.3.1 recuperó comportamiento estable.
 
-Principio conservado: mantener la lógica pedagógica y operativa útil, no el desorden estructural ni las duplicidades del plugin.
+## 27/07/2026 — contrato Dar clase
 
-## 21/07/2026 — V4.1.0 / V5
+Flujo consolidado:
 
-V4.1.0 consolidó modo clase, autosave transaccional, idempotencia, migraciones verificables, misiones/BZ Points, analítica pedagógica, búsqueda/favoritos/recientes, rendimiento, SQL estricto, seguridad, diagnósticos y tutoriales. La funcionalidad offline/PWA compleja no debía reintroducirse.
+**Seleccionar → Preparar → Diagnóstico 3 min → Trabajar → Terminar/Cerrar.**
 
-V5.0.0 evolucionó de forma aditiva: 61 tablas heredadas + 12 nuevas, portal con progreso, ruta/árbol, explicaciones, correcciones, misiones, recompensas, recomendaciones, tutorial y consola docente. Quedó pendiente validación real en staging/Hostinger.
+Reglas: notas rápidas, frecuencia/importancia, revisión histórica, máximo orientativo de correcciones, individual/pareja, Guía, Trabajo de hoy, evaluación, cierre administrativo/pedagógico e idempotencia.
 
-## 23/07/2026 — auditoría 2.3.5/2.3.6
+## 04–07/08/2026 — reorganización UX
 
-La base 2.3.5 debía conservar funciones, módulos, datos, configuraciones, roles, permisos, shortcodes, endpoints, tablas y compatibilidad salvo decisión expresa. La candidata 2.3.6 corrigió privacidad, diagnóstico, bonos, permisos docentes y OAuth/WhatsApp. Stripe, Google Drive completo, pedagogía completa y backups propios no estaban realmente implementados en ese ZIP.
+- iPhone como referencia móvil;
+- eliminar overflow, pantallas técnicas y duplicidades;
+- navegación rápida;
+- Inicio contextual con clase dominante 30 min antes;
+- Enseñanza relacional;
+- evaluación 0/25/50/75/100;
+- evitar amarillo fluorescente, login negro e iconos en cuadrados;
+- base Dar clase histórica válida: `20.13.24 CLASS-FINISH-HOTFIX`; 20.14/20.15 descartadas.
 
-## 25/07/2026 — panel profesor
+## 07–08/08/2026 — CRM/Marketing
 
-3.4.1 añadió biblioteca SVG premium en Inicio. 3.4.3 añadió un carrusel táctil de métricas: 3 visibles dentro de un catálogo de 24, con navegación táctil/botones/teclado y acciones configurables.
+Persona única para contacto/provisional/alumno; CRM con Fecha, Nombre, Teléfono, País, origen, intención, reserva, bono, importe, observaciones y tarifa. Marketing amplía a contenido, campañas, comunicaciones, eventos y métricas. YouTube/TikTok no son requisitos obligatorios.
 
-## 26/07/2026 — regresión 9.3.0
+# 2. Cambio a aplicación web
 
-9.3.0 quedó **DESCARTADA** por regresión móvil. 9.3.1 restauró el comportamiento 9.2.0 y dejó la capa problemática desactivada.
+## 08/08/2026
 
-## 27/07/2026 — definición del flujo Dar clase
+Se abandona WordPress como arquitectura canónica.
 
-Orden operativo consolidado: **Seleccionar alumno/clase → 3 minutos iniciales → Diagnosticar/Preparar → Trabajar → Terminar/Cerrar**.
+Arquitectura vigente:
 
-Los 3 minutos iniciales sirven para preguntar al alumno, adaptar la sesión, tomar notas rápidas, relacionarlas con errores/correcciones, registrar frecuencia/importancia, revisar correcciones anteriores y progreso, detectar explicaciones necesarias y realizar evaluación rápida.
+- Next.js + React + Node.js;
+- Supabase Auth/datos;
+- GitHub `main`;
+- Hostinger;
+- Google Drive para multimedia operativa por referencias;
+- iPhone/PWA standalone sin capa offline compleja.
 
-Reglas históricas consolidadas: máximo orientativo de 3 correcciones/hora (1 h 30 → 4), información individual en parejas, sin pestaña inútil en individual, separar Trabajo de hoy del histórico, Guía para pendientes, captura rápida, evaluación protegida y cierre administrativo/pedagógico diferenciado y transaccional cuando corresponda.
+Proyecto Supabase canónico: **`CyA hub 2`**.
 
-## 27/07/2026 — almacenamiento/sincronización
+Reglas: no resetear producción, migraciones incrementales/idempotentes, RLS real, no secretos de servicio en cliente, no duplicar funciones/datos.
 
-Se fijó que logs, exportaciones, caché, backups y temporales no debían acumularse dentro del plugin. Esa decisión evoluciona a la arquitectura actual: datos en Supabase y multimedia en Google Drive. Durante sincronizaciones no se debían activar eliminaciones antes de verificar la vista previa.
+# 3. Contrato funcional web consolidado
 
-## 04/08/2026 — iPhone como referencia
+Navegación móvil:
 
-Se localizaron fallos sistémicos por `100vw`, grids rígidos, tablas con ancho mínimo y cadenas sin corte. Se hizo corrección transversal. **iPhone queda como dispositivo móvil de referencia principal.**
+**Inicio | Alumnado | DAR CLASE | Enseñanza | Marketing**.
 
-## 04–07/08/2026 — reorganización funcional
+Áreas clave:
 
-Se identifica el problema central: muchas funciones existían, pero dispersas, duplicadas, mal ubicadas o conectadas con flujos poco claros. Se adopta la reorganización completa en lugar de añadir pantallas aisladas.
+- Inicio contextual, saludo/frase/misiones/agenda/avisos;
+- Alumnado con clases/bonos/perfiles/formación;
+- Dar clase con buscador Correcciones/Explicaciones/Ejercicios/Secuencias;
+- Enseñanza con biblioteca/relaciones/árboles;
+- Marketing con CRM/tarifas/contenido/campañas/eventos/estadísticas;
+- multirol Profesor+Alumno+Admin cuando autorizado;
+- Ver como sin elevar permisos;
+- portal alumno seguro;
+- formularios versionables;
+- agenda Google Calendar idempotente;
+- import/export integral;
+- multimedia externa y datos canónicos reutilizables.
 
-Principios: conservar funciones útiles; flujos excepcionales detrás de Opciones/Vista completa; gamificación privada del profesor; datos canónicos sin duplicar; menos pantallas técnicas; selectores frente a texto libre cuando sea viable; rapidez táctil; evitar listas largas.
+# 4. 10/08/2026 — auditoría visual v23
 
-## 05/08/2026 — Enseñanza y evaluaciones
+Corregido: modales móviles, fullscreen no deseado, scroll de fondo, safe-area, objetivos táctiles, tipografía mínima, overflow y ficha alumno.
 
-Relaciones entre Correcciones, Explicaciones, Ejercicios y Secuencias. Filtros por Leader/Follower/ambos y bachata/salsa/zouk/bachazouk. Estados de corrección: pendiente, en corrección, corregida. Se unifica **Importancia**. Explicaciones pueden ser Leader/Follower/ambos y tener homólogas. Ejercicios se asocian a explicaciones y/o correcciones.
+Fuera de ese bloque: identidad final, Evaluación, Dar clase, árboles, Marketing y Estadísticas.
 
-Evaluaciones: INICIO / INTERMEDIO / AVANZADO; cinco opciones discretas por parámetro: 0/25/50/75/100; radar profesor absoluto y alumno relativo; reevaluación al subir nivel; referencia histórica del 75 % del contenido obligatorio completado.
+# 5. 11/08/2026 — P16/v42
 
-## 06/08/2026 — reglas visuales
+Seguridad RLS alumno/clases cerrada:
 
-Login no negro; eliminar amarillo fluorescente; contraste suficiente; iconos sin cuadrados decorativos; DAR CLASE destacado; Enseñanza móvil con scroll; estadísticas responsive; no cortar contenido en iPhone.
+- alumno sin SELECT directo sobre `class_pedagogy_summaries`;
+- `student_message` preservado;
+- `internal_note` aislada;
+- preparación de clase protegida;
+- dry-run 11/11;
+- producción 17/17;
+- migración `20260811124729 / v42_rls_student_class_correlation`;
+- PR #2;
+- merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`.
 
-## 06–07/08/2026 — Inicio contextual
+# 6. 11/08/2026 — baseline de migraciones
 
-Inicio pasa a ser lanzador rápido contextual. La próxima clase debe dominar **30 minutos antes**. Debe priorizar saludo, frase diaria, siguiente acción, misiones, agenda, avisos, accesos rápidos, resumen del día, Administración, Ver como y cuenta/perfil.
+P-003 cerrado:
 
-## 07/08/2026 — base histórica Dar clase
+- 52 migraciones registradas en producción;
+- primera `20260808214303 / teaching_module`;
+- última v42;
+- bootstrap, registradas y preparadas/no aplicadas separados;
+- PR #3 / `a8acf2bf161535d4b84be1ae651d530ddc9248c5`;
+- `docs/DATABASE_MIGRATION_BASELINE.md`.
 
-Base obligatoria histórica: `20.13.24 CLASS-FINISH-HOTFIX`. Las ramas 20.14/20.15 quedaron descartadas como base del flujo. Flujo: **Preparar → Diagnóstico 3 min → Trabajar → Terminar**. Cierre: qué pasó → cobro → notas/excepciones → revisión pedagógica.
+P-025 cerrado:
 
-## 07–08/08/2026 — CRM / Marketing
+- 18/18 fuentes antes ausentes recuperadas desde `schema_migrations.statements[1]`;
+- archivadas en `supabase/applied-history/` como NO EJECUTABLES;
+- 18/18 SHA Git blob coincidentes byte por byte;
+- ninguna sentencia reejecutada;
+- PR #4 / merge `5999542e6b4bb258aff93aee3b96f6f0d255dda8`.
 
-Modelo de personas: potencial/contacto, provisional y registrado. Regla: es alumno quien tiene clase o bono comprado; el resto son contactos/clientes potenciales registrados. Campos CRM base: Fecha, Nombre, Teléfono, País, Cómo nos conoció, Qué quería, Reservó, Bono, Importe, Observaciones, Tarifa. No duplicar persona al convertirla.
+# 7. 11/08/2026 — Plan Maestro B00–B12
 
-Marketing debe reunir CRM, tarifas, creación y planificación de contenido, campañas, comunicaciones, fotos/vídeos, eventos, estadísticas y métricas. YouTube/TikTok no son integraciones obligatorias.
+El commit `2af2ce30121f86b1e25b1764e8e1fa3301cf2281` añadió `docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md` y unificó el orden operativo con bloques B00–B12.
 
-# Cambio a app web
+Regla actual:
 
-## 08/08/2026 — reconstrucción
+- el Plan Maestro define orden;
+- la Secuencia conserva historia/evidencia;
+- Pendientes conserva estados vivos y se entrega al usuario tras cada implementación.
 
-Se abandona la dependencia estructural de WordPress. Arquitectura objetivo: app web propia; GitHub para código; Supabase para Auth/datos; Hostinger para hosting; Google Drive para multimedia. Se decide limpiar las primeras pruebas inválidas y usar como proyecto canónico **`CyA hub 2`**; el proyecto antiguo queda fuera de uso.
+# 8. 11/08/2026 — auditoría de paridad P-011→P-022
 
-## 08–09/08/2026 — contrato maestro web
+Auditoría directa sobre `main` + Supabase producción. Evidencia detallada: `docs/PARITY_AUDIT_2026-08-11.md`.
 
-Reglas: auditar `main` y Supabase; no duplicar; después de la reconstrucción inicial no resetear Supabase; migraciones incrementales/idempotentes; distinguir EXISTE/PARCIAL/FALTA; no maquillar funciones incompletas; seguridad real en servidor/RLS.
+## Verificado código/BD, pendiente gate E2E/Hostinger
 
-# Arquitectura funcional vigente
+### P-011 / B08.1 Inicio
 
-## Navegación
+Implementado: saludo por nombre/hora, frase diaria, clase dominante ±30 min, siguiente misión, accesos rápidos, resumen diario, Administración, notificaciones, cuenta/perfil y cambio de portal. 15 frases activas.
 
-Móvil: **Inicio | Alumnado | DAR CLASE | Enseñanza | Marketing**. DAR CLASE central, mayor y elevado. Sin hamburguesa para funciones clave. Durante clase puede ocultarse la navegación. Escritorio debe conservar la misma arquitectura conceptual.
+### P-013 / B01.2 Multirol
 
-## Inicio
+Existe una identidad con admin+teacher+student activos; selector de portal se limita a capacidades reales. No modifica autorización.
 
-Saludo por hora y nombre; frase diaria persistente; siguiente acción; misiones; agenda/calendario; avisos; accesos rápidos; resumen del día; Administración; Ver como; cuenta/perfil. Mañana 05:00–11:59, tarde 12:00–19:59, noche 20:00–04:59. Frases con activar/desactivar, calendario, CSV, sustitución por fecha, evitar duplicados y previsualización.
+### P-016 / B03.2 Import/export
 
-## Misiones
+XLSX/CSV/JSON, preview, estrategias de duplicados, dominios y backup/restore completo no destructivo presentes.
 
-Tipos: principal, diaria, crecimiento. Estados: próxima, disponible, en progreso, bloqueada, pospuesta, completada, no realizada, no aplicable, cancelada, automática. Prioridad: normal, prioritaria, urgente. Casos iniciales: cierre de clases; bono bajo/vencimiento; perfil incompleto; correcciones pendientes de explicación; preparación; añadir contenido; revisar información; completar contenido interno.
+### P-020 / B01.1 Navegación
 
-## Alumnado
+Cinco accesos principales implementados. Falta gate iPhone/Hostinger.
 
-Alumnos/provisionales, perfiles, datos personales/baile, roles/estilos, evaluaciones/evolución, clases, bonos/saldo, historial, formación, correcciones, feedback, programar clase, añadir bono, incidencias y vinculación. Clases y Bonos dejan de ser módulos principales independientes.
+## Parcial con brecha concreta
 
-## Enseñanza
+### P-012 / B08.2 Misiones
 
-Biblioteca, Correcciones, Explicaciones, Ejercicios, Secuencias, categorías, relaciones, asignaciones, árboles/mapas, búsqueda global, incompletos, multimedia Drive y configuración pedagógica. Árboles táctiles con zoom, mover, centrar, ruta, volver/reset y filtros estilo/rol/nivel/tipo/búsqueda.
+Ocho reglas iniciales y motor BD completo. Administración todavía no expone frecuencia/días/hora, peso, anticipación, estrategia de duplicados, fallo, evidencia, canales/destinatarios, escalado y toda la configuración de horas silenciosas.
 
-## Dar clase
+### P-014 / B08.3 Agenda
 
-Buscador unificado para Correcciones, Explicaciones, Ejercicios y Secuencias; búsqueda por título/etiquetas/categoría/descripción/relaciones; prioridad por activo del alumno, correcciones activas, contexto, biblioteca compatible y otros. Crear rápido con mínimos y estados incompleta/borrador/solo profesores.
+Día/Semana/Mes/Lista y filtros existen. Producción tiene 0 conexiones Google Calendar; falta flujo OAuth/sync real.
 
-## Multirol / Ver como
+### P-015 / B03.1 Formularios
 
-Una persona puede ser Profesor + Alumno y además Administrador si está autorizada. Ver como: Profesor/Alumno/Administrador. Nunca debe escalar permisos; servidor/RLS valida la identidad real.
+18 formularios/18 versiones/68 campos activos. Falta renderer reusable: los formularios operativos continúan mayoritariamente hardcoded en React.
 
-## Portal alumno
+### P-017 / B08.4 Notificaciones
 
-Próxima clase, clases, bonos/saldo, Correcciones, Explicaciones, Ejercicios, Secuencias, multimedia, evolución, evaluaciones, perfil e información autorizada.
+Centro interno funcional. 13 reglas activas usan actualmente solo `internal`; faltan canales automáticos externos si forman parte del contrato final.
 
-## Formularios
+### P-018 / B06 Portal
 
-Sistema reusable/versionable con definición, versión, campos, opciones, requerido, visibilidad, condición, validación y orden. Tipos mínimos: info, texto, textarea, select, multiselect, checkbox, número, fecha, email, teléfono. Principio: **un dato canónico no se vuelve a pedir si ya existe**.
+Portal rico y seguro; P16 protege notas internas. Existe infraestructura de `class_preparation_requests`, pero no se localiza UI alumno para crear/editar preparación previa.
 
-## Agenda/calendario
+### P-019 / B02 Alumnado
 
-Día/Semana/Mes/Lista; clases/misiones/eventos; integración Google Calendar con id externo, última sincronización, estado, errores y conflictos; operaciones idempotentes que no destruyan participantes, saldos, estado pedagógico ni historia.
+Ficha maestra integra resumen, formación, evaluación, clases, bonos, datos, CRM, baile e incidencias. Falta cerrar conversión/deduplicación canónica.
 
-## Marketing
+### P-021 / B10 Multimedia
 
-CRM, tarifas, contenido, campañas, comunicaciones, eventos, métricas y estadísticas; multimedia de campañas por referencias externas.
+Enseñanza/clases/marketing usan Drive + tickets. Excepción: avatar se guarda en bucket público Supabase Storage `avatars`; debe formalizarse o migrarse.
 
-## Administración
+### P-022 / B01.3/B02.2 Fuente canónica
 
-Configuración general, roles/permisos, misiones, formularios, pedagogía, import/export, integraciones, seguridad/diagnóstico y control administrativo.
+Hoy producción tiene 0 grupos duplicados por email y 0 por teléfono. `auth_user_id` es UNIQUE. Sin embargo `create_student` y `save_crm_contact` pueden insertar una persona nueva sin buscar coincidencias previas y email no es UNIQUE.
 
-# Arquitectura técnica actual
+**Resultado:** riesgo preventivo real; siguiente corrección técnica prioritaria.
 
-- Next.js + React + Node.js.
-- Supabase para Auth/datos.
-- GitHub `main` para código.
-- Hostinger como hosting.
-- Google Drive por referencias/IDs para multimedia.
-- No blobs operativos pesados en GitHub/DB.
-- No `service_role`, `sb_secret_*` ni secretos administrativos en cliente/repositorio.
-- RLS como frontera real.
-- `/api/runtime-config` para configuración pública.
-- Producción no depende de ChatGPT Sites, Vinext, Wrangler ni Worker de Cloudflare.
-- Se mantiene `manifest.webmanifest`/standalone para iPhone sin reintroducir una capa offline compleja.
+# 9. Bloqueos actuales
 
-# 10/08/2026 — Auditoría visual web v23
+## B00.1 / P-001 Hostinger
 
-Corregido: bottom-sheets no deseados, ficha alumno fullscreen, scroll de fondo, safe-area, objetivos táctiles, tipografías pequeñas, overflow horizontal, padding barra inferior, modal Enseñanza y acciones táctiles. Se añadieron pruebas de integridad visual.
+Sin herramientas de despliegue/log Node.js en el conector Hostinger cargado; no se declara runtime verificado.
 
-Fuera de alcance deliberadamente: identidad visual definitiva, colores/logo/cabecera, selector tipografías/apariencia, Evaluación, Dar clase, árboles Enseñanza, Marketing y Estadísticas.
+## B00.2 / P-002 Auth
 
-# 11/08/2026 — P16 / v42
+Security Advisor confirma `Leaked Password Protection Disabled`; requiere ajuste Auth, no SQL.
 
-P16 cierra fronteras RLS alumno/clases: se retira SELECT directo de alumno sobre `class_pedagogy_summaries`; el portal conserva `student_message` mediante `student_portal_snapshot`; `internal_note` queda aislada; se sustituyen políticas vulnerables de preparación y se añade helper privado de privilegio mínimo.
+# 10. Siguiente bloque técnico
 
-Validación: dry-run 11/11; producción 17/17; migración `20260811124729 / v42_rls_student_class_correlation`; PR #2 fusionada; merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`. **Estado: VERIFICADO PRODUCCIÓN para P16.**
+Mientras B00.1/B00.2 no puedan cerrarse por acceso/configuración externa, el siguiente cambio preparable es:
 
-# 11/08/2026 — control post-P16 y baseline de migraciones
+**B01.3/B02.2 — endurecimiento de identidad y deduplicación de personas.**
 
-## P-001 — Hostinger
+Objetivo:
 
-Se comprueba que `main` contiene P16. La integración Hostinger disponible en esta sesión no ofrece las acciones de hosting Node.js, despliegues o logs necesarias para demostrar qué commit sirve el runtime. P-001 permanece abierto por falta de evidencia, no por un fallo detectado.
+- evitar nuevos duplicados por email/teléfono;
+- reutilizar `person_id` existente;
+- preservar CRM/student_profile;
+- no fusionar personas ambiguas automáticamente;
+- mantener migración incremental y reversible;
+- añadir pruebas de regresión antes de producción.
 
-## P-002 — Auth
+Después: Misiones Admin → renderer Formularios → preparación Portal → Google Calendar → canales externos → política avatar.
 
-Security Advisors de `CyA hub 2` confirma **`Leaked Password Protection Disabled`**. Se clasifica como pendiente real de configuración Auth. No se debe resolver mediante SQL.
+# 11. Protocolo permanente
 
-## P-003 — baseline real de Supabase
-
-Se audita `supabase_migrations.schema_migrations` de producción:
-
-- **52 migraciones registradas**;
-- primera: `20260808214303 / teaching_module`;
-- última: `20260811124729 / v42_rls_student_class_correlation`.
-
-Cruce inicial con `supabase/`:
-
-- 34 migraciones registradas tenían fuente/archivo equivalente identificable;
-- 18 carecían de archivo SQL independiente, aunque sus sentencias estaban preservadas en `schema_migrations.statements`;
-- `foundation.sql`, `classes-and-credits.sql`, `live-class.sql` y `marketing-crm.sql` se clasificaron como bootstrap/pre-registro;
-- `v21-data-transfer-followups.sql` es un agregado histórico de varios follow-ups;
-- `v35c-enforce-post-class-evaluation.sql` está presente pero no registrado como aplicado;
-- `v41c-final-evaluation-cutover-PREPARED-NOT-APPLIED.sql` está presente, explícitamente marcado como no aplicado y tampoco figura en producción.
-
-Se crea `docs/DATABASE_MIGRATION_BASELINE.md`. P-003 queda **CERRADO** mediante PR #3, squash `a8acf2bf161535d4b84be1ae651d530ddc9248c5`.
-
-## P-025 — recuperación forense de las 18 fuentes históricas
-
-Se recuperan las 18 migraciones que estaban aplicadas en producción pero carecían de archivo SQL independiente en GitHub.
-
-Procedimiento:
-
-1. lectura exclusiva de `supabase_migrations.schema_migrations.statements[1]`;
-2. creación de archivos con versión y nombre originales bajo `supabase/applied-history/`;
-3. prohibición explícita de reejecución mediante README del directorio;
-4. cálculo en Supabase del SHA-1 de objeto Git `blob` sobre los bytes originales;
-5. comparación con el `sha` de cada archivo creado por GitHub.
-
-Resultado: **18/18 coincidencias byte por byte**. También se conserva MD5 auxiliar por migración. No se ejecutó ninguna sentencia archivada, no cambió el esquema y no se creó ninguna migración nueva en producción.
-
-**P-025 queda CERRADO.**
-
-# Decisiones descartadas / no reintroducir
-
-- WordPress como backend/identidad canónica de la app web.
-- ChatGPT Sites como producción.
-- regresión móvil 9.3.0.
-- 20.14/20.15 como base Dar clase.
-- hamburguesa para módulos principales.
-- amarillo fluorescente.
-- login/fondos negros no solicitados.
-- iconos sistemáticamente en cuadrados decorativos.
-- duplicar personas al convertir potencial/provisional/alumno.
-- volver a preguntar datos canónicos ya conocidos.
-- mezclar CRM con expediente pedagógico sin entidad adecuada.
-- exponer notas internas al alumno.
-- multimedia pesada en GitHub/DB.
-- secretos administrativos en frontend/GitHub.
-- YouTube/TikTok como requisito obligatorio sin nueva decisión.
-
-# Protocolo permanente
-
-Cada implementación debe registrar:
+Tras cada implementación registrar:
 
 ```text
-[FECHA/HORA]
-BLOQUE:
+FECHA/HORA:
+BLOQUE Bxx:
 REQUISITOS AFECTADOS:
 CAMBIO:
 BD/MIGRACIÓN:
@@ -259,16 +238,11 @@ PRODUCCIÓN:
 REGRESIONES:
 PENDIENTES NUEVOS:
 PENDIENTES CERRADOS:
+SIGUIENTE BLOQUE:
 ```
 
-El archivo `docs/CYA_HUB_PENDIENTES.md` es el tablero operativo y debe actualizarse en el mismo ciclo.
+Actualizar siempre:
 
-# Último punto conocido
-
-- P16/v42: verificada en Supabase producción.
-- PR #2: fusionada en `main`.
-- P-003: cerrado mediante baseline real de 52 migraciones y PR #3.
-- P-025: cerrado con 18/18 fuentes recuperadas y verificadas byte por byte en `supabase/applied-history/`.
-- P-001: pendiente de evidencia de runtime Hostinger.
-- P-002: warning Auth confirmado.
-- Siguiente bloque operativo auditable sin depender de accesos externos: P-011 Inicio contextual y después P-012 a P-022.
+1. Plan Maestro cuando cambie el orden/estado macro;
+2. esta Secuencia como evidencia histórica;
+3. `CYA_HUB_PENDIENTES.md` como estado vivo entregable.
