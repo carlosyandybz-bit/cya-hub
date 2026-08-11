@@ -1,0 +1,24 @@
+name: Validate start class transition
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/cya-app.tsx'
+      - 'tests/start-class-transition.test.mjs'
+      - '.github/workflows/validate-start-class-transition.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Class start regression
+        run: node --test tests/start-class-transition.test.mjs
+      - name: Build Next.js application
+        run: npm run build
