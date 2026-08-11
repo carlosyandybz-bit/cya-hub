@@ -1,0 +1,16 @@
+/* CYA Hub · modelo final de evaluación
+   El profesorado no puntúa durante la clase ni desde el perfil del alumno.
+   La captura válida vive en EvaluationPostClassGate y usa hitos/descriptores. */
+
+.live-work-tabs > button:nth-child(3),
+.live-evaluation {
+  display: none !important;
+}
+
+/* StudentMasterDetail conserva temporalmente el JSX histórico para evitar una
+   sustitución masiva del archivo durante la transición. Esta regla retira de
+   la experiencia la tarjeta «Nueva evaluación» hasta que Punto 14 sustituya
+   por completo esa sección por el histórico interactivo. */
+[class*="evalStack"] > section:first-child {
+  display: none !important;
+}
