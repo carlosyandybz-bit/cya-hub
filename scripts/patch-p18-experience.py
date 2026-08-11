@@ -31,10 +31,14 @@ replacements={
   '<span className={styles.rowText}><strong>Cambiar de portal</strong><small>{contextLabels[experience]}</small></span>':'<span className={styles.rowText}><strong>Ver como</strong><small>{contextLabels[experience]}</small></span>',
   '<div><span>Portal activo</span><strong>{contextLabels[experience]}</strong></div>':'<div><span>Vista activa</span><strong>{contextLabels[experience]}</strong></div>',
   '<p className={styles.accountNote}>Tus permisos se mantienen al cambiar de portal.</p>':'<p className={styles.accountNote}>Cambiar de vista no cambia tus permisos reales.</p>',
+  'const [avatarFailed, setAvatarFailed] = useState(false);':'const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null);',
+  '  useEffect(() => setAvatarFailed(false), [identity.avatar_url]);\n\n':'',
+  'const showAvatarImage = Boolean(identity.avatar_url && !avatarFailed);':'const showAvatarImage = Boolean(identity.avatar_url && identity.avatar_url !== failedAvatarUrl);',
+  'onError={() => setAvatarFailed(true)}':'onError={() => setFailedAvatarUrl(identity.avatar_url)}',
 }
 for old,new in replacements.items():
     if old in menu:
         menu=menu.replace(old,new,1)
     elif new not in menu:
-        raise SystemExit(f'account menu anchor not found: {old[:40]}')
+        raise SystemExit(f'account menu anchor not found: {old[:50]}')
 menu_path.write_text(menu)
