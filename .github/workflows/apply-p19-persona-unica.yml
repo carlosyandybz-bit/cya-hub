@@ -1,0 +1,46 @@
+name: Apply P19 persona unica
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    if: github.head_ref == 'p19/persona-unica-identidades'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Patch P19 UI
+        run: python scripts/patch-p19-persona-unica.py
+      - name: P19 regressions
+        run: node --test tests/p19-persona-unica.test.mjs
+      - name: Lint new identity editor
+        run: npx eslint app/person-identity-editor.tsx
+      - name: Build Next.js application
+        run: npm run build
+      - name: Commit UI integration if needed
+        shell: bash
+        run: |
+          if git diff --quiet -- app/cya-app.tsx app/student-detail.tsx app/marketing-view-legacy.tsx; then
+            echo "No patch needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/cya-app.tsx app/student-detail.tsx app/marketing-view-legacy.tsx
+          git commit -m "P19: integrate persona unica into alumnado and dar clase"
+          git push origin HEAD:${{ github.head_ref }}
