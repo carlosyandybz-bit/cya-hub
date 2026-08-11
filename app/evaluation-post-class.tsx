@@ -24,6 +24,13 @@ type SessionRow = {
   level_term_id:number;
   evaluation_kind:string;
 };
+type CandidateSession = {
+  class_id:number|null;
+  person_id:number;
+  status:string;
+  style_term_id:number;
+  role_term_id:number;
+};
 type ProgressRow = {
   id:number;
   person_id:number;
@@ -65,6 +72,7 @@ type Descriptor = {
 type ScaleTerm = { id:number; label:string; sort_order:number };
 type Person = { id:number; display_name:string };
 type Term = { id:number; label:string };
+type StyleTerm = { id:number; term_key:string };
 type ClassEvent = { person_id:number; content_id:number };
 type Recommendation = {
   id:number;
@@ -76,6 +84,7 @@ type Recommendation = {
 };
 
 const staffRoles = new Set(["admin","teacher_admin","teacher"]);
+const dualStyleKeys = ["bachata","bachazouk"];
 
 function dateLabel(value:string) {
   return new Intl.DateTimeFormat("es-ES", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" }).format(new Date(value));
@@ -128,24 +137,102 @@ export function EvaluationPostClassGate() {
 
   const findPendingClass=useCallback(async () => {
     if (!client) return;
-    const result=await client.from("classes")
+    const classResult=await client.from("classes")
       .select("id,style_term_id,scheduled_start_at,administrative_finished_at,class_participants(person_id,role_term_id,level_term_id)")
       .eq("status","finished")
       .not("administrative_finished_at","is",null)
       .is("pedagogy_closed_at",null)
       .order("administrative_finished_at",{ascending:true})
       .limit(10);
-    if (result.error) { setError(result.error.message); return; }
-    const rows=(result.data ?? []) as unknown as PendingClass[];
-    setPendingClass(rows.find((row) => !handledClassIds.includes(row.id)) ?? null);
+    if (classResult.error) { setError(classResult.error.message); return; }
+
+    const rows=((classResult.data ?? []) as unknown as PendingClass[])
+      .filter((row) => !handledClassIds.includes(row.id));
+    if (!rows.length) {
+      setPendingClass((current) => current ? null : current);
+      return;
+    }
+
+    const classIds=rows.map((row) => row.id);
+    const participantIds=[...new Set(rows.flatMap((row) => row.class_participants.map((participant) => participant.person_id)))];
+    const roleIds=[...new Set(rows.flatMap((row) => row.class_participants.map((participant) => participant.role_term_id).filter((id): id is number => Boolean(id))))];
+
+    const [sessionResult,styleResult]=await Promise.all([
+      client.from("evaluation_sessions")
+        .select("class_id,person_id,status,style_term_id,role_term_id")
+        .in("class_id",classIds),
+      client.from("catalog_terms")
+        .select("id,term_key")
+        .eq("taxonomy","dance_style")
+        .in("term_key",dualStyleKeys),
+    ]);
+    const lookupError=sessionResult.error || styleResult.error;
+    if (lookupError) { setError(lookupError.message); return; }
+
+    const currentSessions=(sessionResult.data ?? []) as CandidateSession[];
+    const dualStyles=(styleResult.data ?? []) as StyleTerm[];
+    const dualStyleIds=dualStyles.map((row) => row.id);
+
+    const historyResult=participantIds.length && roleIds.length && dualStyleIds.length
+      ? await client.from("evaluation_sessions")
+        .select("class_id,person_id,status,style_term_id,role_term_id")
+        .in("person_id",participantIds)
+        .in("role_term_id",roleIds)
+        .in("style_term_id",dualStyleIds)
+        .eq("status","completed")
+      : {data:[],error:null};
+    if (historyResult.error) { setError(historyResult.error.message); return; }
+    const completedDualHistory=(historyResult.data ?? []) as CandidateSession[];
+
+    const stillNeedsReview=(item:PendingClass) => {
+      if (!item.style_term_id || !item.class_participants.length) return false;
+      const classStyleKey=dualStyles.find((style) => style.id===item.style_term_id)?.term_key ?? null;
+
+      return item.class_participants.some((participant) => {
+        if (!participant.role_term_id || !participant.level_term_id) return true;
+        const participantSessions=currentSessions.filter((session) =>
+          session.class_id===item.id &&
+          session.person_id===participant.person_id &&
+          session.role_term_id===participant.role_term_id
+        );
+
+        if (participantSessions.some((session) => session.status!=="completed")) return true;
+        if (!participantSessions.some((session) => session.status==="completed" && session.style_term_id===item.style_term_id)) return true;
+
+        if (!classStyleKey || !dualStyleKeys.includes(classStyleKey) || dualStyleIds.length<2) return false;
+        const hasBothStylesHistorically=dualStyleIds.every((styleId) => completedDualHistory.some((session) =>
+          session.person_id===participant.person_id &&
+          session.role_term_id===participant.role_term_id &&
+          session.style_term_id===styleId
+        ));
+        if (!hasBothStylesHistorically) return false;
+
+        return dualStyleIds.some((styleId) => !participantSessions.some((session) =>
+          session.status==="completed" && session.style_term_id===styleId
+        ));
+      });
+    };
+
+    const next=rows.find(stillNeedsReview) ?? null;
+    setPendingClass((current) => current?.id===next?.id ? current : next);
   },[client,handledClassIds]);
 
   useEffect(() => {
-    if (!client) return;
-    const first=window.setTimeout(() => void findPendingClass(),0);
-    const timer=window.setInterval(() => void findPendingClass(),5000);
-    return () => { window.clearTimeout(first); window.clearInterval(timer); };
-  },[client,findPendingClass]);
+    if (!client || pendingClass) return;
+    let cancelled=false;
+    const refresh=() => {
+      if (!cancelled && document.visibilityState==="visible") void findPendingClass();
+    };
+    const first=window.setTimeout(refresh,0);
+    const timer=window.setInterval(refresh,30000);
+    document.addEventListener("visibilitychange",refresh);
+    return () => {
+      cancelled=true;
+      window.clearTimeout(first);
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange",refresh);
+    };
+  },[client,findPendingClass,pendingClass]);
 
   const loadEvaluation=useCallback(async (item:PendingClass) => {
     if (!client || !item.style_term_id || !item.class_participants.length) return;
@@ -172,6 +259,14 @@ export function EvaluationPostClassGate() {
       setBusy("");
       return;
     }
+
+    if (prepared.every((session) => session.status==="completed")) {
+      setHandledClassIds((current) => current.includes(item.id) ? current : [...current,item.id]);
+      setPendingClass((current) => current?.id===item.id ? null : current);
+      setBusy("");
+      return;
+    }
+
     setSessions(prepared);
 
     const personIds=[...new Set(item.class_participants.map((row) => row.person_id))];
@@ -300,7 +395,7 @@ export function EvaluationPostClassGate() {
   async function reviewAnswer(row:ProgressRow,value:string) {
     if (!client || !pendingClass || !value) return;
     const session=sessionFor(row);
-    if (!session) return;
+    if (!session || session.status==="completed") return;
     const descriptorId=value.startsWith("d:") ? Number(value.slice(2)) : null;
     const scaleId=value.startsWith("s:") ? Number(value.slice(2)) : null;
     if (!descriptorId && !scaleId) return;
@@ -315,7 +410,20 @@ export function EvaluationPostClassGate() {
       p_note:null,
     });
     if (result.error) { setError(result.error.message); setBusy(""); return; }
-    await loadEvaluation(pendingClass);
+
+    const updated=result.data as EvaluationRow|null;
+    if (updated) {
+      setEvaluations((current) => {
+        const index=current.findIndex((item) => item.session_id===updated.session_id && item.aptitude_term_id===updated.aptitude_term_id);
+        if (index<0) return [...current,updated];
+        const next=[...current];
+        next[index]=updated;
+        return next;
+      });
+      setProgress((current) => current.map((item) => item.id===row.id
+        ? {...item,raw_score:updated.score,effective_score:updated.score}
+        : item));
+    }
     setBusy("");
   }
 
@@ -327,19 +435,20 @@ export function EvaluationPostClassGate() {
       const result=await client.rpc("complete_post_class_evaluation",{p_session_id:session.id});
       if (result.error) { setError(result.error.message); setBusy(""); return; }
     }
-    setHandledClassIds((current) => [...current,pendingClass.id]);
+    setHandledClassIds((current) => current.includes(pendingClass.id) ? current : [...current,pendingClass.id]);
     setPendingClass(null);
     setBusy("");
   }
 
-  const reviewedCount=progress.reduce((count,row) => count+(evaluationFor(row)?.reviewed_at ? 1 : 0),0);
+  const actionableProgress=progress.filter((row) => sessionFor(row)?.status!=="completed");
+  const reviewedCount=actionableProgress.reduce((count,row) => count+(evaluationFor(row)?.reviewed_at ? 1 : 0),0);
   const everyParticipantPrepared=Boolean(pendingClass?.class_participants.every((participant) => sessions.some((session) => session.person_id===participant.person_id)));
   const dualReview=Boolean(pendingClass && sessions.length>pendingClass.class_participants.length);
   const canFinish=Boolean(
     pendingClass &&
-    progress.length>0 &&
+    actionableProgress.length>0 &&
     everyParticipantPrepared &&
-    reviewedCount===progress.length &&
+    reviewedCount===actionableProgress.length &&
     busy!=="prepare"
   );
 
@@ -355,7 +464,7 @@ export function EvaluationPostClassGate() {
         </div>
         <div className={styles.headerScore}>
           <CheckCircle2/>
-          <strong>{reviewedCount}/{progress.length}</strong>
+          <strong>{reviewedCount}/{actionableProgress.length}</strong>
           <small>revisadas</small>
         </div>
       </header>
@@ -364,16 +473,17 @@ export function EvaluationPostClassGate() {
         <LockKeyhole/>
         <div>
           <strong>{dualReview ? "Revisión dual Bachata + Bachazouk" : "La evaluación la fija el profesor"}</strong>
-          <span>{dualReview ? "Este alumno ya tiene ambos estilos evaluados para el mismo rol. CYA revisa los dos contextos y conserva el nivel independiente de cada uno." : "Responde cada pregunta con lo que observas. El contenido solo puede recomendar qué conviene revisar; nunca suma puntos."}</span>
+          <span>{dualReview ? "Este alumno ya tiene ambos estilos evaluados para el mismo rol. CYA revisa solo lo pendiente y conserva el nivel independiente de cada uno." : "Responde cada pregunta con lo que observas. El contenido solo puede recomendar qué conviene revisar; nunca suma puntos."}</span>
         </div>
       </div>
 
       {busy==="prepare" ? <div className={styles.loading}><span/><p>Preparando las preguntas de la clase…</p></div> : null}
 
       {busy!=="prepare" ? <div className={styles.people}>{pendingClass.class_participants.map((participant) => {
-        const rows=progress
+        const rows=actionableProgress
           .filter((row) => row.person_id===participant.person_id)
           .sort((a,b) => styleLabel(a.style_term_id).localeCompare(styleLabel(b.style_term_id),"es") || aptitudeLabel(a.aptitude_term_id).localeCompare(aptitudeLabel(b.aptitude_term_id),"es"));
+        if (!rows.length) return null;
         const reviewed=rows.filter((row) => Boolean(evaluationFor(row)?.reviewed_at)).length;
         const personStyles=[...new Set(rows.map((row) => styleLabel(row.style_term_id)))];
         return <article key={participant.person_id} className={styles.personCard}>
@@ -414,14 +524,14 @@ export function EvaluationPostClassGate() {
 
       {error ? <div className={styles.error}>{error}{isAdmin ? <Link href="/evaluation-settings"><Settings2/> Configurar evaluación</Link> : null}</div> : null}
 
-      {reviewedCount===progress.length && progress.length>0 && busy!=="prepare" ? <div className={styles.ready}>
+      {reviewedCount===actionableProgress.length && actionableProgress.length>0 && busy!=="prepare" ? <div className={styles.ready}>
         <CheckCircle2/>
         <div><strong>Revisión completa</strong><span>Las respuestas del profesor quedan como estado real de esta evaluación. Ya puedes continuar al cierre pedagógico.</span></div>
       </div> : null}
 
       <footer className={styles.footer}>
         <span>Después de registrar la revisión, continúa el resumen pedagógico y el mensaje que verá el alumno.</span>
-        <button type="button" disabled={!canFinish || busy==="finish"} onClick={() => void finish()}>{busy==="finish" ? "Guardando…" : `Registrar revisión (${reviewedCount}/${progress.length})`}</button>
+        <button type="button" disabled={!canFinish || busy==="finish"} onClick={() => void finish()}>{busy==="finish" ? "Guardando…" : `Registrar revisión (${reviewedCount}/${actionableProgress.length})`}</button>
       </footer>
     </section>
   </div>;
