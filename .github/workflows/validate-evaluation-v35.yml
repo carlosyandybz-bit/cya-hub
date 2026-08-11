@@ -1,0 +1,32 @@
+name: Validate evaluation v35
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/evaluation-post-class.tsx"
+      - "app/evaluation-post-class.module.css"
+      - "app/evaluation-final-model.css"
+      - "app/evaluation-settings/**"
+      - "app/page.tsx"
+      - "app/layout.tsx"
+      - "supabase/v35*.sql"
+      - ".github/workflows/validate-evaluation-v35.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
