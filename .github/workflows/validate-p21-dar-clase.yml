@@ -1,0 +1,37 @@
+name: Validate P21 Dar clase
+
+on:
+  pull_request:
+    paths:
+      - 'app/cya-app.tsx'
+      - 'app/class-summary-content-editor.tsx'
+      - 'app/person-identity-editor.tsx'
+      - 'supabase/v49_p21_class_workflow_search.sql'
+      - 'tests/p21-dar-clase.test.mjs'
+      - 'tests/start-class-transition.test.mjs'
+      - 'tests/class-summary-content-editor.test.mjs'
+      - 'tests/p19-persona-unica.test.mjs'
+      - 'tests/p17-evaluation-cutover.test.mjs'
+      - '.github/workflows/validate-p21-dar-clase.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: P21 and cross-package regressions
+        run: node --test tests/p21-dar-clase.test.mjs tests/start-class-transition.test.mjs tests/class-summary-content-editor.test.mjs tests/p19-persona-unica.test.mjs tests/p17-evaluation-cutover.test.mjs
+      - name: Lint class surfaces
+        run: npx eslint app/cya-app.tsx app/class-summary-content-editor.tsx app/person-identity-editor.tsx
+      - name: Build
+        run: npm run build
