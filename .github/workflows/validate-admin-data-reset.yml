@@ -1,0 +1,31 @@
+name: Validate admin data reset
+
+on:
+  pull_request:
+    paths:
+      - 'app/admin-data-reset.tsx'
+      - 'app/admin-data-reset.module.css'
+      - 'app/admin-data-transfer.tsx'
+      - 'supabase/v44_admin_data_reset.sql'
+      - 'supabase/v44b_admin_data_reset_backup_guard.sql'
+      - 'supabase/v44c_admin_reset_backup_coverage.sql'
+      - 'supabase/v44d_admin_reset_student_people.sql'
+      - 'tests/admin-data-reset.test.mjs'
+      - '.github/workflows/validate-admin-data-reset.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Admin reset regression tests
+        run: node --test tests/admin-data-reset.test.mjs
+      - name: Lint admin reset surfaces
+        run: npx eslint app/admin-data-reset.tsx app/admin-data-transfer.tsx
+      - name: Build Next.js application
+        run: npm run build
