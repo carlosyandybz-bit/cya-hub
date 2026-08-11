@@ -1,9 +1,9 @@
 # CYA HUB — PENDIENTES VIVOS
 
-**Versión:** 1.1  
-**Fecha de corte:** 11 de agosto de 2026 — 15:14 (Europe/Madrid)  
+**Versión:** 1.2  
+**Fecha de corte:** 11 de agosto de 2026 — 15:14+ (Europe/Madrid)  
 **Baseline funcional:** P16/v42 verificada en Supabase producción  
-**Baseline GitHub auditado:** `main` en `d757cc85ccb832be35b621834ea2ec3ece5be3b5` antes de este bloque documental
+**Baseline GitHub previo a este bloque:** `a8acf2bf161535d4b84be1ae651d530ddc9248c5`
 
 ## Regla de uso
 
@@ -33,8 +33,23 @@ Evidencia:
 - Se distinguen migraciones registradas, SQL conservados, bootstrap pre-registro y SQL preparados/no aplicados.
 - `v35c-enforce-post-class-evaluation.sql` existe en GitHub pero no figura aplicada.
 - `v41c-final-evaluation-cutover-PREPARED-NOT-APPLIED.sql` está explícitamente marcada como no aplicada y tampoco figura en producción.
-- Se identifican 18 migraciones aplicadas sin archivo SQL independiente; sus sentencias siguen recuperables desde `schema_migrations.statements`.
 - Referencia canónica: `docs/DATABASE_MIGRATION_BASELINE.md`.
+- PR #3 fusionada en `main`, squash `a8acf2bf161535d4b84be1ae651d530ddc9248c5`.
+
+## P-025 — Recuperar 18 SQL aplicados sin archivo independiente
+**Estado:** 🟢 CERRADO · **Prioridad:** P2
+
+Cerrado el 11/08/2026 como **archivo histórico**, sin ejecutar ni reaplicar SQL.
+
+Evidencia:
+
+- Se extrajeron exclusivamente de `supabase_migrations.schema_migrations.statements[1]` las 18 fuentes que no tenían archivo independiente.
+- Se conservaron versión y nombre originales en `supabase/applied-history/`.
+- El directorio está marcado **ARCHIVO HISTÓRICO — NO APLICAR / NO EJECUTAR**.
+- Para cada fuente se calculó en producción el SHA-1 de objeto Git `blob` sobre los bytes originales.
+- Los **18/18 SHA calculados desde Supabase coinciden exactamente con los `sha` de los archivos de GitHub**: verificación byte por byte.
+- También se conserva un MD5 auxiliar por migración en el manifiesto.
+- No se modificó el esquema, no se creó ninguna entrada nueva en `schema_migrations` y no se ejecutó ninguna sentencia archivada.
 
 # Pendientes activos confirmados
 
@@ -43,9 +58,8 @@ Evidencia:
 
 Comprobado el 11/08/2026:
 
-- GitHub `main` está en `d757cc85ccb832be35b621834ea2ec3ece5be3b5` antes de este bloque documental.
-- El cambio funcional P16 está incluido mediante el merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`.
-- Los commits posteriores al merge P16 auditados hasta ese punto son documentales.
+- GitHub `main` contiene P16 mediante el merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`.
+- El baseline documental posterior fue fusionado en `a8acf2bf161535d4b84be1ae651d530ddc9248c5`.
 - El conector Hostinger disponible en esta sesión no expone hosting Node.js, despliegues ni logs; por rigor, no se declara el runtime actualizado.
 
 **Cierre:** comprobar commit desplegado, `/`, `/api/runtime-config` (`configured:true`), login/sesión Supabase, Inicio, Alumnado, Enseñanza, Dar clase, Marketing, Administración, portal alumno, ausencia de secretos y errores runtime relevantes.
@@ -56,13 +70,6 @@ Comprobado el 11/08/2026:
 Security Advisors de `CyA hub 2` confirma el warning **`Leaked Password Protection Disabled`**. Es una configuración de Supabase Auth y no debe intentarse corregir mediante SQL.
 
 **Cierre:** habilitar Leaked Password Protection cuando el plan/configuración lo permita, volver a ejecutar Security Advisors y verificar login/recuperación.
-
-## P-025 — Recuperar 18 SQL aplicados sin archivo independiente
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P2
-
-Producción conserva las sentencias exactas de 18 migraciones registradas que no tienen un archivo SQL independiente equivalente en `supabase/`.
-
-**Cierre:** extraer únicamente desde `supabase_migrations.schema_migrations.statements`; conservar versión/nombre originales; no reejecutar; incorporar las 18 fuentes en un cambio agrupado; verificar 18/18 contra producción y actualizar el baseline.
 
 # Fuera de alcance de auditoría visual v23
 
@@ -192,12 +199,11 @@ Antes de cerrar fase: crear persona, convertir contacto, programar clase, dar/ce
 # Orden operativo actual
 
 1. P-001 verificar Hostinger cuando exista acceso a despliegues/logs.
-2. P-002 cerrar protección de contraseñas filtradas.
-3. P-025 recuperar en un único cambio los 18 SQL históricos sin archivo independiente.
-4. Auditar P-011 a P-022 para convertir “requiere verificación” en cerrado o pendiente real.
-5. Priorizar núcleo: P-007 Dar clase, P-006 Evaluaciones, P-008 Árboles, P-018 Portal, P-019 Alumnado.
-6. Cerrar experiencia: P-004/P-005 Identidad y P-009/P-010 Marketing/Estadísticas.
-7. Mantener P-023/P-024 como gates de release.
+2. P-002 cerrar protección de contraseñas filtradas cuando exista acceso al ajuste Auth correspondiente.
+3. Auditar P-011 a P-022 para convertir “requiere verificación” en cerrado, parcial o pendiente real.
+4. Priorizar núcleo: P-007 Dar clase, P-006 Evaluaciones, P-008 Árboles, P-018 Portal, P-019 Alumnado.
+5. Cerrar experiencia: P-004/P-005 Identidad y P-009/P-010 Marketing/Estadísticas.
+6. Mantener P-023/P-024 como gates de release.
 
 # Registro
 
@@ -211,3 +217,10 @@ Creado a partir del historial recuperado de conversaciones, decisiones del plugi
 - P-002 confirmado contra Security Advisors: `Leaked Password Protection Disabled`.
 - P-003 cerrado: baseline real de 52 migraciones documentado.
 - P-025 abierto: recuperar 18 fuentes SQL aplicadas que producción conserva pero GitHub no tiene como archivos independientes.
+
+## 11/08/2026 — v1.2
+
+- P-025 cerrado.
+- Recuperadas las 18/18 fuentes desde `schema_migrations.statements[1]` a `supabase/applied-history/`.
+- Verificación byte por byte 18/18 mediante SHA de objeto Git calculado en Supabase y contrastado con GitHub.
+- Ningún SQL histórico fue ejecutado; producción no cambió en este bloque.
