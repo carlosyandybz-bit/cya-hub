@@ -1,9 +1,9 @@
 # CYA HUB — PENDIENTES VIVOS
 
-**Versión:** 1.0  
-**Fecha de corte:** 11 de agosto de 2026 — 15:01 (Europe/Madrid)  
-**Baseline:** `main` después de PR #2 / merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`  
-**Supabase:** P16/v42 verificada en producción
+**Versión:** 1.1  
+**Fecha de corte:** 11 de agosto de 2026 — 15:14 (Europe/Madrid)  
+**Baseline funcional:** P16/v42 verificada en Supabase producción  
+**Baseline GitHub auditado:** `main` en `d757cc85ccb832be35b621834ea2ec3ece5be3b5` antes de este bloque documental
 
 ## Regla de uso
 
@@ -20,28 +20,49 @@ Prioridades: P0 seguridad/producción/pérdida de datos · P1 flujo esencial · 
 
 Evidencia: dry-run 11/11; producción 17/17; migración `20260811124729 / v42_rls_student_class_correlation`; PR #2 fusionada; merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`; `student_message` preservado; `internal_note` aislada; operaciones ajenas bloqueadas; acceso staff preservado.
 
+## P-003 — Consolidar cadena SQL/migraciones documentada
+**Estado:** 🟢 CERRADO · **Prioridad:** P2
+
+Cerrado el 11/08/2026 mediante auditoría directa de `supabase_migrations.schema_migrations` y del árbol `supabase/` del repositorio.
+
+Evidencia:
+
+- 52 migraciones registradas en producción.
+- Primera: `20260808214303 / teaching_module`.
+- Última: `20260811124729 / v42_rls_student_class_correlation`.
+- Se distinguen migraciones registradas, SQL conservados, bootstrap pre-registro y SQL preparados/no aplicados.
+- `v35c-enforce-post-class-evaluation.sql` existe en GitHub pero no figura aplicada.
+- `v41c-final-evaluation-cutover-PREPARED-NOT-APPLIED.sql` está explícitamente marcada como no aplicada y tampoco figura en producción.
+- Se identifican 18 migraciones aplicadas sin archivo SQL independiente; sus sentencias siguen recuperables desde `schema_migrations.statements`.
+- Referencia canónica: `docs/DATABASE_MIGRATION_BASELINE.md`.
+
 # Pendientes activos confirmados
 
 ## P-001 — Verificar despliegue Hostinger después de P16
 **Estado:** 🔴 PENDIENTE · **Prioridad:** P0
 
-Falta evidencia de que el runtime público de Hostinger ya sirva el `main` resultante del merge P16.
+Comprobado el 11/08/2026:
+
+- GitHub `main` está en `d757cc85ccb832be35b621834ea2ec3ece5be3b5` antes de este bloque documental.
+- El cambio funcional P16 está incluido mediante el merge `bfc933ca2394300f2fd54d26afbb4c9f764441b1`.
+- Los commits posteriores al merge P16 auditados hasta ese punto son documentales.
+- El conector Hostinger disponible en esta sesión no expone hosting Node.js, despliegues ni logs; por rigor, no se declara el runtime actualizado.
 
 **Cierre:** comprobar commit desplegado, `/`, `/api/runtime-config` (`configured:true`), login/sesión Supabase, Inicio, Alumnado, Enseñanza, Dar clase, Marketing, Administración, portal alumno, ausencia de secretos y errores runtime relevantes.
 
 ## P-002 — Protección de contraseñas filtradas en Supabase Auth
-**Estado:** 🔴 PENDIENTE · **Prioridad:** P1
+**Estado:** 🔴 PENDIENTE CONFIRMADO · **Prioridad:** P1
 
-Tras P16 permanecía el aviso independiente de protección frente a contraseñas filtradas desactivada.
+Security Advisors de `CyA hub 2` confirma el warning **`Leaked Password Protection Disabled`**. Es una configuración de Supabase Auth y no debe intentarse corregir mediante SQL.
 
-**Cierre:** confirmar configuración, habilitar si corresponde, verificar login/recuperación y documentar resultado.
+**Cierre:** habilitar Leaked Password Protection cuando el plan/configuración lo permita, volver a ejecutar Security Advisors y verificar login/recuperación.
 
-## P-003 — Consolidar cadena SQL/migraciones documentada
+## P-025 — Recuperar 18 SQL aplicados sin archivo independiente
 **Estado:** 🔴 PENDIENTE · **Prioridad:** P2
 
-El README reconoce que su cadena histórica no refleja íntegramente ampliaciones posteriores de administración, identidad, misiones, configuración y migraciones posteriores.
+Producción conserva las sentencias exactas de 18 migraciones registradas que no tienen un archivo SQL independiente equivalente en `supabase/`.
 
-**Cierre:** inventario real de migraciones aplicadas, cronología, fixes/superseded y baseline de reconstrucción coherente con producción.
+**Cierre:** extraer únicamente desde `supabase_migrations.schema_migrations.statements`; conservar versión/nombre originales; no reejecutar; incorporar las 18 fuentes en un cambio agrupado; verificar 18/18 contra producción y actualizar el baseline.
 
 # Fuera de alcance de auditoría visual v23
 
@@ -58,7 +79,7 @@ Debe respetar la identidad definida y no reintroducir modo oscuro/contrastes no 
 ## P-006 — Rediseño definitivo de Evaluaciones
 **Estado:** 🔴 PENDIENTE · **Prioridad:** P1
 
-Conservar INICIO/INTERMEDIO/AVANZADO, valores 0/25/50/75/100, 5 opciones rápidas por parámetro, experiencia táctil, persistencia del valor y radares según contrato pedagógico.
+Conservar INICIO/INTERMEDIO/AVANZADO, valores 0/25/50/75/100, cinco opciones rápidas por parámetro, experiencia táctil, persistencia y radares según contrato pedagógico.
 
 ## P-007 — Rediseño definitivo de Dar clase
 **Estado:** 🔴 PENDIENTE · **Prioridad:** P1
@@ -82,7 +103,7 @@ Definir KPIs, jerarquía, filtros, navegación táctil y relaciones con alumnado
 
 # Paridad funcional — requiere verificación actual
 
-Estos requisitos están consolidados en las conversaciones y/o tuvieron trabajo previo, pero no se declaran cerrados sin evidencia reciente contra la app web actual.
+Estos requisitos están consolidados en conversaciones y/o tuvieron trabajo previo, pero no se declaran cerrados sin evidencia reciente contra la app web actual.
 
 ## P-011 — Inicio contextual
 **Estado:** 🟠 REQUIERE VERIFICACIÓN · **Prioridad:** P1
@@ -151,7 +172,7 @@ Evitar duplicar personas/roles, volver a pedir datos, divergencias CRM/alumno/cl
 ## P-023 — Smoke test iPhone real por release
 **Estado:** 🔴 PENDIENTE COMO PROCESO · **Prioridad:** P1
 
-Safe areas, scroll, teclado, zoom Safari, modales, formularios, barra inferior, Dar clase, árboles, evaluación, ficha alumno, navegación/retorno y cambios de orientación cuando correspondan.
+Safe areas, scroll, teclado, zoom Safari, modales, formularios, barra inferior, Dar clase, árboles, evaluación, ficha alumno, navegación/retorno y orientación cuando corresponda.
 
 ## P-024 — Regresión transversal de flujos
 **Estado:** 🔴 PENDIENTE COMO PROCESO · **Prioridad:** P1
@@ -170,9 +191,9 @@ Antes de cerrar fase: crear persona, convertir contacto, programar clase, dar/ce
 
 # Orden operativo actual
 
-1. P-001 verificar Hostinger.
+1. P-001 verificar Hostinger cuando exista acceso a despliegues/logs.
 2. P-002 cerrar protección de contraseñas filtradas.
-3. P-003 consolidar migraciones/documentación.
+3. P-025 recuperar en un único cambio los 18 SQL históricos sin archivo independiente.
 4. Auditar P-011 a P-022 para convertir “requiere verificación” en cerrado o pendiente real.
 5. Priorizar núcleo: P-007 Dar clase, P-006 Evaluaciones, P-008 Árboles, P-018 Portal, P-019 Alumnado.
 6. Cerrar experiencia: P-004/P-005 Identidad y P-009/P-010 Marketing/Estadísticas.
@@ -184,5 +205,9 @@ Antes de cerrar fase: crear persona, convertir contacto, programar clase, dar/ce
 
 Creado a partir del historial recuperado de conversaciones, decisiones del plugin, migración web, arquitectura GitHub/Supabase/Hostinger/Drive, auditoría visual v23 y estado P16/PR #2.
 
-**Cerrado:** P16/v42 RLS alumno–clase.  
-**Siguiente pendiente operativo:** verificar despliegue Hostinger de `main` después del merge P16.
+## 11/08/2026 — v1.1
+
+- P-001 auditado: GitHub correcto; Hostinger sigue pendiente de evidencia de runtime.
+- P-002 confirmado contra Security Advisors: `Leaked Password Protection Disabled`.
+- P-003 cerrado: baseline real de 52 migraciones documentado.
+- P-025 abierto: recuperar 18 fuentes SQL aplicadas que producción conserva pero GitHub no tiene como archivos independientes.

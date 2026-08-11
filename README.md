@@ -49,31 +49,30 @@ La configuración prevista es:
 
 1. Importar `carlosyandybz-bit/cya-hub` desde GitHub.
 2. Usar la rama `main`.
-3. Seleccionar Node.js 22 / Next.js.
+3. Seleccionar Node.js 22 y Next.js.
 4. Añadir las variables públicas de Supabase.
 5. Construir con `npm run build` y arrancar con `npm start`.
 6. Mantener habilitado el despliegue automático de la rama conectada.
 
 Antes de sustituir una web existente en un dominio principal, validar CYA Hub en un subdominio dedicado.
 
-## Esquema de Supabase
+## Esquema y migraciones de Supabase
 
-Los SQL de `supabase/` documentan el esquema aplicado en producción. La cadena histórica de reconstrucción disponible en el repositorio es:
+La cronología aplicada **no debe inferirse únicamente por los archivos de `supabase/`**.
 
-1. `foundation.sql`
-2. `classes-and-credits.sql`
-3. `live-class.sql`
-4. `teaching.sql`
-5. `teaching-measurement-adjustment-fix.sql`
-6. `marketing-crm.sql`
-7. `communications-outbox.sql`
-8. `communications-creator-indexes.sql`
-9. `v7-security-portal-media.sql`
-10. `v7-portal-projection-hardening.sql`
-11. `v7-communications-trigger-fix.sql`
-12. `v12-portal-media.sql`
+La referencia canónica es [`docs/DATABASE_MIGRATION_BASELINE.md`](./docs/DATABASE_MIGRATION_BASELINE.md), contrastada el 11/08/2026 directamente con `supabase_migrations.schema_migrations` de producción.
 
-> Nota: la cadena SQL histórica todavía debe consolidarse para reflejar íntegramente las ampliaciones posteriores de administración, identidad, misiones y configuración. No usar esta lista como sustituto de una copia de seguridad de producción.
+Estado documentado en ese corte:
+
+- **52 migraciones registradas** en producción.
+- Primera registrada: `20260808214303 / teaching_module`.
+- Última registrada: `20260811124729 / v42_rls_student_class_correlation`.
+- **18 migraciones aplicadas** aún no tienen archivo SQL independiente equivalente en el repositorio, aunque sus sentencias se conservan en el registro de producción y son recuperables.
+- `foundation.sql`, `classes-and-credits.sql`, `live-class.sql` y `marketing-crm.sql` son fuentes de bootstrap/pre-registro.
+- `v35c-enforce-post-class-evaluation.sql` existe en GitHub pero no figura aplicada.
+- `v41c-final-evaluation-cutover-PREPARED-NOT-APPLIED.sql` está explícitamente preparada/no aplicada y tampoco figura en el registro.
+
+**Regla:** presencia de archivo SQL ≠ evidencia de aplicación. La fuente de verdad del estado aplicado es producción.
 
 ## Reglas de datos y seguridad
 
@@ -82,6 +81,13 @@ Los SQL de `supabase/` documentan el esquema aplicado en producción. La cadena 
 - No almacenar secretos en GitHub.
 - La publishable key de Supabase puede utilizarse en el cliente; la seguridad real depende de Auth, RLS y permisos de base de datos.
 - Las páginas de la aplicación y `/api/runtime-config` evitan cachear configuración sensible al despliegue para no reutilizar una versión obsoleta después de una actualización.
+
+## Documentación operativa
+
+- [`docs/CYA_HUB_SECUENCIA_MAESTRA.md`](./docs/CYA_HUB_SECUENCIA_MAESTRA.md): historial y decisiones consolidadas.
+- [`docs/CYA_HUB_PENDIENTES.md`](./docs/CYA_HUB_PENDIENTES.md): tablero vivo de pendientes.
+- [`docs/DATABASE_MIGRATION_BASELINE.md`](./docs/DATABASE_MIGRATION_BASELINE.md): estado real de migraciones Supabase.
+- [`HOSTINGER_DEPLOY.md`](./HOSTINGER_DEPLOY.md): despliegue y smoke test Hostinger.
 
 ## PWA
 
