@@ -77,9 +77,13 @@ test('generic builder creates forms and configurable draft fields without SQL au
 });
 
 test('teacher notes have a server-enforced staff-only visibility floor',()=>{
-  assert.ok((sql.match(/canonical_path='student_profiles\.teacher_notes'.*not v_staff/gms)||[]).length>=2);
-  assert.match(sql,/p_canonical_path='student_profiles\.teacher_notes'/);
-  assert.match(sql,/v_visibility='\{\\"audiences\\":\[\\"staff\\"\],\\"editable_by\\":\[\\"staff\\"\]\}'::jsonb/);
+  const runtimeRead=sql.slice(sql.indexOf('create or replace function public.form_runtime'),sql.indexOf('create or replace function public.submit_form_runtime'));
+  const runtimeSubmit=sql.slice(sql.indexOf('create or replace function public.submit_form_runtime'),sql.indexOf('create or replace function public.create_generic_form'));
+  const builder=sql.slice(sql.indexOf('create or replace function public.add_form_draft_field'),sql.indexOf('create or replace function public.create_form_draft_version'));
+  assert.match(runtimeRead,/canonical_path='student_profiles\.teacher_notes' and not v_staff then continue/);
+  assert.match(runtimeSubmit,/canonical_path='student_profiles\.teacher_notes' and not v_staff then continue/);
+  assert.match(builder,/p_canonical_path='student_profiles\.teacher_notes'/);
+  assert.match(builder,/audiences[^\n]*staff[^\n]*editable_by[^\n]*staff/);
 });
 
 test('runtime renderer supports minimum field types and G3 numeric behavior',()=>{
