@@ -234,7 +234,6 @@ export function AdminDataReset({
   );
 
   const loadBackupStatus = useCallback(async () => {
-    setBackupChecking(true);
     const result = await client.rpc("admin_reset_backup_status");
     if (result.error) {
       setBackupStatus(emptyBackupStatus);
