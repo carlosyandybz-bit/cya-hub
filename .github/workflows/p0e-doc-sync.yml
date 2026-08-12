@@ -1,0 +1,110 @@
+name: P0E documentation sync
+
+on:
+  push:
+    branches:
+      - docs/p0e-closure-sync
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: docs/p0e-closure-sync
+      - name: Synchronize P0E closure
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one match, found {count}: {old[:120]!r}")
+              p.write_text(text.replace(old, new))
+
+          plan = 'docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md'
+          replace_exact(plan, 'Versión: **4.1**', 'Versión: **4.2**')
+          replace_exact(plan,
+              '- **P0E ⏳ SIGUIENTE CORRECTIVO** — evaluación inicial opcional/no bloqueante dentro de Dar clase y eliminación de gates globales de evaluación antes de continuar P24.',
+              '- **P0E ✅** — evaluación contextual opcional, baseline derivada de la primera evaluación completa válida y gates globales eliminados; v53 + PR #36 integrados y recertificados 26/26.')
+          replace_exact(plan,
+              '- Evaluación inicial opcional/no bloqueante y gates de evaluación acotados a la clase actual → P0E pendiente antes de P24.',
+              '- Evaluación contextual opcional, baseline derivada y revisión post-clase acotada a su clase → P0E/v53 cerrado y recertificado en `main`.')
+          replace_exact(plan,
+              'P0C cerró el correctivo táctil: los targets auditados tienen un área efectiva mínima de 44 px y `mobile-touch-targets.spec.ts` lo protege en iPhone. P0E debe preservar este gate al integrar la nueva pestaña Evaluación.',
+              'P0C cerró el correctivo táctil: los targets auditados tienen un área efectiva mínima de 44 px y `mobile-touch-targets.spec.ts` lo protege en iPhone. P0E preservó este gate: la recertificación post-merge mantiene `touchTargetsUnder44=0`.')
+          old_p17 = '''- frontend guiado inicial/postclase activo;\n- wrappers antiguos retirados de `authenticated`;\n- motor moderno por sesiones conservado;\n- evaluación inicial durante clase activa;\n- cierre pedagógico exige evaluación explícita;\n- Bachazouk conserva dependencia inicial de Bachata cuando corresponde;\n- v43 ledger `20260811151901`;\n- revisión postclase no reaparece tras completarse.'''
+          new_p17 = '''- motor guiado por sesiones y escala 0/25/50/75/100 conservados;\n- wrappers antiguos retirados de `authenticated`;\n- P0E/v53 elimina la evaluación inicial obligatoria y los gates globales;\n- `ContextEvaluationPanel` permite evaluar desde Dar clase y perfil sin abandonar el trabajo principal;\n- baseline = primera evaluación completa y válida por persona + estilo + rol, sin depender de `evaluation_kind`;\n- una revisión `class` puede ser la primera evaluación y convertirse en baseline;\n- solo la revisión `class` de la clase concreta puede condicionar su cierre pedagógico;\n- v43 ledger `20260811151901` + v53 P0E;\n- PR #36 → merge `a1697c4d573e381064e0d3dc5084a77202cb6634`;\n- QA post-merge `31610773094`: **26/26**.'''
+          replace_exact(plan, old_p17, new_p17)
+          replace_exact(plan,
+              '22. **Un cierre formal de paquete no puede retroceder documentalmente por un merge posterior.**',
+              '22. **Un cierre formal de paquete no puede retroceder documentalmente por un merge posterior.**\n23. **La baseline evaluativa es la primera evaluación completa y válida del contexto; ninguna evaluación general bloquea el trabajo de clase.**')
+          replace_exact(plan, '| F12–F15 evaluaciones | ✅ P17 |', '| F12–F15 evaluaciones | ✅ P17 + P0E/v53 |')
+          replace_exact(plan, '| targets táctiles <44 px detectados por release-wide | → P0C |', '| targets táctiles <44 px detectados por release-wide | ✅ P0C |')
+          replace_exact(plan,
+              'Antes de modificar funcionalmente P24 queda pendiente únicamente el correctivo transversal **P0C** de targets táctiles, según la secuencia de auditoría aprobada.',
+              'Los correctivos de auditoría **P0A–P0E están cerrados**. El siguiente paquete funcional es **P24 — Inicio contextual**.')
+
+          audit = 'docs/CYA_HUB_AUDITORIA_VIVA_LANZAMIENTO.md'
+          replace_exact(audit,
+              'Base funcional post-P0C auditada: `main@c253ff5135e7955c69d152038434c96cc70777f8` + Supabase `CyA hub 2` (`ldvyeyhzrepaaouzavgs`)',
+              'Base funcional post-P0E auditada: `main@a1697c4d573e381064e0d3dc5084a77202cb6634` + Supabase `CyA hub 2` (`ldvyeyhzrepaaouzavgs`)')
+          replace_exact(audit,
+              'Estado: **AUDITORÍA P0 VIVA — P0A/P0B/P0C/P0D cerrados; P0E es el siguiente correctivo antes de P24; todavía existen gates antes del release**',
+              'Estado: **AUDITORÍA P0 VIVA — P0A/P0B/P0C/P0D/P0E cerrados; P24 — Inicio contextual es el siguiente paquete; todavía existen gates antes del release**')
+          replace_exact(audit, '### Resultado actual post-P0C en `main`', '### Resultado actual post-P0E en `main`')
+          replace_exact(audit,
+              'Workflow `CYA QA E2E`, run **31592129261**, ejecutado sobre `main@c253ff5135e7955c69d152038434c96cc70777f8`:',
+              'Workflow `CYA QA E2E`, run **31610773094**, ejecutado sobre `main@a1697c4d573e381064e0d3dc5084a77202cb6634`:')
+          replace_exact(audit, '- lint: **0 errores / 14 warnings**;', '- lint: **0 errores / 24 warnings no bloqueantes**;')
+          replace_exact(audit, '- artifacts: **OK**, artifact `9139646180`.', '- artifacts: **OK**, artifact `9147197152`.')
+          replace_exact(audit,
+              '| **CYA-AUD-006** | QA release-wide | — | **EJECUTADO — 26/26** | Run post-merge P0C `31592129261`: documentación 2/2 + Playwright 26/26, iPhone + desktop, ciclo Profesor→Alumno→Admin, build y artifacts verdes. | Mantener como gate real tras cada paquete relevante y en P32. |',
+              '| **CYA-AUD-006** | QA release-wide | — | **EJECUTADO — 26/26** | Run post-merge P0E `31610773094`: documentación 2/2 + Playwright 26/26, iPhone + desktop, ciclo Profesor→Alumno→Admin, build y artifact `9147197152` verdes. | Mantener como gate real tras cada paquete relevante y en P32. |')
+          replace_exact(audit,
+              "| **CYA-AUD-013** | Dar clase / Evaluaciones | Alta | **ABIERTO — P0E APROBADO COMO REQUISITO** | La evaluación inicial y la revisión post-clase están montadas como gates globales y pueden superponerse a Inicio/Admin/u otra clase. La baseline inicial debe ser opcional y vivir como apartado `Evaluación` dentro del live session. | P0E: scope por clase/persona/contexto, baseline `initial` no bloqueante, `class` separada y acotada al cierre de su propia clase; eliminar aislamiento QA temporal. |",
+              "| **CYA-AUD-013** | Dar clase / Evaluaciones | Alta | **RESUELTO — P0E/v53** | Los gates globales fueron retirados. `ContextEvaluationPanel` vive en Dar clase y perfil. Baseline = primera evaluación completa válida, independientemente de `evaluation_kind`; la primera sesión QA válida fue `class` y se convirtió en baseline. La revisión post-clase queda acotada a ESA clase. PR #36 y run post-merge `31610773094` verdes 26/26. | Mantener P17/P0E y lifecycle E2E como regresión permanente; reauditar en P32. |")
+          replace_exact(audit,
+              '| Evaluaciones guiadas | **EXISTE / CERRADO** | P17 + correctivos v51; E2E inicial/postclase | Mantener regresión permanente; CYA-AUD-013/P0E pendiente. |',
+              '| Evaluaciones guiadas | **EXISTE / CERRADO + P0E** | P17 + v53; evaluación contextual; baseline derivada; E2E post-clase | CYA-AUD-013 cerrado. Mantener P17/P0E como regresión permanente y reauditar en P32. |')
+          replace_exact(audit,
+              '| Dar clase | **EXISTE / VALIDADO** | P21 + P0A; E2E completo profesor→alumno→admin; Centro móvil protegido | CYA-AUD-013 / P0E: evaluación inicial opcional/no bloqueante y evaluación acotada a la clase actual. |',
+              '| Dar clase | **EXISTE / VALIDADO + P0E** | P21 + P0A + v53; E2E completo profesor→alumno→admin; Centro móvil y Evaluación contextual protegidos | Mantener regresión; ninguna evaluación global puede bloquear otra superficie o clase. |')
+          replace_exact(audit,
+              'P0A/P0B/P0D no modificaron estos datos ni exigieron migración de Supabase.',
+              'P0A/P0B/P0C/P0D no exigieron migración funcional. P0E aplicó v53 de forma incremental, sin borrar históricos ni añadir tablas.')
+          replace_exact(audit, '- **14 warnings**.', '- **24 warnings**.')
+          old_order = '''1. **P0A / CYA-AUD-008 — ✅ CERRADO**: navegación móvil del Centro `Dar clase` corregida.\n2. **P0B / CYA-AUD-001 — ✅ CANONIZADO**: Plan Maestro P23 cerrado → P24 actual + gate documental en CI.\n3. **P0C / CYA-AUD-007 — SIGUIENTE CORRECTIVO**: normalizar targets táctiles críticos, empezando por switches 35×21 y acciones de Alumnado de 36 px.\n4. **P0D / CYA-AUD-005 — ✅ CERRADO**: `release-wide-audit` integrado como gate permanente.'''
+          new_order = '''1. **P0A / CYA-AUD-008 — ✅ CERRADO**: navegación móvil del Centro `Dar clase` corregida.\n2. **P0B / CYA-AUD-001 — ✅ CERRADO**: Plan Maestro P23 cerrado → P24 actual + gate documental en CI.\n3. **P0C / CYA-AUD-007 — ✅ CERRADO**: targets táctiles auditados ≥44 px + gate permanente.\n4. **P0D / CYA-AUD-005 — ✅ CERRADO**: `release-wide-audit` integrado como gate permanente.\n5. **P0E / CYA-AUD-013 — ✅ CERRADO**: evaluación contextual opcional, baseline derivada y gates globales eliminados; v53 + PR #36.'''
+          replace_exact(audit, old_order, new_order)
+          replace_exact(audit,
+              '5. P24 — cerrar Inicio contextual.\n6. P25 — corregir `expire` y cerrar Misiones/worker.\n7. P26 — Calendar real.\n8. P27 — automatización/delivery de notificaciones.\n9. P28 — round-trip import/export.\n10. P29 — Marketing/CRM/tarifas/campañas/eventos con datos y canales reales.\n11. P30 — definir estadísticas con el usuario y solo entonces cerrar métricas.\n12. P31 — Administración/integraciones/apariencia.\n13. P32 — seguridad, rendimiento, reset/restore, producción y release final.',
+              '6. P24 — cerrar Inicio contextual.\n7. P25 — corregir `expire` y cerrar Misiones/worker.\n8. P26 — Calendar real.\n9. P27 — automatización/delivery de notificaciones.\n10. P28 — round-trip import/export.\n11. P29 — Marketing/CRM/tarifas/campañas/eventos con datos y canales reales.\n12. P30 — definir estadísticas con el usuario y solo entonces cerrar métricas.\n13. P31 — Administración/integraciones/apariencia.\n14. P32 — seguridad, rendimiento, reset/restore, producción y release final.')
+          replace_exact(audit, '- CYA-AUD-007 resuelto o aceptado conscientemente antes de release;', '- CYA-AUD-007 y CYA-AUD-013 cerrados; mantener sus gates hasta release;')
+          replace_exact(audit,
+              'P0A y P0D han eliminado el rojo contractual de navegación y han convertido la auditoría transversal en un gate permanente. P0B elimina además la contradicción entre el cierre real de P23 y el Plan Maestro, y añade un check de CI para que una rama antigua no pueda hacer retroceder silenciosamente la secuencia.',
+              'P0A–P0E han cerrado los correctivos prioritarios de auditoría: navegación móvil, consistencia documental, targets táctiles, auditoría transversal y evaluación contextual/baseline derivada. Todos permanecen protegidos por gates automáticos.')
+          replace_exact(audit,
+              '- deuda táctil iPhone CYA-AUD-007 / P0C;\n- bug de expiración de misiones CYA-AUD-003 / P25;',
+              '- bug de expiración de misiones CYA-AUD-003 / P25;')
+          replace_exact(audit,
+              'Siguiente correctivo de auditoría: **P0C — targets táctiles críticos ≥44 px**. Después se retoma la secuencia funcional en **P24 — Inicio contextual**.',
+              'Los correctivos P0A–P0E están cerrados. La secuencia funcional continúa en **P24 — Inicio contextual**.')
+
+          test_path = Path('tests/documentation-consistency.test.mjs')
+          test_path.write_text("""import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport fs from 'node:fs';\n\nconst read = (path) => fs.readFileSync(path, 'utf8');\nconst plan = read('docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md');\nconst p23 = read('docs/P23_ENSENANZA_RELACIONES_ARBOLES.md');\nconst audit = read('docs/CYA_HUB_AUDITORIA_VIVA_LANZAMIENTO.md');\n\ntest('P23 closure and P24 handoff stay canonical', () => {\n  assert.match(p23, /Estado: \\*\\*P23 CERRADO/);\n  assert.match(p23, /Siguiente paquete: \\*\\*P24 — Inicio contextual\\*\\*/);\n  assert.match(plan, /Última actualización secuencial cerrada: \\*\\*P23 \\/ v51\\*\\*/);\n  assert.match(plan, /Siguiente actualización funcional: \\*\\*P24 — Inicio contextual\\*\\*/);\n  assert.match(plan, /# 7\\. P24 — Inicio contextual 🟣 AHORA/);\n  assert.doesNotMatch(plan, /Siguiente actualización(?: funcional)?: \\*\\*P23/);\n});\n\ntest('P0A-P0E closures and P24 handoff stay canonical', () => {\n  for (const token of ['P0A ✅','P0B ✅','P0C ✅','P0D ✅','P0E ✅']) assert.match(plan, new RegExp(token));\n  assert.match(audit, /CYA-AUD-001[\\s\\S]*?\\*\\*RESUELTO — P0B\\*\\*/);\n  assert.match(audit, /CYA-AUD-005[\\s\\S]*?\\*\\*RESUELTO/);\n  assert.match(audit, /CYA-AUD-007[\\s\\S]*?\\*\\*RESUELTO — P0C\\*\\*/);\n  assert.match(audit, /CYA-AUD-008[\\s\\S]*?\\*\\*RESUELTO — P0A\\*\\*/);\n  assert.match(audit, /CYA-AUD-013[\\s\\S]*?\\*\\*RESUELTO — P0E\\/v53\\*\\*/);\n  assert.match(audit, /31610773094/);\n  assert.match(audit, /9147197152/);\n  assert.match(audit, /P24 — Inicio contextual/);\n  assert.doesNotMatch(audit, /CYA-AUD-013[^\\n]*\\*\\*ABIERTO/);\n  assert.doesNotMatch(plan, /P0E .*SIGUIENTE CORRECTIVO/);\n});\n""")
+          PY
+          rm .github/workflows/p0e-doc-sync.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md docs/CYA_HUB_AUDITORIA_VIVA_LANZAMIENTO.md tests/documentation-consistency.test.mjs .github/workflows/p0e-doc-sync.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "docs: close P0E and hand off to P24"
+          git push origin HEAD:docs/p0e-closure-sync
