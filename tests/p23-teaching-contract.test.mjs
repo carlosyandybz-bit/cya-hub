@@ -45,12 +45,17 @@ test('graph relations cannot create prerequisite or sequence cycles', () => {
   assert.ok(migration.includes('La relación crearía un ciclo en el mapa de enseñanza.'));
 });
 
-test('media remains a separate domain and never becomes a graph node implicitly', () => {
+test('media stays attached to content detail and never creates graph nodes implicitly', () => {
   assert.equal(migration.includes('insert into public.teaching_content_media'), false);
   assert.equal(migration.includes('update public.teaching_content_media'), false);
   assert.ok(graph.includes('contents: GraphContent[]; relations: GraphRelation[]'));
-  assert.equal(graph.includes('teaching_content_media'), false);
-  assert.equal(graph.includes('external_file_id'), false);
+  assert.ok(graph.includes('const nodes: Node<GraphNodeData>[] = columns.flatMap'));
+  assert.ok(graph.includes('filtered.forEach((content) =>'));
+  assert.ok(graph.includes('visibleRelations.map((relation) =>'));
+  assert.ok(graph.includes('selected.teaching_content_media.length'));
+  assert.ok(graph.includes('className="graph-media"'));
+  assert.equal(graph.includes('teaching_content_media.map((media) => ({ id:'), false);
+  assert.equal(graph.includes('media.map((media) => ({\n    id:'), false);
 });
 
 test('existing graph already provides the core touch navigation that P23 must preserve', () => {
