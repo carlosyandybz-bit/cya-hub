@@ -55,6 +55,56 @@ async function attachCheckpoint(page: Page, testInfo: TestInfo, name: string) {
   });
 }
 
+async function completeInitialEvaluationIfPresent(page: Page) {
+  const dialog = page.getByRole("dialog", { name: "Evaluación inicial guiada" });
+  const appeared = await dialog.waitFor({ state: "visible", timeout: 7_000 }).then(() => true).catch(() => false);
+  if (!appeared) return false;
+
+  const completeButton = dialog.getByRole("button", { name: "Completar evaluación inicial" });
+  for (let guard = 0; guard < 30; guard += 1) {
+    if (await completeButton.isEnabled()) break;
+    const question = dialog.locator("section").filter({
+      hasText: "¿Cuál de estas opciones describe mejor lo que observas ahora mismo?",
+    }).last();
+    await expect(question).toBeVisible({ timeout: 15_000 });
+    const answers = question.getByRole("button");
+    const answerCount = await answers.count();
+    if (!answerCount) throw new Error("Initial evaluation has no answer options");
+    const answer = answers.nth(Math.min(3, answerCount - 1));
+    await expect(answer).toBeEnabled({ timeout: 15_000 });
+    await answer.click();
+  }
+
+  await expect(completeButton).toBeEnabled({ timeout: 15_000 });
+  await completeButton.click();
+  await expect(dialog).toBeHidden({ timeout: 20_000 });
+  return true;
+}
+
+async function completePostClassEvaluation(page: Page) {
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  const dialog = page.getByRole("dialog", { name: "Evaluación posterior a la clase" });
+  await expect(dialog).toBeVisible({ timeout: 15_000 });
+  await expect(dialog.getByRole("heading", { name: "Revisión de evaluación" })).toBeVisible();
+
+  const selects = dialog.locator("select");
+  const count = await selects.count();
+  if (!count) throw new Error("Post-class evaluation has no questions");
+  for (let index = 0; index < count; index += 1) {
+    const select = selects.nth(index);
+    await expect(select).toBeEnabled({ timeout: 15_000 });
+    if ((await select.inputValue()) === "") {
+      await select.selectOption({ index: 1 });
+      await expect(select).not.toHaveValue("", { timeout: 15_000 });
+    }
+  }
+
+  const registerButton = dialog.getByRole("button", { name: /Registrar revisión/ });
+  await expect(registerButton).toBeEnabled({ timeout: 15_000 });
+  await registerButton.click();
+  await expect(dialog).toBeHidden({ timeout: 20_000 });
+}
+
 test.describe("CYA Hub functional class lifecycle", () => {
   test.describe.configure({ retries: 0 });
 
@@ -84,6 +134,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(startClassButton).toBeVisible();
     await startClassButton.click();
     await expect(page.getByText("DANDO CLASE", { exact: true })).toBeVisible({ timeout: 20_000 });
+    await completeInitialEvaluationIfPresent(page);
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-teacher-live-start`);
 
     const quickCreate = page.locator("details").filter({ hasText: "Crear nuevo" });
@@ -96,20 +147,13 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await quickCreate.getByRole("button", { name: "Guardar pendiente" }).click();
     await expect(page.getByText(correctionTitle, { exact: true })).toBeVisible({ timeout: 15_000 });
 
-    await page.getByRole("button", { name: "Observaciones" }).click();
+    const observationsTab = page.locator(".live-work-tabs button").filter({ hasText: "Observaciones" });
+    await expect(observationsTab).toBeVisible();
+    await observationsTab.click();
     const studentNoteCard = page.locator("article").filter({ has: page.getByRole("heading", { name: "Observación" }) });
     await studentNoteCard.locator('textarea[placeholder="Mensaje o recomendación para el resumen…"]').fill(observation);
     await studentNoteCard.getByRole("button", { name: "Guardar" }).click();
     await expect(page.getByText(observation, { exact: true })).toBeVisible({ timeout: 15_000 });
-
-    await page.getByRole("button", { name: "Evaluar" }).click();
-    await expect(page.getByRole("heading", { name: "Evaluar ahora" })).toBeVisible();
-    await page.locator("label").filter({ hasText: "Nivel que estás evaluando" }).locator("select").selectOption({ label: fixtures.level });
-    const evaluationEditor = page.locator("section").filter({ hasText: "Parámetro" }).last();
-    await expect(evaluationEditor).toBeVisible({ timeout: 10_000 });
-    const score75 = evaluationEditor.getByRole("button").filter({ hasText: /^75/ }).first();
-    await score75.click();
-    await expect(score75).toHaveAttribute("aria-pressed", "true", { timeout: 15_000 });
 
     await page.getByRole("button", { name: /^Terminar$/ }).click();
     const finishDialog = page.locator("section:visible").filter({ has: page.getByRole("heading", { name: "Terminar clase" }) }).last();
@@ -117,6 +161,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(finishDialog.locator("select").first()).not.toHaveValue("");
     await finishDialog.getByRole("button", { name: "Terminar clase" }).click();
 
+    await completePostClassEvaluation(page);
     await expect(page.getByText("Administración terminada", { exact: true })).toBeVisible({ timeout: 20_000 });
     await page.getByRole("button", { name: /Sí, preparar resumen/ }).click();
     await expect(page.getByRole("heading", { name: "Resumen de la clase" })).toBeVisible();
