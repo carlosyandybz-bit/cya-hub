@@ -14,18 +14,6 @@ type QaFixtures = {
   level: string;
   projects: Record<string, ProjectFixture>;
 };
-type EvaluationSession = {
-  id: number;
-  person_id: number;
-  style_term_id: number;
-  role_term_id: number;
-  level_term_id: number;
-  status: string;
-};
-type ProgressRow = { id: number };
-type ParticipantRow = { person_id: number };
-type ScaleRow = { id: number };
-type SessionIdRow = { id: number };
 
 function credentialsFor(role: QaRole) {
   const prefix = `QA_${role.toUpperCase()}`;
@@ -67,90 +55,11 @@ async function attachCheckpoint(page: Page, testInfo: TestInfo, name: string) {
   });
 }
 
-async function supabaseRequest<T>(page: Page, path: string, method = "GET", body?: Record<string, unknown>): Promise<T> {
-  const result = await page.evaluate(async ({ path, method, body }) => {
-    const configResponse = await fetch("/api/runtime-config", { cache: "no-store" });
-    const config = await configResponse.json() as { supabaseUrl?: string; supabasePublishableKey?: string };
-    if (!config.supabaseUrl || !config.supabasePublishableKey) throw new Error("Missing runtime Supabase config");
-
-    const authKey = Object.keys(window.localStorage).find((key) => key.startsWith("sb-") && key.endsWith("-auth-token"));
-    if (!authKey) throw new Error("Missing Supabase auth storage");
-    const auth = JSON.parse(window.localStorage.getItem(authKey) || "{}") as { access_token?: string };
-    if (!auth.access_token) throw new Error("Missing Supabase access token");
-
-    const response = await fetch(`${config.supabaseUrl}/rest/v1/${path}`, {
-      method,
-      headers: {
-        apikey: config.supabasePublishableKey,
-        Authorization: `Bearer ${auth.access_token}`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Prefer: "return=representation",
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const text = await response.text();
-    if (!response.ok) throw new Error(`Supabase ${method} ${path}: ${response.status} ${text}`);
-    return text ? JSON.parse(text) : null;
-  }, { path, method, body });
-  return result as T;
-}
-
-async function rpc<T>(page: Page, name: string, body: Record<string, unknown>): Promise<T> {
-  return supabaseRequest<T>(page, `rpc/${name}`, "POST", body);
-}
-
-async function firstEvaluationScale(page: Page) {
-  const rows = await supabaseRequest<ScaleRow[]>(page, "catalog_terms?taxonomy=eq.evaluation_scale&active=eq.true&select=id&order=sort_order.asc&limit=1");
-  if (!rows[0]?.id) throw new Error("QA evaluation scale is missing");
-  return rows[0].id;
-}
-
-async function reviewSession(page: Page, session: EvaluationSession, scaleId: number) {
-  const query = [
-    "student_aptitude_progress?select=id",
-    `person_id=eq.${session.person_id}`,
-    `style_term_id=eq.${session.style_term_id}`,
-    `role_term_id=eq.${session.role_term_id}`,
-    `level_term_id=eq.${session.level_term_id}`,
-  ].join("&");
-  const progress = await supabaseRequest<ProgressRow[]>(page, query);
-  if (!progress.length) throw new Error(`Evaluation session ${session.id} has no progress questions`);
-  for (const row of progress) {
-    await rpc(page, "review_evaluation_question", {
-      p_session_id: session.id,
-      p_progress_id: row.id,
-      p_scale_term_id: scaleId,
-      p_descriptor_id: null,
-      p_note: null,
-    });
-  }
-}
-
-async function completeQaPostClassEvaluation(page: Page, classId: number) {
-  const participants = await supabaseRequest<ParticipantRow[]>(page, `class_participants?class_id=eq.${classId}&select=person_id`);
-  if (!participants.length) throw new Error(`QA class ${classId} has no participants`);
-  const scaleId = await firstEvaluationScale(page);
-  for (const participant of participants) {
-    const raw = await rpc<EvaluationSession | EvaluationSession[]>(page, "prepare_post_class_evaluations", {
-      p_class_id: classId,
-      p_person_id: participant.person_id,
-    });
-    const sessions = Array.isArray(raw) ? raw : raw ? [raw] : [];
-    if (!sessions.length) throw new Error(`QA class ${classId} has no post-class evaluation session`);
-    for (const session of sessions) {
-      if (session.status === "completed") continue;
-      await reviewSession(page, session, scaleId);
-      await rpc(page, "complete_post_class_evaluation", { p_session_id: session.id });
-    }
-  }
-}
-
 test.describe("CYA Hub functional class lifecycle", () => {
   test.describe.configure({ retries: 0 });
 
   test("teacher closes a QA class, student receives it, and admin remains healthy", async ({ page }, testInfo) => {
-    // P0E: the teacher works before any baseline exists; the post-class review may become the first valid evaluation.
+    // P0F: evaluation is the student's shared optional state. The class lifecycle must close without creating or completing a dedicated post-class evaluation.
     const fixtures = qaFixtures();
     const fixture = fixtures.projects[testInfo.project.name];
     if (!fixture) throw new Error(`No functional fixture for ${testInfo.project.name}`);
@@ -182,7 +91,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(startClassButton).toBeVisible();
     if ((page.viewportSize()?.width ?? 9999) <= 720) await expect(page.locator(".mobile-nav")).toBeVisible();
     await startClassButton.click();
-    await expect(page.getByText("DANDO CLASE", { exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("EN CLASE", { exact: true })).toBeVisible({ timeout: 20_000 });
     if ((page.viewportSize()?.width ?? 9999) <= 720) await expect(page.locator(".mobile-nav")).toBeHidden();
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-teacher-live-start`);
 
@@ -198,16 +107,20 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(workTab).toBeVisible();
     await workTab.click();
 
-    const quickCreate = page.locator("details").filter({ hasText: "Crear nuevo" });
+    const quickCreate = page.locator("details.quick-content-create");
     await quickCreate.locator("summary").click();
     await quickCreate.locator("select").first().selectOption("correction");
     await quickCreate.locator('input[placeholder="Título corto"]').fill(correctionTitle);
-    await quickCreate.locator("label").filter({ hasText: "Medir por" }).locator("select").selectOption("both");
-    await quickCreate.locator("label").filter({ hasText: /^Frecuencia/ }).locator("select").selectOption("50");
-    await quickCreate.locator("label").filter({ hasText: /^Importancia/ }).locator("select").selectOption("75");
-    await quickCreate.getByRole("button", { name: "Guardar pendiente" }).click();
+    await quickCreate.getByRole("button", { name: "Crear", exact: true }).click();
     await expect(page.getByText(correctionTitle, { exact: true })).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText("DANDO CLASE", { exact: true })).toBeVisible();
+    await expect(page.getByText("EN CLASE", { exact: true })).toBeVisible();
+
+    const createdCorrection = page.locator(".live-content-card").filter({ hasText: correctionTitle }).first();
+    await expect(createdCorrection).toBeVisible();
+    await expect(createdCorrection.locator('.p0f-status-chip')).toHaveValue("pending");
+    await expect(createdCorrection.locator('.p0f-measure-chip')).toHaveCount(0);
+    await expect(createdCorrection.getByText("+ Medir", { exact: true })).toBeVisible();
+    await expect(createdCorrection.getByText("NUEVO", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: /^Terminar$/ }).click();
     const finishDialog = page.locator("section:visible").filter({ has: page.getByRole("heading", { name: "Terminar clase" }) }).last();
@@ -215,9 +128,9 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(finishDialog.locator("select").first()).not.toHaveValue("");
     await finishDialog.getByRole("button", { name: "Terminar clase" }).click();
 
-    await completeQaPostClassEvaluation(page, fixture.classId);
     await expect(page.getByText("Administración terminada", { exact: true })).toBeVisible({ timeout: 20_000 });
-    await page.getByRole("button", { name: /Sí, preparar resumen/ }).click();
+    await expect(page.getByText(/nunca bloquea el cierre de esta clase/)).toBeVisible();
+    await page.getByRole("button", { name: /Preparar resumen/ }).click();
     await expect(page.getByRole("heading", { name: "Resumen de la clase" })).toBeVisible();
     await page.locator('textarea[placeholder="Resumen, recomendaciones o recordatorio visible"]').fill(studentSummary);
     await page.getByRole("button", { name: /Cerrar y enviar al alumno/ }).click();
@@ -227,6 +140,8 @@ test.describe("CYA Hub functional class lifecycle", () => {
 
     await resetBrowserSession(page);
     await login(page, "student");
+    await expect(page.getByText("Profesor · CARLOS Y ANDY", { exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("QA · Profesor", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Resumen de mis clases" })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(studentSummary, { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Observaciones de mis clases" })).toBeVisible();
