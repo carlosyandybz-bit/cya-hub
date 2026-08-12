@@ -38,6 +38,9 @@ jobs:
           node-version: "22"
           cache: npm
 
+      - name: Validate canonical documentation sequence
+        run: node --test tests/documentation-consistency.test.mjs
+
       - name: Bootstrap dedicated QA identities with GitHub OIDC
         shell: bash
         run: |
