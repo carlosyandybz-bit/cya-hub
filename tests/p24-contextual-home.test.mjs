@@ -7,6 +7,7 @@ const domain=fs.readFileSync('app/p24-home-domain.ts','utf8');
 const admin=fs.readFileSync('app/admin-daily-quotes.tsx','utf8');
 const migration=fs.readFileSync('db/migrations/v58_p24_contextual_home.sql','utf8');
 const hardening=fs.readFileSync('db/migrations/v59_p24_quote_preview_privileges.sql','utf8');
+const qaBootstrap=fs.readFileSync('supabase/functions/cya-qa-bootstrap/index.ts','utf8');
 
 test('P24 keeps a live clock and reloads on local day change',()=>{
   assert.match(home,/setInterval\(\(\) => setNow\(Date\.now\(\)\), 15_000\)/);
@@ -73,4 +74,14 @@ test('P24 RPCs stay invoker-side and preview execution is removed from PUBLIC an
   assert.match(hardening,/revoke all on function public\.preview_daily_quote\(date\) from anon/);
   assert.match(hardening,/grant execute on function public\.preview_daily_quote\(date\) to authenticated/);
   assert.doesNotMatch(migration,/security definer/i);
+});
+
+test('QA bootstrap accepts the public repository only for the pinned owner actor and workflow',()=>{
+  assert.match(qaBootstrap,/const EXPECTED_REPOSITORY_ID = "1328286685"/);
+  assert.match(qaBootstrap,/const EXPECTED_ACTOR = "carlosyandybz-bit"/);
+  assert.match(qaBootstrap,/const EXPECTED_ACTOR_ID = "306267740"/);
+  assert.match(qaBootstrap,/\["private", "public"\]\.includes\(claims\.repository_visibility \?\? ""\)/);
+  assert.match(qaBootstrap,/claims\.actor !== EXPECTED_ACTOR \|\| claims\.actor_id !== EXPECTED_ACTOR_ID/);
+  assert.match(qaBootstrap,/EXPECTED_WORKFLOW_PREFIX/);
+  assert.doesNotMatch(qaBootstrap,/repository_visibility !== "private"/);
 });
