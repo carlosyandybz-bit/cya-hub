@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import styles from "./evaluation-radar.module.css";
 
 export type EvaluationRadarItem = {
@@ -32,11 +32,6 @@ export function EvaluationRadar({
   ariaLabel?: string;
 }) {
   const [selectedId, setSelectedId] = useState<number | null>(items[0]?.id ?? null);
-  useEffect(() => {
-    if (!items.length) setSelectedId(null);
-    else if (!items.some((item) => item.id === selectedId)) setSelectedId(items[0].id);
-  }, [items, selectedId]);
-
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;
   const values = useMemo(() => items.map((item) => item.value === null ? 0 : Math.max(0, Math.min(100, Number(item.value) || 0))), [items]);
   if (items.length < 3) return <div className={styles.empty}>Se necesitan al menos tres parámetros para dibujar el radar.</div>;

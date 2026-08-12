@@ -18,6 +18,9 @@ const cya = fs.readFileSync("app/cya-app.tsx", "utf8");
 const admin = fs.readFileSync("app/admin-view.tsx", "utf8");
 const marketing = fs.readFileSync("app/marketing-view-legacy.tsx", "utf8");
 const evaluationRadar = fs.readFileSync("app/evaluation-radar.tsx", "utf8");
+const initialEvaluation = fs.readFileSync("app/evaluation-initial-class.tsx", "utf8");
+const postEvaluation = fs.readFileSync("app/evaluation-post-class.tsx", "utf8");
+const evaluationSettings = fs.readFileSync("app/evaluation-settings/evaluation-settings-client.tsx", "utf8");
 
 test("application does not use browser number steppers for editable numeric fields", () => {
   for (const [file, source] of sources) {
@@ -56,10 +59,16 @@ test("decimal inputs accept Spanish comma and validation happens at save time", 
   assert.match(admin, /Indica un número entre 1 y 50/);
 });
 
-test("evaluation keeps five discrete controls instead of a free numeric input", () => {
-  assert.match(cya, /\[0,25,50,75,100\]/);
-  assert.match(cya, /<EvaluationRadar/);
+test("guided evaluation uses observable choices instead of a free numeric input", () => {
+  assert.match(initialEvaluation, /answerOptions\.map\(\(option\)=><button/);
+  assert.match(initialEvaluation, /review_evaluation_question/);
+  assert.doesNotMatch(initialEvaluation, /<input\b/);
+  assert.match(postEvaluation, /review_evaluation_question/);
+  assert.match(postEvaluation, /<select value=\{currentValue\}/);
+  assert.doesNotMatch(postEvaluation, /type="number"/);
   assert.match(evaluationRadar, /scale\.map\(\(option\) => <button/);
   assert.match(evaluationRadar, /onChange\?\.\(selected\.id, option\.score\)/);
   assert.doesNotMatch(evaluationRadar, /<input\b/);
+  assert.match(evaluationSettings, /inputMode="numeric"/);
+  assert.doesNotMatch(evaluationSettings, /type="number"/);
 });

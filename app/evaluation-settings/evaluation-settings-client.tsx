@@ -18,6 +18,13 @@ function slug(value:string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,60) || "hito";
 }
 
+function integerFormValue(form:FormData,name:string,min:number,max:number) {
+  const raw=String(form.get(name) ?? "").trim();
+  if (!/^\d+$/.test(raw)) return null;
+  const value=Number(raw);
+  return Number.isInteger(value) && value>=min && value<=max ? value : null;
+}
+
 export default function EvaluationSettingsClient() {
   const [client,setClient]=useState<SupabaseClient|null>(null);
   const [authorized,setAuthorized]=useState<boolean|null>(null);
@@ -94,8 +101,8 @@ export default function EvaluationSettingsClient() {
 
   async function createMilestone(event:FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!client || !styleId || !roleId || !levelId || !aptitudeId) return;
-    const form=new FormData(event.currentTarget), name=String(form.get("label")||"").trim(), threshold=Number(form.get("threshold"));
-    if (!name || !Number.isInteger(threshold) || threshold<1 || threshold>100) return setError("Indica un nombre y un umbral interno entre 1 y 100.");
+    const form=new FormData(event.currentTarget), name=String(form.get("label")||"").trim(), threshold=integerFormValue(form,"threshold",1,100);
+    if (!name || threshold===null) return setError("Indica un nombre y un umbral interno entre 1 y 100.");
     setBusy("milestone-new"); setError(""); setNotice("");
     const result=await client.from("evaluation_milestones").insert({style_term_id:styleId,role_term_id:roleId,level_term_id:levelId,aptitude_term_id:aptitudeId,milestone_key:`${slug(name)}-${threshold}`,label:name,threshold_score:threshold,sort_order:threshold,active:true});
     if (result.error) setError(result.error.message); else { event.currentTarget.reset(); setNotice("Hito añadido."); await load(); }
@@ -104,8 +111,8 @@ export default function EvaluationSettingsClient() {
 
   async function updateMilestone(event:FormEvent<HTMLFormElement>,row:Milestone) {
     event.preventDefault(); if (!client) return;
-    const form=new FormData(event.currentTarget), name=String(form.get("label")||"").trim(), threshold=Number(form.get("threshold"));
-    if (!name || !Number.isInteger(threshold) || threshold<1 || threshold>100) return setError("El umbral interno debe estar entre 1 y 100.");
+    const form=new FormData(event.currentTarget), name=String(form.get("label")||"").trim(), threshold=integerFormValue(form,"threshold",1,100);
+    if (!name || threshold===null) return setError("El umbral interno debe estar entre 1 y 100.");
     setBusy(`milestone-${row.id}`); setError(""); setNotice("");
     const result=await client.from("evaluation_milestones").update({label:name,threshold_score:threshold,sort_order:threshold,milestone_key:`${slug(name)}-${threshold}`}).eq("id",row.id);
     if (result.error) setError(result.error.message); else { setNotice("Hito actualizado."); await load(); }
@@ -122,8 +129,8 @@ export default function EvaluationSettingsClient() {
 
   async function createDescriptor(event:FormEvent<HTMLFormElement>,milestone:Milestone) {
     event.preventDefault(); if (!client) return;
-    const form=new FormData(event.currentTarget), name=String(form.get("label")||"").trim(), description=String(form.get("description")||"").trim(), score=Number(form.get("score"));
-    if (!name || !Number.isInteger(score) || score<0 || score>100) return setError("El descriptor necesita un nombre y un valor interno entre 0 y 100.");
+    const form=new FormData(event.currentTarget), name=String(form.get("label")||"").trim(), description=String(form.get("description")||"").trim(), score=integerFormValue(form,"score",0,100);
+    if (!name || score===null) return setError("El descriptor necesita un nombre y un valor interno entre 0 y 100.");
     setBusy(`descriptor-new-${milestone.id}`); setError(""); setNotice("");
     const existing=descriptors.filter((row) => row.milestone_id===milestone.id).length;
     const result=await client.from("evaluation_descriptors").insert({milestone_id:milestone.id,descriptor_key:`${slug(name)}-${score}-${existing+1}`,label:name,description:description||null,internal_score:score,sort_order:existing,active:true});
@@ -133,8 +140,8 @@ export default function EvaluationSettingsClient() {
 
   async function updateDescriptor(event:FormEvent<HTMLFormElement>,row:Descriptor) {
     event.preventDefault(); if (!client) return;
-    const form=new FormData(event.currentTarget), name=String(form.get("label")||"").trim(), description=String(form.get("description")||"").trim(), score=Number(form.get("score"));
-    if (!name || !Number.isInteger(score) || score<0 || score>100) return setError("El valor interno debe estar entre 0 y 100.");
+    const form=new FormData(event.currentTarget), name=String(form.get("label")||"").trim(), description=String(form.get("description")||"").trim(), score=integerFormValue(form,"score",0,100);
+    if (!name || score===null) return setError("El valor interno debe estar entre 0 y 100.");
     setBusy(`descriptor-${row.id}`); setError(""); setNotice("");
     const result=await client.from("evaluation_descriptors").update({label:name,description:description||null,internal_score:score,descriptor_key:`${slug(name)}-${score}-${row.id}`}).eq("id",row.id);
     if (result.error) setError(result.error.message); else { setNotice("Descriptor actualizado."); await load(); }
@@ -181,11 +188,11 @@ export default function EvaluationSettingsClient() {
       <section className={styles.card}>
         <div className={styles.cardHead}><div><span>1 · Hitos y respuestas</span><h2>{label(aptitudeId)}</h2></div><b>{currentMilestones.filter((row)=>row.active).length}</b></div>
         <p className={styles.help}>Los números son internos de Administración. Durante la evaluación el profesor ve únicamente las respuestas observables.</p>
-        <form className={styles.addForm} onSubmit={createMilestone}><input name="label" placeholder="Ej. Mantiene la base con autonomía" required/><input name="threshold" type="number" min="1" max="100" placeholder="Umbral" required/><button disabled={busy==="milestone-new"}><Plus/> Añadir hito</button></form>
+        <form className={styles.addForm} onSubmit={createMilestone}><input name="label" placeholder="Ej. Mantiene la base con autonomía" required/><input name="threshold" type="text" inputMode="numeric" pattern="[0-9]*" min="1" max="100" placeholder="Umbral" required/><button disabled={busy==="milestone-new"}><Plus/> Añadir hito</button></form>
         <div className={styles.stack}>{currentMilestones.map((milestone)=><article className={`${styles.item} ${!milestone.active?styles.inactive:""}`} key={milestone.id}><details><summary><div><strong>{milestone.label}</strong><span>Umbral interno {milestone.threshold_score}/100</span></div><b>{descriptors.filter((row)=>row.milestone_id===milestone.id && row.active).length} respuestas</b></summary><div className={styles.detail}>
-          <form className={styles.editGrid} onSubmit={(event)=>void updateMilestone(event,milestone)}><label><span>Nombre del hito</span><input name="label" defaultValue={milestone.label}/></label><label><span>Umbral interno</span><input name="threshold" type="number" min="1" max="100" defaultValue={milestone.threshold_score}/></label><button disabled={busy===`milestone-${milestone.id}`}>Guardar cambios</button><button type="button" className={styles.danger} onClick={()=>void archiveMilestone(milestone)} disabled={!milestone.active}><Trash2/> Desactivar</button></form>
-          <div className={styles.subsection}><div><strong>Respuestas observables</strong><span>Son las opciones que verá el profesor. Cada respuesta fija su valor interno sin pedir números.</span></div>{descriptors.filter((row)=>row.milestone_id===milestone.id).map((descriptor)=><form key={descriptor.id} className={`${styles.descriptor} ${!descriptor.active?styles.inactive:""}`} onSubmit={(event)=>void updateDescriptor(event,descriptor)}><input name="label" defaultValue={descriptor.label}/><input name="description" defaultValue={descriptor.description ?? ""} placeholder="Qué se observa"/><label><span>Valor interno</span><input name="score" type="number" min="0" max="100" defaultValue={descriptor.internal_score}/></label><button disabled={busy===`descriptor-${descriptor.id}`}>Guardar</button><button type="button" className={styles.iconDanger} onClick={()=>void archiveDescriptor(descriptor)} disabled={!descriptor.active}><Trash2/></button></form>)}
-          <form className={styles.descriptorAdd} onSubmit={(event)=>void createDescriptor(event,milestone)}><input name="label" placeholder="Respuesta observable" required/><input name="description" placeholder="Descripción breve"/><input name="score" type="number" min="0" max="100" placeholder="Valor interno" required/><button disabled={busy===`descriptor-new-${milestone.id}`}><Plus/> Añadir respuesta</button></form></div>
+          <form className={styles.editGrid} onSubmit={(event)=>void updateMilestone(event,milestone)}><label><span>Nombre del hito</span><input name="label" defaultValue={milestone.label}/></label><label><span>Umbral interno</span><input name="threshold" type="text" inputMode="numeric" pattern="[0-9]*" min="1" max="100" defaultValue={milestone.threshold_score}/></label><button disabled={busy===`milestone-${milestone.id}`}>Guardar cambios</button><button type="button" className={styles.danger} onClick={()=>void archiveMilestone(milestone)} disabled={!milestone.active}><Trash2/> Desactivar</button></form>
+          <div className={styles.subsection}><div><strong>Respuestas observables</strong><span>Son las opciones que verá el profesor. Cada respuesta fija su valor interno sin pedir números.</span></div>{descriptors.filter((row)=>row.milestone_id===milestone.id).map((descriptor)=><form key={descriptor.id} className={`${styles.descriptor} ${!descriptor.active?styles.inactive:""}`} onSubmit={(event)=>void updateDescriptor(event,descriptor)}><input name="label" defaultValue={descriptor.label}/><input name="description" defaultValue={descriptor.description ?? ""} placeholder="Qué se observa"/><label><span>Valor interno</span><input name="score" type="text" inputMode="numeric" pattern="[0-9]*" min="0" max="100" defaultValue={descriptor.internal_score}/></label><button disabled={busy===`descriptor-${descriptor.id}`}>Guardar</button><button type="button" className={styles.iconDanger} onClick={()=>void archiveDescriptor(descriptor)} disabled={!descriptor.active}><Trash2/></button></form>)}
+          <form className={styles.descriptorAdd} onSubmit={(event)=>void createDescriptor(event,milestone)}><input name="label" placeholder="Respuesta observable" required/><input name="description" placeholder="Descripción breve"/><input name="score" type="text" inputMode="numeric" pattern="[0-9]*" min="0" max="100" placeholder="Valor interno" required/><button disabled={busy===`descriptor-new-${milestone.id}`}><Plus/> Añadir respuesta</button></form></div>
         </div></details></article>)}</div>
       </section>
 

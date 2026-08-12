@@ -75,11 +75,11 @@ async function prepareAvatar(file: File) {
 }
 
 function ProfileAvatar({ src, name }: { src: string | null; name: string }) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [src]);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const visibleSrc = src && failedSrc !== src ? src : null;
   return (
     <span className={styles.avatar} aria-label={`Foto de ${name || "perfil"}`}>
-      {src && !failed ? <img src={src} alt="" onError={() => setFailed(true)} /> : <CircleUserRound />}
+      {visibleSrc ? <img src={visibleSrc} alt="" onError={() => setFailedSrc(visibleSrc)} /> : <CircleUserRound />}
     </span>
   );
 }

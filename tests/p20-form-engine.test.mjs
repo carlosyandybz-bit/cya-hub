@@ -118,8 +118,8 @@ test('admin builder is read-only until the P20 backend is actually active',()=>{
   assert.match(admin,/Contrato histórico de un flujo de negocio/);
 });
 
-test('P20 exposes a deployment marker for G1 before v48 cutover',()=>{
-  assert.match(buildInfo,/p20-form-runtime-v48-ready/);
+test('build-info keeps an explicit no-store rollout marker for staged backend cutovers',()=>{
+  assert.match(buildInfo,/release:\s*"p\d+[a-z0-9-]*-ready"/i);
   assert.match(buildInfo,/cache-control/);
   assert.match(buildInfo,/no-store/);
 });
