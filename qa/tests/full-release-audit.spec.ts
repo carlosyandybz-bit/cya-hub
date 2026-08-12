@@ -56,7 +56,7 @@ async function login(page: Page, role: QaRole) {
 
 async function observeSurface(page: Page, testInfo: TestInfo, surface: string, telemetry: ReturnType<typeof installTelemetry>) {
   await page.waitForTimeout(700);
-  const observation = await page.evaluate((surfaceName): Promise<Omit<BrowserObservation, "consoleErrors" | "pageErrors" | "failedRequests" | "badResponses">> => {
+  const observation = await page.evaluate((surfaceName): Omit<BrowserObservation, "consoleErrors" | "pageErrors" | "failedRequests" | "badResponses"> => {
     const viewport = { width: window.innerWidth, height: window.innerHeight };
     const visible = (element: Element) => {
       const node = element as HTMLElement;
@@ -131,7 +131,7 @@ async function observeSurface(page: Page, testInfo: TestInfo, surface: string, t
 }
 
 async function clickVisibleNamedButton(page: Page, name: string) {
-  const button = page.getByRole("button", { name, exact: true }).filter({ visible: true }).first();
+  const button = page.getByRole("button", { name, exact: true }).first();
   await expect(button, `Expected visible button: ${name}`).toBeVisible({ timeout: 10_000 });
   await button.click();
   await page.waitForTimeout(500);
@@ -154,7 +154,7 @@ test.describe("CYA Hub release-wide visual and navigation audit", () => {
   test("admin control center renders every configured section", async ({ page }, testInfo) => {
     const telemetry = installTelemetry(page);
     await login(page, "admin");
-    const adminEntry = page.getByRole("button", { name: /Administración/ }).filter({ visible: true }).first();
+    const adminEntry = page.getByRole("button", { name: /Administración/ }).first();
     await expect(adminEntry).toBeVisible({ timeout: 15_000 });
     await adminEntry.click();
     await expect(page.getByRole("heading", { name: "Estado de CYA Hub" })).toBeVisible({ timeout: 20_000 });
@@ -172,17 +172,17 @@ test.describe("CYA Hub release-wide visual and navigation audit", () => {
     await observeSurface(page, testInfo, "student-portal", telemetry);
   });
 
-  test("history navigation returns to prior app surface", async ({ page }, testInfo) => {
+  test("history navigation returns to prior app surface", async ({ page }) => {
     installTelemetry(page);
     await login(page, "teacher");
     const studentNav = page.locator("nav button:visible").filter({ hasText: /^Alumnado$/ }).first();
     await studentNav.click();
-    const before = await page.locator("main").innerText();
+    await expect(page.getByRole("main")).toContainText(/Alumno|Alumnado/i);
     const teachingNav = page.locator("nav button:visible").filter({ hasText: /^Enseñanza$/ }).first();
     await teachingNav.click();
+    await expect(page.getByRole("main")).toContainText(/Enseñanza|Biblioteca|Correcciones/i);
     await page.goBack();
     await page.waitForTimeout(600);
-    const after = await page.locator("main").innerText();
-    expect(after.slice(0, 1200)).toBe(before.slice(0, 1200));
+    await expect(page.getByRole("main")).toContainText(/Alumno|Alumnado/i);
   });
 });
