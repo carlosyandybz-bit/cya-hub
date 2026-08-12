@@ -102,7 +102,8 @@ export function ContextEvaluationPanel({client,personId,personName,classId=null,
 
   useEffect(()=>{
     if(!activeStyleId||!activeRoleId)return;
-    void loadContext();
+    const timer=window.setTimeout(()=>void loadContext(),0);
+    return()=>window.clearTimeout(timer);
   },[activeRoleId,activeStyleId,loadContext]);
 
   const loadSession=useCallback(async(target:SessionRow)=>{
@@ -117,8 +118,11 @@ export function ContextEvaluationPanel({client,personId,personName,classId=null,
   },[client]);
 
   useEffect(()=>{
-    if(!session){setEvaluations([]);setProgress([]);return;}
-    void loadSession(session);
+    const timer=window.setTimeout(()=>{
+      if(!session){setEvaluations([]);setProgress([]);return;}
+      void loadSession(session);
+    },0);
+    return()=>window.clearTimeout(timer);
   },[loadSession,session]);
 
   const scale=useMemo(()=>terms.filter((term)=>term.taxonomy==="evaluation_scale").map((term)=>({term,score:Number(term.metadata?.score)})).filter(({score})=>[0,25,50,75,100].includes(score)).sort((a,b)=>a.score-b.score),[terms]);
