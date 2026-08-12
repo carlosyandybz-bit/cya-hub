@@ -43,7 +43,7 @@ test('administrative close uses explicit manual duration and v6 billing', () => 
 
 test('live search exposes all four pedagogical types', () => {
   assert.match(app, /\['correction','Correcciones'\]/);
-  assert.match(app, /\['explanation','Explicaciones'\]/);
+  assert.match(app, /\['explanation','Contenido'\]/);
   assert.match(app, /\['exercise','Ejercicios'\]/);
   assert.match(app, /\['sequence','Secuencias'\]/);
   assert.match(app, /search_class_teaching_content/);
