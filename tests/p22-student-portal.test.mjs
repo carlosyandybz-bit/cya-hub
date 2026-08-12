@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const app = fs.readFileSync('app/cya-app.tsx','utf8');
+const account = fs.readFileSync('app/account-pages.tsx','utf8');
 const media = fs.readFileSync('supabase/v50_p22_student_portal_media_access.sql','utf8');
 const visibility = fs.readFileSync('supabase/v38-student-training-visibility.sql','utf8');
 const evaluations = fs.readFileSync('supabase/v36b-student-portal-security-invoker.sql','utf8');
@@ -24,6 +25,14 @@ test('student portal keeps the complete product areas wired', () => {
   assert.ok(app.includes('experience === "student" && identity.can_study'));
 });
 
+test('student profile reuses the canonical P20 runtime instead of a duplicate form', () => {
+  assert.ok(account.includes('import { RuntimeForm } from "./runtime-form"'));
+  assert.ok(account.includes('identity.can_study'));
+  assert.ok(account.includes('formKey="student_personal"'));
+  assert.ok(account.includes('mode="edit"'));
+  assert.ok(account.includes('Mis datos de alumno'));
+});
+
 test('student training remains release-gated for all four teaching types', () => {
   assert.ok(visibility.includes("p_content_type='correction'"));
   assert.ok(visibility.includes("p_content_type in ('explanation','sequence')"));
@@ -32,17 +41,29 @@ test('student training remains release-gated for all four teaching types', () =>
   assert.ok(visibility.includes('student_visible_at is not null'));
   assert.ok(visibility.includes("t.publication_status='published'"));
   assert.ok(visibility.includes("t.visibility='student'"));
+  assert.ok(app.includes('!["corrected", "explained", "completed"].includes(assignment.assignment_status)'));
 });
 
-test('student evaluations remain hidden until their release conditions are met', () => {
+test('student evaluations remain hidden until release and preserve dance context', () => {
   assert.ok(evaluations.includes("s.status='completed'"));
   assert.ok(evaluations.includes('c.pedagogy_closed_at is not null'));
   assert.ok(evaluations.includes("errcode='42501'"));
+  for (const key of ["'style_term_id'", "'style'", "'role_term_id'", "'role'", "'level_term_id'", "'level'"]) assert.ok(media.includes(key));
+  assert.ok(app.includes('item.style_term_id === latestEvaluation.style_term_id'));
+  assert.ok(app.includes('item.role_term_id === latestEvaluation.role_term_id'));
+  assert.ok(app.includes('item.level_term_id === latestEvaluation.level_term_id'));
+  assert.ok(app.includes('contextEvaluations.slice(0,12)'));
+});
+
+test('class history keeps a compact first page but exposes every older class', () => {
+  assert.ok(app.includes('snapshot.classes.slice(0, 8).map((item) => <PortalClassRow'));
+  assert.ok(app.includes('snapshot.classes.slice(8).map((item) => <PortalClassRow'));
+  assert.ok(app.includes('clases anteriores'));
 });
 
 test('Drive ticket authorization uses a minimal guarded definer boundary', () => {
   assert.ok(media.includes('private.can_access_student_portal_media'));
-  assert.ok((media.match(/security definer/g) ?? []).length >= 2);
+  assert.ok((media.match(/security definer/g) ?? []).length >= 3);
   assert.ok(media.includes('revoke all on function private.can_access_student_portal_media(text)'));
   assert.ok(media.includes('revoke all on function public.can_access_teaching_media(text) from public,anon'));
   assert.ok(media.includes('grant execute on function public.can_access_teaching_media(text) to authenticated'));
@@ -61,7 +82,7 @@ test('class media and private videos require ownership and pedagogical close', (
   assert.ok(media.includes('v.person_id=v_person'));
   assert.ok(media.includes('from public.class_media_resources m'));
   assert.ok(media.includes('m.person_id=v_person'));
-  assert.ok((media.match(/c\.pedagogy_closed_at is not null/g) ?? []).length >= 2);
+  assert.ok((media.match(/c\.pedagogy_closed_at is not null/g) ?? []).length >= 3);
 });
 
 test('staff can still access all supported portal media families', () => {
