@@ -14,17 +14,22 @@ test('live session deduplicates assignments per student and content', () => {
 test('corrections have one creation path inside unified live search', () => {
   assert.equal(live.includes('<summary><Plus/> Nueva corrección</summary>'), false);
   assert.ok(live.includes('<option value="correction">Corrección</option>'));
-  assert.equal((live.match(/create_class_correction/g) ?? []).length, 1);
+  assert.equal((live.match(/create_class_correction_compact/g) ?? []).length, 1);
   assert.equal(live.includes('Corrección rápida añadida al alumno.'), false);
 });
 
-test('correction card exposes one compact status and measurement control set without duplicate status label', () => {
+test('correction card exposes one compact glance and keeps editable controls only in detail', () => {
   assert.equal(live.includes('subtitle={`${correctionStateLabel(assignment.assignment_status)}'), false);
-  assert.ok(live.includes('statusLabel={null}'));
-  assert.ok(live.includes('className="p0f-status-chip"'));
+  assert.ok(live.includes('statusLabel={correctionStateShortLabel(assignment.assignment_status)}'));
+  assert.ok(live.includes('quickControls={renderCorrectionSummary(assignment)}'));
+  assert.ok(live.includes('function renderCorrectionControls(assignment:ContentAssignment)'));
   assert.ok(live.includes('aria-label={`Frecuencia de ${assignment.teaching_contents.title}`}'));
   assert.ok(live.includes('aria-label={`Influencia de ${assignment.teaching_contents.title}`}'));
-  assert.ok(live.includes('<summary>+ Medir</summary>'));
+  assert.equal(live.includes('<summary>+ Medir</summary>'), false);
+  assert.ok(live.includes('create_class_correction_compact'));
+  assert.ok(live.includes('Frecuencia inicial'));
+  assert.ok(live.includes('Influencia inicial'));
+  assert.ok(live.includes('Visibilidad de la observación inicial'));
 });
 
 test('live session has only the sticky administrative action', () => {
