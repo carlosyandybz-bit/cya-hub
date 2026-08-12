@@ -49,7 +49,8 @@ test('media remains a separate domain and never becomes a graph node implicitly'
   assert.equal(migration.includes('insert into public.teaching_content_media'), false);
   assert.equal(migration.includes('update public.teaching_content_media'), false);
   assert.ok(graph.includes('contents: GraphContent[]; relations: GraphRelation[]'));
-  assert.ok(graph.includes('teaching_content_media'));
+  assert.equal(graph.includes('teaching_content_media'), false);
+  assert.equal(graph.includes('external_file_id'), false);
 });
 
 test('existing graph already provides the core touch navigation that P23 must preserve', () => {
