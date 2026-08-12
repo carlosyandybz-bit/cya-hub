@@ -57,7 +57,7 @@ declare
   v_quote_id bigint;
   v_quote_text text;
   v_selection_kind text;
-  v_base_count integer := 0;
+  v_rotation_count integer := 0;
   v_recent_limit integer := 0;
 begin
   if v_user is null then
@@ -95,15 +95,15 @@ begin
     end if;
 
     if v_quote_id is null then
-      select count(*)::integer into v_base_count
+      select count(*)::integer into v_rotation_count
       from public.daily_quotes q
-      where q.active and q.override_date is null and q.month_day is null;
-      v_recent_limit := greatest(v_base_count-1,0);
+      where q.active and q.override_date is null;
+      v_recent_limit := greatest(v_rotation_count-1,0);
 
       select q.id, q.quote_text, 'rotation'
         into v_quote_id, v_quote_text, v_selection_kind
       from public.daily_quotes q
-      where q.active and q.override_date is null and q.month_day is null
+      where q.active and q.override_date is null
       order by
         case when q.id in (
           select a.quote_id
@@ -164,7 +164,7 @@ declare
   v_quote_id bigint;
   v_quote_text text;
   v_selection_kind text;
-  v_base_count integer := 0;
+  v_rotation_count integer := 0;
   v_recent_limit integer := 0;
   v_assigned boolean := false;
 begin
@@ -196,15 +196,15 @@ begin
     end if;
 
     if v_quote_id is null then
-      select count(*)::integer into v_base_count
+      select count(*)::integer into v_rotation_count
       from public.daily_quotes q
-      where q.active and q.override_date is null and q.month_day is null;
-      v_recent_limit := greatest(v_base_count-1,0);
+      where q.active and q.override_date is null;
+      v_recent_limit := greatest(v_rotation_count-1,0);
 
       select q.id,q.quote_text,'rotation'
         into v_quote_id,v_quote_text,v_selection_kind
       from public.daily_quotes q
-      where q.active and q.override_date is null and q.month_day is null
+      where q.active and q.override_date is null
       order by
         case when q.id in (
           select a.quote_id from public.daily_quote_assignments a
