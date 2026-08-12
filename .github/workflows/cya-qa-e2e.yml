@@ -115,8 +115,8 @@ jobs:
         with:
           name: cya-browser-qa-${{ github.run_id }}
           path: |
-            qa/playwright-report/
-            qa/test-results/
+            playwright-report/
+            test-results/
             qa/app-server.log
             qa/lint.log
           if-no-files-found: warn
