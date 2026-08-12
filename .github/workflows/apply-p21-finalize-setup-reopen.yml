@@ -67,6 +67,81 @@ jobs:
           path.write_text(text.replace(old, new, 1))
           PY
 
+      - name: Reconcile global numeric inputs with guided evaluation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          settings_path = Path('app/evaluation-settings/evaluation-settings-client.tsx')
+          settings = settings_path.read_text()
+          if settings.count('type="number"') != 4:
+              raise SystemExit(f'expected four evaluation settings number inputs, got {settings.count(chr(116)+chr(121)+chr(112)+chr(101)+chr(61)+chr(34)+chr(110)+chr(117)+chr(109)+chr(98)+chr(101)+chr(114)+chr(34))}')
+          settings = settings.replace('type="number"', 'type="text" inputMode="numeric" pattern="[0-9]*"')
+
+          helper_anchor = '''function slug(value:string) {
+            return value.normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,60) || "hito";
+          }
+'''
+          helper_replacement = helper_anchor + '''
+function integerFormValue(form:FormData,name:string,min:number,max:number) {
+  const raw=String(form.get(name) ?? "").trim();
+  if (!/^\\d+$/.test(raw)) return null;
+  const value=Number(raw);
+  return Number.isInteger(value) && value>=min && value<=max ? value : null;
+}
+'''
+          if settings.count(helper_anchor) != 1:
+              raise SystemExit('evaluation settings helper anchor changed')
+          settings = settings.replace(helper_anchor, helper_replacement, 1)
+
+          if settings.count('threshold=Number(form.get("threshold"));') != 2:
+              raise SystemExit('unexpected threshold parser count')
+          settings = settings.replace('threshold=Number(form.get("threshold"));', 'threshold=integerFormValue(form,"threshold",1,100);')
+          if settings.count('!Number.isInteger(threshold) || threshold<1 || threshold>100') != 2:
+              raise SystemExit('unexpected threshold validation count')
+          settings = settings.replace('!Number.isInteger(threshold) || threshold<1 || threshold>100', 'threshold===null')
+
+          if settings.count('score=Number(form.get("score"));') != 2:
+              raise SystemExit('unexpected score parser count')
+          settings = settings.replace('score=Number(form.get("score"));', 'score=integerFormValue(form,"score",0,100);')
+          if settings.count('!Number.isInteger(score) || score<0 || score>100') != 2:
+              raise SystemExit('unexpected score validation count')
+          settings = settings.replace('!Number.isInteger(score) || score<0 || score>100', 'score===null')
+          settings_path.write_text(settings)
+
+          test_path = Path('tests/numeric-inputs.test.mjs')
+          test = test_path.read_text()
+          declaration_anchor = 'const evaluationRadar = fs.readFileSync("app/evaluation-radar.tsx", "utf8");\n'
+          declaration_replacement = declaration_anchor + 'const initialEvaluation = fs.readFileSync("app/evaluation-initial-class.tsx", "utf8");\nconst postEvaluation = fs.readFileSync("app/evaluation-post-class.tsx", "utf8");\nconst evaluationSettings = fs.readFileSync("app/evaluation-settings/evaluation-settings-client.tsx", "utf8");\n'
+          if test.count(declaration_anchor) != 1:
+              raise SystemExit('numeric test declaration anchor changed')
+          test = test.replace(declaration_anchor, declaration_replacement, 1)
+
+          old_test = '''test("evaluation keeps five discrete controls instead of a free numeric input", () => {
+  assert.match(cya, /\\[0,25,50,75,100\\]/);
+  assert.match(cya, /<EvaluationRadar/);
+  assert.match(evaluationRadar, /scale\\.map\\(\\(option\\) => <button/);
+  assert.match(evaluationRadar, /onChange\\?\\.\\(selected\\.id, option\\.score\\)/);
+  assert.doesNotMatch(evaluationRadar, /<input\\b/);
+});'''
+          new_test = '''test("guided evaluation uses observable choices instead of a free numeric input", () => {
+  assert.match(initialEvaluation, /answerOptions\\.map\\(\\(option\\)=><button/);
+  assert.match(initialEvaluation, /review_evaluation_question/);
+  assert.doesNotMatch(initialEvaluation, /<input\\b/);
+  assert.match(postEvaluation, /review_evaluation_question/);
+  assert.match(postEvaluation, /<select value=\\{currentValue\\}/);
+  assert.doesNotMatch(postEvaluation, /type="number"/);
+  assert.match(evaluationRadar, /scale\\.map\\(\\(option\\) => <button/);
+  assert.match(evaluationRadar, /onChange\\?\\.\\(selected\\.id, option\\.score\\)/);
+  assert.doesNotMatch(evaluationRadar, /<input\\b/);
+  assert.match(evaluationSettings, /inputMode="numeric"/);
+  assert.doesNotMatch(evaluationSettings, /type="number"/);
+});'''
+          if test.count(old_test) != 1:
+              raise SystemExit('legacy numeric evaluation assertion block changed')
+          test_path.write_text(test.replace(old_test, new_test, 1))
+          PY
+
       - name: P21 and financial regression gate
         run: >-
           node --test
@@ -147,6 +222,6 @@ jobs:
           fi
           git config user.name 'carlosyandybz-bit'
           git config user.email 'carlosyandy@gmail.com'
-          git add app/cya-app.tsx tests/p21-dar-clase.test.mjs docs/P21_DAR_CLASE_RECONCILIACION.md tools/p21_finalize_setup_reopen.py
+          git add app/cya-app.tsx app/evaluation-settings/evaluation-settings-client.tsx tests/p21-dar-clase.test.mjs tests/numeric-inputs.test.mjs docs/P21_DAR_CLASE_RECONCILIACION.md tools/p21_finalize_setup_reopen.py
           git commit -m 'P21.4: finalize progressive setup and reopen guard'
           git push origin HEAD:p21/dar-clase-definitivo
