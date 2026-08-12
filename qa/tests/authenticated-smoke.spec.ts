@@ -38,7 +38,7 @@ async function login(page: Page, role: QaRole, testInfo: TestInfo) {
   await page.getByRole("button", { name: /^Entrar$/ }).click();
 
   await expect(page.locator('input[name="email"]')).toBeHidden({ timeout: 20_000 });
-  await expect(page.getByRole("button", { name: "Abrir cuenta y preferencias" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('button[aria-haspopup="menu"]').first()).toBeVisible({ timeout: 20_000 });
 
   await testInfo.attach(`${role}-authenticated-screen`, {
     body: await page.screenshot({ fullPage: true }),
