@@ -56,46 +56,13 @@ async function attachCheckpoint(page: Page, testInfo: TestInfo, name: string) {
   });
 }
 
-async function waitForPostClassEvaluation(page: Page) {
-  const dialog = page.getByRole("dialog", { name: "Evaluación posterior a la clase" });
-  const deadline = Date.now() + 40_000;
-  while (Date.now() < deadline) {
-    if (await dialog.isVisible().catch(() => false)) return dialog;
-    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-    await page.waitForTimeout(1_000);
-  }
-  await expect(dialog).toBeVisible({ timeout: 1_000 });
-  return dialog;
-}
-
-async function completePostClassEvaluation(page: Page) {
-  const dialog = await waitForPostClassEvaluation(page);
-  await expect(dialog.getByRole("heading", { name: "Revisión de evaluación" })).toBeVisible();
-
-  const selects = dialog.locator("select");
-  await expect(selects.first()).toBeVisible({ timeout: 15_000 });
-  const count = await selects.count();
-  if (!count) throw new Error("Post-class evaluation has no questions");
-  for (let index = 0; index < count; index += 1) {
-    const select = selects.nth(index);
-    await expect(select).toBeEnabled({ timeout: 15_000 });
-    if ((await select.inputValue()) === "") {
-      await select.selectOption({ index: 1 });
-      await expect(select).not.toHaveValue("", { timeout: 15_000 });
-    }
-  }
-
-  const registerButton = dialog.getByRole("button", { name: /Registrar revisión/ });
-  await expect(registerButton).toBeEnabled({ timeout: 15_000 });
-  await registerButton.click();
-  await expect(dialog).toBeHidden({ timeout: 20_000 });
-}
-
 test.describe("CYA Hub functional class lifecycle", () => {
   test.describe.configure({ retries: 0 });
 
   test("teacher closes a QA class, student receives it, and admin remains healthy", async ({ page }, testInfo) => {
-    // CYA-AUD-013/P0E is a separately tracked blocker. This lifecycle keeps validating the rest of P21/P22/admin.
+    // CYA-AUD-013/P0E is separately tracked. Until P0E scopes evaluation dialogs to the
+    // current class, this lifecycle validates P21/P22/admin with those global overlays hidden.
+    // P17 remains the dedicated evaluation-domain gate.
     await isolateInitialEvaluationGateForUnrelatedQa(page);
     const fixtures = qaFixtures();
     const fixture = fixtures.projects[testInfo.project.name];
@@ -161,7 +128,6 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(finishDialog.locator("select").first()).not.toHaveValue("");
     await finishDialog.getByRole("button", { name: "Terminar clase" }).click();
 
-    await completePostClassEvaluation(page);
     await expect(page.getByText("Administración terminada", { exact: true })).toBeVisible({ timeout: 20_000 });
     await page.getByRole("button", { name: /Sí, preparar resumen/ }).click();
     await expect(page.getByRole("heading", { name: "Resumen de la clase" })).toBeVisible();
