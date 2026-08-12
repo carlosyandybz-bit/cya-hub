@@ -203,9 +203,10 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await adminEntry.click();
     await expect(page.getByRole("heading", { name: "Estado de CYA Hub" })).toBeVisible({ timeout: 20_000 });
     await page.getByRole("button", { name: /Equipo y roles/ }).click();
-    await expect(page.getByText("QA · Profesor", { exact: true })).toBeVisible();
-    await expect(page.getByText("QA · Alumno", { exact: true })).toBeVisible();
-    await expect(page.getByText("QA · Administrador", { exact: true })).toBeVisible();
+    const adminPanel = page.getByRole("main");
+    await expect(adminPanel.getByText("QA · Profesor", { exact: true }).first()).toBeVisible();
+    await expect(adminPanel.getByText("QA · Alumno", { exact: true }).first()).toBeVisible();
+    await expect(adminPanel.getByText("QA · Administrador", { exact: true }).first()).toBeVisible();
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-admin-healthy`);
   });
 });
