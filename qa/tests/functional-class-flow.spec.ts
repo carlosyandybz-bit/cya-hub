@@ -81,70 +81,24 @@ async function completeInitialEvaluationIfPresent(page: Page) {
   return true;
 }
 
-async function liveTabDiagnostics(page: Page) {
-  return page.locator(".live-work-tabs").evaluate((nav) => {
-    const matchingRules = (element: Element) => {
-      const matches: string[] = [];
-      for (const sheet of Array.from(document.styleSheets)) {
-        let rules: CSSRuleList;
-        try {
-          rules = sheet.cssRules;
-        } catch {
-          continue;
-        }
-        const walk = (list: CSSRuleList) => {
-          for (const rule of Array.from(list)) {
-            if (rule instanceof CSSStyleRule && rule.selectorText && element.matches(rule.selectorText)) {
-              if (/display|visibility|opacity|grid|overflow|width|height/.test(rule.style.cssText)) {
-                matches.push(`${rule.selectorText}{${rule.style.cssText}}`);
-              }
-            } else if ("cssRules" in rule && (rule as CSSGroupingRule).cssRules) {
-              walk((rule as CSSGroupingRule).cssRules);
-            }
-          }
-        };
-        walk(rules);
-      }
-      return matches;
-    };
-    const navStyle = getComputedStyle(nav);
-    return {
-      nav: {
-        outerHTML: nav.outerHTML,
-        display: navStyle.display,
-        gridTemplateColumns: navStyle.gridTemplateColumns,
-        overflowX: navStyle.overflowX,
-        rect: nav.getBoundingClientRect().toJSON(),
-        rules: matchingRules(nav),
-      },
-      buttons: Array.from(nav.querySelectorAll("button")).map((button, index) => {
-        const style = getComputedStyle(button);
-        return {
-          index,
-          text: button.textContent?.trim() ?? "",
-          hidden: button.hasAttribute("hidden"),
-          ariaHidden: button.getAttribute("aria-hidden"),
-          display: style.display,
-          visibility: style.visibility,
-          opacity: style.opacity,
-          position: style.position,
-          width: style.width,
-          height: style.height,
-          rect: button.getBoundingClientRect().toJSON(),
-          rules: matchingRules(button),
-        };
-      }),
-    };
-  });
+async function waitForPostClassEvaluation(page: Page) {
+  const dialog = page.getByRole("dialog", { name: "Evaluación posterior a la clase" });
+  const deadline = Date.now() + 40_000;
+  while (Date.now() < deadline) {
+    if (await dialog.isVisible().catch(() => false)) return dialog;
+    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await page.waitForTimeout(1_000);
+  }
+  await expect(dialog).toBeVisible({ timeout: 1_000 });
+  return dialog;
 }
 
 async function completePostClassEvaluation(page: Page) {
-  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-  const dialog = page.getByRole("dialog", { name: "Evaluación posterior a la clase" });
-  await expect(dialog).toBeVisible({ timeout: 15_000 });
+  const dialog = await waitForPostClassEvaluation(page);
   await expect(dialog.getByRole("heading", { name: "Revisión de evaluación" })).toBeVisible();
 
   const selects = dialog.locator("select");
+  await expect(selects.first()).toBeVisible({ timeout: 15_000 });
   const count = await selects.count();
   if (!count) throw new Error("Post-class evaluation has no questions");
   for (let index = 0; index < count; index += 1) {
@@ -193,13 +147,6 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(page.getByText("DANDO CLASE", { exact: true })).toBeVisible({ timeout: 20_000 });
     await completeInitialEvaluationIfPresent(page);
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-teacher-live-start`);
-
-    const diagnostics = await liveTabDiagnostics(page);
-    console.log(`CYA_LIVE_TAB_DIAGNOSTICS ${testInfo.project.name} ${JSON.stringify(diagnostics)}`);
-    await testInfo.attach(`${testInfo.project.name}-live-tab-diagnostics`, {
-      body: Buffer.from(JSON.stringify(diagnostics, null, 2)),
-      contentType: "application/json",
-    });
 
     const observationsTab = page.getByRole("button", { name: "Observaciones", exact: true }).first();
     await expect(observationsTab).toBeVisible();
