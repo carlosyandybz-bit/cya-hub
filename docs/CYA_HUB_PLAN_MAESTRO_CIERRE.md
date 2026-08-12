@@ -14,8 +14,9 @@ Correctivos de auditoría P0 ya integrados o canonizados en esta versión:
 
 - **P0A ✅** — Centro de clases y modo clase activo separados; navegación móvil corregida y protegida por E2E.
 - **P0B ✅** — este documento queda canonizado a P23 cerrado → P24 actual y protegido por un check automático de consistencia documental.
-- **P0C ⏳** — targets táctiles críticos ≥44 px.
-- **P0D ✅** — `release-wide-audit` integrado como gate permanente; QA post-P0A verde 22/22.
+- **P0C ✅** — targets táctiles auditados ≥44 px; gate `mobile-touch-targets` permanente; QA post-merge 26/26.
+- **P0D ✅** — `release-wide-audit` integrado como gate permanente; QA actual post-P0C verde 26/26.
+- **P0E ⏳ SIGUIENTE CORRECTIVO** — evaluación inicial opcional/no bloqueante dentro de Dar clase y eliminación de gates globales de evaluación antes de continuar P24.
 
 ---
 
@@ -85,6 +86,8 @@ Regla documental permanente desde P0B:
 - Modelo canónico de Correcciones/Explicaciones/Ejercicios/Secuencias + relaciones + ocho árboles → P23/v51.
 - Navegación móvil del Centro `Dar clase` → P0A sobre P21.
 - Auditoría transversal release-wide → P0D.
+- Targets táctiles auditados ≥44 px + gate móvil → P0C.
+- Evaluación inicial opcional/no bloqueante y gates de evaluación acotados a la clase actual → P0E pendiente antes de P24.
 
 ## ✅ Adelanto pendiente de revalidación final
 
@@ -141,7 +144,7 @@ Todo formulario/control nuevo o modificado debe cumplir:
 - nunca forzar `0` durante edición;
 - escribir `5` produce `5`, nunca `05`/`050`.
 
-Correctivo vivo: P0C debe elevar los targets táctiles críticos detectados por la auditoría a un área efectiva mínima de 44 px sin perder densidad visual.
+P0C cerró el correctivo táctil: los targets auditados tienen un área efectiva mínima de 44 px y `mobile-touch-targets.spec.ts` lo protege en iPhone. P0E debe preservar este gate al integrar la nueva pestaña Evaluación.
 
 ## G4 — Regresión antes de merge
 
