@@ -10,6 +10,7 @@ type BrowserTelemetry = {
   dependencyWarnings: Array<{ url: string; status: number; dependency: string }>;
 };
 
+type TouchTarget = { tag: string; label: string; width: number; height: number };
 type SurfaceAudit = {
   surface: string;
   url: string;
@@ -20,7 +21,7 @@ type SurfaceAudit = {
   headings: string[];
   primaryNavLabels: string[];
   interactiveCount: number;
-  undersizedTouchTargets: Array<{ tag: string; label: string; width: number; height: number }>;
+  undersizedTouchTargets: TouchTarget[];
   unlabeledButtons: Array<{ tag: string; html: string }>;
   telemetry: BrowserTelemetry;
 };
@@ -35,10 +36,7 @@ function credentialsFor(role: QaRole) {
 
 function startTelemetry(page: Page) {
   const telemetry: BrowserTelemetry = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], dependencyWarnings: [] };
-
-  page.on("console", (message) => {
-    if (message.type() === "error") telemetry.consoleErrors.push(message.text());
-  });
+  page.on("console", (message) => { if (message.type() === "error") telemetry.consoleErrors.push(message.text()); });
   page.on("pageerror", (error) => telemetry.pageErrors.push(error.message));
   page.on("requestfailed", (request) => {
     const error = request.failure()?.errorText || "unknown request failure";
@@ -52,7 +50,6 @@ function startTelemetry(page: Page) {
     }
     telemetry.serverErrors.push({ url: response.url(), status: response.status() });
   });
-
   return telemetry;
 }
 
@@ -82,33 +79,35 @@ async function auditSurface(page: Page, testInfo: TestInfo, surface: string, tel
     };
     const labelFor = (element: Element) => {
       const html = element as HTMLElement;
-      return (
-        element.getAttribute("aria-label") ||
-        element.getAttribute("title") ||
-        html.innerText ||
-        (element as HTMLInputElement).placeholder ||
-        (element as HTMLInputElement).name ||
-        ""
-      ).replace(/\s+/g, " ").trim().slice(0, 160);
+      return (element.getAttribute("aria-label") || element.getAttribute("title") || html.innerText || (element as HTMLInputElement).placeholder || (element as HTMLInputElement).name || "")
+        .replace(/\s+/g, " ").trim().slice(0, 160);
+    };
+    const effectiveTarget = (element: Element) => {
+      const input = element as HTMLInputElement;
+      if (element.tagName === "INPUT" && ["checkbox", "radio"].includes(input.type)) {
+        const label = element.closest("label");
+        if (label && visible(label)) return label;
+      }
+      return element;
     };
 
     const interactives = Array.from(document.querySelectorAll("button,a,input,select,textarea,summary,[role='button']")).filter(visible);
-    const undersized = interactives
-      .map((element) => {
-        const box = (element as HTMLElement).getBoundingClientRect();
-        return { tag: element.tagName.toLowerCase(), label: labelFor(element), width: Math.round(box.width), height: Math.round(box.height) };
-      })
-      .filter((item) => item.width < 44 || item.height < 44)
-      .slice(0, 100);
+    const seen = new Set<Element>();
+    const undersized = interactives.flatMap((element) => {
+      const target = effectiveTarget(element);
+      if (seen.has(target)) return [];
+      seen.add(target);
+      const box = (target as HTMLElement).getBoundingClientRect();
+      if (box.width >= 44 && box.height >= 44) return [];
+      return [{ tag: target.tagName.toLowerCase(), label: labelFor(target) || labelFor(element), width: Math.round(box.width), height: Math.round(box.height) }];
+    }).slice(0, 100);
     const unlabeledButtons = Array.from(document.querySelectorAll("button,[role='button']"))
       .filter(visible)
       .filter((element) => !labelFor(element))
       .map((element) => ({ tag: element.tagName.toLowerCase(), html: (element as HTMLElement).outerHTML.slice(0, 300) }))
       .slice(0, 50);
     const primaryNavLabels = Array.from(document.querySelectorAll(".mobile-nav button, .sidebar nav button"))
-      .filter(visible)
-      .map(labelFor)
-      .filter(Boolean);
+      .filter(visible).map(labelFor).filter(Boolean);
 
     return {
       documentWidth: root.scrollWidth,
@@ -134,11 +133,8 @@ async function auditSurface(page: Page, testInfo: TestInfo, surface: string, tel
     undersizedTouchTargets: viewport && viewport.width <= 720 ? data.undersized : [],
     unlabeledButtons: data.unlabeledButtons,
     telemetry: {
-      consoleErrors: [...telemetry.consoleErrors],
-      pageErrors: [...telemetry.pageErrors],
-      failedRequests: [...telemetry.failedRequests],
-      serverErrors: [...telemetry.serverErrors],
-      dependencyWarnings: [...telemetry.dependencyWarnings],
+      consoleErrors: [...telemetry.consoleErrors], pageErrors: [...telemetry.pageErrors], failedRequests: [...telemetry.failedRequests],
+      serverErrors: [...telemetry.serverErrors], dependencyWarnings: [...telemetry.dependencyWarnings],
     },
   };
 
@@ -148,6 +144,7 @@ async function auditSurface(page: Page, testInfo: TestInfo, surface: string, tel
     overflowPx: observation.horizontalOverflowPx,
     primaryNav: observation.primaryNavLabels,
     touchTargetsUnder44: observation.undersizedTouchTargets.length,
+    undersized: observation.undersizedTouchTargets.slice(0, 20),
     unlabeledButtons: observation.unlabeledButtons.length,
     consoleErrors: observation.telemetry.consoleErrors.length,
     pageErrors: observation.telemetry.pageErrors.length,
@@ -156,26 +153,16 @@ async function auditSurface(page: Page, testInfo: TestInfo, surface: string, tel
     dependencyWarnings: observation.telemetry.dependencyWarnings,
   }));
 
-  await testInfo.attach(`audit-${surface.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-screen`, {
-    body: await page.screenshot({ fullPage: true }),
-    contentType: "image/png",
-  });
-  await testInfo.attach(`audit-${surface.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-observations`, {
-    body: Buffer.from(JSON.stringify(observation, null, 2)),
-    contentType: "application/json",
-  });
+  await testInfo.attach(`audit-${surface.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-screen`, { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
+  await testInfo.attach(`audit-${surface.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-observations`, { body: Buffer.from(JSON.stringify(observation, null, 2)), contentType: "application/json" });
 
   expect.soft(observation.telemetry.pageErrors, `${surface}: uncaught page errors`).toEqual([]);
   expect.soft(observation.telemetry.serverErrors, `${surface}: unexpected HTTP 5xx responses`).toEqual([]);
   expect.soft(observation.telemetry.failedRequests, `${surface}: failed network requests`).toEqual([]);
   expect.soft(observation.horizontalOverflowPx, `${surface}: document-level horizontal overflow`).toBeLessThanOrEqual(4);
 
-  telemetry.consoleErrors.length = 0;
-  telemetry.pageErrors.length = 0;
-  telemetry.failedRequests.length = 0;
-  telemetry.serverErrors.length = 0;
-  telemetry.dependencyWarnings.length = 0;
-
+  telemetry.consoleErrors.length = 0; telemetry.pageErrors.length = 0; telemetry.failedRequests.length = 0;
+  telemetry.serverErrors.length = 0; telemetry.dependencyWarnings.length = 0;
   return observation;
 }
 
@@ -191,12 +178,8 @@ test.describe("CYA Hub release-wide audit", () => {
   test("teacher core surfaces have no critical browser or viewport failure", async ({ page }, testInfo) => {
     const telemetry = startTelemetry(page);
     await login(page, "teacher");
-
     await auditSurface(page, testInfo, "teacher-inicio", telemetry);
-
-    await clickPrimaryNav(page, "Alumnado");
-    await auditSurface(page, testInfo, "teacher-Alumnado", telemetry);
-
+    await clickPrimaryNav(page, "Alumnado"); await auditSurface(page, testInfo, "teacher-Alumnado", telemetry);
     await clickPrimaryNav(page, "Dar clase");
     const liveCenter = await auditSurface(page, testInfo, "teacher-Dar clase", telemetry);
     if (liveCenter.viewport && liveCenter.viewport.width <= 720) {
@@ -204,40 +187,25 @@ test.describe("CYA Hub release-wide audit", () => {
         .toEqual(expect.arrayContaining(["Inicio", "Alumnado", "Dar clase", "Enseñanza", "Marketing"]));
     }
     const exitLive = page.getByRole("button", { name: "Salir de Dar clase" });
-    if (await exitLive.isVisible().catch(() => false)) await exitLive.click();
-    else await page.getByRole("button", { name: "Volver" }).click();
-
-    await clickPrimaryNav(page, "Enseñanza");
-    await auditSurface(page, testInfo, "teacher-Enseñanza", telemetry);
-
-    await clickPrimaryNav(page, "Marketing");
-    await auditSurface(page, testInfo, "teacher-Marketing", telemetry);
-
-    await clickPrimaryNav(page, "Inicio");
-    await auditSurface(page, testInfo, "teacher-Inicio-final", telemetry);
+    if (await exitLive.isVisible().catch(() => false)) await exitLive.click(); else await page.getByRole("button", { name: "Volver" }).click();
+    await clickPrimaryNav(page, "Enseñanza"); await auditSurface(page, testInfo, "teacher-Enseñanza", telemetry);
+    await clickPrimaryNav(page, "Marketing"); await auditSurface(page, testInfo, "teacher-Marketing", telemetry);
+    await clickPrimaryNav(page, "Inicio"); await auditSurface(page, testInfo, "teacher-Inicio-final", telemetry);
   });
 
   test("student portal has no critical browser or viewport failure", async ({ page }, testInfo) => {
-    const telemetry = startTelemetry(page);
-    await login(page, "student");
-    await auditSurface(page, testInfo, "student-portal", telemetry);
+    const telemetry = startTelemetry(page); await login(page, "student"); await auditSurface(page, testInfo, "student-portal", telemetry);
   });
 
   test("all administration sections have no critical browser or viewport failure", async ({ page }, testInfo) => {
-    const telemetry = startTelemetry(page);
-    await login(page, "admin");
-
+    const telemetry = startTelemetry(page); await login(page, "admin");
     const adminEntry = page.getByRole("button", { name: /Administración/ });
-    await expect(adminEntry).toBeVisible({ timeout: 20_000 });
-    await adminEntry.click();
+    await expect(adminEntry).toBeVisible({ timeout: 20_000 }); await adminEntry.click();
     await expect(page.getByRole("heading", { name: "Estado de CYA Hub" })).toBeVisible({ timeout: 20_000 });
     await auditSurface(page, testInfo, "admin-General", telemetry);
-
     for (const section of ["Equipo y roles", "Formularios", "Enseñanza", "Misiones", "Notificaciones", "Datos", "Integraciones", "Apariencia", "Seguridad"]) {
       const button = page.getByRole("main").getByRole("button", { name: new RegExp(`^${section}$`, "i") }).first();
-      await expect(button).toBeVisible({ timeout: 15_000 });
-      await button.click();
-      await auditSurface(page, testInfo, `admin-${section}`, telemetry);
+      await expect(button).toBeVisible({ timeout: 15_000 }); await button.click(); await auditSurface(page, testInfo, `admin-${section}`, telemetry);
     }
   });
 });
