@@ -5,8 +5,10 @@
 -- 2. permitir class_media_resources cerrados que el snapshot ya entrega;
 -- 3. no abrir SELECT directo de teaching_content_media al alumnado;
 -- 4. preservar acceso completo del staff;
--- 5. mantener el helper de datos fuera del alcance directo del cliente;
--- 6. conservar estilo/rol/nivel en evaluaciones visibles para no mezclar contextos.
+-- 5. mantener el helper de media fuera del alcance directo del cliente;
+-- 6. conservar estilo/rol/nivel en evaluaciones visibles para no mezclar contextos;
+-- 7. preservar el contrato v36b: el snapshot SECURITY INVOKER necesita ejecutar
+--    el helper de evaluaciones, que mantiene su guard interno de identidad.
 
 begin;
 
@@ -175,7 +177,10 @@ begin
 end;
 $$;
 
-revoke all on function private.student_visible_evaluations_json(bigint)
-from public,anon,authenticated;
+-- El snapshot público es SECURITY INVOKER y delega en este helper. Se conserva
+-- EXECUTE para authenticated; el helper rechaza por sí mismo cualquier persona
+-- distinta de la identidad actual salvo staff autorizado.
+revoke all on function private.student_visible_evaluations_json(bigint) from public,anon;
+grant execute on function private.student_visible_evaluations_json(bigint) to authenticated;
 
 commit;
