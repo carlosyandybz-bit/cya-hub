@@ -137,7 +137,7 @@ async function auditSurface(page: Page, testInfo: TestInfo, surface: string, tel
     contentType: "application/json",
   });
 
-  expect.soft(observation.pageErrors ?? observation.telemetry.pageErrors, `${surface}: uncaught page errors`).toEqual([]);
+  expect.soft(observation.telemetry.pageErrors, `${surface}: uncaught page errors`).toEqual([]);
   expect.soft(observation.telemetry.serverErrors, `${surface}: HTTP 5xx responses`).toEqual([]);
   expect.soft(observation.telemetry.failedRequests, `${surface}: failed network requests`).toEqual([]);
   expect.soft(observation.horizontalOverflowPx, `${surface}: document-level horizontal overflow`).toBeLessThanOrEqual(4);
