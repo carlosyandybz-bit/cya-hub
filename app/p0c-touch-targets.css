@@ -1,0 +1,59 @@
+/* CYA Hub · P0C · contrato táctil móvil
+   Solo corrige controles detectados por CYA-AUD-007.
+   Mantiene la densidad visual existente y eleva el área pulsable efectiva a >=44 px. */
+
+@media (max-width: 720px) {
+  /* Navegación secundaria y acciones auditadas. */
+  .module-tabs button,
+  .admin-nav button,
+  .page-head > .btn,
+  .marketing-section-head .btn,
+  .student-row-actions .btn,
+  .export-grid .btn,
+  a[href="/evaluation-settings"],
+  [class*="kindSwitch"] > button {
+    min-height: 44px !important;
+  }
+
+  /* Los switches conservan un track visual 35x21, pero el botón real pasa a 44x44. */
+  .switch {
+    position: relative;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent !important;
+  }
+
+  .switch::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 35px;
+    height: 21px;
+    border-radius: 999px;
+    background: #d7d2dd;
+    transform: translate(-50%, -50%);
+    transition: .15s;
+  }
+
+  .switch > span {
+    top: 50%;
+    left: calc(50% - 14.5px);
+    width: 15px;
+    height: 15px;
+    transform: translateY(-50%);
+  }
+
+  .switch.on::before {
+    background: var(--purple);
+  }
+
+  .switch.on > span {
+    transform: translate(14px, -50%);
+  }
+}

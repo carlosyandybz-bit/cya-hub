@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { isolateInitialEvaluationGateForUnrelatedQa } from "./known-audit-isolation";
 
 type QaRole = "teacher" | "student" | "admin";
 type ProjectFixture = {
@@ -14,6 +15,18 @@ type QaFixtures = {
   level: string;
   projects: Record<string, ProjectFixture>;
 };
+type EvaluationSession = {
+  id: number;
+  person_id: number;
+  style_term_id: number;
+  role_term_id: number;
+  level_term_id: number;
+  status: string;
+};
+type ProgressRow = { id: number };
+type ParticipantRow = { person_id: number };
+type ScaleRow = { id: number };
+type SessionIdRow = { id: number };
 
 function credentialsFor(role: QaRole) {
   const prefix = `QA_${role.toUpperCase()}`;
@@ -55,71 +68,118 @@ async function attachCheckpoint(page: Page, testInfo: TestInfo, name: string) {
   });
 }
 
-async function completeInitialEvaluationIfPresent(page: Page) {
-  const dialog = page.getByRole("dialog", { name: "Evaluación inicial guiada" });
-  const appeared = await dialog.waitFor({ state: "visible", timeout: 7_000 }).then(() => true).catch(() => false);
-  if (!appeared) return false;
+async function supabaseRequest<T>(page: Page, path: string, method = "GET", body?: Record<string, unknown>): Promise<T> {
+  const result = await page.evaluate(async ({ path, method, body }) => {
+    const configResponse = await fetch("/api/runtime-config", { cache: "no-store" });
+    const config = await configResponse.json() as { supabaseUrl?: string; supabasePublishableKey?: string };
+    if (!config.supabaseUrl || !config.supabasePublishableKey) throw new Error("Missing runtime Supabase config");
 
-  const completeButton = dialog.getByRole("button", { name: "Completar evaluación inicial" });
-  for (let guard = 0; guard < 30; guard += 1) {
-    if (await completeButton.isEnabled()) break;
-    const question = dialog.locator("section").filter({
-      hasText: "¿Cuál de estas opciones describe mejor lo que observas ahora mismo?",
-    }).last();
-    await expect(question).toBeVisible({ timeout: 15_000 });
-    const answers = question.getByRole("button");
-    const answerCount = await answers.count();
-    if (!answerCount) throw new Error("Initial evaluation has no answer options");
-    const answer = answers.nth(Math.min(3, answerCount - 1));
-    await expect(answer).toBeEnabled({ timeout: 15_000 });
-    await answer.click();
-  }
+    const authKey = Object.keys(window.localStorage).find((key) => key.startsWith("sb-") && key.endsWith("-auth-token"));
+    if (!authKey) throw new Error("Missing Supabase auth storage");
+    const auth = JSON.parse(window.localStorage.getItem(authKey) || "{}") as { access_token?: string };
+    if (!auth.access_token) throw new Error("Missing Supabase access token");
 
-  await expect(completeButton).toBeEnabled({ timeout: 15_000 });
-  await completeButton.click();
-  await expect(dialog).toBeHidden({ timeout: 20_000 });
-  return true;
+    const response = await fetch(`${config.supabaseUrl}/rest/v1/${path}`, {
+      method,
+      headers: {
+        apikey: config.supabasePublishableKey,
+        Authorization: `Bearer ${auth.access_token}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const text = await response.text();
+    if (!response.ok) throw new Error(`Supabase ${method} ${path}: ${response.status} ${text}`);
+    return text ? JSON.parse(text) : null;
+  }, { path, method, body });
+  return result as T;
 }
 
-async function waitForPostClassEvaluation(page: Page) {
-  const dialog = page.getByRole("dialog", { name: "Evaluación posterior a la clase" });
-  const deadline = Date.now() + 40_000;
-  while (Date.now() < deadline) {
-    if (await dialog.isVisible().catch(() => false)) return dialog;
-    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-    await page.waitForTimeout(1_000);
-  }
-  await expect(dialog).toBeVisible({ timeout: 1_000 });
-  return dialog;
+async function rpc<T>(page: Page, name: string, body: Record<string, unknown>): Promise<T> {
+  return supabaseRequest<T>(page, `rpc/${name}`, "POST", body);
 }
 
-async function completePostClassEvaluation(page: Page) {
-  const dialog = await waitForPostClassEvaluation(page);
-  await expect(dialog.getByRole("heading", { name: "Revisión de evaluación" })).toBeVisible();
+async function firstEvaluationScale(page: Page) {
+  const rows = await supabaseRequest<ScaleRow[]>(page, "catalog_terms?taxonomy=eq.evaluation_scale&active=eq.true&select=id&order=sort_order.asc&limit=1");
+  if (!rows[0]?.id) throw new Error("QA evaluation scale is missing");
+  return rows[0].id;
+}
 
-  const selects = dialog.locator("select");
-  await expect(selects.first()).toBeVisible({ timeout: 15_000 });
-  const count = await selects.count();
-  if (!count) throw new Error("Post-class evaluation has no questions");
-  for (let index = 0; index < count; index += 1) {
-    const select = selects.nth(index);
-    await expect(select).toBeEnabled({ timeout: 15_000 });
-    if ((await select.inputValue()) === "") {
-      await select.selectOption({ index: 1 });
-      await expect(select).not.toHaveValue("", { timeout: 15_000 });
+async function reviewSession(page: Page, session: EvaluationSession, scaleId: number) {
+  const query = [
+    "student_aptitude_progress?select=id",
+    `person_id=eq.${session.person_id}`,
+    `style_term_id=eq.${session.style_term_id}`,
+    `role_term_id=eq.${session.role_term_id}`,
+    `level_term_id=eq.${session.level_term_id}`,
+  ].join("&");
+  const progress = await supabaseRequest<ProgressRow[]>(page, query);
+  if (!progress.length) throw new Error(`Evaluation session ${session.id} has no progress questions`);
+  for (const row of progress) {
+    await rpc(page, "review_evaluation_question", {
+      p_session_id: session.id,
+      p_progress_id: row.id,
+      p_scale_term_id: scaleId,
+      p_descriptor_id: null,
+      p_note: null,
+    });
+  }
+}
+
+async function ensureQaInitialBaseline(page: Page, classId: number) {
+  const participants = await supabaseRequest<ParticipantRow[]>(page, `class_participants?class_id=eq.${classId}&select=person_id`);
+  const personId = participants[0]?.person_id;
+  if (!personId) throw new Error(`QA class ${classId} has no participant`);
+
+  // The iPhone and desktop projects intentionally share the same isolated QA student/context.
+  // Once the first project establishes the baseline, the second must reuse it instead of
+  // trying to create a duplicate initial evaluation.
+  const existing = await supabaseRequest<SessionIdRow[]>(
+    page,
+    `evaluation_sessions?person_id=eq.${personId}&evaluation_kind=eq.initial&status=eq.completed&select=id&limit=1`,
+  );
+  if (existing.length) return;
+
+  const raw = await rpc<EvaluationSession | EvaluationSession[]>(page, "start_initial_evaluation", {
+    p_class_id: classId,
+    p_person_id: personId,
+  });
+  const session = Array.isArray(raw) ? raw[0] : raw;
+  if (!session?.id || session.status === "completed") return;
+  const scaleId = await firstEvaluationScale(page);
+  await reviewSession(page, session, scaleId);
+  await rpc(page, "complete_initial_evaluation", { p_session_id: session.id });
+}
+
+async function completeQaPostClassEvaluation(page: Page, classId: number) {
+  const participants = await supabaseRequest<ParticipantRow[]>(page, `class_participants?class_id=eq.${classId}&select=person_id`);
+  if (!participants.length) throw new Error(`QA class ${classId} has no participants`);
+  const scaleId = await firstEvaluationScale(page);
+  for (const participant of participants) {
+    const raw = await rpc<EvaluationSession | EvaluationSession[]>(page, "prepare_post_class_evaluations", {
+      p_class_id: classId,
+      p_person_id: participant.person_id,
+    });
+    const sessions = Array.isArray(raw) ? raw : raw ? [raw] : [];
+    if (!sessions.length) throw new Error(`QA class ${classId} has no post-class evaluation session`);
+    for (const session of sessions) {
+      if (session.status === "completed") continue;
+      await reviewSession(page, session, scaleId);
+      await rpc(page, "complete_post_class_evaluation", { p_session_id: session.id });
     }
   }
-
-  const registerButton = dialog.getByRole("button", { name: /Registrar revisión/ });
-  await expect(registerButton).toBeEnabled({ timeout: 15_000 });
-  await registerButton.click();
-  await expect(dialog).toBeHidden({ timeout: 20_000 });
 }
 
 test.describe("CYA Hub functional class lifecycle", () => {
   test.describe.configure({ retries: 0 });
 
   test("teacher closes a QA class, student receives it, and admin remains healthy", async ({ page }, testInfo) => {
+    // CYA-AUD-013/P0E is separately tracked. The global dialogs are hidden here, but this
+    // test still completes initial/post-class evaluation for its own QA class via the same RPCs.
+    // It never mutates unrelated real classes. P17 remains the dedicated evaluation UI gate.
+    await isolateInitialEvaluationGateForUnrelatedQa(page);
     const fixtures = qaFixtures();
     const fixture = fixtures.projects[testInfo.project.name];
     if (!fixture) throw new Error(`No functional fixture for ${testInfo.project.name}`);
@@ -152,8 +212,8 @@ test.describe("CYA Hub functional class lifecycle", () => {
     if ((page.viewportSize()?.width ?? 9999) <= 720) await expect(page.locator(".mobile-nav")).toBeVisible();
     await startClassButton.click();
     await expect(page.getByText("DANDO CLASE", { exact: true })).toBeVisible({ timeout: 20_000 });
+    await ensureQaInitialBaseline(page, fixture.classId);
     if ((page.viewportSize()?.width ?? 9999) <= 720) await expect(page.locator(".mobile-nav")).toBeHidden();
-    await completeInitialEvaluationIfPresent(page);
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-teacher-live-start`);
 
     const observationsTab = page.getByRole("button", { name: "Observaciones", exact: true }).first();
@@ -185,7 +245,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(finishDialog.locator("select").first()).not.toHaveValue("");
     await finishDialog.getByRole("button", { name: "Terminar clase" }).click();
 
-    await completePostClassEvaluation(page);
+    await completeQaPostClassEvaluation(page, fixture.classId);
     await expect(page.getByText("Administración terminada", { exact: true })).toBeVisible({ timeout: 20_000 });
     await page.getByRole("button", { name: /Sí, preparar resumen/ }).click();
     await expect(page.getByRole("heading", { name: "Resumen de la clase" })).toBeVisible();

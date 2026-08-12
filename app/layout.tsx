@@ -7,6 +7,7 @@ import "./evaluation-final-model.css";
 import "./area-separation-v36.css";
 import "./mobile-density-v37.css";
 import "./p23-teaching.css";
+import "./p0c-touch-targets.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
