@@ -80,22 +80,25 @@ export function TeachingContentCard({
   const toneClass=kindTone==="correction"?styles.correction:kindTone==="explanation"?styles.explanation:kindTone==="exercise"?styles.exercise:kindTone==="sequence"?styles.sequence:"";
 
   return <article className={`${styles.card} ${toneClass} ${className}`.trim()}>
-    <button type="button" className={`${styles.compactButton} ${collapsedMedia?styles.withMedia:""}`} onClick={()=>setOpen(true)} aria-label={`Abrir ${kindLabel}: ${title}`}>
-      {collapsedMedia ? <span className={styles.miniMedia} aria-hidden="true"><SecureDriveAsset
-        fileId={collapsedMedia.external_file_id}
-        mediaType={collapsedMedia.media_type}
-        title={collapsedMedia.title || title}
-        thumbnailFileId={collapsedMedia.thumbnail_external_file_id}
-        className={styles.miniAsset}
-      /><span>{collapsedMedia.media_type==="video"?<Video/>:<ImageIcon/>}</span></span> : null}
-      <span className={styles.compactInfo}>
-        <span className={styles.topline}><span className={styles.kind}>{kindLabel}</span>{statusLabel?<span className={`${styles.status} ${statusTone==="success"?styles.success:statusTone==="warning"?styles.warning:""}`}>{statusLabel}</span>:null}</span>
-        <strong>{title}</strong>
-        {subtitle?<small>{subtitle}</small>:null}
-        {quickControls?<span className={styles.quickControls}>{quickControls}</span>:null}
-      </span>
-      <span className={styles.trailing}>{actions?<span className={styles.actions} onClick={(event)=>event.stopPropagation()}>{actions}</span>:null}<ChevronRight/></span>
-    </button>
+    <div className={styles.compactRow}>
+      <button type="button" className={`${styles.compactButton} ${collapsedMedia?styles.withMedia:""}`} onClick={()=>setOpen(true)} aria-label={`Abrir ${kindLabel}: ${title}`}>
+        {collapsedMedia ? <span className={styles.miniMedia} aria-hidden="true"><SecureDriveAsset
+          fileId={collapsedMedia.external_file_id}
+          mediaType={collapsedMedia.media_type}
+          title={collapsedMedia.title || title}
+          thumbnailFileId={collapsedMedia.thumbnail_external_file_id}
+          className={styles.miniAsset}
+        /><span>{collapsedMedia.media_type==="video"?<Video/>:<ImageIcon/>}</span></span> : null}
+        <span className={styles.compactInfo}>
+          <span className={styles.topline}><span className={styles.kind}>{kindLabel}</span>{statusLabel?<span className={`${styles.status} ${statusTone==="success"?styles.success:statusTone==="warning"?styles.warning:""}`}>{statusLabel}</span>:null}</span>
+          <strong>{title}</strong>
+          {subtitle?<small>{subtitle}</small>:null}
+          {quickControls?<span className={styles.quickControls}>{quickControls}</span>:null}
+        </span>
+        <ChevronRight className={styles.chevron}/>
+      </button>
+      {actions?<div className={styles.actions}>{actions}</div>:null}
+    </div>
 
     {open ? <div className={styles.detailBackdrop} onMouseDown={(event)=>event.target===event.currentTarget&&setOpen(false)}>
       <section className={styles.detailModal} role="dialog" aria-modal="true" aria-label={`${kindLabel}: ${title}`}>
