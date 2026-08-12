@@ -1,0 +1,40 @@
+name: Validate P23 Enseñanza
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'supabase/v51_p23_teaching_graph_contract.sql'
+      - 'tests/**'
+      - 'docs/P23_ENSENANZA_RELACIONES_ARBOLES.md'
+      - '.github/workflows/validate-p23-teaching.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: P23 teaching regression gate
+        run: >-
+          node --test
+          tests/p23-teaching-contract.test.mjs
+          tests/p22-student-portal.test.mjs
+          tests/p21-dar-clase.test.mjs
+          tests/p19-persona-unica.test.mjs
+          tests/p17-evaluation-cutover.test.mjs
+      - name: Lint complete application
+        run: npm run lint
+      - name: Production build
+        run: npm run build
+      - name: Reject whitespace errors
+        run: git diff --check
