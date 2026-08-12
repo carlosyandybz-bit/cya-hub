@@ -18,10 +18,13 @@ test('corrections have one creation path inside unified live search', () => {
   assert.equal(live.includes('Corrección rápida añadida al alumno.'), false);
 });
 
-test('correction card does not repeat status in subtitle and badge', () => {
+test('correction card exposes one compact status and measurement control set without duplicate status label', () => {
   assert.equal(live.includes('subtitle={`${correctionStateLabel(assignment.assignment_status)}'), false);
-  assert.ok(live.includes('statusLabel={correctionStateLabel(assignment.assignment_status)}'));
-  assert.ok(live.includes('Frec. ${assignment.current_frequency}'));
+  assert.ok(live.includes('statusLabel={null}'));
+  assert.ok(live.includes('className="p0f-status-chip"'));
+  assert.ok(live.includes('aria-label={`Frecuencia de ${assignment.teaching_contents.title}`}'));
+  assert.ok(live.includes('aria-label={`Influencia de ${assignment.teaching_contents.title}`}'));
+  assert.ok(live.includes('<summary>+ Medir</summary>'));
 });
 
 test('live session has only the sticky administrative action', () => {
