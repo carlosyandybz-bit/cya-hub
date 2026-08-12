@@ -40,11 +40,11 @@ test('student evaluations remain hidden until their release conditions are met',
   assert.ok(evaluations.includes("errcode='42501'"));
 });
 
-test('Drive ticket authorization uses an explicit private security boundary', () => {
+test('Drive ticket authorization uses a minimal guarded definer boundary', () => {
   assert.ok(media.includes('private.can_access_student_portal_media'));
-  assert.ok(media.includes('security definer'));
-  assert.ok(media.includes('security invoker'));
+  assert.ok((media.match(/security definer/g) ?? []).length >= 2);
   assert.ok(media.includes('revoke all on function private.can_access_student_portal_media(text)'));
+  assert.ok(media.includes('revoke all on function public.can_access_teaching_media(text) from public,anon'));
   assert.ok(media.includes('grant execute on function public.can_access_teaching_media(text) to authenticated'));
 });
 
