@@ -9,6 +9,7 @@ import "./mobile-density-v37.css";
 import "./p23-teaching.css";
 import "./p0c-touch-targets.css";
 import "./p0f-live-class.css";
+import "./p0g-compact-ui.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
