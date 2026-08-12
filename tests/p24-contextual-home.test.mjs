@@ -6,6 +6,7 @@ const home=fs.readFileSync('app/home-view.tsx','utf8');
 const domain=fs.readFileSync('app/p24-home-domain.ts','utf8');
 const admin=fs.readFileSync('app/admin-daily-quotes.tsx','utf8');
 const migration=fs.readFileSync('db/migrations/v58_p24_contextual_home.sql','utf8');
+const hardening=fs.readFileSync('db/migrations/v59_p24_quote_preview_privileges.sql','utf8');
 
 test('P24 keeps a live clock and reloads on local day change',()=>{
   assert.match(home,/setInterval\(\(\) => setNow\(Date\.now\(\)\), 15_000\)/);
@@ -65,9 +66,11 @@ test('P24 Home consumes canonical calendar snapshot and removes dominant duplica
   assert.match(home,/Acciones rápidas/);
 });
 
-test('P24 migration keeps RPCs invoker-side and anon revoked',()=>{
+test('P24 RPCs stay invoker-side and preview execution is removed from PUBLIC and anon',()=>{
   assert.match(migration,/security invoker/g);
   assert.match(migration,/revoke all on function public\.home_snapshot\(\) from anon/);
-  assert.match(migration,/revoke all on function public\.preview_daily_quote\(date\) from anon/);
+  assert.match(hardening,/revoke all on function public\.preview_daily_quote\(date\) from public/);
+  assert.match(hardening,/revoke all on function public\.preview_daily_quote\(date\) from anon/);
+  assert.match(hardening,/grant execute on function public\.preview_daily_quote\(date\) to authenticated/);
   assert.doesNotMatch(migration,/security definer/i);
 });
