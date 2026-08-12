@@ -125,6 +125,9 @@ jobs:
           grep '^not ok ' /tmp/numeric.tap | while IFS= read -r line; do
             echo "::error file=tests/numeric-inputs.test.mjs::$line"
           done
+          grep -R -n --include='*.tsx' 'type="number"' app | while IFS=: read -r file line rest; do
+            echo "::error file=$file,line=$line::$rest"
+          done
           exit 0
 
       - name: Lint application
