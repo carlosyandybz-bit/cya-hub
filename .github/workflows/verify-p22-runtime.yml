@@ -1,0 +1,35 @@
+name: Verify P22 Hostinger runtime
+
+on:
+  push:
+    branches:
+      - p22/portal-alumno-definitivo
+    paths:
+      - '.github/workflows/verify-p22-runtime.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Poll production build marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected='p22-student-portal-v50-ready'
+          url='https://app.carlosyandy.com/api/build-info'
+          for attempt in $(seq 1 30); do
+            body="$(curl -fsS --connect-timeout 10 --max-time 20 -H 'Cache-Control: no-cache' "${url}?g1=${GITHUB_RUN_ID}-${attempt}" || true)"
+            echo "attempt=${attempt} body=${body}"
+            if printf '%s' "$body" | grep -Fq "$expected"; then
+              echo "G1_P22_OK=${expected}"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "G1 P22 failed: production did not expose ${expected} in time" >&2
+          exit 1
