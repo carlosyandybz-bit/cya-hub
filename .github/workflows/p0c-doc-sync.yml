@@ -1,0 +1,124 @@
+name: P0C documentation sync
+
+on:
+  push:
+    branches: [p0c-doc-sync]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p0c-doc-sync
+          fetch-depth: 0
+      - name: Synchronize canonical audit documents
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          audit_path = Path('docs/CYA_HUB_AUDITORIA_VIVA_LANZAMIENTO.md')
+          plan_path = Path('docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md')
+          audit = audit_path.read_text()
+          plan = plan_path.read_text()
+
+          def replace_required(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f'missing expected text: {label}')
+              return text.replace(old, new)
+
+          audit = replace_required(
+              audit,
+              'Base funcional post-P0A auditada: `main@85e1d7954cd67190735a118d682c002ddfc2569a` + Supabase `CyA hub 2` (`ldvyeyhzrepaaouzavgs`)',
+              'Base funcional post-P0C auditada: `main@c253ff5135e7955c69d152038434c96cc70777f8` + Supabase `CyA hub 2` (`ldvyeyhzrepaaouzavgs`)',
+              'audit base',
+          )
+          audit = replace_required(
+              audit,
+              'Estado: **AUDITORÍA P0 VIVA — P0A/P0D cerrados, P0B canonizado, P0C pendiente; todavía existen gates antes del release**',
+              'Estado: **AUDITORÍA P0 VIVA — P0A/P0B/P0C/P0D cerrados; P0E es el siguiente correctivo antes de P24; todavía existen gates antes del release**',
+              'audit status',
+          )
+
+          pattern = re.compile(r"### Resultado actual post-P0A en `main`\n\n.*?\n\nEn todas las superficies auditadas:", re.S)
+          replacement = '''### Resultado actual post-P0C en `main`
+
+Workflow `CYA QA E2E`, run **31592129261**, ejecutado sobre `main@c253ff5135e7955c69d152038434c96cc70777f8`:
+
+- bootstrap QA OIDC → Supabase: **OK**;
+- gate documental: **2/2**;
+- lint: **0 errores / 14 warnings**;
+- build Next.js: **OK**;
+- servidor local: **OK**;
+- Playwright total: **26/26 passed**;
+- targets táctiles auditados por debajo de 44 px en iPhone: **0**;
+- ciclo Profesor → Alumno → Administrador: **OK**;
+- artifacts: **OK**, artifact `9139646180`.
+
+En todas las superficies auditadas:'''
+          audit, count = pattern.subn(replacement, audit, count=1)
+          if count != 1:
+              raise SystemExit('could not replace release-wide result block')
+
+          audit = replace_required(
+              audit,
+              '| **CYA-AUD-006** | QA release-wide | — | **EJECUTADO — 22/22** | Run post-merge `31583225189`: 22/22, iPhone + desktop, ciclo Profesor→Alumno→Admin, build y artifacts verdes. | Mantener como gate real tras cada paquete relevante y en P32. |',
+              '| **CYA-AUD-006** | QA release-wide | — | **EJECUTADO — 26/26** | Run post-merge P0C `31592129261`: documentación 2/2 + Playwright 26/26, iPhone + desktop, ciclo Profesor→Alumno→Admin, build y artifacts verdes. | Mantener como gate real tras cada paquete relevante y en P32. |',
+              'AUD-006',
+          )
+          audit = replace_required(
+              audit,
+              '| **CYA-AUD-007** | Responsive / iPhone | Media | **ABIERTO** | Targets reales <44 px: Alumnado tabs 40 px, `Nuevo` 42 px, `Programar/Bono` 36 px; `Empezar otra clase` 42 px; `Crear contenido` 42 px; `Nuevo contacto` 42 px; tabs de Administración 40 px; switches de roles/misiones/notificaciones 35×21 px; botones de secciones de Datos 40 px. | Elevar área táctil efectiva a ≥44 px sin aumentar innecesariamente densidad visual. G3/P0C + revalidación por módulo. |',
+              '| **CYA-AUD-007** | Responsive / iPhone | Media | **RESUELTO — P0C** | PR #34 + merge `c253ff5135e7955c69d152038434c96cc70777f8`; `p0c-touch-targets.css` eleva el área efectiva auditada a ≥44 px manteniendo switches visualmente compactos. Run main `31592129261`: 26/26 y `touchTargetsUnder44=0` en todas las superficies iPhone auditadas. | Mantener `mobile-touch-targets.spec.ts` como gate permanente y reauditar componentes nuevos/modificados. |',
+              'AUD-007',
+          )
+          aud12 = '| **CYA-AUD-012** | Drive / QA | Media | **ABIERTO COMO GAP QA** | `integration_settings.google_drive=\'configured\'`, pero el runner de GitHub no tiene secretos server-side de Drive y por ello no puede probar `media-ticket` end-to-end. | Crear prueba segura de Drive con secrets/env de QA o entorno staging; no copiar credenciales de producción al repositorio. P31/P32. |'
+          aud13 = '| **CYA-AUD-013** | Dar clase / Evaluaciones | Alta | **ABIERTO — P0E APROBADO COMO REQUISITO** | La evaluación inicial y la revisión post-clase están montadas como gates globales y pueden superponerse a Inicio/Admin/u otra clase. La baseline inicial debe ser opcional y vivir como apartado `Evaluación` dentro del live session. | P0E: scope por clase/persona/contexto, baseline `initial` no bloqueante, `class` separada y acotada al cierre de su propia clase; eliminar aislamiento QA temporal. |'
+          audit = replace_required(audit, aud12, aud12 + '\n' + aud13, 'AUD-013 insertion')
+
+          audit = audit.replace('CYA-AUD-007 en targets táctiles del módulo.', 'P0C cerró los targets táctiles auditados; mantener el gate y revalidar globalmente en P32.')
+          audit = audit.replace('Solo CYA-AUD-007 en targets táctiles menores.', 'CYA-AUD-013 / P0E: evaluación inicial opcional/no bloqueante y evaluación acotada a la clase actual.')
+          audit = audit.replace('Mantener regresión permanente. |', 'Mantener regresión permanente; CYA-AUD-013/P0E pendiente. |', 1)
+          audit = audit.replace('P0C pendiente', 'P0C cerrado, P0E pendiente')
+
+          plan = replace_required(
+              plan,
+              '- **P0C ⏳** — targets táctiles críticos ≥44 px.\n- **P0D ✅** — `release-wide-audit` integrado como gate permanente; QA post-P0A verde 22/22.',
+              '- **P0C ✅** — targets táctiles auditados ≥44 px; gate `mobile-touch-targets` permanente; QA post-merge 26/26.\n- **P0D ✅** — `release-wide-audit` integrado como gate permanente; QA actual post-P0C verde 26/26.\n- **P0E ⏳ SIGUIENTE CORRECTIVO** — evaluación inicial opcional/no bloqueante dentro de Dar clase y eliminación de gates globales de evaluación antes de continuar P24.',
+              'plan P0 bullets',
+          )
+          plan = replace_required(
+              plan,
+              'Correctivo vivo: P0C debe elevar los targets táctiles críticos detectados por la auditoría a un área efectiva mínima de 44 px sin perder densidad visual.',
+              'P0C cerró el correctivo táctil: los targets auditados tienen un área efectiva mínima de 44 px y `mobile-touch-targets.spec.ts` lo protege en iPhone. P0E debe preservar este gate al integrar la nueva pestaña Evaluación.',
+              'plan G3',
+          )
+          plan = plan.replace(
+              '- Auditoría transversal release-wide → P0D.',
+              '- Auditoría transversal release-wide → P0D.\n- Targets táctiles auditados ≥44 px + gate móvil → P0C.\n- Evaluación inicial opcional/no bloqueante y gates de evaluación acotados a la clase actual → P0E pendiente antes de P24.',
+          )
+
+          audit_path.write_text(audit)
+          plan_path.write_text(plan)
+          PY
+
+          git diff --check
+          grep -q 'CYA-AUD-007.*RESUELTO — P0C' docs/CYA_HUB_AUDITORIA_VIVA_LANZAMIENTO.md
+          grep -q 'CYA-AUD-013.*P0E' docs/CYA_HUB_AUDITORIA_VIVA_LANZAMIENTO.md
+          grep -q 'P0C ✅' docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md
+          grep -q 'P0E ⏳ SIGUIENTE CORRECTIVO' docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md
+
+      - name: Commit synchronized docs and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/p0c-doc-sync.yml
+          git config user.name 'cya-qa-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add docs/CYA_HUB_AUDITORIA_VIVA_LANZAMIENTO.md docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md .github/workflows/p0c-doc-sync.yml
+          git commit -m 'Sync P0C closure and P0E audit state'
+          git push origin HEAD:p0c-doc-sync
