@@ -25,8 +25,11 @@ export function P0fEvaluationAdmin({client,terms,notify}:Props){
   const [contentId,setContentId]=useState<number|null>(null),[points,setPoints]=useState("");
 
   useEffect(()=>{
-    setStyleId((value)=>value??styles[0]?.id??null);setRoleId((value)=>value??roles[0]?.id??null);
-    setLevelId((value)=>value??levels[0]?.id??null);setAptitudeId((value)=>value??aptitudes[0]?.id??null);
+    const timer=window.setTimeout(()=>{
+      setStyleId((value)=>value??styles[0]?.id??null);setRoleId((value)=>value??roles[0]?.id??null);
+      setLevelId((value)=>value??levels[0]?.id??null);setAptitudeId((value)=>value??aptitudes[0]?.id??null);
+    },0);
+    return()=>window.clearTimeout(timer);
   },[aptitudes,levels,roles,styles]);
 
   const load=useCallback(async()=>{
@@ -38,7 +41,7 @@ export function P0fEvaluationAdmin({client,terms,notify}:Props){
     const error=milestoneResult.error||contentResult.error||pointsResult.error;
     if(error){notify(error.message);return;}
     setMilestones((milestoneResult.data??[]) as Milestone[]);setContents((contentResult.data??[]) as Content[]);setPointRules((pointsResult.data??[]) as PointRule[]);
-    setContentId((value)=>value??Number(contentResult.data?.[0]?.id||0)||null);
+    setContentId((value)=>value ?? (Number(contentResult.data?.[0]?.id||0) || null));
   },[client,notify]);
   useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[load]);
 

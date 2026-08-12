@@ -135,7 +135,7 @@ export function TeachingContentCard({
         {quickControls ? <div className={styles.quickControls}>{quickControls}</div> : null}
 
         <button type="button" className={styles.toggle} onClick={() => setOpen(true)}>
-          <span>Abrir contenido</span>
+          <span>Ver todo</span>
           <ChevronRight />
         </button>
       </div>
