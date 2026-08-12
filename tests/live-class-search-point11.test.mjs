@@ -8,11 +8,11 @@ const liveStart = app.indexOf('function LiveSession(');
 const liveEnd = app.indexOf('\nfunction LiveClassView(', liveStart);
 const live = app.slice(liveStart, liveEnd);
 
-test('live search is contextual and server validated', () => {
+test('live search is contextual, global across teaching types and server validated', () => {
   assert.match(live,/search_class_teaching_content/);
   assert.match(live,/p_class_id:item\.id/);
-  assert.match(live,/p_person_id:participant\.person_id/);
-  assert.match(live,/p_content_type:searchKind==='all'\?null:searchKind/);
+  assert.match(live,/p_person_id:searchPersonId/);
+  assert.match(live,/p_content_type:null/);
   assert.match(live,/window\.setTimeout\(async \(\) =>/);
   assert.doesNotMatch(live,/const unifiedLibrary=/);
   assert.doesNotMatch(live,/const matchesSearch=/);
@@ -20,22 +20,22 @@ test('live search is contextual and server validated', () => {
 
 test('all four teaching types use one quick creation area', () => {
   assert.match(live,/<option value="correction">Corrección<\/option>/);
-  assert.match(live,/<option value="explanation">Explicación<\/option>/);
+  assert.match(live,/<option value="explanation">Contenido<\/option>/);
   assert.match(live,/<option value="exercise">Ejercicio<\/option>/);
   assert.match(live,/<option value="sequence">Secuencia<\/option>/);
   assert.equal((live.match(/create_class_correction/g) ?? []).length,1);
   assert.doesNotMatch(live,/<summary><Plus\/> Nueva corrección<\/summary>/);
 });
 
-test('assigned content gets type-specific quick actions without duplicate assignment', () => {
-  assert.match(live,/Ha reaparecido/);
-  assert.match(live,/>Mejorado<\/button>/);
-  assert.match(live,/>Corregir<\/button>/);
+test('assigned content gets current type-specific quick actions without duplicate assignment', () => {
+  assert.match(live,/type==='correction' && assignment \? <select className="p0f-status-chip"/);
   assert.match(live,/>Explicada<\/button>/);
   assert.match(live,/>Repasar<\/button>/);
   assert.match(live,/exercise_completed/);
   assert.match(live,/>Realizado<\/button>/);
   assert.match(live,/personAssignments\.find\(\(row\) => row\.content_id===result\.content_id\)/);
+  assert.doesNotMatch(live,/Ha reaparecido/);
+  assert.doesNotMatch(live,/>Mejorado<\/button>/);
 });
 
 test('search RPC validates staff, class participant and exact dance context', () => {
