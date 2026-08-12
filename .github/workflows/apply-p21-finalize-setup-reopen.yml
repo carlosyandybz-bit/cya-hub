@@ -116,6 +116,17 @@ jobs:
           echo "diagnostic_failed=$failed"
           exit 0
 
+      - name: Diagnose numeric subtest
+        if: failure()
+        run: |
+          set +e
+          node --test --test-reporter=tap tests/numeric-inputs.test.mjs > /tmp/numeric.tap 2>&1
+          cat /tmp/numeric.tap
+          grep '^not ok ' /tmp/numeric.tap | while IFS= read -r line; do
+            echo "::error file=tests/numeric-inputs.test.mjs::$line"
+          done
+          exit 0
+
       - name: Lint application
         run: npm run lint
 
