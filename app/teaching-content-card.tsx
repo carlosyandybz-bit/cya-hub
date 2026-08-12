@@ -46,6 +46,8 @@ type Props = {
   className?: string;
   defaultOpen?: boolean;
   emptyText?: string;
+  liveCompact?: boolean;
+  changeMarker?: string | null;
 };
 
 function placeholderLabel(kindLabel: string) {
@@ -70,6 +72,8 @@ export function TeachingContentCard({
   className = "",
   defaultOpen = false,
   emptyText = "No hay información adicional guardada todavía.",
+  liveCompact = false,
+  changeMarker = null,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
   const cover = media.find((item) => item.is_cover) ?? media.find((item) => item.media_type === "image") ?? media[0] ?? null;
@@ -103,7 +107,7 @@ export function TeachingContentCard({
 
   const toneClass = kindTone === "correction" ? styles.correction : kindTone === "explanation" ? styles.explanation : kindTone === "exercise" ? styles.exercise : kindTone === "sequence" ? styles.sequence : "";
 
-  return <article className={`${styles.card} ${toneClass} ${className}`.trim()}>
+  return <article className={`${styles.card} ${toneClass} ${liveCompact ? styles.liveCompact : ""} ${className}`.trim()}>
     <div className={styles.collapsedRow}>
       <button type="button" className={styles.visualButton} onClick={() => setOpen(true)} aria-label={`Abrir ${title}`}>
         <div className={styles.visualFrame}>
@@ -122,22 +126,33 @@ export function TeachingContentCard({
       <div className={styles.collapsedInfo}>
         <div className={styles.head}>
           <button type="button" className={styles.mainButton} onClick={() => setOpen(true)}>
-            <span className={styles.kind}>{kindLabel}</span>
-            <strong>{title}</strong>
-            {subtitle ? <small>{subtitle}</small> : null}
+            {liveCompact ? <>
+              <strong>{title}</strong>
+              <span className={styles.kind}>{kindLabel}</span>
+              {subtitle ? <small>{subtitle}</small> : null}
+            </> : <>
+              <span className={styles.kind}>{kindLabel}</span>
+              <strong>{title}</strong>
+              {subtitle ? <small>{subtitle}</small> : null}
+            </>}
           </button>
           <div className={styles.side}>
-            {statusLabel ? <span className={`${styles.status} ${statusTone === "success" ? styles.success : statusTone === "warning" ? styles.warning : ""}`}>{statusLabel}</span> : null}
-            {actions ? <div className={styles.actions}>{actions}</div> : null}
+            {liveCompact ? <>
+              {changeMarker ? <span className={styles.changeMarker}>{changeMarker}</span> : null}
+              <button type="button" className={styles.compactOpen} onClick={() => setOpen(true)}>Ver todo <ChevronRight /></button>
+            </> : <>
+              {statusLabel ? <span className={`${styles.status} ${statusTone === "success" ? styles.success : statusTone === "warning" ? styles.warning : ""}`}>{statusLabel}</span> : null}
+              {actions ? <div className={styles.actions}>{actions}</div> : null}
+            </>}
           </div>
         </div>
 
         {quickControls ? <div className={styles.quickControls}>{quickControls}</div> : null}
 
-        <button type="button" className={styles.toggle} onClick={() => setOpen(true)}>
+        {!liveCompact ? <button type="button" className={styles.toggle} onClick={() => setOpen(true)}>
           <span>Abrir contenido</span>
           <ChevronRight />
-        </button>
+        </button> : null}
       </div>
     </div>
 
@@ -150,6 +165,7 @@ export function TeachingContentCard({
             {subtitle && !metadata.length ? <p>{subtitle}</p> : null}
           </div>
           <div className={styles.detailHeaderActions}>
+            {changeMarker ? <span className={styles.changeMarker}>{changeMarker}</span> : null}
             {statusLabel ? <span className={`${styles.status} ${statusTone === "success" ? styles.success : statusTone === "warning" ? styles.warning : ""}`}>{statusLabel}</span> : null}
             <button type="button" className={styles.closeButton} onClick={() => setOpen(false)} aria-label="Cerrar contenido"><X /></button>
           </div>
