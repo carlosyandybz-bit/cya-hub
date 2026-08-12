@@ -19,9 +19,10 @@ test('P0G crea corrección con F/I/observación antes de añadir',()=>{
 
 test('P0G no muestra Medir u Observación como segunda tarea en la tarjeta contraída',()=>{
   assert.match(app,/renderCorrectionSummary/);
-  assert.match(app,/children=\{<div className="p0g-detail-controls"/);
+  assert.match(app,/detailControls=\{<div className="p0g-detail-controls"/);
   assert.doesNotMatch(card,/Ver todo/);
   assert.doesNotMatch(card,/visualPlaceholder/);
+  assert.match(card,/detailControls\?: ReactNode/);
   assert.match(css,/min-height:54px/);
   assert.doesNotMatch(css,/grid-template-columns:118px/);
   assert.doesNotMatch(css,/grid-template-columns:138px/);
