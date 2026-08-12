@@ -34,11 +34,18 @@ test("P24 greeting follows Madrid morning afternoon and night boundaries",()=>{
   expect(greetingForTimestamp(Date.parse("2026-08-12T20:30:00Z"),"Europe/Madrid",boundaries)).toBe("Buenas noches");
 });
 
-test("P24 teacher home renders contextual day summary",async({page})=>{
+test("P24 teacher home renders contextual day summary and keeps the quote after reload",async({page})=>{
   await login(page,"teacher");
   await expect(page.locator("h1")).toContainText(/Buenos días|Buenas tardes|Buenas noches/);
   await expect(page.getByLabel("Resumen del día")).toBeVisible();
   await expect(page.getByRole("heading",{name:/Agenda del día/})).toBeVisible();
+  const quote=page.locator(".daily-quote");
+  await expect(quote).toBeVisible();
+  const first=(await quote.innerText()).trim();
+  expect(first.length).toBeGreaterThan(0);
+  await page.reload({waitUntil:"domcontentloaded"});
+  await expect(page.getByLabel("Resumen del día")).toBeVisible({timeout:20_000});
+  await expect(page.locator(".daily-quote")).toHaveText(first);
 });
 
 test("P24 admin exposes daily quote management",async({page})=>{
