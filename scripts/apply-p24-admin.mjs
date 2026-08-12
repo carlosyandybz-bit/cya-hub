@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+// Rerun marker: apply against latest P24 head.
 const path='app/admin-view.tsx';
 let source=fs.readFileSync(path,'utf8');
 const importMarker='import { P0fEvaluationAdmin } from "./p0f-evaluation-admin";';
