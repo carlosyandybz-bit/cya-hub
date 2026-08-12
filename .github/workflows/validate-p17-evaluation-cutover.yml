@@ -5,14 +5,19 @@ on:
     paths:
       - "app/evaluation-**"
       - "app/context-evaluation-panel*"
+      - "app/p0f-evaluation-admin.tsx"
       - "app/cya-app.tsx"
       - "app/student-detail.tsx"
       - "app/page.tsx"
       - "app/layout.tsx"
       - "supabase/v43-evaluation-final-cutover.sql"
       - "supabase/v53_p0e_optional_evaluation_baseline.sql"
+      - "db/migrations/v54_p0f_live_class_milestones.sql"
+      - "db/migrations/v55_p0f_context_evaluation_hitos.sql"
+      - "db/migrations/v56_p0f_milestone_admin_contract.sql"
       - "tests/p17-evaluation-cutover.test.mjs"
       - "tests/p0e-optional-evaluation.test.mjs"
+      - "tests/p0f-milestone-admin-contract.test.mjs"
       - ".github/workflows/validate-p17-evaluation-cutover.yml"
   workflow_dispatch:
 
@@ -30,9 +35,9 @@ jobs:
           node-version: 22.13.0
           cache: npm
       - run: npm ci
-      - name: P17/P0E regression tests
-        run: node --test tests/p17-evaluation-cutover.test.mjs tests/p0e-optional-evaluation.test.mjs
+      - name: P17/P0E/P0F regression tests
+        run: node --test tests/p17-evaluation-cutover.test.mjs tests/p0e-optional-evaluation.test.mjs tests/p0f-milestone-admin-contract.test.mjs
       - name: Lint evaluation surfaces
-        run: npx eslint app/context-evaluation-panel.tsx app/evaluation-post-class.tsx app/page.tsx app/cya-app.tsx app/student-detail.tsx
+        run: npx eslint app/context-evaluation-panel.tsx app/p0f-evaluation-admin.tsx app/evaluation-post-class.tsx app/page.tsx app/cya-app.tsx app/student-detail.tsx
       - name: Build Next.js application
         run: npm run build
