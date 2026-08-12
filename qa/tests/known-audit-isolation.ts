@@ -28,3 +28,7 @@ export async function isolateGlobalEvaluationGatesForUnrelatedQa(page: Page) {
     else install();
   });
 }
+
+// Compatibility name used by P0C tests created before the post-class global gate was discovered.
+// It deliberately points to the combined isolation and must disappear together with this file in P0E.
+export const isolateInitialEvaluationGateForUnrelatedQa = isolateGlobalEvaluationGatesForUnrelatedQa;
