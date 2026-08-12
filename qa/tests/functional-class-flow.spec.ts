@@ -198,6 +198,9 @@ test.describe("CYA Hub functional class lifecycle", () => {
 
     await resetBrowserSession(page);
     await login(page, "admin");
+    const adminEntry = page.getByRole("button", { name: /Administración/ });
+    await expect(adminEntry).toBeVisible({ timeout: 20_000 });
+    await adminEntry.click();
     await expect(page.getByRole("heading", { name: "Estado de CYA Hub" })).toBeVisible({ timeout: 20_000 });
     await page.getByRole("button", { name: /Equipo y roles/ }).click();
     await expect(page.getByText("QA · Profesor", { exact: true })).toBeVisible();
