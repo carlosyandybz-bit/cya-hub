@@ -7,10 +7,11 @@ const cya=fs.readFileSync('app/cya-app.tsx','utf8');
 const panel=fs.readFileSync('app/context-evaluation-panel.tsx','utf8');
 const sql=fs.readFileSync('supabase/v53_p0e_optional_evaluation_baseline.sql','utf8');
 
-test('evaluation is contextual and non-global',()=>{
+test('evaluation is contextual, student-owned and non-global',()=>{
   assert.doesNotMatch(page,/Evaluation.*Gate/);
   assert.match(cya,/liveTab==='evaluation'/);
-  assert.match(cya,/Revisar evaluación de esta clase/);
+  assert.match(cya,/La evaluación es siempre la misma evaluación del alumno/);
+  assert.match(cya,/nunca bloquea el cierre de esta clase/);
 });
 
 test('baseline is derived and not a mandatory initial kind',()=>{
