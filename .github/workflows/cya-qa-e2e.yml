@@ -54,6 +54,7 @@ jobs:
             "${CYA_QA_BOOTSTRAP_URL}")"
 
           jq -e --arg run_id "${GITHUB_RUN_ID}" '.ok == true and .run_id == $run_id' <<<"${bootstrap_json}" >/dev/null
+          jq -e '.fixtures.studentName and .fixtures.projects["iphone-large-chromium"].classId and .fixtures.projects["desktop-chromium"].classId' <<<"${bootstrap_json}" >/dev/null
 
           for role in teacher student admin; do
             upper_role="$(printf '%s' "${role}" | tr '[:lower:]' '[:upper:]')"
@@ -63,6 +64,9 @@ jobs:
             printf 'QA_%s_EMAIL=%s\n' "${upper_role}" "${email}" >> "${GITHUB_ENV}"
             printf 'QA_%s_PASSWORD=%s\n' "${upper_role}" "${password}" >> "${GITHUB_ENV}"
           done
+
+          printf 'QA_FIXTURES_JSON=%s\n' "$(jq -c '.fixtures' <<<"${bootstrap_json}")" >> "${GITHUB_ENV}"
+          printf 'QA_RUN_ID=%s\n' "${GITHUB_RUN_ID}" >> "${GITHUB_ENV}"
 
       - name: Install application dependencies
         run: npm ci
