@@ -7,6 +7,7 @@ type BrowserTelemetry = {
   pageErrors: string[];
   failedRequests: Array<{ url: string; error: string }>;
   serverErrors: Array<{ url: string; status: number }>;
+  dependencyWarnings: Array<{ url: string; status: number; dependency: string }>;
 };
 
 type SurfaceAudit = {
@@ -17,6 +18,7 @@ type SurfaceAudit = {
   documentWidth: number;
   horizontalOverflowPx: number;
   headings: string[];
+  primaryNavLabels: string[];
   interactiveCount: number;
   undersizedTouchTargets: Array<{ tag: string; label: string; width: number; height: number }>;
   unlabeledButtons: Array<{ tag: string; html: string }>;
@@ -32,7 +34,7 @@ function credentialsFor(role: QaRole) {
 }
 
 function startTelemetry(page: Page) {
-  const telemetry: BrowserTelemetry = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [] };
+  const telemetry: BrowserTelemetry = { consoleErrors: [], pageErrors: [], failedRequests: [], serverErrors: [], dependencyWarnings: [] };
 
   page.on("console", (message) => {
     if (message.type() === "error") telemetry.consoleErrors.push(message.text());
@@ -43,7 +45,12 @@ function startTelemetry(page: Page) {
     if (!/ERR_ABORTED|NS_BINDING_ABORTED/i.test(error)) telemetry.failedRequests.push({ url: request.url(), error });
   });
   page.on("response", (response) => {
-    if (response.status() >= 500) telemetry.serverErrors.push({ url: response.url(), status: response.status() });
+    if (response.status() < 500) return;
+    if (response.status() === 503 && response.url().includes("/api/google-drive/media-ticket")) {
+      telemetry.dependencyWarnings.push({ url: response.url(), status: response.status(), dependency: "google-drive-server-env" });
+      return;
+    }
+    telemetry.serverErrors.push({ url: response.url(), status: response.status() });
   });
 
   return telemetry;
@@ -98,11 +105,16 @@ async function auditSurface(page: Page, testInfo: TestInfo, surface: string, tel
       .filter((element) => !labelFor(element))
       .map((element) => ({ tag: element.tagName.toLowerCase(), html: (element as HTMLElement).outerHTML.slice(0, 300) }))
       .slice(0, 50);
+    const primaryNavLabels = Array.from(document.querySelectorAll(".mobile-nav button, .sidebar nav button"))
+      .filter(visible)
+      .map(labelFor)
+      .filter(Boolean);
 
     return {
       documentWidth: root.scrollWidth,
       clientWidth: root.clientWidth,
       headings: Array.from(document.querySelectorAll("h1,h2,h3")).filter(visible).map((heading) => (heading as HTMLElement).innerText.replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 50),
+      primaryNavLabels,
       interactiveCount: interactives.length,
       undersized,
       unlabeledButtons,
@@ -117,6 +129,7 @@ async function auditSurface(page: Page, testInfo: TestInfo, surface: string, tel
     documentWidth: data.documentWidth,
     horizontalOverflowPx: Math.max(0, data.documentWidth - data.clientWidth),
     headings: data.headings.map(cleanLabel),
+    primaryNavLabels: data.primaryNavLabels.map(cleanLabel),
     interactiveCount: data.interactiveCount,
     undersizedTouchTargets: viewport && viewport.width <= 720 ? data.undersized : [],
     unlabeledButtons: data.unlabeledButtons,
@@ -125,8 +138,23 @@ async function auditSurface(page: Page, testInfo: TestInfo, surface: string, tel
       pageErrors: [...telemetry.pageErrors],
       failedRequests: [...telemetry.failedRequests],
       serverErrors: [...telemetry.serverErrors],
+      dependencyWarnings: [...telemetry.dependencyWarnings],
     },
   };
+
+  console.log("[CYA_AUDIT]", JSON.stringify({
+    surface: observation.surface,
+    viewport: observation.viewport,
+    overflowPx: observation.horizontalOverflowPx,
+    primaryNav: observation.primaryNavLabels,
+    touchTargetsUnder44: observation.undersizedTouchTargets.length,
+    unlabeledButtons: observation.unlabeledButtons.length,
+    consoleErrors: observation.telemetry.consoleErrors.length,
+    pageErrors: observation.telemetry.pageErrors.length,
+    failedRequests: observation.telemetry.failedRequests.length,
+    serverErrors: observation.telemetry.serverErrors.length,
+    dependencyWarnings: observation.telemetry.dependencyWarnings,
+  }));
 
   await testInfo.attach(`audit-${surface.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-screen`, {
     body: await page.screenshot({ fullPage: true }),
@@ -138,7 +166,7 @@ async function auditSurface(page: Page, testInfo: TestInfo, surface: string, tel
   });
 
   expect.soft(observation.telemetry.pageErrors, `${surface}: uncaught page errors`).toEqual([]);
-  expect.soft(observation.telemetry.serverErrors, `${surface}: HTTP 5xx responses`).toEqual([]);
+  expect.soft(observation.telemetry.serverErrors, `${surface}: unexpected HTTP 5xx responses`).toEqual([]);
   expect.soft(observation.telemetry.failedRequests, `${surface}: failed network requests`).toEqual([]);
   expect.soft(observation.horizontalOverflowPx, `${surface}: document-level horizontal overflow`).toBeLessThanOrEqual(4);
 
@@ -146,6 +174,7 @@ async function auditSurface(page: Page, testInfo: TestInfo, surface: string, tel
   telemetry.pageErrors.length = 0;
   telemetry.failedRequests.length = 0;
   telemetry.serverErrors.length = 0;
+  telemetry.dependencyWarnings.length = 0;
 
   return observation;
 }
@@ -157,17 +186,35 @@ async function clickPrimaryNav(page: Page, label: string) {
 }
 
 test.describe("CYA Hub release-wide audit", () => {
-  test.describe.configure({ mode: "serial", retries: 0 });
+  test.describe.configure({ retries: 0 });
 
   test("teacher core surfaces have no critical browser or viewport failure", async ({ page }, testInfo) => {
     const telemetry = startTelemetry(page);
     await login(page, "teacher");
 
     await auditSurface(page, testInfo, "teacher-inicio", telemetry);
-    for (const label of ["Alumnado", "Dar clase", "Enseñanza", "Marketing", "Inicio"]) {
-      await clickPrimaryNav(page, label);
-      await auditSurface(page, testInfo, `teacher-${label}`, telemetry);
+
+    await clickPrimaryNav(page, "Alumnado");
+    await auditSurface(page, testInfo, "teacher-Alumnado", telemetry);
+
+    await clickPrimaryNav(page, "Dar clase");
+    const liveCenter = await auditSurface(page, testInfo, "teacher-Dar clase", telemetry);
+    if (liveCenter.viewport && liveCenter.viewport.width <= 720) {
+      expect.soft(liveCenter.primaryNavLabels, "Dar clase center should preserve primary mobile navigation before a class starts")
+        .toEqual(expect.arrayContaining(["Inicio", "Alumnado", "Dar clase", "Enseñanza", "Marketing"]));
     }
+    const exitLive = page.getByRole("button", { name: "Salir de Dar clase" });
+    if (await exitLive.isVisible().catch(() => false)) await exitLive.click();
+    else await page.getByRole("button", { name: "Volver" }).click();
+
+    await clickPrimaryNav(page, "Enseñanza");
+    await auditSurface(page, testInfo, "teacher-Enseñanza", telemetry);
+
+    await clickPrimaryNav(page, "Marketing");
+    await auditSurface(page, testInfo, "teacher-Marketing", telemetry);
+
+    await clickPrimaryNav(page, "Inicio");
+    await auditSurface(page, testInfo, "teacher-Inicio-final", telemetry);
   });
 
   test("student portal has no critical browser or viewport failure", async ({ page }, testInfo) => {
