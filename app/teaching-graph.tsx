@@ -15,7 +15,7 @@ import {
   type Node,
   type NodeProps,
 } from "@xyflow/react";
-import { ArrowLeft, Crosshair, GitBranch, RotateCcw, Search, X } from "lucide-react";
+import { ArrowLeft, Crosshair, GitBranch, Route, RotateCcw, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { SecureDriveAsset } from "./drive-media";
 import type { TeachingCardMedia } from "./teaching-content-card";
@@ -29,6 +29,7 @@ type GraphContent = {
   correction_guidance: string | null;
   completion_status: string;
   publication_status: string;
+  requires_partner?: boolean;
   teaching_content_styles: TaxonomyLink[];
   teaching_content_roles: TaxonomyLink[];
   teaching_content_levels: TaxonomyLink[];
@@ -36,18 +37,19 @@ type GraphContent = {
 };
 
 type GraphRelation = { id: number; source_content_id: number; target_content_id: number; relation_type: string; position: number | null };
-type Term = { id: number; label: string; taxonomy: string; sort_order: number };
-type GraphNodeData = { content: GraphContent; level: string; relationCount: number; selected: boolean };
+type Term = { id: number; term_key?: string; label: string; taxonomy: string; sort_order: number };
+type GraphNodeData = { content: GraphContent; level: string; relationCount: number; selected: boolean; inRoute: boolean };
 
 const kindLabels: Record<string, string> = { correction: "Corrección", explanation: "Explicación", exercise: "Ejercicio", sequence: "Secuencia" };
 const relationLabels: Record<string, string> = { prerequisite: "Necesita antes", counterpart: "Homóloga", exercise_explanation: "Trabaja explicación", exercise_correction: "Trabaja corrección", sequence_item: "Paso", related: "Relacionada" };
+const routeRelationTypes = new Set(["prerequisite", "counterpart", "exercise_explanation", "exercise_correction", "sequence_item"]);
 
 function TeachingNode({ data }: NodeProps<Node<GraphNodeData>>) {
-  return <article className={`flow-node kind-${data.content.content_type} ${data.selected ? "selected" : ""}`}>
+  return <article className={`flow-node kind-${data.content.content_type} ${data.selected ? "selected" : ""} ${data.inRoute ? "in-route" : ""}`}>
     <Handle type="target" position={Position.Left} />
     <span>{kindLabels[data.content.content_type] ?? data.content.content_type}</span>
     <strong>{data.content.title}</strong>
-    <small>{data.level} · {data.relationCount} conexiones</small>
+    <small>{data.level} · {data.relationCount} conexiones{data.content.requires_partner ? " · necesita pareja" : ""}</small>
     <i>{data.content.completion_status === "complete" ? "Completa" : "Incompleta"}</i>
     <Handle type="source" position={Position.Right} />
   </article>;
@@ -56,9 +58,10 @@ function TeachingNode({ data }: NodeProps<Node<GraphNodeData>>) {
 function GraphCanvas({ contents, relations, terms }: { contents: GraphContent[]; relations: GraphRelation[]; terms: Term[] }) {
   const flow = useReactFlow();
   const [styleId, setStyleId] = useState(""), [roleId, setRoleId] = useState(""), [levelId, setLevelId] = useState(""), [kind, setKind] = useState(""), [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState<number | null>(null), [history, setHistory] = useState<number[]>([]);
-  const styles = terms.filter((term) => term.taxonomy === "dance_style"), roles = terms.filter((term) => term.taxonomy === "dance_role"), levels = terms.filter((term) => term.taxonomy === "dance_level").sort((a, b) => a.sort_order - b.sort_order);
+  const [selectedId, setSelectedId] = useState<number | null>(null), [history, setHistory] = useState<number[]>([]), [routeMode, setRouteMode] = useState(false);
+  const styles = terms.filter((term) => term.taxonomy === "dance_style").sort((a,b) => a.sort_order-b.sort_order), roles = terms.filter((term) => term.taxonomy === "dance_role").sort((a,b) => a.sort_order-b.sort_order), levels = terms.filter((term) => term.taxonomy === "dance_level").sort((a, b) => a.sort_order - b.sort_order);
   const termMap = new Map(terms.map((term) => [term.id, term]));
+  const treePresets = styles.flatMap((style) => roles.map((role) => ({ key: `${style.id}-${role.id}`, style, role })));
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es");
@@ -70,10 +73,27 @@ function GraphCanvas({ contents, relations, terms }: { contents: GraphContent[];
       .filter((content) => !normalized || [content.title, content.description, content.correction_guidance].filter(Boolean).some((value) => String(value).toLocaleLowerCase("es").includes(normalized)));
   }, [contents, styleId, roleId, levelId, kind, query]);
 
-  const visibleIds = new Set(filtered.map((content) => content.id));
-  const visibleRelations = relations.filter((relation) => visibleIds.has(relation.source_content_id) && visibleIds.has(relation.target_content_id));
+  const baseVisibleIds = useMemo(() => new Set(filtered.map((content) => content.id)), [filtered]);
+  const routeIds = useMemo(() => {
+    if (!routeMode || !selectedId || !baseVisibleIds.has(selectedId)) return null;
+    const visited = new Set<number>([selectedId]);
+    const queue = [selectedId];
+    while (queue.length) {
+      const current = queue.shift()!;
+      relations.forEach((relation) => {
+        if (!routeRelationTypes.has(relation.relation_type)) return;
+        const neighbor = relation.source_content_id === current ? relation.target_content_id : relation.target_content_id === current ? relation.source_content_id : null;
+        if (neighbor && baseVisibleIds.has(neighbor) && !visited.has(neighbor)) { visited.add(neighbor); queue.push(neighbor); }
+      });
+    }
+    return visited;
+  }, [routeMode, selectedId, baseVisibleIds, relations]);
+
+  const displayed = routeIds ? filtered.filter((content) => routeIds.has(content.id)) : filtered;
+  const visibleIds = new Set(displayed.map((content) => content.id));
+  const visibleRelations = relations.filter((relation) => visibleIds.has(relation.source_content_id) && visibleIds.has(relation.target_content_id) && (!routeIds || routeRelationTypes.has(relation.relation_type)));
   const grouped = new Map<number, GraphContent[]>();
-  filtered.forEach((content) => {
+  displayed.forEach((content) => {
     const firstLevel = content.teaching_content_levels.map((item) => item.level_term_id).filter((value): value is number => Boolean(value)).sort((a, b) => (termMap.get(a)?.sort_order ?? 999) - (termMap.get(b)?.sort_order ?? 999))[0] ?? 0;
     grouped.set(firstLevel, [...(grouped.get(firstLevel) ?? []), content]);
   });
@@ -88,6 +108,7 @@ function GraphCanvas({ contents, relations, terms }: { contents: GraphContent[];
       level: termMap.get(columnId)?.label ?? "Varios niveles",
       relationCount: relations.filter((relation) => relation.source_content_id === content.id || relation.target_content_id === content.id).length,
       selected: selectedId === content.id,
+      inRoute: Boolean(routeIds?.has(content.id)),
     },
   })));
 
@@ -101,7 +122,7 @@ function GraphCanvas({ contents, relations, terms }: { contents: GraphContent[];
       type: "smoothstep",
       animated: relation.relation_type === "sequence_item",
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
-      className: `flow-edge relation-${relation.relation_type}`,
+      className: `flow-edge relation-${relation.relation_type} ${routeIds ? "route-edge" : ""}`,
     };
   });
 
@@ -122,16 +143,26 @@ function GraphCanvas({ contents, relations, terms }: { contents: GraphContent[];
     window.setTimeout(() => flow.fitView({ nodes: [{ id: String(previous) }], duration: 420, padding: 0.8, maxZoom: 1.35 }), 0);
   }
 
+  function applyTree(style: Term, role: Term) {
+    setStyleId(String(style.id)); setRoleId(String(role.id)); setSelectedId(null); setHistory([]); setRouteMode(false);
+  }
+
+  function resetMap() {
+    setStyleId(""); setRoleId(""); setLevelId(""); setKind(""); setQuery(""); setSelectedId(null); setHistory([]); setRouteMode(false);
+    window.setTimeout(() => flow.fitView({ duration: 350, padding: 0.18, maxZoom: 1 }), 0);
+  }
+
   useEffect(() => {
     const timer = window.setTimeout(() => flow.fitView({ duration: 360, padding: 0.18, maxZoom: 1 }), 30);
     return () => clearTimeout(timer);
-  }, [styleId, roleId, levelId, kind, query, flow]);
+  }, [styleId, roleId, levelId, kind, query, routeMode, flow]);
 
   return <section className="teaching-graph-shell">
+    <div className="graph-tree-presets" aria-label="Árboles por estilo y rol">{treePresets.map(({ key, style, role }) => <button key={key} className={styleId===String(style.id)&&roleId===String(role.id)?"active":""} onClick={() => applyTree(style,role)}><GitBranch /><span>{style.label}</span><strong>{role.label}</strong></button>)}</div>
     <div className="graph-filterbar">
       <label className="graph-search"><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar nodo…" /></label>
-      <select value={styleId} onChange={(event) => setStyleId(event.target.value)} aria-label="Filtrar estilo"><option value="">Todos los estilos</option>{styles.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select>
-      <select value={roleId} onChange={(event) => setRoleId(event.target.value)} aria-label="Filtrar rol"><option value="">Todos los roles</option>{roles.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select>
+      <select value={styleId} onChange={(event) => { setStyleId(event.target.value); setRouteMode(false); }} aria-label="Filtrar estilo"><option value="">Todos los estilos</option>{styles.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select>
+      <select value={roleId} onChange={(event) => { setRoleId(event.target.value); setRouteMode(false); }} aria-label="Filtrar rol"><option value="">Todos los roles</option>{roles.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select>
       <select value={levelId} onChange={(event) => setLevelId(event.target.value)} aria-label="Filtrar nivel"><option value="">Todos los niveles</option>{levels.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select>
       <select value={kind} onChange={(event) => setKind(event.target.value)} aria-label="Filtrar tipo"><option value="">Todos los tipos</option><option value="explanation">Explicaciones</option><option value="sequence">Secuencias</option><option value="exercise">Ejercicios</option><option value="correction">Correcciones</option></select>
     </div>
@@ -158,10 +189,10 @@ function GraphCanvas({ contents, relations, terms }: { contents: GraphContent[];
         <Background gap={24} size={1} color="#ddd7ed" />
         <Controls showInteractive={false} position="bottom-left" />
         <MiniMap pannable zoomable position="bottom-right" nodeColor={(node) => ({ explanation: "#6d4aff", correction: "#d35f78", exercise: "#19865a", sequence: "#3f78c6" }[(node.data as GraphNodeData).content.content_type] ?? "#8d85a1")} />
-        <Panel position="top-right" className="graph-actions"><button onClick={() => flow.fitView({ duration: 350, padding: 0.18, maxZoom: 1 })}><RotateCcw /> Resetear</button>{selected ? <button onClick={() => flow.fitView({ nodes: [{ id: String(selected.id) }], duration: 350, padding: 0.8, maxZoom: 1.35 })}><Crosshair /> Centrar</button> : null}{history.length ? <button onClick={goBack}><ArrowLeft /> Anterior</button> : null}</Panel>
-      </ReactFlow> : <div className="graph-empty"><GitBranch /><strong>No hay nodos con estos filtros</strong><span>Amplía la búsqueda o crea contenido relacionado.</span></div>}
+        <Panel position="top-right" className="graph-actions"><button onClick={resetMap}><RotateCcw /> Resetear</button>{selected ? <><button className={routeMode?"active":""} onClick={() => setRouteMode((value) => !value)}><Route /> {routeMode?"Mapa completo":"Ruta"}</button><button onClick={() => flow.fitView({ nodes: [{ id: String(selected.id) }], duration: 350, padding: 0.8, maxZoom: 1.35 })}><Crosshair /> Centrar</button></> : null}{history.length ? <button onClick={goBack}><ArrowLeft /> Anterior</button> : null}</Panel>
+      </ReactFlow> : <div className="graph-empty"><GitBranch /><strong>{routeMode ? "No hay una ruta conectada con estos filtros" : "No hay nodos con estos filtros"}</strong><span>Amplía la búsqueda o crea contenido relacionado.</span></div>}
     </div>
-    {selected ? <aside className="graph-detail"><header><div><span>{kindLabels[selected.content_type] ?? selected.content_type}</span><h3>{selected.title}</h3></div><button className="icon-btn" onClick={() => setSelectedId(null)} aria-label="Cerrar detalle"><X /></button></header>{selected.description ? <p>{selected.description}</p> : null}{selected.correction_guidance ? <p><strong>Cómo trabajarlo:</strong> {selected.correction_guidance}</p> : null}<div className="graph-related"><strong>Relaciones</strong>{selectedRelations.length ? selectedRelations.map((relation) => { const otherId = relation.source_content_id === selected.id ? relation.target_content_id : relation.source_content_id; const other = contents.find((content) => content.id === otherId); return other ? <button key={relation.id} onClick={() => selectNode(other.id)}><span>{relationLabels[relation.relation_type] ?? relation.relation_type}</span><strong>{other.title}</strong><Crosshair /></button> : null; }) : <small>Sin relaciones registradas.</small>}</div>{selected.teaching_content_media.length ? <div className="graph-media"><strong>Multimedia</strong><div className="graph-media-grid">{selected.teaching_content_media.filter((media) => media.display_in_resources !== false).map((media) => <article key={media.id ?? media.external_file_id}><div className="graph-media-frame"><SecureDriveAsset fileId={media.external_file_id} mediaType={media.media_type} title={media.title} thumbnailFileId={media.thumbnail_external_file_id} controls={media.media_type === "video"} /></div><span>{media.title || (media.media_type === "video" ? "Vídeo" : "Imagen")}</span></article>)}</div></div> : null}</aside> : null}
+    {selected ? <aside className="graph-detail"><header><div><span>{kindLabels[selected.content_type] ?? selected.content_type}</span><h3>{selected.title}</h3></div><button className="icon-btn" onClick={() => { setSelectedId(null); setRouteMode(false); }} aria-label="Cerrar detalle"><X /></button></header>{selected.requires_partner ? <div className="graph-partner-badge">Necesita pareja</div> : null}{selected.description ? <p>{selected.description}</p> : null}{selected.correction_guidance ? <p><strong>Cómo trabajarlo:</strong> {selected.correction_guidance}</p> : null}<div className="graph-related"><strong>Relaciones</strong>{selectedRelations.length ? selectedRelations.map((relation) => { const otherId = relation.source_content_id === selected.id ? relation.target_content_id : relation.source_content_id; const other = contents.find((content) => content.id === otherId); return other ? <button key={relation.id} onClick={() => selectNode(other.id)}><span>{relationLabels[relation.relation_type] ?? relation.relation_type}</span><strong>{other.title}</strong><Crosshair /></button> : null; }) : <small>Sin relaciones registradas.</small>}</div>{selected.teaching_content_media.length ? <div className="graph-media"><strong>Multimedia</strong><div className="graph-media-grid">{selected.teaching_content_media.filter((media) => media.display_in_resources !== false).map((media) => <article key={media.id ?? media.external_file_id}><div className="graph-media-frame"><SecureDriveAsset fileId={media.external_file_id} mediaType={media.media_type} title={media.title} thumbnailFileId={media.thumbnail_external_file_id} controls={media.media_type === "video"} /></div><span>{media.title || (media.media_type === "video" ? "Vídeo" : "Imagen")}</span></article>)}</div></div> : null}</aside> : null}
   </section>;
 }
 
