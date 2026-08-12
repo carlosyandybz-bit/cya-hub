@@ -26,6 +26,16 @@ SENTRY_ENVIRONMENT=production
 
 El runtime de captura de errores funciona aunque `SENTRY_AUTH_TOKEN` no esté configurado en Hostinger; el token se usa para integración de build/source maps.
 
-## Consulta desde CYA Hub / Supabase
+## Supabase y consulta de incidencias
 
-Supabase `CyA hub 2` mantiene un puente de solo lectura desde la API de Sentry y sincroniza organización, proyecto e incidencias no resueltas cada 15 minutos. Las credenciales de API se mantienen fuera del navegador.
+Supabase `CyA hub 2` mantiene un puente de solo lectura desde la API de Sentry y sincroniza organización, proyecto e incidencias no resueltas cada 15 minutos. Las credenciales de API se mantienen fuera del navegador mediante Edge Function Secrets y Vault.
+
+## Validación previa a producción
+
+Antes de integrar en `main` se validó en una rama aislada:
+
+- instalación reproducible con `npm ci`;
+- lint estricto de `instrumentation.ts`, `instrumentation-client.ts` y `next.config.ts`;
+- `npm test`, que ejecuta el build completo de Next.js y las pruebas de HTML renderizado.
+
+Las tres comprobaciones finalizaron correctamente. El lint global conserva un backlog previo en componentes no modificados por esta integración; se comprobó de forma separada para no atribuir esos errores existentes a Sentry.
