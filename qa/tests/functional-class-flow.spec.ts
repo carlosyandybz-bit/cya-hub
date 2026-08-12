@@ -1,5 +1,4 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
-import { isolateInitialEvaluationGateForUnrelatedQa } from "./known-audit-isolation";
 
 type QaRole = "teacher" | "student" | "admin";
 type ProjectFixture = {
@@ -128,31 +127,6 @@ async function reviewSession(page: Page, session: EvaluationSession, scaleId: nu
   }
 }
 
-async function ensureQaInitialBaseline(page: Page, classId: number) {
-  const participants = await supabaseRequest<ParticipantRow[]>(page, `class_participants?class_id=eq.${classId}&select=person_id`);
-  const personId = participants[0]?.person_id;
-  if (!personId) throw new Error(`QA class ${classId} has no participant`);
-
-  // The iPhone and desktop projects intentionally share the same isolated QA student/context.
-  // Once the first project establishes the baseline, the second must reuse it instead of
-  // trying to create a duplicate initial evaluation.
-  const existing = await supabaseRequest<SessionIdRow[]>(
-    page,
-    `evaluation_sessions?person_id=eq.${personId}&evaluation_kind=eq.initial&status=eq.completed&select=id&limit=1`,
-  );
-  if (existing.length) return;
-
-  const raw = await rpc<EvaluationSession | EvaluationSession[]>(page, "start_initial_evaluation", {
-    p_class_id: classId,
-    p_person_id: personId,
-  });
-  const session = Array.isArray(raw) ? raw[0] : raw;
-  if (!session?.id || session.status === "completed") return;
-  const scaleId = await firstEvaluationScale(page);
-  await reviewSession(page, session, scaleId);
-  await rpc(page, "complete_initial_evaluation", { p_session_id: session.id });
-}
-
 async function completeQaPostClassEvaluation(page: Page, classId: number) {
   const participants = await supabaseRequest<ParticipantRow[]>(page, `class_participants?class_id=eq.${classId}&select=person_id`);
   if (!participants.length) throw new Error(`QA class ${classId} has no participants`);
@@ -176,10 +150,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
   test.describe.configure({ retries: 0 });
 
   test("teacher closes a QA class, student receives it, and admin remains healthy", async ({ page }, testInfo) => {
-    // CYA-AUD-013/P0E is separately tracked. The global dialogs are hidden here, but this
-    // test still completes initial/post-class evaluation for its own QA class via the same RPCs.
-    // It never mutates unrelated real classes. P17 remains the dedicated evaluation UI gate.
-    await isolateInitialEvaluationGateForUnrelatedQa(page);
+    // P0E: the teacher works before any baseline exists; the post-class review may become the first valid evaluation.
     const fixtures = qaFixtures();
     const fixture = fixtures.projects[testInfo.project.name];
     if (!fixture) throw new Error(`No functional fixture for ${testInfo.project.name}`);
@@ -212,7 +183,6 @@ test.describe("CYA Hub functional class lifecycle", () => {
     if ((page.viewportSize()?.width ?? 9999) <= 720) await expect(page.locator(".mobile-nav")).toBeVisible();
     await startClassButton.click();
     await expect(page.getByText("DANDO CLASE", { exact: true })).toBeVisible({ timeout: 20_000 });
-    await ensureQaInitialBaseline(page, fixture.classId);
     if ((page.viewportSize()?.width ?? 9999) <= 720) await expect(page.locator(".mobile-nav")).toBeHidden();
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-teacher-live-start`);
 

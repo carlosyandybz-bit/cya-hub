@@ -94,7 +94,7 @@ function contextKey(personId:number,styleId:number,roleId:number,levelId:number)
   return `${personId}:${styleId}:${roleId}:${levelId}`;
 }
 
-export function EvaluationPostClassGate() {
+export function EvaluationPostClassGate({ classId, onCompleted }: { classId: number; onCompleted?: () => void | Promise<void> }) {
   const [client,setClient]=useState<SupabaseClient|null>(null);
   const [isAdmin,setIsAdmin]=useState(false);
   const [pendingClass,setPendingClass]=useState<PendingClass|null>(null);
@@ -139,6 +139,7 @@ export function EvaluationPostClassGate() {
     if (!client) return;
     const classResult=await client.from("classes")
       .select("id,style_term_id,scheduled_start_at,administrative_finished_at,class_participants(person_id,role_term_id,level_term_id)")
+      .eq("id",classId)
       .eq("status","finished")
       .not("administrative_finished_at","is",null)
       .is("pedagogy_closed_at",null)
@@ -215,7 +216,7 @@ export function EvaluationPostClassGate() {
 
     const next=rows.find(stillNeedsReview) ?? null;
     setPendingClass((current) => current?.id===next?.id ? current : next);
-  },[client,handledClassIds]);
+  },[classId,client,handledClassIds]);
 
   useEffect(() => {
     if (!client || pendingClass) return;
@@ -438,6 +439,7 @@ export function EvaluationPostClassGate() {
     setHandledClassIds((current) => current.includes(pendingClass.id) ? current : [...current,pendingClass.id]);
     setPendingClass(null);
     setBusy("");
+    await onCompleted?.();
   }
 
   const actionableProgress=progress.filter((row) => sessionFor(row)?.status!=="completed");

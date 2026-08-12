@@ -1,5 +1,4 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
-import { isolateInitialEvaluationGateForUnrelatedQa } from "./known-audit-isolation";
 
 type QaRole = "teacher" | "student" | "admin";
 
@@ -177,7 +176,6 @@ test.describe("CYA Hub release-wide audit", () => {
   test.describe.configure({ retries: 0 });
 
   test("teacher core surfaces have no critical browser or viewport failure", async ({ page }, testInfo) => {
-    await isolateInitialEvaluationGateForUnrelatedQa(page);
     const telemetry = startTelemetry(page);
     await login(page, "teacher");
     await auditSurface(page, testInfo, "teacher-inicio", telemetry);
@@ -200,7 +198,6 @@ test.describe("CYA Hub release-wide audit", () => {
   });
 
   test("all administration sections have no critical browser or viewport failure", async ({ page }, testInfo) => {
-    await isolateInitialEvaluationGateForUnrelatedQa(page);
     const telemetry = startTelemetry(page); await login(page, "admin");
     const adminEntry = page.getByRole("button", { name: /Administración/ });
     await expect(adminEntry).toBeVisible({ timeout: 20_000 }); await adminEntry.click();
