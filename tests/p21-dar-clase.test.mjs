@@ -84,7 +84,6 @@ test('v49 private trigger helper is not callable by app roles', () => {
   assert.match(migration, /revoke all on function private\.sync_class_workflow_stage_p21\(\) from public,anon,authenticated/);
 });
 
-
 test('P21.2 physically removes the hidden numeric evaluation engine from Dar clase', () => {
   const live = sliceBetween(app, 'function LiveSession(', 'function LiveClassView(');
   assert.doesNotMatch(live, /liveTab==='evaluate'/);
@@ -99,12 +98,15 @@ test('P21.2 live fallback does not globally refresh CYA every 15 seconds', () =>
   assert.match(live, /setInterval\(\(\) => void loadLive\(\),60000\)/);
 });
 
-test('P21.2 correction cards expose only one status-frequency-importance control set', () => {
+test('P21.2/P0G correction cards expose one compact glance and one editable detail control set', () => {
   const live = sliceBetween(app, 'function LiveSession(', 'function LiveClassView(');
   assert.doesNotMatch(live, /correction-detail/);
-  assert.match(live, /correction-quick/);
+  assert.doesNotMatch(live, /correction-quick/);
+  assert.match(live, /quickControls=\{renderCorrectionSummary\(assignment\)\}/);
+  assert.match(live, /statusLabel=\{correctionStateShortLabel\(assignment\.assignment_status\)\}/);
+  assert.match(live, /function renderCorrectionControls\(assignment:ContentAssignment\)/);
+  assert.doesNotMatch(live, /<summary>\+ Medir<\/summary>/);
 });
-
 
 test('P21.3 setup progressively hides known values and asks only for missing context', () => {
   const setup = sliceBetween(app, 'function ClassSetupStage(', 'function ClassPreparationStage(');
