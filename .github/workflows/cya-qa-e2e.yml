@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: cya-qa-${{ github.workflow }}-${{ github.ref }}
@@ -25,12 +26,7 @@ jobs:
       CI: "true"
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.CYA_QA_SUPABASE_URL || 'https://ldvyeyhzrepaaouzavgs.supabase.co' }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.CYA_QA_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_gTLCF5jffNzTC_mRZ21IPg_wl-70wQL' }}
-      QA_TEACHER_EMAIL: ${{ secrets.QA_TEACHER_EMAIL }}
-      QA_TEACHER_PASSWORD: ${{ secrets.QA_TEACHER_PASSWORD }}
-      QA_STUDENT_EMAIL: ${{ secrets.QA_STUDENT_EMAIL }}
-      QA_STUDENT_PASSWORD: ${{ secrets.QA_STUDENT_PASSWORD }}
-      QA_ADMIN_EMAIL: ${{ secrets.QA_ADMIN_EMAIL }}
-      QA_ADMIN_PASSWORD: ${{ secrets.QA_ADMIN_PASSWORD }}
+      CYA_QA_BOOTSTRAP_URL: https://ldvyeyhzrepaaouzavgs.supabase.co/functions/v1/cya-qa-bootstrap
 
     steps:
       - name: Checkout repository
@@ -41,6 +37,32 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+
+      - name: Bootstrap dedicated QA identities with GitHub OIDC
+        shell: bash
+        run: |
+          set -euo pipefail
+          oidc_json="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=cya-hub-qa")"
+          oidc_token="$(jq -er '.value' <<<"${oidc_json}")"
+
+          bootstrap_json="$(curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer ${oidc_token}" \
+            -H "Content-Type: application/json" \
+            "${CYA_QA_BOOTSTRAP_URL}")"
+
+          jq -e --arg run_id "${GITHUB_RUN_ID}" '.ok == true and .run_id == $run_id' <<<"${bootstrap_json}" >/dev/null
+
+          for role in teacher student admin; do
+            upper_role="$(printf '%s' "${role}" | tr '[:lower:]' '[:upper:]')"
+            email="$(jq -er ".credentials.${role}.email" <<<"${bootstrap_json}")"
+            password="$(jq -er ".credentials.${role}.password" <<<"${bootstrap_json}")"
+            echo "::add-mask::${password}"
+            printf 'QA_%s_EMAIL=%s\n' "${upper_role}" "${email}" >> "${GITHUB_ENV}"
+            printf 'QA_%s_PASSWORD=%s\n' "${upper_role}" "${password}" >> "${GITHUB_ENV}"
+          done
 
       - name: Install application dependencies
         run: npm ci
@@ -89,8 +111,8 @@ jobs:
         with:
           name: cya-browser-qa-${{ github.run_id }}
           path: |
-            playwright-report/
-            test-results/
+            qa/playwright-report/
+            qa/test-results/
             qa/app-server.log
             qa/lint.log
           if-no-files-found: warn
