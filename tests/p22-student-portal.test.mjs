@@ -7,6 +7,13 @@ const account = fs.readFileSync('app/account-pages.tsx','utf8');
 const media = fs.readFileSync('supabase/v50_p22_student_portal_media_access.sql','utf8');
 const visibility = fs.readFileSync('supabase/v38-student-training-visibility.sql','utf8');
 const evaluations = fs.readFileSync('supabase/v36b-student-portal-security-invoker.sql','utf8');
+const buildInfo = fs.readFileSync('app/api/build-info/route.ts','utf8');
+
+test('P22 exposes an explicit no-store v50-ready runtime marker', () => {
+  assert.ok(buildInfo.includes('p22-student-portal-v50-ready'));
+  assert.ok(buildInfo.includes('cache-control'));
+  assert.ok(buildInfo.includes('no-store'));
+});
 
 test('student portal keeps the complete product areas wired', () => {
   for (const copy of [
