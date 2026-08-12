@@ -9,12 +9,12 @@ const panel=fs.readFileSync('app/context-evaluation-panel.tsx','utf8');
 const student=fs.readFileSync('app/student-detail.tsx','utf8');
 const sql=fs.readFileSync('supabase/v53_p0e_optional_evaluation_baseline.sql','utf8');
 
-function sqlFunctionSlice(startName,endName){
-  const start=sql.indexOf(`create or replace function ${startName}`);
-  const end=sql.indexOf(`create or replace function ${endName}`,start+1);
-  assert.notEqual(start,-1,`${startName} must exist`);
-  assert.notEqual(end,-1,`${endName} must follow ${startName}`);
-  return sql.slice(start,end);
+function sqlFunctionBody(name){
+  const start=sql.indexOf(`create or replace function ${name}`);
+  assert.notEqual(start,-1,`${name} must exist`);
+  const end=sql.indexOf('$$;',start);
+  assert.notEqual(end,-1,`${name} must have a closing SQL body delimiter`);
+  return sql.slice(start,end+3);
 }
 
 test('P0E removes evaluation gates from the application root',()=>{
@@ -33,10 +33,7 @@ test('P0E exposes one contextual evaluation engine in class and student profile'
 });
 
 test('P0E derives baseline from first complete valid evaluation regardless kind',()=>{
-  const baselineFunction=sqlFunctionSlice(
-    'private.first_valid_evaluation_session_id(',
-    'private.initial_evaluation_is_complete(',
-  );
+  const baselineFunction=sqlFunctionBody('private.first_valid_evaluation_session_id(');
   assert.match(baselineFunction,/private\.evaluation_session_is_valid\(s\.id\)/);
   assert.match(baselineFunction,/order by s\.completed_at asc nulls last,s\.created_at asc,s\.id asc/);
   assert.doesNotMatch(baselineFunction,/evaluation_kind\s*=\s*'initial'/);
