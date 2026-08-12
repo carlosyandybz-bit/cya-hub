@@ -52,6 +52,10 @@ function placeholderLabel(kindLabel: string) {
   return kindLabel.slice(0, 2).toLocaleUpperCase("es");
 }
 
+function canonicalMetadataValue(item: TeachingCardMeta) {
+  return item.label === "Medición" && item.value === "Importancia" ? "Influencia" : item.value;
+}
+
 export function TeachingContentCard({
   kindLabel,
   title,
@@ -165,7 +169,7 @@ export function TeachingContentCard({
             className={styles.detailHeroAsset}
           /></div> : null}
 
-          {metadata.length ? <div className={styles.metaGrid}>{metadata.map((item) => <div key={`${item.label}-${item.value}`}><span>{item.label}</span><strong>{item.value}</strong></div>)}</div> : null}
+          {metadata.length ? <div className={styles.metaGrid}>{metadata.map((item) => { const value=canonicalMetadataValue(item); return <div key={`${item.label}-${value}`}><span>{item.label}</span><strong>{value}</strong></div>; })}</div> : null}
           {description ? <div className={styles.textBlock}><span>Explicación</span><p>{description}</p></div> : null}
           {correctionGuidance ? <div className={styles.textBlock}><span>Cómo se corrige</span><p>{correctionGuidance}</p></div> : null}
           {tags.length ? <div className={styles.tagBlock}><span>Etiquetas</span><div>{tags.map((tag) => <b key={tag}>{tag}</b>)}</div></div> : null}
