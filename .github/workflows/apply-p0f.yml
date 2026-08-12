@@ -35,6 +35,10 @@ jobs:
           text=text.replace('livePrefix+searchSection', 'livePrefix')
           text=text.replace("app.slice(lClose+'/ >'.length)", "app.slice(lClose+'/>; })'.length)")
           path.write_text(text)
+          admin=Path('app/p0f-evaluation-admin.tsx')
+          admin_text=admin.read_text()
+          admin_text=admin_text.replace('setContentId((value)=>value??Number(contentResult.data?.[0]?.id||0)||null);', 'setContentId((value)=>value ?? (Number(contentResult.data?.[0]?.id||0) || null));')
+          admin.write_text(admin_text)
           PY
       - run: node scripts/apply-p0f.mjs
       - run: git diff --check
