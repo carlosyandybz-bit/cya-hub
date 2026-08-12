@@ -38,13 +38,14 @@
 .p0g-create-measures{display:grid;grid-template-columns:1fr 1fr;gap:7px}.p0g-create-measures label,.p0g-create-observation label{display:grid;gap:3px;color:#696374;font-size:9.5px;font-weight:780}.p0g-create-measures select{min-height:44px;border:1px solid #ded9e7;border-radius:10px;background:#fff;padding:0 8px;font-size:11px}.p0g-create-observation{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}.p0g-create-observation textarea{grid-column:1/-1;min-height:52px;border:1px solid #ded9e7;border-radius:10px;padding:8px 9px;resize:vertical;font-size:11.5px}.p0g-create-observation select{min-height:44px;border:1px solid #ded9e7;border-radius:10px;background:#fff;padding:0 8px;font-size:11px}.p0g-create-hint{margin:0;color:#777184;font-size:9.5px;line-height:1.35}.p0g-create-hint strong{color:#4e4857}
 
 /* Enseñanza: identidad turquesa y controles compactos. */
+.main:has(.teaching-switch) .page-head .eyebrow{color:#0d7975!important}.main:has(.teaching-switch) .page-head .btn{background:var(--cya-teaching)!important;color:#fff!important}.main:has(.teaching-switch) .page-head .btn svg{color:#fff!important}
 .teaching-switch button.active{color:#0d7975!important}.teaching-switch button.active svg{color:var(--cya-teaching)!important}.teaching-kind-grid button.active{border-color:#79c8c4!important;background:var(--cya-teaching-soft)!important;color:#0c6f6b!important;box-shadow:0 0 0 2px rgba(20,158,153,.08)!important}.teaching-kind-grid button.active svg{color:var(--cya-teaching)!important}.teaching-group>.card-head{margin-bottom:8px!important}.teaching-group>.card-head h2{font-size:14px!important}.teaching-list{gap:5px!important}
 
 /* Marketing conserva plum; primarios siguen blanco sobre color. */
-.marketing-shell .btn,.marketing-view .btn{background:var(--cya-marketing);color:#fff}.btn{color:#fff}.btn svg{color:currentColor}
+.marketing-section-head .btn{background:var(--cya-marketing)!important;color:#fff!important}.marketing-section-head .btn svg{color:#fff!important}.btn{color:#fff}.btn svg{color:currentColor}
 
-/* Nada fluorescente: amarillos de aviso se normalizan a ámbar sobrio. */
-.badge.warning,.warning-badge,[class*="yellow"],[class*="fluorescent"]{background:#f7efe2!important;color:#765325!important;border-color:#dcc29b!important}
+/* Nada fluorescente: solo los avisos semánticos conocidos se llevan a ámbar sobrio. */
+.badge.warning,.warning-badge{background:#f7efe2!important;color:#765325!important;border-color:#dcc29b!important}
 
 @media(max-width:620px){
   .live-overlay .live-body{width:calc(100% - 16px)!important;padding-top:8px!important}.live-overlay .student-context{grid-template-columns:minmax(0,1fr) 44px!important}.live-overlay .p0f-content-tabs{top:53px!important}.live-overlay .live-card{padding:8px!important}.live-overlay .live-card-head h2{font-size:13.5px!important}.live-overlay .live-card-head{margin-bottom:6px!important}.p0g-create-measures{grid-template-columns:1fr 1fr}.p0g-create-observation{grid-template-columns:1fr}.p0g-create-observation textarea{grid-column:1}.p0g-create-observation select{width:100%}
