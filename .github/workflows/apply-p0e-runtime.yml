@@ -1,0 +1,193 @@
+name: Apply P0E runtime patch
+
+on:
+  push:
+    branches: [fix/p0e-evaluation-baseline]
+    paths: [.github/workflows/apply-p0e-runtime.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p0e-evaluation-baseline
+          fetch-depth: 0
+      - name: Apply contextual evaluation patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(path, old, new):
+              p=Path(path); text=p.read_text()
+              if text.count(old)!=1:
+                  raise SystemExit(f"{path}: expected one occurrence, found {text.count(old)}: {old[:80]!r}")
+              p.write_text(text.replace(old,new,1))
+
+          # Root: evaluations are no longer global overlays.
+          Path('app/page.tsx').write_text('''import CyaApp from "./cya-app";\n\nexport const dynamic = "force-dynamic";\n\nexport default function Home() {\n  return <CyaApp />;\n}\n''')
+
+          # Scope post-class review to the class explicitly being closed.
+          p=Path('app/evaluation-post-class.tsx'); text=p.read_text()
+          text=text.replace('export function EvaluationPostClassGate() {','export function EvaluationPostClassGate({ classId, onCompleted }: { classId: number; onCompleted?: () => void | Promise<void> }) {',1)
+          text=text.replace('    const classResult=await client.from("classes")\n      .select(', '    const classResult=await client.from("classes")\n      .select(',1)
+          needle='      .eq("status","finished")\n      .not("administrative_finished_at","is",null)'
+          if text.count(needle)!=1: raise SystemExit('post gate class query anchor missing')
+          text=text.replace(needle,'      .eq("id",classId)\n      .eq("status","finished")\n      .not("administrative_finished_at","is",null)',1)
+          text=text.replace('  },[client,handledClassIds]);','  },[classId,client,handledClassIds]);',1)
+          needle='    setPendingClass(null);\n    setBusy("");'
+          if text.count(needle)!=1: raise SystemExit('post finish anchor missing')
+          text=text.replace(needle,'    setPendingClass(null);\n    setBusy("");\n    await onCompleted?.();',1)
+          p.write_text(text)
+
+          # Main app: same evaluation workspace lives inside Dar clase.
+          p=Path('app/cya-app.tsx'); text=p.read_text()
+          text=text.replace('ChevronRight, CircleUserRound,\n  Dumbbell,','ChevronRight, CircleUserRound, ClipboardCheck,\n  Dumbbell,',1)
+          anchor='import { ClassSummaryContentEditor } from "./class-summary-content-editor";\n'
+          if anchor not in text: raise SystemExit('cya import anchor missing')
+          text=text.replace(anchor,anchor+'import { ContextEvaluationPanel } from "./context-evaluation-panel";\nimport { EvaluationPostClassGate } from "./evaluation-post-class";\n',1)
+          text=text.replace('useState<"work"|"context"|"notes">("work")','useState<"work"|"context"|"notes"|"evaluation">("work")',1)
+          old='<nav className="live-work-tabs"><button className={liveTab===\'work\'?\'active\':\'\'} onClick={() => setLiveTab(\'work\')}><BookOpen/> Trabajo</button><button className={liveTab===\'context\'?\'active\':\'\'} onClick={() => setLiveTab(\'context\')}><Sparkles/> Contexto</button><button className={liveTab===\'notes\'?\'active\':\'\'} onClick={() => setLiveTab(\'notes\')}><NotebookPen/> Observaciones</button></nav>'
+          new='<nav className="live-work-tabs"><button className={liveTab===\'work\'?\'active\':\'\'} onClick={() => setLiveTab(\'work\')}><BookOpen/> Trabajo</button><button className={liveTab===\'context\'?\'active\':\'\'} onClick={() => setLiveTab(\'context\')}><Sparkles/> Contexto</button><button className={liveTab===\'notes\'?\'active\':\'\'} onClick={() => setLiveTab(\'notes\')}><NotebookPen/> Observaciones</button><button className={liveTab===\'evaluation\'?\'active\':\'\'} onClick={() => setLiveTab(\'evaluation\')}><ClipboardCheck/> Evaluación</button></nav>'
+          if text.count(old)!=1: raise SystemExit('live tab nav anchor missing')
+          text=text.replace(old,new,1)
+          context_anchor="      {liveTab==='context' ? <section className=\"live-context-grid\">"
+          if text.count(context_anchor)!=1: raise SystemExit('live context anchor missing')
+          eval_block="      {liveTab==='evaluation' && db && participant ? <section className=\"live-evaluation-workspace\"><article className=\"card live-card\"><ContextEvaluationPanel client={db} personId={activePersonId} personName={student?.display_name || 'Alumno'} classId={item.id} styleTermId={item.style_term_id} roleTermId={participant.role_term_id} levelTermId={participant.level_term_id} onCompleted={loadLive} /></article></section> : null}\n"
+          text=text.replace(context_anchor,eval_block+context_anchor,1)
+
+          old_post='''function ClassPostAdministrative({ item, students, no, yes }: { item: ClassItem; students: Person[]; no: () => void; yes: () => void }) {\n  return <div className="class-workflow-page post-admin"><div className="workflow-stepbar"><span>Datos</span><span>Preparar</span><span>Dar clase</span><span className="active">Resumen</span></div><section className="card pad post-admin-card"><CheckCircle2 /><p className="eyebrow">Administración terminada</p><h1>{namesFor(item.class_participants.map((p) => p.person_id),students)}</h1><p>El saldo y el cobro ya están registrados. Puedes cerrar ahora la parte pedagógica o dejarla pendiente y seguir con otra clase.</p><h2>¿Quieres realizar el cierre de la clase y enviarle la documentación al alumno?</h2><div className="post-admin-actions"><button className="btn ghost" onClick={no}>No, terminaré después</button><button className="btn" onClick={yes}>Sí, preparar resumen <ArrowRight /></button></div></section></div>;\n}\n'''
+          new_post='''function ClassPostAdministrative({ item, students, no, yes }: { item: ClassItem; students: Person[]; no: () => void; yes: () => void }) {\n  const [reviewOpen,setReviewOpen]=useState(false);\n  return <div className="class-workflow-page post-admin"><div className="workflow-stepbar"><span>Datos</span><span>Preparar</span><span>Dar clase</span><span className="active">Resumen</span></div><section className="card pad post-admin-card"><CheckCircle2 /><p className="eyebrow">Administración terminada</p><h1>{namesFor(item.class_participants.map((p) => p.person_id),students)}</h1><p>El saldo y el cobro ya están registrados. La evaluación general es opcional. La revisión posterior, si está pendiente, pertenece solo a esta clase.</p><div className="post-admin-actions"><button className="btn ghost" onClick={no}>No, terminaré después</button><button className="btn ghost" onClick={() => setReviewOpen(true)}><ClipboardCheck/> Revisar evaluación de esta clase</button><button className="btn" onClick={yes}>Sí, preparar resumen <ArrowRight /></button></div></section>{reviewOpen ? <EvaluationPostClassGate classId={item.id} onCompleted={() => setReviewOpen(false)} /> : null}</div>;\n}\n'''
+          if text.count(old_post)!=1: raise SystemExit('ClassPostAdministrative anchor missing')
+          text=text.replace(old_post,new_post,1)
+          p.write_text(text)
+
+          # Student profile uses the same modern evaluation engine instead of revoked numeric RPCs.
+          p=Path('app/student-detail.tsx'); text=p.read_text()
+          anchor='import { EvaluationRadar } from "./evaluation-radar";\n'
+          if anchor not in text: raise SystemExit('student import anchor missing')
+          text=text.replace(anchor,anchor+'import { ContextEvaluationPanel } from "./context-evaluation-panel";\n',1)
+          pattern=r'(function renderEvaluation\(\) \{\n    return <div className=\{styles\.evalStack\}>\n)      <section className=\{styles\.sectionCard\}>.*?</section>\n      (<div className=\{styles\.evalGrid\}>)'
+          replacement=r'''\1      <section className={styles.sectionCard}><ContextEvaluationPanel client={client} personId={student.id} personName={student.display_name} onCompleted={async () => { setProfileRefresh((value) => value + 1); await refresh(); }} /></section>\n      \2'''
+          text2,count=re.subn(pattern,replacement,text,count=1,flags=re.S)
+          if count!=1: raise SystemExit(f'student render evaluation replacement count={count}')
+          p.write_text(text2)
+
+          # Temporary P0C isolation is removed: product must stand on its own.
+          for filename in ['qa/tests/release-wide-audit.spec.ts','qa/tests/mobile-touch-targets.spec.ts','qa/tests/functional-class-flow.spec.ts']:
+              p=Path(filename); text=p.read_text()
+              text=re.sub(r'import \{ isolateInitialEvaluationGateForUnrelatedQa \} from "\./known-audit-isolation";\n','',text)
+              text=re.sub(r'\s*await isolateInitialEvaluationGateForUnrelatedQa\(page\);','',text)
+              p.write_text(text)
+          Path('qa/tests/known-audit-isolation.ts').unlink()
+
+          # Functional lifecycle must prove the class can be worked before any baseline exists.
+          p=Path('qa/tests/functional-class-flow.spec.ts'); text=p.read_text()
+          text=re.sub(r'async function ensureQaInitialBaseline\(.*?\n}\n\nasync function completeQaPostClassEvaluation', 'async function completeQaPostClassEvaluation', text, count=1, flags=re.S)
+          text=text.replace('    await ensureQaInitialBaseline(page, fixture.classId);\n','')
+          text=text.replace('    // CYA-AUD-013/P0E is separately tracked. The global dialogs are hidden here, but this\n    // test still completes initial/post-class evaluation for its own QA class via the same RPCs.\n    // It never mutates unrelated real classes. P17 remains the dedicated evaluation UI gate.\n','    // P0E: no baseline is created before work. The post-class review may become the first valid evaluation.\n')
+          p.write_text(text)
+
+          # P17 now protects the generalized evaluation engine and absence of global overlays.
+          Path('tests/p17-evaluation-cutover.test.mjs').write_text(r'''import test from 'node:test';
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+
+          const page=fs.readFileSync('app/page.tsx','utf8');
+          const cya=fs.readFileSync('app/cya-app.tsx','utf8');
+          const post=fs.readFileSync('app/evaluation-post-class.tsx','utf8');
+          const panel=fs.readFileSync('app/context-evaluation-panel.tsx','utf8');
+          const student=fs.readFileSync('app/student-detail.tsx','utf8');
+          const sql=fs.readFileSync('supabase/v53_p0e_optional_evaluation_baseline.sql','utf8');
+
+          test('P0E removes evaluation gates from the application root',()=>{
+            assert.doesNotMatch(page,/InitialEvaluationClassGate|EvaluationPostClassGate|EvaluationPostClassPreparer/);
+            assert.match(page,/return <CyaApp \/>/);
+          });
+
+          test('P0E exposes one contextual evaluation engine in class and student profile',()=>{
+            assert.match(cya,/ContextEvaluationPanel/);
+            assert.match(cya,/Evaluación<\/button>/);
+            assert.match(cya,/liveTab==='evaluation'/);
+            assert.match(student,/ContextEvaluationPanel/);
+            assert.match(panel,/start_context_evaluation/);
+            assert.match(panel,/review_context_evaluation_question/);
+            assert.match(panel,/complete_context_evaluation/);
+          });
+
+          test('P0E derives baseline from first complete valid evaluation, regardless kind',()=>{
+            assert.match(sql,/first_valid_evaluation_session_id/);
+            assert.match(sql,/order by s\.completed_at asc nulls last,s\.created_at asc,s\.id asc/);
+            assert.doesNotMatch(sql,/first_valid_evaluation_session_id[\s\S]{0,1000}evaluation_kind='initial'/);
+            assert.match(sql,/No exige baseline previa: esta revisión puede ser la primera evaluación válida/);
+          });
+
+          test('P0E scopes post-class review to the selected class and only class-kind review gates close',()=>{
+            assert.match(post,/classId: number/);
+            assert.match(post,/\.eq\("id",classId\)/);
+            assert.match(sql,/s\.evaluation_kind='class'/);
+            assert.match(sql,/La revisión posterior de esta clase todavía no está completa/);
+          });
+
+          test('P0E keeps the guided five-value scale and no raw numeric legacy writer',()=>{
+            assert.match(panel,/\[0,25,50,75,100\]/);
+            assert.doesNotMatch(panel,/save_evaluation_score|save_class_evaluation/);
+          });
+
+          test('P0E preserves drafts and does not delete or fabricate historical evaluations',()=>{
+            assert.match(sql,/s\.status='draft'/);
+            assert.doesNotMatch(sql,/delete\s+from\s+public\.evaluation_sessions/i);
+            assert.doesNotMatch(sql,/update\s+public\.evaluation_sessions[\s\S]*evaluation_kind\s*=/i);
+          });
+          ''').replace('\n          ','\n').lstrip()
+
+          # P17 workflow follows the new source of truth.
+          p=Path('.github/workflows/validate-p17-evaluation-cutover.yml'); text=p.read_text()
+          text=text.replace('      - "app/evaluation-**"\n','      - "app/evaluation-**"\n      - "app/context-evaluation-panel*"\n      - "app/cya-app.tsx"\n      - "app/student-detail.tsx"\n')
+          text=text.replace('      - "supabase/v43-evaluation-final-cutover.sql"\n','      - "supabase/v43-evaluation-final-cutover.sql"\n      - "supabase/v53_p0e_optional_evaluation_baseline.sql"\n')
+          text=text.replace('        run: npx eslint app/evaluation-initial-class.tsx app/evaluation-post-class.tsx app/page.tsx app/layout.tsx','        run: npx eslint app/context-evaluation-panel.tsx app/evaluation-post-class.tsx app/page.tsx app/cya-app.tsx app/student-detail.tsx')
+          p.write_text(text)
+
+          # Static fast gate for the new product decision.
+          Path('tests/p0e-optional-evaluation.test.mjs').write_text(r'''import test from 'node:test';
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+
+          const page=fs.readFileSync('app/page.tsx','utf8');
+          const cya=fs.readFileSync('app/cya-app.tsx','utf8');
+          const panel=fs.readFileSync('app/context-evaluation-panel.tsx','utf8');
+          const sql=fs.readFileSync('supabase/v53_p0e_optional_evaluation_baseline.sql','utf8');
+
+          test('evaluation is contextual and non-global',()=>{
+            assert.doesNotMatch(page,/Evaluation.*Gate/);
+            assert.match(cya,/liveTab==='evaluation'/);
+            assert.match(cya,/Revisar evaluación de esta clase/);
+          });
+          test('baseline is derived, not a mandatory initial kind',()=>{
+            assert.match(sql,/first_valid_evaluation_session_id/);
+            assert.match(sql,/p_evaluation_kind text default 'manual'/);
+            assert.match(sql,/No exige baseline previa/);
+          });
+          test('optional evaluation does not become a close gate',()=>{
+            assert.match(sql,/s\.evaluation_kind='class'/);
+            assert.doesNotMatch(sql,/s\.evaluation_kind='initial'[\s\S]{0,500}raise exception/);
+          });
+          test('manual recommendations remain independent of baseline',()=>{
+            assert.match(panel,/No bloquea la clase ni el trabajo manual/);
+            assert.match(cya,/const suggestedNext=/);
+          });
+          ''').replace('\n          ','\n').lstrip()
+          PY
+
+          git rm .github/workflows/apply-p0e-runtime.yml
+          git diff --check
+          git add -A
+          git config user.name "CYA QA Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "p0e: integrate optional contextual evaluation [p0e-applied]"
+          git push origin HEAD:fix/p0e-evaluation-baseline
