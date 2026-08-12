@@ -1,0 +1,40 @@
+name: Apply P23 teaching UX
+
+on:
+  push:
+    branches:
+      - p23/teaching-ux-graph
+    paths:
+      - 'scripts/patch-p23-teaching-ux.mjs'
+      - '.github/workflows/apply-p23-teaching-ux.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message || '', '[p23-codemod]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p23/teaching-ux-graph
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply P23 teaching codemod
+        run: node scripts/patch-p23-teaching-ux.mjs
+      - name: Verify patch
+        run: git diff --check
+      - name: Commit patched application
+        run: |
+          if git diff --quiet -- app/cya-app.tsx; then
+            echo "No application changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/cya-app.tsx
+          git commit -m "P23: integrate teaching contract in UX [p23-codemod]"
+          git push origin HEAD:p23/teaching-ux-graph
