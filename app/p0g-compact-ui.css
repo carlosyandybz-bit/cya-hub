@@ -1,0 +1,51 @@
+/* P0G — compactación operativa y jerarquía visual */
+:root{
+  --cya-live:#6d4aff;
+  --cya-teaching:#149e99;
+  --cya-teaching-soft:#eaf8f7;
+  --cya-marketing:#7a3f68;
+  --cya-danger:#b83c4c;
+  --cya-success:#19724d;
+  --cya-neutral:#67626d;
+}
+
+/* Dar clase: menos altura visual sin sacrificar targets táctiles. */
+.live-overlay .live-body{font-size:12px}
+.live-overlay .student-context{min-height:0!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:8px!important;padding:8px 10px!important;border-radius:12px!important}
+.live-overlay .student-context-main{grid-template-columns:34px minmax(0,1fr)!important;gap:8px!important}
+.live-overlay .live-student-avatar{width:34px!important;height:34px!important}.live-overlay .live-student-avatar svg{width:18px!important;height:18px!important}
+.live-overlay .student-context-main .eyebrow{display:none!important}.live-overlay .student-context-main h2{font-size:14px!important;line-height:1.15!important}.live-overlay .student-context-main p:not(.eyebrow){margin-top:2px!important;font-size:10px!important}
+.live-overlay .student-context-details{min-width:auto!important;width:auto!important;margin:0!important}.live-overlay .student-context-details summary{width:44px!important;min-width:44px!important;min-height:44px!important;justify-content:center!important;font-size:0!important;color:#696374!important}.live-overlay .student-context-details summary::before{content:"ⓘ";font-size:19px;font-weight:700}.live-overlay .student-context-details>div{position:absolute;z-index:35;right:12px;width:min(330px,calc(100vw - 24px));padding:10px!important;border:1px solid #e4dfea;border-radius:12px;background:#fff;box-shadow:0 14px 35px rgba(30,24,43,.14)}.live-overlay .student-context-details p{font-size:10.5px!important;line-height:1.35!important}
+.live-overlay .live-work-tabs{margin:6px 0!important;padding:3px!important;border-radius:11px!important}.live-overlay .live-work-tabs button{min-height:44px!important;padding:0 7px!important;border-radius:9px!important;font-size:10.5px!important;gap:4px!important}.live-overlay .live-work-tabs button svg{width:15px!important;height:15px!important}
+.live-overlay .p0f-sticky-search{padding:4px 0!important}.live-overlay .live-search input{min-height:44px!important;border-radius:11px!important;font-size:12px!important}
+.live-overlay .p0f-content-tabs{top:53px!important;padding:2px 0 4px!important}.live-overlay .p0f-content-tabs>button{min-height:44px!important;padding:0 11px!important;font-size:10.5px!important}
+.live-overlay .live-unified-search{border-radius:12px!important}.live-overlay .quick-content-create>summary{min-height:44px!important;font-size:11.5px!important}.live-overlay .quick-content-create>div{gap:7px!important;padding:7px!important}.live-overlay .quick-content-create select,.live-overlay .quick-content-create input{min-height:44px!important;border-radius:10px!important;font-size:12px!important}
+.live-overlay .live-workspace{gap:8px!important}.live-overlay .live-card{padding:10px!important;border-radius:13px!important}.live-overlay .live-card-head{margin-bottom:7px!important}.live-overlay .live-card-head .eyebrow{margin-bottom:2px!important;font-size:9px!important}.live-overlay .live-card-head h2{font-size:14px!important}.live-overlay .text-button{font-size:10.5px!important}
+.live-overlay .correction-list,.live-overlay .guide-active{display:grid!important;gap:5px!important}
+.live-overlay .live-content-card{box-shadow:none!important}.live-overlay .live-content-card.live-priority-high{border-left-color:var(--cya-danger)!important}.live-overlay .live-content-card.live-priority-medium{border-left-color:#a87834!important}.live-overlay .live-content-card.live-priority-low{border-left-color:#60907a!important}
+.live-overlay .p0f-status-chip,.live-overlay .p0f-measure-chip{min-height:44px!important;border-radius:10px!important;padding:0 9px!important;font-size:11px!important}
+
+/* Resumen compacto F/I: la señal visible es pequeña; el card completo es el target. */
+.p0g-compact-metrics{display:flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap}
+.p0g-metric{display:inline-flex;align-items:center;gap:3px;min-height:18px;padding:0 5px;border:1px solid #e2dee7;border-radius:999px;background:#faf9fb;color:#5e5867;font-size:9px;font-weight:820;line-height:1}
+.p0g-metric>b{font-size:9px}.p0g-dots{display:inline-flex;gap:1px}.p0g-dot{width:4px;height:4px;border-radius:50%;background:#d5d1da}.p0g-dot.on{background:currentColor}
+.p0g-metric[data-kind="frequency"][data-level="1"],.p0g-metric[data-kind="influence"][data-level="1"]{color:#54716b}.p0g-metric[data-level="2"]{color:#46778f}.p0g-metric[data-level="3"]{color:#6b55a0}.p0g-metric[data-level="4"]{color:#9a6731}.p0g-metric[data-level="5"]{color:#a93445}
+.p0g-state{display:inline-flex;align-items:center;min-height:18px;padding:0 6px;border-radius:999px;font-size:9px;font-weight:820;white-space:nowrap}.p0g-state.pending{background:#f0eff2;color:#615d67}.p0g-state.in-correction{background:#fdecef;color:#a62d3e}.p0g-state.corrected{background:#e9f7ef;color:#16704c}
+.p0g-detail-controls{display:grid;gap:8px}.p0g-detail-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.p0g-detail-row>label{display:grid;gap:3px;color:#777184;font-size:9.5px;font-weight:760}.p0g-detail-row select{min-height:44px;border:1px solid #ded9e7;border-radius:10px;background:#fff;padding:0 9px;font-size:11.5px}.p0g-detail-controls textarea{width:100%;min-height:54px;border:1px solid #ded9e7;border-radius:10px;padding:8px 9px;resize:vertical;font-size:12px}.p0g-detail-controls .btn{min-height:44px;font-size:11px}
+
+/* Crear corrección: todos los datos opcionales antes de Añadir. */
+.p0g-create-correction{grid-column:1/-1;display:grid;gap:7px;padding:8px;border:1px solid #e2dcf1;border-radius:11px;background:#fbfaff}
+.p0g-create-measures{display:grid;grid-template-columns:1fr 1fr;gap:7px}.p0g-create-measures label,.p0g-create-observation label{display:grid;gap:3px;color:#696374;font-size:9.5px;font-weight:780}.p0g-create-measures select{min-height:44px;border:1px solid #ded9e7;border-radius:10px;background:#fff;padding:0 8px;font-size:11px}.p0g-create-observation{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}.p0g-create-observation textarea{grid-column:1/-1;min-height:52px;border:1px solid #ded9e7;border-radius:10px;padding:8px 9px;resize:vertical;font-size:11.5px}.p0g-create-observation select{min-height:44px;border:1px solid #ded9e7;border-radius:10px;background:#fff;padding:0 8px;font-size:11px}.p0g-create-hint{margin:0;color:#777184;font-size:9.5px;line-height:1.35}.p0g-create-hint strong{color:#4e4857}
+
+/* Enseñanza: identidad turquesa y controles compactos. */
+.teaching-switch button.active{color:#0d7975!important}.teaching-switch button.active svg{color:var(--cya-teaching)!important}.teaching-kind-grid button.active{border-color:#79c8c4!important;background:var(--cya-teaching-soft)!important;color:#0c6f6b!important;box-shadow:0 0 0 2px rgba(20,158,153,.08)!important}.teaching-kind-grid button.active svg{color:var(--cya-teaching)!important}.teaching-group>.card-head{margin-bottom:8px!important}.teaching-group>.card-head h2{font-size:14px!important}.teaching-list{gap:5px!important}
+
+/* Marketing conserva plum; primarios siguen blanco sobre color. */
+.marketing-shell .btn,.marketing-view .btn{background:var(--cya-marketing);color:#fff}.btn{color:#fff}.btn svg{color:currentColor}
+
+/* Nada fluorescente: amarillos de aviso se normalizan a ámbar sobrio. */
+.badge.warning,.warning-badge,[class*="yellow"],[class*="fluorescent"]{background:#f7efe2!important;color:#765325!important;border-color:#dcc29b!important}
+
+@media(max-width:620px){
+  .live-overlay .live-body{width:calc(100% - 16px)!important;padding-top:8px!important}.live-overlay .student-context{grid-template-columns:minmax(0,1fr) 44px!important}.live-overlay .p0f-content-tabs{top:53px!important}.live-overlay .live-card{padding:8px!important}.live-overlay .live-card-head h2{font-size:13.5px!important}.live-overlay .live-card-head{margin-bottom:6px!important}.p0g-create-measures{grid-template-columns:1fr 1fr}.p0g-create-observation{grid-template-columns:1fr}.p0g-create-observation textarea{grid-column:1}.p0g-create-observation select{width:100%}
+}
