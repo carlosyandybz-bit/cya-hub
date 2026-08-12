@@ -2,7 +2,17 @@
    Objetivo: accesos rápidos de 54–58 px, lectura horizontal y menos scroll.
    No modifica formularios, listados ni acciones críticas que necesitan 44 px o más. */
 
+/* Tras retirar la pestaña de evaluación antigua, Dar clase tiene tres secciones reales:
+   Trabajo, Contexto y Observaciones. Evita reservar una cuarta columna vacía. */
+.live-work-tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
 @media (max-width: 620px) {
+  .live-work-tabs {
+    grid-template-columns: repeat(3, minmax(82px, 1fr)) !important;
+  }
+
   .quick-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 7px !important;
