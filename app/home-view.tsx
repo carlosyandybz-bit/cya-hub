@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  BellRing,
   BookOpen,
   CalendarDays,
   Check,
