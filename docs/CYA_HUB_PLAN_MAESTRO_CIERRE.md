@@ -1,6 +1,6 @@
 # CYA HUB — PLAN MAESTRO ÚNICO DE CIERRE
 
-Versión: **4.1**  
+Versión: **4.2**  
 Fecha de corte: **2026-08-12**  
 Repositorio canónico: `carlosyandybz-bit/cya-hub`  
 Producción: `main` + Supabase `CyA hub 2` + Hostinger  
@@ -16,7 +16,7 @@ Correctivos de auditoría P0 ya integrados o canonizados en esta versión:
 - **P0B ✅** — este documento queda canonizado a P23 cerrado → P24 actual y protegido por un check automático de consistencia documental.
 - **P0C ✅** — targets táctiles auditados ≥44 px; gate `mobile-touch-targets` permanente; QA post-merge 26/26.
 - **P0D ✅** — `release-wide-audit` integrado como gate permanente; QA actual post-P0C verde 26/26.
-- **P0E ⏳ SIGUIENTE CORRECTIVO** — evaluación inicial opcional/no bloqueante dentro de Dar clase y eliminación de gates globales de evaluación antes de continuar P24.
+- **P0E ✅** — evaluación contextual opcional, baseline derivada de la primera evaluación completa válida y gates globales eliminados; v53 + PR #36 integrados y recertificados 26/26.
 
 ---
 
@@ -87,7 +87,7 @@ Regla documental permanente desde P0B:
 - Navegación móvil del Centro `Dar clase` → P0A sobre P21.
 - Auditoría transversal release-wide → P0D.
 - Targets táctiles auditados ≥44 px + gate móvil → P0C.
-- Evaluación inicial opcional/no bloqueante y gates de evaluación acotados a la clase actual → P0E pendiente antes de P24.
+- Evaluación contextual opcional, baseline derivada y revisión post-clase acotada a su clase → P0E/v53 cerrado y recertificado en `main`.
 
 ## ✅ Adelanto pendiente de revalidación final
 
@@ -144,7 +144,7 @@ Todo formulario/control nuevo o modificado debe cumplir:
 - nunca forzar `0` durante edición;
 - escribir `5` produce `5`, nunca `05`/`050`.
 
-P0C cerró el correctivo táctil: los targets auditados tienen un área efectiva mínima de 44 px y `mobile-touch-targets.spec.ts` lo protege en iPhone. P0E debe preservar este gate al integrar la nueva pestaña Evaluación.
+P0C cerró el correctivo táctil: los targets auditados tienen un área efectiva mínima de 44 px y `mobile-touch-targets.spec.ts` lo protege en iPhone. P0E preservó este gate: la recertificación post-merge mantiene `touchTargetsUnder44=0`.
 
 ## G4 — Regresión antes de merge
 
@@ -215,6 +215,7 @@ La verdad final es el runtime/esquema real.
 20. **Una relación pedagógica no convierte automáticamente multimedia de clase en contenido del árbol.**
 21. **El Centro `Dar clase` conserva navegación móvil; el chrome solo se oculta con clase realmente activa (`status=active` + `workflow_stage=live`).**
 22. **Un cierre formal de paquete no puede retroceder documentalmente por un merge posterior.**
+23. **La baseline evaluativa es la primera evaluación completa y válida del contexto; ninguna evaluación general bloquea el trabajo de clase.**
 
 ---
 
@@ -222,14 +223,16 @@ La verdad final es el runtime/esquema real.
 
 ## P17 — Evaluaciones ✅
 
-- frontend guiado inicial/postclase activo;
+- motor guiado por sesiones y escala 0/25/50/75/100 conservados;
 - wrappers antiguos retirados de `authenticated`;
-- motor moderno por sesiones conservado;
-- evaluación inicial durante clase activa;
-- cierre pedagógico exige evaluación explícita;
-- Bachazouk conserva dependencia inicial de Bachata cuando corresponde;
-- v43 ledger `20260811151901`;
-- revisión postclase no reaparece tras completarse.
+- P0E/v53 elimina la evaluación inicial obligatoria y los gates globales;
+- `ContextEvaluationPanel` permite evaluar desde Dar clase y perfil sin abandonar el trabajo principal;
+- baseline = primera evaluación completa y válida por persona + estilo + rol, sin depender de `evaluation_kind`;
+- una revisión `class` puede ser la primera evaluación y convertirse en baseline;
+- solo la revisión `class` de la clase concreta puede condicionar su cierre pedagógico;
+- v43 ledger `20260811151901` + v53 P0E;
+- PR #36 → merge `a1697c4d573e381064e0d3dc5084a77202cb6634`;
+- QA post-merge `31610773094`: **26/26**.
 
 ## P18 — Identidad/roles/navegación ✅
 
@@ -701,7 +704,7 @@ Release:
 | F6 temporizadores | ✅ regla permanente P21 |
 | F7 duración prevista/bono | ✅ P21 |
 | F8–F11 Dar clase | ✅ P21 + P0A navegación del Centro |
-| F12–F15 evaluaciones | ✅ P17 |
+| F12–F15 evaluaciones | ✅ P17 + P0E/v53 |
 | F16–F20 Enseñanza | ✅ P23 |
 | F21–F25 Personas/Alumnado | ✅ P19 + P20 + P21 + P22 |
 | F26–F31 Marketing | → P29 |
@@ -762,7 +765,7 @@ Release:
 | Centro Dar clase perdía navegación móvil | ✅ P0A / PR #32 / QA 22/22 |
 | no existía auditoría transversal permanente | ✅ P0D / PR #32 |
 | Plan Maestro retrocedió a P22/P23 pese al cierre P23 | ✅ P0B / gate documental CI |
-| targets táctiles <44 px detectados por release-wide | → P0C |
+| targets táctiles <44 px detectados por release-wide | ✅ P0C |
 | misiones `expire` siguen `available` | → P25 |
 
 ---
@@ -771,7 +774,7 @@ Release:
 
 **P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
 
-Antes de modificar funcionalmente P24 queda pendiente únicamente el correctivo transversal **P0C** de targets táctiles, según la secuencia de auditoría aprobada.
+Los correctivos de auditoría **P0A–P0E están cerrados**. El siguiente paquete funcional es **P24 — Inicio contextual**.
 
 No volver a P23 salvo un correctivo demostrado. No volver al antiguo orden F8 → F3B → F9 como secuencia de implementación: esos requisitos ya están absorbidos por P21.
 
