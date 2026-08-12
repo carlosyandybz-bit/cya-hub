@@ -1,0 +1,35 @@
+name: Apply master P24
+
+on:
+  push:
+    branches:
+      - docs/advance-p24
+    paths:
+      - 'scripts/advance-master-p24.mjs'
+      - '.github/workflows/apply-master-p24.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message || '', '[master-p24]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/advance-p24
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/advance-master-p24.mjs
+      - run: git diff --check
+      - name: Commit master update
+        run: |
+          if git diff --quiet -- docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md
+          git commit -m "docs: advance master plan to P24 [master-p24]"
+          git push origin HEAD:docs/advance-p24
