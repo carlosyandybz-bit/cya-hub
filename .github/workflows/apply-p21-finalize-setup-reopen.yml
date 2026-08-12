@@ -75,6 +75,38 @@ jobs:
           tests/p17-evaluation-cutover.test.mjs
           tests/p19-persona-unica.test.mjs
 
+      - name: Diagnose failing regression file
+        if: failure()
+        run: |
+          set +e
+          failed=0
+          for test_file in \
+            tests/p21-dar-clase.test.mjs \
+            tests/point8-final-close-v30.test.mjs \
+            tests/class-close-extras.test.mjs \
+            tests/class-close-partial-video.test.mjs \
+            tests/compatible-credit-selection.test.mjs \
+            tests/no-real-time-class-duration.test.mjs \
+            tests/numeric-inputs.test.mjs \
+            tests/live-session-dedup.test.mjs \
+            tests/live-class-search-point11.test.mjs \
+            tests/start-class-transition.test.mjs \
+            tests/class-summary-content-editor.test.mjs \
+            tests/p17-evaluation-cutover.test.mjs \
+            tests/p19-persona-unica.test.mjs
+          do
+            echo "::group::$test_file"
+            node --test "$test_file"
+            status=$?
+            echo "::endgroup::"
+            if [ "$status" -ne 0 ]; then
+              echo "::error file=$test_file::Regression failed in $test_file (exit $status)"
+              failed=1
+            fi
+          done
+          echo "diagnostic_failed=$failed"
+          exit 0
+
       - name: Lint application
         run: npm run lint
 
