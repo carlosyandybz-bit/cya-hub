@@ -2,10 +2,10 @@
 
 Fecha de corte: **2026-08-12**  
 Repositorio: `carlosyandybz-bit/cya-hub`  
-Base funcional post-P0C auditada: `main@c253ff5135e7955c69d152038434c96cc70777f8` + Supabase `CyA hub 2` (`ldvyeyhzrepaaouzavgs`)  
+Base funcional post-P0E auditada: `main@a1697c4d573e381064e0d3dc5084a77202cb6634` + Supabase `CyA hub 2` (`ldvyeyhzrepaaouzavgs`)  
 Auditoría transversal integrada: PR **#32 — P0 audit: add release-wide Playwright coverage**  
 Control documental P0B: `CYA_HUB_PLAN_MAESTRO_CIERRE.md` + `P23_ENSENANZA_RELACIONES_ARBOLES.md` + `tests/documentation-consistency.test.mjs`  
-Estado: **AUDITORÍA P0 VIVA — P0A/P0B/P0C/P0D cerrados; P0E es el siguiente correctivo antes de P24; todavía existen gates antes del release**
+Estado: **AUDITORÍA P0 VIVA — P0A/P0B/P0C/P0D/P0E cerrados; P24 — Inicio contextual es el siguiente paquete; todavía existen gates antes del release**
 
 ---
 
@@ -60,19 +60,19 @@ Cada superficie genera:
 - controles visibles sin etiqueta;
 - targets táctiles efectivos por debajo de 44 px.
 
-### Resultado actual post-P0C en `main`
+### Resultado actual post-P0E en `main`
 
-Workflow `CYA QA E2E`, run **31592129261**, ejecutado sobre `main@c253ff5135e7955c69d152038434c96cc70777f8`:
+Workflow `CYA QA E2E`, run **31610773094**, ejecutado sobre `main@a1697c4d573e381064e0d3dc5084a77202cb6634`:
 
 - bootstrap QA OIDC → Supabase: **OK**;
 - gate documental: **2/2**;
-- lint: **0 errores / 14 warnings**;
+- lint: **0 errores / 24 warnings no bloqueantes**;
 - build Next.js: **OK**;
 - servidor local: **OK**;
 - Playwright total: **26/26 passed**;
 - targets táctiles auditados por debajo de 44 px en iPhone: **0**;
 - ciclo Profesor → Alumno → Administrador: **OK**;
-- artifacts: **OK**, artifact `9139646180`.
+- artifacts: **OK**, artifact `9147197152`.
 
 En todas las superficies auditadas:
 
@@ -97,14 +97,14 @@ El resultado histórico 19/20 corresponde únicamente al corte previo a P0A y ya
 | **CYA-AUD-003** | Misiones | Media | **ABIERTO — BUG CONFIRMADO** | Misiones diarias del 10 y 11/08 permanecen `available` tras vencer. `daily.review_information` usa `failure_behavior='expire'`, pero `refresh_missions()` solo procesa vencimiento cuando el comportamiento es `mark_not_done`. | Implementar semántica `expire` explícita y backfill seguro de vencidas. P25. |
 | **CYA-AUD-004** | Enseñanza / visibilidad | Baja | **ABIERTO** | Contenidos archivados/inactivos `Pinball` y `Cadera contraria` conservan `visibility='student'`. No se exponen ahora por `active=false`, pero el estado es semánticamente ambiguo. | Definir/normalizar invariante de archivado y visibilidad. Correctivo Enseñanza/P32. |
 | **CYA-AUD-005** | QA integral | Alta | **RESUELTO — P0D** | `release-wide-audit` está integrado en `main` mediante PR #32 y recorre superficies Profesor/Alumno/Admin. | Mantenerlo como gate permanente y ampliarlo en P32 para destructivas/integraciones. |
-| **CYA-AUD-006** | QA release-wide | — | **EJECUTADO — 26/26** | Run post-merge P0C `31592129261`: documentación 2/2 + Playwright 26/26, iPhone + desktop, ciclo Profesor→Alumno→Admin, build y artifacts verdes. | Mantener como gate real tras cada paquete relevante y en P32. |
+| **CYA-AUD-006** | QA release-wide | — | **EJECUTADO — 26/26** | Run post-merge P0E `31610773094`: documentación 2/2 + Playwright 26/26, iPhone + desktop, ciclo Profesor→Alumno→Admin, build y artifact `9147197152` verdes. | Mantener como gate real tras cada paquete relevante y en P32. |
 | **CYA-AUD-007** | Responsive / iPhone | Media | **RESUELTO — P0C** | PR #34 + merge `c253ff5135e7955c69d152038434c96cc70777f8`; `p0c-touch-targets.css` eleva el área efectiva auditada a ≥44 px manteniendo switches visualmente compactos. Run main `31592129261`: 26/26 y `touchTargetsUnder44=0` en todas las superficies iPhone auditadas. | Mantener `mobile-touch-targets.spec.ts` como gate permanente y reauditar componentes nuevos/modificados. |
 | **CYA-AUD-008** | Navegación / Dar clase | Media | **RESUELTO — P0A** | PR #32: `.mobile-nav` ya no se oculta por `view === 'live'`; se oculta únicamente con clase seleccionada realmente `status='active'` + `workflow_stage='live'`. Centro y preparación mantienen cinco accesos; clase activa oculta chrome; cierre lo restaura. Run `31583225189` verde. | Mantener `class-center-navigation.spec.ts` + lifecycle E2E como regresión permanente. |
 | **CYA-AUD-009** | Seguridad | Media | **ABIERTO — HARDENING** | Advisor avisa de RPC `SECURITY DEFINER` ejecutables por `authenticated`. Las RPC sensibles de formularios/reset inspeccionadas contienen guards `private.is_admin()` y `anon` no puede ejecutarlas; no se observó escalada. Leaked Password Protection sigue desactivado. `pg_net` está en `public`. | Reducir superficie EXECUTE/SECURITY DEFINER, revisar policies, activar leaked password protection y endurecer extensiones antes de release. P32. |
 | **CYA-AUD-010** | Rendimiento / DB | Baja–Media | **ABIERTO** | Advisor muestra varias FK sin índice, policies permisivas múltiples e índice duplicado de posición de secuencias en `teaching_content_relations`. | Indexar según carga real; eliminar solo duplicados confirmados; consolidar policies sin romper RLS. P32. |
 | **CYA-AUD-011** | Producción / G1 | Alta | **BLOQUEO DE CERTIFICACIÓN** | El Plan conserva evidencias G1 históricas P17–P23, pero esta auditoría todavía no constituye certificación final del commit que servirá Hostinger en release. | Obtener evidencia actual de Hostinger + `/api/build-info`/runtime antes de un cutover incompatible o del release final. G1/P32. |
 | **CYA-AUD-012** | Drive / QA | Media | **ABIERTO COMO GAP QA** | `integration_settings.google_drive='configured'`, pero el runner de GitHub no tiene secretos server-side de Drive y por ello no puede probar `media-ticket` end-to-end. | Crear prueba segura de Drive con secrets/env de QA o entorno staging; no copiar credenciales de producción al repositorio. P31/P32. |
-| **CYA-AUD-013** | Dar clase / Evaluaciones | Alta | **ABIERTO — P0E APROBADO COMO REQUISITO** | La evaluación inicial y la revisión post-clase están montadas como gates globales y pueden superponerse a Inicio/Admin/u otra clase. La baseline inicial debe ser opcional y vivir como apartado `Evaluación` dentro del live session. | P0E: scope por clase/persona/contexto, baseline `initial` no bloqueante, `class` separada y acotada al cierre de su propia clase; eliminar aislamiento QA temporal. |
+| **CYA-AUD-013** | Dar clase / Evaluaciones | Alta | **RESUELTO — P0E/v53** | Los gates globales fueron retirados. `ContextEvaluationPanel` vive en Dar clase y perfil. Baseline = primera evaluación completa válida, independientemente de `evaluation_kind`; la primera sesión QA válida fue `class` y se convirtió en baseline. La revisión post-clase queda acotada a ESA clase. PR #36 y run post-merge `31610773094` verdes 26/26. | Mantener P17/P0E y lifecycle E2E como regresión permanente; reauditar en P32. |
 
 ---
 
@@ -135,7 +135,7 @@ Datos reales excluyendo fixtures QA en el momento del corte:
 - contenidos pedagógicos activos reales: **7**;
 - contenidos pedagógicos activos y publicados: **3**.
 
-P0A/P0B/P0D no modificaron estos datos ni exigieron migración de Supabase.
+P0A/P0B/P0C/P0D no exigieron migración funcional. P0E aplicó v53 de forma incremental, sin borrar históricos ni añadir tablas.
 
 ---
 
@@ -146,8 +146,8 @@ P0A/P0B/P0D no modificaron estos datos ni exigieron migración de Supabase.
 | Identidad única + multirol + `Ver como` | **EXISTE / CERRADO** | P18–P19; roles server-side; QA profesor/alumno/admin | Reauditar seguridad global en P32. |
 | Personas / Alumnado canónico | **EXISTE / CERRADO BASE** | P19–P22; `people`, profiles, clases/bonos integrados | P0C cerró los targets táctiles auditados; mantener el gate y revalidar globalmente en P32. |
 | Formularios versionados + datos canónicos | **EXISTE / CERRADO** | P20; runtime y publicación coherentes | Solo hardening RPC P32. CYA-AUD-002 cerrado. |
-| Evaluaciones guiadas | **EXISTE / CERRADO** | P17 + correctivos v51; E2E inicial/postclase | Mantener regresión permanente; CYA-AUD-013/P0E pendiente. |
-| Dar clase | **EXISTE / VALIDADO** | P21 + P0A; E2E completo profesor→alumno→admin; Centro móvil protegido | CYA-AUD-013 / P0E: evaluación inicial opcional/no bloqueante y evaluación acotada a la clase actual. |
+| Evaluaciones guiadas | **EXISTE / CERRADO + P0E** | P17 + v53; evaluación contextual; baseline derivada; E2E post-clase | CYA-AUD-013 cerrado. Mantener P17/P0E como regresión permanente y reauditar en P32. |
+| Dar clase | **EXISTE / VALIDADO + P0E** | P21 + P0A + v53; E2E completo profesor→alumno→admin; Centro móvil y Evaluación contextual protegidos | Mantener regresión; ninguna evaluación global puede bloquear otra superficie o clase. |
 | Bonos / consumo de minutos | **EXISTE / VALIDADO** | E2E verificó consumo exacto y cierres; integridad sin saldos negativos | Ampliar escenarios pareja/regularización en P32. |
 | Portal del alumno | **EXISTE / CERRADO** | P22 + v52; release-wide sin page/network errors | Reauditar contenido real y multimedia Drive en P32. |
 | Enseñanza + relaciones + 8 árboles | **EXISTE / P23 CERRADO** | `P23_ENSENANZA_RELACIONES_ARBOLES.md`; backend/frontend P23; release-wide | Normalizar archivados CYA-AUD-004 y cubrir Drive E2E CYA-AUD-012. |
@@ -235,7 +235,7 @@ Regla: **no borrar índices automáticamente porque Advisor diga `unused`**. Pri
 Lint actual:
 
 - **0 errors**;
-- **14 warnings**.
+- **24 warnings**.
 
 Principalmente:
 
@@ -252,27 +252,28 @@ No bloquea el producto, pero debe limpiarse progresivamente para que warnings nu
 ### P0 — antes de continuar paquetes
 
 1. **P0A / CYA-AUD-008 — ✅ CERRADO**: navegación móvil del Centro `Dar clase` corregida.
-2. **P0B / CYA-AUD-001 — ✅ CANONIZADO**: Plan Maestro P23 cerrado → P24 actual + gate documental en CI.
-3. **P0C / CYA-AUD-007 — SIGUIENTE CORRECTIVO**: normalizar targets táctiles críticos, empezando por switches 35×21 y acciones de Alumnado de 36 px.
+2. **P0B / CYA-AUD-001 — ✅ CERRADO**: Plan Maestro P23 cerrado → P24 actual + gate documental en CI.
+3. **P0C / CYA-AUD-007 — ✅ CERRADO**: targets táctiles auditados ≥44 px + gate permanente.
 4. **P0D / CYA-AUD-005 — ✅ CERRADO**: `release-wide-audit` integrado como gate permanente.
+5. **P0E / CYA-AUD-013 — ✅ CERRADO**: evaluación contextual opcional, baseline derivada y gates globales eliminados; v53 + PR #36.
 
 ### Luego secuencia funcional
 
-5. P24 — cerrar Inicio contextual.
-6. P25 — corregir `expire` y cerrar Misiones/worker.
-7. P26 — Calendar real.
-8. P27 — automatización/delivery de notificaciones.
-9. P28 — round-trip import/export.
-10. P29 — Marketing/CRM/tarifas/campañas/eventos con datos y canales reales.
-11. P30 — definir estadísticas con el usuario y solo entonces cerrar métricas.
-12. P31 — Administración/integraciones/apariencia.
-13. P32 — seguridad, rendimiento, reset/restore, producción y release final.
+6. P24 — cerrar Inicio contextual.
+7. P25 — corregir `expire` y cerrar Misiones/worker.
+8. P26 — Calendar real.
+9. P27 — automatización/delivery de notificaciones.
+10. P28 — round-trip import/export.
+11. P29 — Marketing/CRM/tarifas/campañas/eventos con datos y canales reales.
+12. P30 — definir estadísticas con el usuario y solo entonces cerrar métricas.
+13. P31 — Administración/integraciones/apariencia.
+14. P32 — seguridad, rendimiento, reset/restore, producción y release final.
 
 ### Bloqueos de release que no se pueden saltar
 
 - G1: runtime Hostinger/producción demostrado;
 - Leaked Password Protection;
-- CYA-AUD-007 resuelto o aceptado conscientemente antes de release;
+- CYA-AUD-007 y CYA-AUD-013 cerrados; mantener sus gates hasta release;
 - release-wide verde en iPhone y desktop;
 - integraciones declaradas como conectadas solo si son verificables;
 - restore/reset realmente probado;
@@ -284,14 +285,13 @@ No bloquea el producto, pero debe limpiarse progresivamente para que warnings nu
 
 CYA Hub **ya no está en un estado de arquitectura frágil generalizada**: identidad, formularios canónicos, evaluaciones, Dar clase, portal y Enseñanza tienen una base real y los checks de integridad no muestran corrupción sistémica.
 
-P0A y P0D han eliminado el rojo contractual de navegación y han convertido la auditoría transversal en un gate permanente. P0B elimina además la contradicción entre el cierre real de P23 y el Plan Maestro, y añade un check de CI para que una rama antigua no pueda hacer retroceder silenciosamente la secuencia.
+P0A–P0E han cerrado los correctivos prioritarios de auditoría: navegación móvil, consistencia documental, targets táctiles, auditoría transversal y evaluación contextual/baseline derivada. Todos permanecen protegidos por gates automáticos.
 
 Pero **todavía no debe declararse terminado ni listo para lanzamiento**. Los riesgos vivos relevantes son ahora un conjunto acotado y verificable:
 
-- deuda táctil iPhone CYA-AUD-007 / P0C;
 - bug de expiración de misiones CYA-AUD-003 / P25;
 - integraciones futuras todavía no operativas;
 - gap E2E de Google Drive en CI;
 - seguridad/hardening y producción pendientes del gate final.
 
-Siguiente correctivo de auditoría: **P0C — targets táctiles críticos ≥44 px**. Después se retoma la secuencia funcional en **P24 — Inicio contextual**.
+Los correctivos P0A–P0E están cerrados. La secuencia funcional continúa en **P24 — Inicio contextual**.
