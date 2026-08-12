@@ -38,6 +38,11 @@ jobs:
           admin=Path('app/p0f-evaluation-admin.tsx')
           admin_text=admin.read_text()
           admin_text=admin_text.replace('setContentId((value)=>value??Number(contentResult.data?.[0]?.id||0)||null);', 'setContentId((value)=>value ?? (Number(contentResult.data?.[0]?.id||0) || null));')
+          old='''  useEffect(()=>{\n    setStyleId((value)=>value??styles[0]?.id??null);setRoleId((value)=>value??roles[0]?.id??null);\n    setLevelId((value)=>value??levels[0]?.id??null);setAptitudeId((value)=>value??aptitudes[0]?.id??null);\n  },[aptitudes,levels,roles,styles]);'''
+          new='''  useEffect(()=>{\n    const timer=window.setTimeout(()=>{\n      setStyleId((value)=>value??styles[0]?.id??null);setRoleId((value)=>value??roles[0]?.id??null);\n      setLevelId((value)=>value??levels[0]?.id??null);setAptitudeId((value)=>value??aptitudes[0]?.id??null);\n    },0);\n    return()=>window.clearTimeout(timer);\n  },[aptitudes,levels,roles,styles]);'''
+          if old not in admin_text:
+            raise SystemExit('P0F admin selector effect marker missing')
+          admin_text=admin_text.replace(old,new)
           admin.write_text(admin_text)
           PY
       - run: node scripts/apply-p0f.mjs
