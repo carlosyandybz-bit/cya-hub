@@ -27,18 +27,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Make guarded replacement literal-safe
+      - name: Harden guarded P21.3 transformation
         run: |
           python - <<'PY'
           from pathlib import Path
           path = Path('tools/p21_finalize_setup_reopen.py')
           text = path.read_text()
-          old = 'app, setup_count = setup_pattern.subn(setup_replacement, app, count=1)'
-          new = 'app, setup_count = setup_pattern.subn(lambda _match: setup_replacement, app, count=1)'
-          if text.count(old) == 1:
-              text = text.replace(old, new, 1)
-          elif text.count(new) != 1:
+
+          old_sub = 'app, setup_count = setup_pattern.subn(setup_replacement, app, count=1)'
+          new_sub = 'app, setup_count = setup_pattern.subn(lambda _match: setup_replacement, app, count=1)'
+          if text.count(old_sub) == 1:
+              text = text.replace(old_sub, new_sub, 1)
+          elif text.count(new_sub) != 1:
               raise SystemExit('could not establish literal-safe setup replacement')
+
+          old_scope = 'item\\.class_type === "pair".*?'
+          new_scope = 'item\\.class_type === "pair" && personIds\\[0\\] \\? compatibleCreditsForClass\\(item,credits,personIds\\[0\\]\\) : \\[\\];.*?'
+          if text.count(old_scope) == 1:
+              text = text.replace(old_scope, new_scope, 1)
+          elif text.count(new_scope) != 1:
+              raise SystemExit('could not scope setup replacement to ClassSetupStage')
+
           path.write_text(text)
           PY
 
@@ -124,6 +133,6 @@ jobs:
           fi
           git config user.name 'carlosyandybz-bit'
           git config user.email 'carlosyandy@gmail.com'
-          git add app/cya-app.tsx tests/p21-dar-clase.test.mjs docs/P21_DAR_CLASE_RECONCILIACION.md
+          git add app/cya-app.tsx tests/p21-dar-clase.test.mjs docs/P21_DAR_CLASE_RECONCILIACION.md tools/p21_finalize_setup_reopen.py
           git commit -m 'P21.4: finalize progressive setup and reopen guard'
           git push origin HEAD:p21/dar-clase-definitivo
