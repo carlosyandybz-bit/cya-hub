@@ -1,0 +1,95 @@
+name: CYA QA E2E
+
+on:
+  push:
+    branches:
+      - "chore/**"
+      - "feat/**"
+      - "fix/**"
+      - "qa/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cya-qa-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser-qa:
+    name: Browser QA
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: "true"
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.CYA_QA_SUPABASE_URL || 'https://ldvyeyhzrepaaouzavgs.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.CYA_QA_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_gTLCF5jffNzTC_mRZ21IPg_wl-70wQL' }}
+      QA_TEACHER_EMAIL: ${{ secrets.QA_TEACHER_EMAIL }}
+      QA_TEACHER_PASSWORD: ${{ secrets.QA_TEACHER_PASSWORD }}
+      QA_STUDENT_EMAIL: ${{ secrets.QA_STUDENT_EMAIL }}
+      QA_STUDENT_PASSWORD: ${{ secrets.QA_STUDENT_PASSWORD }}
+      QA_ADMIN_EMAIL: ${{ secrets.QA_ADMIN_EMAIL }}
+      QA_ADMIN_PASSWORD: ${{ secrets.QA_ADMIN_PASSWORD }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Install QA harness
+        working-directory: qa
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium for Playwright
+        working-directory: qa
+        run: npx playwright install --with-deps chromium
+
+      - name: Lint application
+        run: npm run lint
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start CYA Hub locally
+        shell: bash
+        run: |
+          npm start > qa/app-server.log 2>&1 &
+          echo $! > qa/app-server.pid
+          for attempt in {1..60}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/ > /dev/null; then
+              echo "CYA Hub is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "CYA Hub did not become ready"
+          cat qa/app-server.log
+          exit 1
+
+      - name: Run browser QA
+        working-directory: qa
+        run: npm run test:e2e
+
+      - name: Upload browser evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: cya-browser-qa-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+            qa/app-server.log
+          if-no-files-found: warn
+          retention-days: 14
