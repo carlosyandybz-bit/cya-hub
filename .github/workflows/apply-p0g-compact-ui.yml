@@ -1,0 +1,44 @@
+name: Apply P0G compact UI
+
+on:
+  push:
+    branches:
+      - feat/p0g-visual-density
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p0g-visual-density
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply P0G patch
+        run: node scripts/apply-p0g.mjs
+      - name: Validate patch markers
+        run: node --test tests/p0g-compact-ui.test.mjs
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Commit applied P0G patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/cya-app.tsx
+          if git diff --cached --quiet; then
+            echo "No generated patch changes to commit"
+          else
+            git commit -m "P0G: aplicar flujo compacto en Dar clase"
+            git push origin HEAD:feat/p0g-visual-density
+          fi
