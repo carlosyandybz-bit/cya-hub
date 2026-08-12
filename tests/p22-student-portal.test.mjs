@@ -10,8 +10,8 @@ const visibility = fs.readFileSync('supabase/v38-student-training-visibility.sql
 const evaluations = fs.readFileSync('supabase/v36b-student-portal-security-invoker.sql','utf8');
 const buildInfo = fs.readFileSync('app/api/build-info/route.ts','utf8');
 
-test('P22 exposes an explicit no-store v50-ready runtime marker', () => {
-  assert.ok(buildInfo.includes('p22-student-portal-v50-ready'));
+test('P22 keeps an explicit no-store rollout marker compatible with later packages', () => {
+  assert.match(buildInfo,/release:\s*"p\d+[a-z0-9-]*-ready"/i);
   assert.ok(buildInfo.includes('cache-control'));
   assert.ok(buildInfo.includes('no-store'));
 });
