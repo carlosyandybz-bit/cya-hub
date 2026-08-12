@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { Camera, CircleUserRound, Clock3, Save, Settings2, Trash2, UserRound } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
+import { RuntimeForm } from "./runtime-form";
 import styles from "./account-pages.module.css";
 
 type CommonProps = {
@@ -172,7 +173,7 @@ export function ProfileSettingsView({ client, identity, onIdentityPatch, notify 
       <header className={styles.pageHeader}>
         <span className={styles.eyebrow}>Mi cuenta</span>
         <h1 id="profile-settings-title">Editar perfil</h1>
-        <p>Gestiona tu nombre y tu foto de perfil.</p>
+        <p>Gestiona tu cuenta y, si eres alumno, tus datos personales canónicos.</p>
       </header>
 
       <form className={styles.card} onSubmit={submit}>
@@ -198,6 +199,11 @@ export function ProfileSettingsView({ client, identity, onIdentityPatch, notify 
         {error ? <p className={styles.error}>{error}</p> : null}
         <div className={styles.actions}><button className={styles.primaryButton} disabled={busy}><Save /> {busy ? "Guardando…" : "Guardar cambios"}</button></div>
       </form>
+
+      {identity.can_study ? <section className={styles.card} aria-labelledby="student-profile-data-title">
+        <div className={styles.sectionTitle}><UserRound /><div><strong id="student-profile-data-title">Mis datos de alumno</strong><span>Información compartida con tu ficha CYA, sin volver a escribir lo que ya conocemos.</span></div></div>
+        <RuntimeForm client={client} formKey="student_personal" mode="edit" submitLabel="Guardar datos de alumno" compact onSaved={() => notify("Datos de alumno actualizados.")} />
+      </section> : null}
     </section>
   );
 }
