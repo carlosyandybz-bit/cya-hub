@@ -53,6 +53,7 @@ export function EvaluationPostClassPreparer() {
           .limit(10);
         if (classResult.error || cancelled) return;
 
+        let createdAny = false;
         for (const item of (classResult.data ?? []) as unknown as PendingClass[]) {
           for (const participant of item.class_participants ?? []) {
             if (cancelled) return;
@@ -78,8 +79,16 @@ export function EvaluationPostClassPreparer() {
                 personId: participant.person_id,
                 message: prepared.error.message,
               });
+            } else {
+              createdAny = true;
             }
           }
+        }
+
+        // The gate also listens to visibilitychange. Wake it immediately after the
+        // class-kind session exists instead of waiting for its 30 s polling cycle.
+        if (createdAny && !cancelled) {
+          document.dispatchEvent(new Event("visibilitychange"));
         }
       } finally {
         running = false;
