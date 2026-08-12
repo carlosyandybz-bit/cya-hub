@@ -136,7 +136,7 @@ export function TeachingMediaEditor({ value, onChange, onUploadingChange, allowC
   function addClassVideo(video: ReusableClassVideo) {
     if (value.some((item) => item.external_file_id === video.external_file_id)) return;
     onChange([...value, {
-      _key: `class-video-${video.id}-${Date.now()}`,
+      _key: `class-video-${video.id}-${video.external_file_id}`,
       media_type: "video",
       provider: "google_drive",
       external_file_id: video.external_file_id,

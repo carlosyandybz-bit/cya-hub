@@ -105,3 +105,19 @@ No cerrar P21 hasta probar: individual, pareja, programada, manual, provisional 
 - se elimina el refresco global cada 15 s: Realtime queda como vía principal y `loadLive()` como fallback discreto;
 - se elimina el segundo juego duplicado de controles de Correcciones;
 - se corrigen efectos React detectados por el lint sin desactivar reglas.
+
+
+## 9. P21.3 — setup progresivo real G7
+
+- fecha, duración y estilo conocidos se muestran compactos y no como preguntas obligatorias;
+- rol y nivel solo muestran selector si falta alguno, salvo que el profesor pulse `Editar datos`;
+- el bono previsto sigue siendo opcional y puede decidirse al terminar;
+- la creación manual explica que CYA reutilizará el contexto canónico ya conocido;
+- `Editar datos` permite cambiar voluntariamente cualquier valor heredado.
+
+## 10. P21.4 — protección de reapertura G6
+
+- la reapertura conserva la RPC transaccional existente;
+- antes de ejecutarla exige dos confirmaciones;
+- ambas incluyen fecha/alumnado de la clase para evitar confirmar la clase equivocada;
+- la segunda advierte explícitamente que se revierten los movimientos financieros del cierre.

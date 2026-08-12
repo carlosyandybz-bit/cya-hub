@@ -104,3 +104,32 @@ test('P21.2 correction cards expose only one status-frequency-importance control
   assert.doesNotMatch(live, /correction-detail/);
   assert.match(live, /correction-quick/);
 });
+
+
+test('P21.3 setup progressively hides known values and asks only for missing context', () => {
+  const setup = sliceBetween(app, 'function ClassSetupStage(', 'function ClassPreparationStage(');
+  assert.match(setup, /editKnown/);
+  assert.match(setup, /const showClassFields=editKnown \|\| classMissing/);
+  assert.ok(setup.includes('showContextFields=editKnown || !roleValue || !levelValue'));
+  assert.match(setup, /CYA ya tiene los datos necesarios para preparar esta clase/);
+  assert.match(setup, /Completa únicamente los datos pendientes/);
+  assert.match(setup, /Todo listo · Preparar clase/);
+  assert.match(setup, /Se decidirá al terminar/);
+});
+
+test('P21.3 manual class draft explains canonical reuse instead of re-asking everything', () => {
+  const draft = sliceBetween(app, 'function ManualClassDraft(', 'function ClassSetupStage(');
+  assert.match(draft, /CYA reutilizará fecha, duración y el contexto de baile que ya conozca/);
+  assert.doesNotMatch(draft, /Después confirmarás fecha, duración, estilo, rol, nivel, lugar y bono/);
+});
+
+test('P21.4 reopening a class requires two contextual confirmations before the RPC', () => {
+  const reopen = sliceBetween(app, 'async function reopenClass(id: number) {', 'function goTarget(');
+  assert.equal((reopen.match(/window\.confirm/g) || []).length, 2);
+  assert.match(reopen, /targetLabel/);
+  assert.match(reopen, /consumos, regularizaciones, transferencias, suplementos y pagos/);
+  assert.match(reopen, /Confirmación final: reabrir/);
+  const secondConfirmation = reopen.indexOf('Confirmación final: reabrir');
+  const rpc = reopen.indexOf('reopen_administratively_finished_class');
+  assert.ok(secondConfirmation > 0 && rpc > secondConfirmation);
+});

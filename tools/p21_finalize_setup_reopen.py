@@ -33,7 +33,7 @@ app = replace_once(
 )
 
 setup_pattern = re.compile(
-    r'''  const pairAvailable = item\.class_type === "pair".*?\n  </div>;\n}\n\nfunction ClassPreparationStage''',
+    r'''  const pairAvailable = item\.class_type === "pair" && personIds\[0\] \? compatibleCreditsForClass\(item,credits,personIds\[0\]\) : \[\];.*?\n  </div>;\n}\n\nfunction ClassPreparationStage''',
     re.S,
 )
 setup_replacement = '''  const pairAvailable = item.class_type === "pair" && personIds[0] ? compatibleCreditsForClass(item,credits,personIds[0]) : [];
@@ -53,7 +53,7 @@ setup_replacement = '''  const pairAvailable = item.class_type === "pair" && per
 }
 
 function ClassPreparationStage'''
-app, setup_count = setup_pattern.subn(setup_replacement, app, count=1)
+app, setup_count = setup_pattern.subn(lambda _match: setup_replacement, app, count=1)
 if setup_count != 1:
     raise SystemExit(f'P21.3 progressive setup render: expected 1 match, got {setup_count}')
 
