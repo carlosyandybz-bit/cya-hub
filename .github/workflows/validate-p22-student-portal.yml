@@ -5,6 +5,7 @@ on:
     paths:
       - 'app/**'
       - 'supabase/v50_p22_student_portal_media_access.sql'
+      - 'supabase/v50b_p22_media_invoker_wrapper.sql'
       - 'tests/**'
       - 'docs/P22_PORTAL_ALUMNO_RECONCILIACION.md'
       - '.github/workflows/validate-p22-student-portal.yml'
