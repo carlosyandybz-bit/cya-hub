@@ -1,4 +1,5 @@
 import { createClient, type User } from "npm:@supabase/supabase-js@2.112.2";
+import postgres from "npm:postgres@3.4.9";
 
 const EXPECTED_ISSUER = "https://token.actions.githubusercontent.com";
 const EXPECTED_AUDIENCE = "cya-hub-qa";
@@ -6,6 +7,7 @@ const EXPECTED_REPOSITORY = "carlosyandybz-bit/cya-hub";
 const EXPECTED_REPOSITORY_ID = "1328286685";
 const EXPECTED_WORKFLOW_PREFIX = `${EXPECTED_REPOSITORY}/.github/workflows/cya-qa-e2e.yml@`;
 const GITHUB_JWKS_URL = "https://token.actions.githubusercontent.com/.well-known/jwks";
+const ALL_APP_ROLES = ["admin", "teacher_admin", "teacher", "student"] as const;
 
 type GitHubClaims = {
   iss?: string;
@@ -82,9 +84,7 @@ async function verifyGitHubOidc(token: string): Promise<GitHubClaims> {
   const claims = decodeJsonSegment<GitHubClaims>(segments[1]);
   if (header.alg !== "RS256" || !header.kid) throw new Error("Unsupported OIDC signing key");
 
-  const jwksResponse = await fetch(GITHUB_JWKS_URL, {
-    headers: { accept: "application/json" },
-  });
+  const jwksResponse = await fetch(GITHUB_JWKS_URL, { headers: { accept: "application/json" } });
   if (!jwksResponse.ok) throw new Error("Unable to load GitHub OIDC signing keys");
   const jwks = await jwksResponse.json() as { keys?: JsonWebKey[] };
   const jwk = jwks.keys?.find((candidate) => candidate.kid === header.kid);
@@ -153,7 +153,105 @@ async function findUserByEmail(admin: ReturnType<typeof createClient>, email: st
   throw new Error("Unable to locate QA user within the bounded Auth user scan");
 }
 
-async function ensureFixture(admin: ReturnType<typeof createClient>, fixture: Fixture) {
+async function persistFixture(sql: ReturnType<typeof postgres>, user: User, fixture: Fixture) {
+  await sql.begin(async (tx) => {
+    await tx`
+      insert into public.user_profiles (id, display_name)
+      values (${user.id}::uuid, ${fixture.displayName})
+      on conflict (id) do update
+      set display_name = excluded.display_name,
+          updated_at = now()
+    `;
+
+    await tx`
+      insert into public.app_members (user_id, role, active)
+      values (${user.id}::uuid, ${fixture.primaryRole}, true)
+      on conflict (user_id) do update
+      set role = excluded.role,
+          active = true,
+          updated_at = now()
+    `;
+
+    for (const role of fixture.roles) {
+      await tx`
+        insert into public.app_member_roles (user_id, role, active, granted_by)
+        values (${user.id}::uuid, ${role}, true, null)
+        on conflict (user_id, role) do update
+        set active = true,
+            granted_by = null,
+            updated_at = now()
+      `;
+    }
+
+    for (const role of ALL_APP_ROLES) {
+      if (fixture.roles.includes(role as "admin" | "teacher" | "student")) continue;
+      await tx`
+        update public.app_member_roles
+        set active = false,
+            updated_at = now()
+        where user_id = ${user.id}::uuid
+          and role = ${role}
+          and active = true
+      `;
+    }
+
+    const personRows = await tx<{ id: string }[]>`
+      select id::text as id
+      from public.people
+      where auth_user_id = ${user.id}::uuid
+      limit 1
+    `;
+
+    let personId = personRows[0]?.id ?? null;
+    if (!personId) {
+      const inserted = await tx<{ id: string }[]>`
+        insert into public.people (
+          auth_user_id, display_name, email, crm_stage, source, notes, active, created_by
+        )
+        values (
+          ${user.id}::uuid,
+          ${fixture.displayName},
+          ${fixture.email},
+          'student',
+          'qa_automation',
+          'AUTOMATED QA FIXTURE — do not use for real classes or billing.',
+          true,
+          ${user.id}::uuid
+        )
+        returning id::text as id
+      `;
+      personId = inserted[0]?.id ?? null;
+    } else {
+      await tx`
+        update public.people
+        set display_name = ${fixture.displayName},
+            email = ${fixture.email},
+            crm_stage = 'student',
+            source = 'qa_automation',
+            notes = 'AUTOMATED QA FIXTURE — do not use for real classes or billing.',
+            active = true,
+            updated_at = now()
+        where id = ${personId}::bigint
+      `;
+    }
+
+    if (!personId) throw new Error(`Unable to persist ${fixture.role} QA person`);
+
+    await tx`
+      insert into public.student_profiles (person_id, active, created_by)
+      values (${personId}::bigint, true, ${user.id}::uuid)
+      on conflict (person_id) do update
+      set active = true,
+          updated_at = now()
+    `;
+  });
+}
+
+async function ensureFixture(
+  admin: ReturnType<typeof createClient>,
+  sql: ReturnType<typeof postgres>,
+  fixture: Fixture,
+) {
   const password = makePassword();
   let user = await findUserByEmail(admin, fixture.email);
 
@@ -178,93 +276,45 @@ async function ensureFixture(admin: ReturnType<typeof createClient>, fixture: Fi
     user = data.user;
   }
 
-  const { error: profileError } = await admin.from("user_profiles").upsert({
-    id: user.id,
-    display_name: fixture.displayName,
-  }, { onConflict: "id" });
-  if (profileError) throw profileError;
-
-  const { error: memberError } = await admin.from("app_members").upsert({
-    user_id: user.id,
-    role: fixture.primaryRole,
-    active: true,
-  }, { onConflict: "user_id" });
-  if (memberError) throw memberError;
-
-  const { error: deactivateError } = await admin.from("app_member_roles")
-    .update({ active: false })
-    .eq("user_id", user.id);
-  if (deactivateError) throw deactivateError;
-
-  const { error: rolesError } = await admin.from("app_member_roles").upsert(
-    fixture.roles.map((role) => ({ user_id: user!.id, role, active: true, granted_by: null })),
-    { onConflict: "user_id,role" },
-  );
-  if (rolesError) throw rolesError;
-
-  let { data: person, error: personReadError } = await admin.from("people")
-    .select("id")
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
-  if (personReadError) throw personReadError;
-
-  if (!person) {
-    const { data, error } = await admin.from("people").insert({
-      auth_user_id: user.id,
-      display_name: fixture.displayName,
-      email: fixture.email,
-      crm_stage: "student",
-      source: "qa_automation",
-      notes: "AUTOMATED QA FIXTURE — do not use for real classes or billing.",
-      active: true,
-      created_by: user.id,
-    }).select("id").single();
-    if (error) throw error;
-    person = data;
-  } else {
-    const { error } = await admin.from("people").update({
-      display_name: fixture.displayName,
-      email: fixture.email,
-      crm_stage: "student",
-      source: "qa_automation",
-      notes: "AUTOMATED QA FIXTURE — do not use for real classes or billing.",
-      active: true,
-    }).eq("id", person.id);
-    if (error) throw error;
-  }
-
-  const { error: studentProfileError } = await admin.from("student_profiles").upsert({
-    person_id: person.id,
-    active: true,
-    created_by: user.id,
-  }, { onConflict: "person_id" });
-  if (studentProfileError) throw studentProfileError;
-
+  await persistFixture(sql, user, fixture);
   return { email: fixture.email, password };
 }
 
 Deno.serve(async (request) => {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  let sql: ReturnType<typeof postgres> | null = null;
   try {
     const authorization = request.headers.get("authorization") ?? "";
     if (!authorization.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
     const claims = await verifyGitHubOidc(authorization.slice("Bearer ".length));
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const databaseUrl = Deno.env.get("SUPABASE_DB_URL");
     if (!supabaseUrl) throw new Error("SUPABASE_URL is unavailable");
+    if (!databaseUrl) throw new Error("SUPABASE_DB_URL is unavailable");
+
     const admin = createClient(supabaseUrl, secretKeyFromEnvironment(), {
       auth: { persistSession: false, autoRefreshToken: false },
+    });
+    sql = postgres(databaseUrl, {
+      prepare: false,
+      max: 1,
+      idle_timeout: 2,
+      connect_timeout: 10,
     });
 
     const credentials: Record<string, { email: string; password: string }> = {};
     for (const fixture of fixtures) {
-      credentials[fixture.role] = await ensureFixture(admin, fixture);
+      credentials[fixture.role] = await ensureFixture(admin, sql, fixture);
     }
 
     return json({ ok: true, run_id: claims.run_id ?? null, credentials });
   } catch (error) {
     const message = error instanceof Error ? error.message : "QA bootstrap failed";
-    return json({ error: message }, message.toLowerCase().includes("oidc") || message.includes("repository") || message.includes("workflow") ? 403 : 500);
+    const forbidden = message.toLowerCase().includes("oidc") || message.includes("repository") || message.includes("workflow");
+    return json({ error: message }, forbidden ? 403 : 500);
+  } finally {
+    if (sql) await sql.end({ timeout: 1 }).catch(() => undefined);
   }
 });
