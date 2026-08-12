@@ -1,9 +1,10 @@
 # P21 — DAR CLASE definitivo · reconciliación
 
-Estado: **P21 ACTIVO — auditoría inicial cerrada, implementación en curso**  
+Estado: **P21 CERRADO — producción + v49 verificadas**  
 Fecha de corte: 2026-08-12  
-Base: `main@afc51ab5d823ecd34af154215c0d28a34d24dc83`  
-Paquete anterior: **P20 cerrado**
+Base de cierre: `main@8f8673c7a67bb7ac3adb7bb7bd28cb730f8e8fa3`  
+Paquete anterior: **P20 cerrado**  
+Siguiente paquete: **P22 — Portal del alumno**
 
 ## 1. Objetivo
 
@@ -21,103 +22,166 @@ Reglas permanentes:
 
 ## 2. Matriz real de auditoría
 
-| Regla | Estado actual | Acción P21 |
+| Regla | Estado P21 | Resultado |
 |---|---|---|
-| Centro de clases permite varias abiertas | EXISTE | preservar + regresión |
-| Inicio de clase no depende de Marketing | EXISTE (correctivo PR #13) | revalidar |
-| `start_class` no comprueba otra clase activa | EXISTE backend | preservar |
-| Provisional in-flow | EXISTE P19 | revalidar individual/pareja |
-| Fecha/duración/estilo/rol/nivel precargados | PARCIAL | simplificar confirmación para no volver a preguntar lo conocido |
-| Duración manual en cierre | EXISTE | preservar G3 |
-| Bono de pareja único | EXISTE | revalidar |
-| Transferencia individual → pareja por minutos | EXISTE | revalidar y rollback |
-| Regularización exacta | EXISTE v30/v30b | revalidar |
-| Pago parcial | EXISTE | revalidar |
-| Varios vídeos por clase | EXISTE | revalidar pareja/Ambos |
-| Buscador 4 tipos | EXISTE | completar categoría/relaciones y ranking contractual |
-| Crear rápido hereda contexto | EXISTE | preservar |
-| Contexto previo/última clase | EXISTE | compactar sin duplicar datos |
-| Correcciones activas | EXISTE | eliminar controles duplicados dentro de tarjeta |
-| Explicaciones/secuencias | EXISTE | preservar |
-| Ejercicios | EXISTE: usa el último evento por contenido | preservar + regresión |
-| Evaluación numérica antigua en Dar clase | CÓDIGO HEREDADO OCULTO | eliminar físicamente en P21.2 |
-| Evaluación guiada P17 | EXISTE fuera del tab legado | preservar |
-| Resumen pedagógico editable | EXISTE PR #12 / v45 | revalidar |
-| Añadir contenido olvidado postadministrativo | EXISTE v45 | revalidar |
-| Cierre pedagógico | EXISTE | preservar gate de evaluación |
-| Reapertura administrativa | EXISTE | revalidar devolución/artefactos/auditoría |
-| `workflow_stage` coherente | PARCIAL: hay históricos `finished/live` y `finished/data` | normalizar futuro + backfill seguro |
+| Centro de clases permite varias abiertas | EXISTÍA | preservado + regresión |
+| Inicio de clase no depende de Marketing | EXISTÍA | revalidado |
+| `start_class` no comprueba otra clase activa | EXISTÍA backend | preservado |
+| Provisional in-flow | EXISTÍA P19 | revalidado |
+| Fecha/duración/estilo/rol/nivel precargados | PARCIAL | setup progresivo G7 |
+| Duración manual en cierre | EXISTÍA | preservado G3 |
+| Bono de pareja único | EXISTÍA | revalidado |
+| Transferencia individual → pareja por minutos | EXISTÍA | revalidada |
+| Regularización exacta | EXISTÍA v30/v30b | revalidada |
+| Pago parcial | EXISTÍA | revalidado |
+| Varios vídeos por clase | EXISTÍA | revalidado |
+| Buscador 4 tipos | EXISTÍA | ampliado con categoría/relaciones y ranking contractual en v49 |
+| Crear rápido hereda contexto | EXISTÍA | preservado |
+| Contexto previo/última clase | EXISTÍA | compactado sin duplicar datos |
+| Correcciones activas | EXISTÍA | eliminados controles duplicados |
+| Explicaciones/secuencias | EXISTÍA | preservadas |
+| Ejercicios | EXISTÍA | último estado por contenido preservado |
+| Evaluación numérica antigua en Dar clase | LEGADO OCULTO | eliminada físicamente |
+| Evaluación guiada P17 | EXISTÍA | única evaluación principal |
+| Resumen pedagógico editable | EXISTÍA v45 | revalidado |
+| Añadir contenido olvidado postadministrativo | EXISTÍA v45 | revalidado |
+| Cierre pedagógico | EXISTÍA | gate de evaluación preservado |
+| Reapertura administrativa | EXISTÍA | doble confirmación G6 + rollback preservado |
+| `workflow_stage` coherente | PARCIAL | trigger + reconciliación v49 |
 
-## 3. Hallazgos concretos del frontend actual
+## 3. Hallazgos concretos del frontend resueltos
 
 ### 3.1 Evaluación heredada
 
-`app/cya-app.tsx` todavía contiene un tab `Evaluar` con radar y guardado numérico. P17 lo retiró de la experiencia visible mediante CSS, pero el JSX y estado siguen vivos. P21 debe eliminarlo físicamente para evitar dos motores de evaluación.
+`LiveSession` contenía todavía JSX/estado del tab numérico antiguo aunque P17 ya lo había retirado visualmente. P21 lo elimina físicamente y conserva exclusivamente el modelo guiado de P17.
 
 ### 3.2 Correcciones duplicadas
 
-Cada tarjeta de Corrección monta controles rápidos de estado/frecuencia/importancia y vuelve a montar los mismos controles dentro del detalle. P21 conservará un único control compacto, expandible solo para explicación/guía/media.
+Se elimina el segundo juego de controles de Correcciones. La tarjeta conserva un único control compacto y el detalle queda para explicación/guía/media.
 
 ### 3.3 Ejercicios por eventos
 
-Los ejercicios se modelan con eventos de clase. La UI debe representar **el último estado por `content_id`**, no una fila por cada transición histórica (`pending → active → completed`). El histórico permanece en DB.
+Los ejercicios continúan modelándose con eventos de clase, mostrando el último estado por `content_id` en vez de duplicar transiciones históricas.
 
 ### 3.4 Setup
 
-El backend y frontend ya precargan datos de la clase y `student_dance_profiles`. P21 debe convertir el setup en confirmación progresiva: mostrar lo conocido como resumen editable y destacar solo lo que falta.
+Fecha, duración y estilo conocidos se muestran como resumen editable. Rol y nivel solo preguntan cuando faltan, salvo edición voluntaria. El flujo aplica G7 y no vuelve a pedir datos ya conocidos.
 
-## 4. Hallazgos del backend real
+## 4. Backend preservado y revalidado
 
-- `start_class(p_class_id)` valida staff, clase, estilo, rol y nivel; no comprueba ni bloquea otras clases activas.
+- `start_class(p_class_id)` valida staff, clase, estilo, rol y nivel; no bloquea otras clases activas.
 - `administratively_finish_class_v6` usa `p_duration_minutes`; no deriva duración desde `started_at`.
 - `transfer_individual_credit_to_pair` acepta minutos elegidos y crea un único bono pair compartido.
-- `reopen_administratively_finished_class` devuelve consumos, revierte transferencias/artefactos, elimina cuentas/items del cierre y audita.
-- `search_class_teaching_content` ya busca título/descripción/guía/tags pero aún no categoría/relaciones y su ranking no refleja completamente el contrato P21.
-- `close_class_pedagogy_v2` requiere cierre administrativo y publica al alumno solo contenido releasable.
+- `reopen_administratively_finished_class` revierte consumos, transferencias/artefactos y datos del cierre de forma transaccional y auditada.
+- `close_class_pedagogy_v2` exige cierre administrativo y publica al alumno solo contenido releasable.
 
 ## 5. P21.1 — v49 compatible
 
-`v49_p21_class_workflow_search.sql` será compatible con el frontend actual:
+`v49_p21_class_workflow_search.sql` se aplicó sin cambiar la firma ni el shape público del RPC.
 
-1. amplía el buscador sin cambiar firma ni shape;
-2. busca también categoría y relaciones;
-3. ordena: corrección pendiente asignada → otro contenido asignado → contenido relacionado con lo activo → biblioteca lista → incompletos;
-4. instala un trigger de consistencia de `workflow_stage` solo para estados operativos inequívocos;
-5. normaliza históricos `active`, `finished+administrative` y `pedagogy_closed`, sin tocar clases `scheduled` en `data/prepare`.
+Resultado:
 
-## 6. Subfases restantes de P21
+1. `search_class_teaching_content` busca también categoría y relaciones;
+2. ranking: corrección pendiente asignada → otro contenido asignado → contenido relacionado → biblioteca lista → incompletos;
+3. mantiene búsqueda para Correcciones / Explicaciones / Ejercicios / Secuencias;
+4. `trg_sync_class_workflow_stage_p21` mantiene consistencia futura;
+5. el backfill solo toca estados inequívocos.
 
-- **P21.1** reconciliación + buscador/workflow compatible.
-- **P21.2** limpieza física del LiveSession: quitar evaluación antigua, duplicados y deduplicar ejercicios.
-- **P21.3** setup progresivo G7 + UX iPhone.
-- **P21.4** revalidación cierre administrativo, pagos, bonos, vídeos y reapertura.
-- **P21.5** QA integral P21 + Hostinger + cierre documental.
+### Preflight de producción
 
-## 7. Gate de cierre
+- proyecto: `CyA hub 2` (`ldvyeyhzrepaaouzavgs`) `ACTIVE_HEALTHY`;
+- todas las tablas y columnas requeridas presentes;
+- firma previa del RPC idéntica a la esperada;
+- 27 clases existentes;
+- 0 `closed` incoherentes;
+- 2 `finished + administrative` pendientes de reconciliar;
+- 0 `active` incoherentes.
 
-No cerrar P21 hasta probar: individual, pareja, programada, manual, provisional in-flow, dos clases abiertas, buscador 4 tipos, correcciones/explicaciones/ejercicios/secuencias, evaluación guiada, cierre financiero con variantes, resumen editable, cierre pedagógico, reapertura, iPhone y desktop.
+### Cutover
 
+- migración aplicada: `v49_p21_class_workflow_search`;
+- ledger Supabase: **`20260812020727`**;
+- reconciliación posterior: **0 / 0 / 0 incoherencias** en closed/administrative/live;
+- las 2 clases previstas quedaron reconciliadas a `workflow_stage='administrative'`;
+- trigger `trg_sync_class_workflow_stage_p21` verificado.
 
-## 8. P21.2 — limpieza física iniciada
+### Permisos post-cutover
 
-- se retira el tab numérico `Evaluar` de `LiveSession`;
-- se conserva exclusivamente el flujo guiado de P17;
-- se elimina el refresco global cada 15 s: Realtime queda como vía principal y `loadLive()` como fallback discreto;
-- se elimina el segundo juego duplicado de controles de Correcciones;
-- se corrigen efectos React detectados por el lint sin desactivar reglas.
+- `anon` no ejecuta `search_class_teaching_content`;
+- `authenticated` sí ejecuta el RPC público;
+- `anon` y `authenticated` no ejecutan `private.sync_class_workflow_stage_p21()`;
+- llamada sin sesión al buscador rechazada correctamente con SQLSTATE `42501`.
 
+## 6. P21.2 — limpieza física completada
 
-## 9. P21.3 — setup progresivo real G7
+- retirado el tab numérico `Evaluar` de `LiveSession`;
+- preservado exclusivamente el flujo guiado de P17;
+- retirado el refresco global cada 15 s; Realtime queda como vía principal y `loadLive()` como fallback discreto;
+- eliminado el segundo juego duplicado de controles de Correcciones;
+- efectos React modificados durante P21 corregidos sin desactivar reglas.
+
+## 7. P21.3 — setup progresivo real G7
 
 - fecha, duración y estilo conocidos se muestran compactos y no como preguntas obligatorias;
-- rol y nivel solo muestran selector si falta alguno, salvo que el profesor pulse `Editar datos`;
+- rol y nivel solo muestran selector si falta alguno, salvo `Editar datos`;
 - el bono previsto sigue siendo opcional y puede decidirse al terminar;
-- la creación manual explica que CYA reutilizará el contexto canónico ya conocido;
-- `Editar datos` permite cambiar voluntariamente cualquier valor heredado.
+- la creación manual reutiliza contexto canónico;
+- `Editar datos` permite cambiar voluntariamente valores heredados.
 
-## 10. P21.4 — protección de reapertura G6
+## 8. P21.4 — protección de reapertura G6
 
 - la reapertura conserva la RPC transaccional existente;
-- antes de ejecutarla exige dos confirmaciones;
-- ambas incluyen fecha/alumnado de la clase para evitar confirmar la clase equivocada;
-- la segunda advierte explícitamente que se revierten los movimientos financieros del cierre.
+- exige dos confirmaciones antes de ejecutar;
+- ambas identifican fecha/alumnado de la clase;
+- la segunda advierte que se revierten los movimientos financieros del cierre.
+
+## 9. QA y despliegue
+
+Workflow: `Validate P21 Dar clase`, run **31554904287**.
+
+Resultado completo:
+
+- `npm ci`: success;
+- **P21 complete regression gate**: success;
+- **Lint complete application**: success;
+- **Production build**: success;
+- **Reject whitespace errors**: success.
+
+El commit funcional P21 quedó en `c9341750ff337c6deb24345e04e975c88f4f3bfb`.
+
+Para forzar Hostinger sin cambiar código se creó el commit no-op:
+
+`8f8673c7a67bb7ac3adb7bb7bd28cb730f8e8fa3` — `chore: force Hostinger redeploy of P21`.
+
+Hostinger mostró `app.carlosyandy.com` como **Actual / Se ha completado**, rama `main`, sobre `8f8673c7`, estructura Next.js y Node 22.x. El commit no-op tiene **0 archivos diferentes** respecto al commit funcional P21, por lo que producción sirve el mismo árbol validado.
+
+## 10. Advisors después de v49
+
+No apareció un hallazgo nuevo específico de v49 que obligue a rollback.
+
+Permanecen deudas globales ya conocidas para P32:
+
+- Leaked Password Protection desactivado;
+- varias RPC `SECURITY DEFINER` expuestas deliberadamente a `authenticated` con guards internos, a reauditar;
+- `pg_net` en `public`;
+- FKs sin índice y policies permisivas múltiples;
+- índices aún marcados como no usados.
+
+No se eliminan índices automáticamente por Advisor `unused`.
+
+## 11. Cierre
+
+**P21 queda CERRADO.**
+
+Evidencia de cierre:
+
+- frontend P21 validado por CI;
+- Hostinger redeploy completado sobre el árbol P21;
+- v49 aplicada en producción;
+- ledger verificado;
+- trigger y permisos verificados;
+- 27 clases coherentes tras reconciliación;
+- acceso no autenticado al RPC bloqueado;
+- sin hallazgo Advisor nuevo atribuible a v49 que exija rollback.
+
+Siguiente paquete operativo: **P22 — Portal del alumno**.
