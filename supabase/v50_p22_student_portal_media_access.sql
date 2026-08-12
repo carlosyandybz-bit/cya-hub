@@ -4,7 +4,8 @@
 -- 1. alinear tickets de Drive con las mismas reglas de publicación del portal;
 -- 2. permitir class_media_resources cerrados que el snapshot ya entrega;
 -- 3. no abrir SELECT directo de teaching_content_media al alumnado;
--- 4. preservar acceso completo del staff.
+-- 4. preservar acceso completo del staff;
+-- 5. mantener el helper de datos fuera del alcance directo del cliente.
 
 begin;
 
@@ -101,13 +102,16 @@ $$;
 revoke all on function private.can_access_student_portal_media(text)
 from public,anon,authenticated;
 
+-- SECURITY DEFINER aquí solo cruza la frontera hacia el helper privado.
+-- La decisión de autorización sigue usando auth.uid() y roles reales dentro
+-- de private.can_access_student_portal_media; no devuelve filas ni metadata.
 create or replace function public.can_access_teaching_media(
   p_external_file_id text
 )
 returns boolean
 language sql
 stable
-security invoker
+security definer
 set search_path=''
 as $$
   select private.can_access_student_portal_media(p_external_file_id);
