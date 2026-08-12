@@ -1628,6 +1628,7 @@ function StaffApp({ session }: { session: Session }) {
   async function classSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Clase programada correctamente."); setScheduleOpen(false); setScheduleStudentId(null); replaceView("classes"); }
   async function creditSaved() { await Promise.all([loadOperations(),loadMarketing()]); setToast("Bono creado correctamente."); setCreditOpen(false); setCreditStudentId(null); replaceView("credits"); }
   const styles = catalog.filter((term) => term.taxonomy === "dance_style");
+  const isLiveClassSessionActive = view === "live" && liveClassId !== null && classes.some((item) => item.id === liveClassId && item.status === "active" && item.workflow_stage === "live");
   function goLive(id?: number) { navigateView("live", { liveClassId: id ?? liveClassId }); }
   async function reopenClass(id: number) {
     if (!db) return;
@@ -1682,7 +1683,7 @@ function StaffApp({ session }: { session: Session }) {
         {view === "admin" && db && identity.can_admin ? <AdminView client={db} identity={identity} terms={catalog} notify={setToast} leave={() => { setExperienceState("teacher"); setView("home"); }} /> : null}
         {view === "marketing" && db ? <MarketingView db={db} contacts={crmContacts} rates={marketingRates} content={marketingContent} events={marketingEvents} campaigns={marketingCampaigns} metrics={campaignMetrics} recipients={communicationRecipients} refresh={refreshMarketing} notify={setToast} /> : null}
       </div></main>
-      {view !== "live" ? <nav className="mobile-nav">{nav.map(([id, label, Icon]) => <button key={id} className={`${activeNav(id) ? "active" : ""} ${id === "live" ? "primary" : ""}`} onClick={() => navigateView(id)}><Icon /><span>{label}</span></button>)}</nav> : null}
+      {!isLiveClassSessionActive ? <nav className="mobile-nav">{nav.map(([id, label, Icon]) => <button key={id} className={`${activeNav(id) ? "active" : ""} ${id === "live" ? "primary" : ""}`} onClick={() => navigateView(id)}><Icon /><span>{label}</span></button>)}</nav> : null}
     </div>
     {newOpen ? <AddStudent close={() => goBack(view)} created={created} /> : null}
     {scheduleOpen ? <ScheduleClass students={students} styles={styles} initialStudentId={scheduleStudentId} close={() => goBack(view)} saved={classSaved} /> : null}

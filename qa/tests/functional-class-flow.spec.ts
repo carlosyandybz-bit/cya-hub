@@ -133,6 +133,12 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(visibleClassNav).toBeVisible();
     await visibleClassNav.click();
     await expect(page.getByRole("heading", { name: "Centro de clases" })).toBeVisible();
+    if ((page.viewportSize()?.width ?? 9999) <= 720) {
+      await expect(page.locator(".mobile-nav")).toBeVisible();
+      for (const label of ["Inicio", "Alumnado", "Dar clase", "Enseñanza", "Marketing"]) {
+        await expect(page.locator(".mobile-nav").getByRole("button", { name: new RegExp(`^${label}$`) })).toBeVisible();
+      }
+    }
 
     const classRow = page.locator(".scheduled-section .class-center-row")
       .filter({ hasText: fixtures.studentName })
@@ -143,8 +149,10 @@ test.describe("CYA Hub functional class lifecycle", () => {
 
     const startClassButton = page.getByRole("main").getByRole("button", { name: "Dar clase", exact: true });
     await expect(startClassButton).toBeVisible();
+    if ((page.viewportSize()?.width ?? 9999) <= 720) await expect(page.locator(".mobile-nav")).toBeVisible();
     await startClassButton.click();
     await expect(page.getByText("DANDO CLASE", { exact: true })).toBeVisible({ timeout: 20_000 });
+    if ((page.viewportSize()?.width ?? 9999) <= 720) await expect(page.locator(".mobile-nav")).toBeHidden();
     await completeInitialEvaluationIfPresent(page);
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-teacher-live-start`);
 
@@ -184,6 +192,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await page.locator('textarea[placeholder="Resumen, recomendaciones o recordatorio visible"]').fill(studentSummary);
     await page.getByRole("button", { name: /Cerrar y enviar al alumno/ }).click();
     await expect(page.getByRole("heading", { name: "Centro de clases" })).toBeVisible({ timeout: 20_000 });
+    if ((page.viewportSize()?.width ?? 9999) <= 720) await expect(page.locator(".mobile-nav")).toBeVisible();
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-teacher-class-closed`);
 
     await resetBrowserSession(page);
