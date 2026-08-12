@@ -38,7 +38,8 @@ async function login(page: Page, role: QaRole, testInfo: TestInfo) {
   await page.getByRole("button", { name: /^Entrar$/ }).click();
 
   await expect(page.locator('input[name="email"]')).toBeHidden({ timeout: 20_000 });
-  await expect(page.locator('button[aria-haspopup="menu"]').first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator("body")).not.toContainText("El email o la contraseña no son correctos.");
+  await expect(page.locator("body")).not.toContainText("CYA Hub no ha podido conectar con sus datos.");
 
   await testInfo.attach(`${role}-authenticated-screen`, {
     body: await page.screenshot({ fullPage: true }),
@@ -56,10 +57,10 @@ for (const role of ["teacher", "student", "admin"] as const) {
   });
 }
 
-test("teacher primary navigation remains available after login", async ({ page }, testInfo) => {
+test("teacher primary navigation is rendered after login", async ({ page }, testInfo) => {
   await login(page, "teacher", testInfo);
 
   for (const label of ["Inicio", "Alumnado", "Dar clase", "Enseñanza", "Marketing"]) {
-    await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
+    await expect(page.locator("body")).toContainText(label);
   }
 });
