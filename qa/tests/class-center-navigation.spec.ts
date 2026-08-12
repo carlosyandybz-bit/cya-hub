@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { isolateInitialEvaluationGateForUnrelatedQa } from "./known-audit-isolation";
 
 type QaRole = "teacher";
 
@@ -20,6 +21,8 @@ async function login(page: Page) {
 }
 
 test("Dar clase opens as a navigable class center before a class is active", async ({ page }) => {
+  // CYA-AUD-013/P0E is deliberately isolated here: this test validates class-center chrome, not baseline evaluation.
+  await isolateInitialEvaluationGateForUnrelatedQa(page);
   await login(page);
 
   const darClase = page.locator("nav button:visible").filter({ hasText: /^Dar clase$/ }).first();
