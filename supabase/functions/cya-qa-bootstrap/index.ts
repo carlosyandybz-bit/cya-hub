@@ -1,5 +1,6 @@
 import { createClient, type User } from "npm:@supabase/supabase-js@2.112.2";
 import postgres from "npm:postgres@3.4.9";
+import { seedFunctionalQaFixtures } from "./functional-fixtures.ts";
 
 const EXPECTED_ISSUER = "https://token.actions.githubusercontent.com";
 const EXPECTED_AUDIENCE = "cya-hub-qa";
@@ -207,8 +208,7 @@ async function persistFixture(sql: ReturnType<typeof postgres>, user: User, fixt
       const inserted = await tx<{ id: string }[]>`
         insert into public.people (
           auth_user_id, display_name, email, crm_stage, source, notes, active, created_by
-        )
-        values (
+        ) values (
           ${user.id}::uuid,
           ${fixture.displayName},
           ${fixture.email},
@@ -309,7 +309,15 @@ Deno.serve(async (request) => {
       credentials[fixture.role] = await ensureFixture(admin, sql, fixture);
     }
 
-    return json({ ok: true, run_id: claims.run_id ?? null, credentials });
+    const runId = claims.run_id ?? crypto.randomUUID();
+    const functionalFixtures = await seedFunctionalQaFixtures(sql, runId);
+
+    return json({
+      ok: true,
+      run_id: claims.run_id ?? null,
+      credentials,
+      fixtures: functionalFixtures,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "QA bootstrap failed";
     const forbidden = message.toLowerCase().includes("oidc") || message.includes("repository") || message.includes("workflow");
