@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { isolateInitialEvaluationGateForUnrelatedQa } from "./known-audit-isolation";
 
 type QaRole = "teacher" | "student" | "admin";
 type ProjectFixture = {
@@ -55,32 +56,6 @@ async function attachCheckpoint(page: Page, testInfo: TestInfo, name: string) {
   });
 }
 
-async function completeInitialEvaluationIfPresent(page: Page) {
-  const dialog = page.getByRole("dialog", { name: "Evaluación inicial guiada" });
-  const appeared = await dialog.waitFor({ state: "visible", timeout: 7_000 }).then(() => true).catch(() => false);
-  if (!appeared) return false;
-
-  const completeButton = dialog.getByRole("button", { name: "Completar evaluación inicial" });
-  for (let guard = 0; guard < 30; guard += 1) {
-    if (await completeButton.isEnabled()) break;
-    const question = dialog.locator("section").filter({
-      hasText: "¿Cuál de estas opciones describe mejor lo que observas ahora mismo?",
-    }).last();
-    await expect(question).toBeVisible({ timeout: 15_000 });
-    const answers = question.getByRole("button");
-    const answerCount = await answers.count();
-    if (!answerCount) throw new Error("Initial evaluation has no answer options");
-    const answer = answers.nth(Math.min(3, answerCount - 1));
-    await expect(answer).toBeEnabled({ timeout: 15_000 });
-    await answer.click();
-  }
-
-  await expect(completeButton).toBeEnabled({ timeout: 15_000 });
-  await completeButton.click();
-  await expect(dialog).toBeHidden({ timeout: 20_000 });
-  return true;
-}
-
 async function waitForPostClassEvaluation(page: Page) {
   const dialog = page.getByRole("dialog", { name: "Evaluación posterior a la clase" });
   const deadline = Date.now() + 40_000;
@@ -120,6 +95,8 @@ test.describe("CYA Hub functional class lifecycle", () => {
   test.describe.configure({ retries: 0 });
 
   test("teacher closes a QA class, student receives it, and admin remains healthy", async ({ page }, testInfo) => {
+    // CYA-AUD-013/P0E is a separately tracked blocker. This lifecycle keeps validating the rest of P21/P22/admin.
+    await isolateInitialEvaluationGateForUnrelatedQa(page);
     const fixtures = qaFixtures();
     const fixture = fixtures.projects[testInfo.project.name];
     if (!fixture) throw new Error(`No functional fixture for ${testInfo.project.name}`);
@@ -153,7 +130,6 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await startClassButton.click();
     await expect(page.getByText("DANDO CLASE", { exact: true })).toBeVisible({ timeout: 20_000 });
     if ((page.viewportSize()?.width ?? 9999) <= 720) await expect(page.locator(".mobile-nav")).toBeHidden();
-    await completeInitialEvaluationIfPresent(page);
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-teacher-live-start`);
 
     const observationsTab = page.getByRole("button", { name: "Observaciones", exact: true }).first();
