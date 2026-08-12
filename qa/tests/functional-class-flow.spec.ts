@@ -147,7 +147,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await quickCreate.getByRole("button", { name: "Guardar pendiente" }).click();
     await expect(page.getByText(correctionTitle, { exact: true })).toBeVisible({ timeout: 15_000 });
 
-    const observationsTab = page.locator(".live-work-tabs button:visible").filter({ hasText: "Observaciones" }).first();
+    const observationsTab = page.getByRole("button", { name: "Observaciones", exact: true }).first();
     await expect(observationsTab).toBeVisible();
     await observationsTab.click();
     const studentNoteCard = page.locator("article").filter({ has: page.getByRole("heading", { name: "Observación" }) });
