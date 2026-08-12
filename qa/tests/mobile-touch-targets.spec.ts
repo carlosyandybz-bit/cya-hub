@@ -1,5 +1,4 @@
 import { expect, test, type Page } from "@playwright/test";
-import { isolateInitialEvaluationGateForUnrelatedQa } from "./known-audit-isolation";
 
 type QaRole = "teacher" | "admin";
 type TouchTarget = { tag: string; label: string; width: number; height: number };
@@ -78,7 +77,6 @@ test.describe("P0C mobile touch target gate", () => {
 
   test("teacher audited surfaces keep effective targets at or above 44px", async ({ page }) => {
     // CYA-AUD-013/P0E is outside P0C and is hidden only inside this unrelated audit.
-    await isolateInitialEvaluationGateForUnrelatedQa(page);
     await login(page, "teacher");
     if ((page.viewportSize()?.width ?? 9999) > 720) return;
 
@@ -90,7 +88,6 @@ test.describe("P0C mobile touch target gate", () => {
   });
 
   test("administration audited surfaces keep effective targets at or above 44px", async ({ page }) => {
-    await isolateInitialEvaluationGateForUnrelatedQa(page);
     await login(page, "admin");
     if ((page.viewportSize()?.width ?? 9999) > 720) return;
 

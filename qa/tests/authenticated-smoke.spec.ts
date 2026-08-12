@@ -1,5 +1,4 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
-import { isolateGlobalEvaluationGatesForUnrelatedQa } from "./known-audit-isolation";
 
 type QaRole = "teacher" | "student" | "admin";
 
@@ -54,13 +53,11 @@ async function login(page: Page, role: QaRole, testInfo: TestInfo) {
 
 for (const role of ["teacher", "student", "admin"] as const) {
   test(`${role} account can authenticate and render its shell`, async ({ page }, testInfo) => {
-    if (role !== "student") await isolateGlobalEvaluationGatesForUnrelatedQa(page);
     await login(page, role, testInfo);
   });
 }
 
 test("teacher primary navigation is rendered after login", async ({ page }, testInfo) => {
-  await isolateGlobalEvaluationGatesForUnrelatedQa(page);
   await login(page, "teacher", testInfo);
 
   for (const label of ["Inicio", "Alumnado", "Dar clase", "Enseñanza", "Marketing"]) {

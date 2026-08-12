@@ -1,14 +1,18 @@
 name: Validate P17 evaluation cutover
 
-# Validates the exact P17 head that is eligible for merge.
 on:
   pull_request:
     paths:
       - "app/evaluation-**"
+      - "app/context-evaluation-panel*"
+      - "app/cya-app.tsx"
+      - "app/student-detail.tsx"
       - "app/page.tsx"
       - "app/layout.tsx"
       - "supabase/v43-evaluation-final-cutover.sql"
+      - "supabase/v53_p0e_optional_evaluation_baseline.sql"
       - "tests/p17-evaluation-cutover.test.mjs"
+      - "tests/p0e-optional-evaluation.test.mjs"
       - ".github/workflows/validate-p17-evaluation-cutover.yml"
   workflow_dispatch:
 
@@ -26,9 +30,9 @@ jobs:
           node-version: 22.13.0
           cache: npm
       - run: npm ci
-      - name: P17 regression tests
-        run: node --test tests/p17-evaluation-cutover.test.mjs
-      - name: Lint final evaluation surfaces
-        run: npx eslint app/evaluation-initial-class.tsx app/evaluation-post-class.tsx app/page.tsx app/layout.tsx
+      - name: P17/P0E regression tests
+        run: node --test tests/p17-evaluation-cutover.test.mjs tests/p0e-optional-evaluation.test.mjs
+      - name: Lint evaluation surfaces
+        run: npx eslint app/context-evaluation-panel.tsx app/evaluation-post-class.tsx app/page.tsx app/cya-app.tsx app/student-detail.tsx
       - name: Build Next.js application
         run: npm run build
