@@ -137,6 +137,18 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await completeInitialEvaluationIfPresent(page);
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-teacher-live-start`);
 
+    const observationsTab = page.getByRole("button", { name: "Observaciones", exact: true }).first();
+    await expect(observationsTab).toBeVisible();
+    await observationsTab.click();
+    const studentNoteCard = page.locator("article").filter({ has: page.getByRole("heading", { name: "Observación" }) });
+    await studentNoteCard.locator('textarea[placeholder="Mensaje o recomendación para el resumen…"]').fill(observation);
+    await studentNoteCard.getByRole("button", { name: "Guardar" }).click();
+    await expect(page.getByText(observation, { exact: true })).toBeVisible({ timeout: 15_000 });
+
+    const workTab = page.getByRole("button", { name: "Trabajo", exact: true }).first();
+    await expect(workTab).toBeVisible();
+    await workTab.click();
+
     const quickCreate = page.locator("details").filter({ hasText: "Crear nuevo" });
     await quickCreate.locator("summary").click();
     await quickCreate.locator("select").first().selectOption("correction");
@@ -146,14 +158,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await quickCreate.locator("label").filter({ hasText: /^Importancia/ }).locator("select").selectOption("75");
     await quickCreate.getByRole("button", { name: "Guardar pendiente" }).click();
     await expect(page.getByText(correctionTitle, { exact: true })).toBeVisible({ timeout: 15_000 });
-
-    const observationsTab = page.getByRole("button", { name: "Observaciones", exact: true }).first();
-    await expect(observationsTab).toBeVisible();
-    await observationsTab.click();
-    const studentNoteCard = page.locator("article").filter({ has: page.getByRole("heading", { name: "Observación" }) });
-    await studentNoteCard.locator('textarea[placeholder="Mensaje o recomendación para el resumen…"]').fill(observation);
-    await studentNoteCard.getByRole("button", { name: "Guardar" }).click();
-    await expect(page.getByText(observation, { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("DANDO CLASE", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: /^Terminar$/ }).click();
     const finishDialog = page.locator("section:visible").filter({ has: page.getByRole("heading", { name: "Terminar clase" }) }).last();
