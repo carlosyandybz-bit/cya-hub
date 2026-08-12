@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const app = fs.readFileSync('app/cya-app.tsx','utf8');
 const account = fs.readFileSync('app/account-pages.tsx','utf8');
 const media = fs.readFileSync('supabase/v50_p22_student_portal_media_access.sql','utf8');
+const mediaInvoker = fs.readFileSync('supabase/v50b_p22_media_invoker_wrapper.sql','utf8');
 const visibility = fs.readFileSync('supabase/v38-student-training-visibility.sql','utf8');
 const evaluations = fs.readFileSync('supabase/v36b-student-portal-security-invoker.sql','utf8');
 const buildInfo = fs.readFileSync('app/api/build-info/route.ts','utf8');
@@ -68,12 +69,16 @@ test('class history keeps a compact first page but exposes every older class', (
   assert.ok(app.includes('clases anteriores'));
 });
 
-test('Drive ticket authorization uses a minimal guarded definer boundary', () => {
+test('Drive authorization ends with a public SECURITY INVOKER wrapper and guarded private helper', () => {
   assert.ok(media.includes('private.can_access_student_portal_media'));
-  assert.ok((media.match(/security definer/g) ?? []).length >= 3);
-  assert.ok(media.includes('revoke all on function private.can_access_student_portal_media(text)'));
-  assert.ok(media.includes('revoke all on function public.can_access_teaching_media(text) from public,anon'));
-  assert.ok(media.includes('grant execute on function public.can_access_teaching_media(text) to authenticated'));
+  assert.ok(media.includes('security definer'));
+  assert.ok(media.includes('private.student_can_read_assignment('));
+  assert.ok(mediaInvoker.includes('security invoker'));
+  assert.ok(mediaInvoker.includes('grant execute on function private.can_access_student_portal_media(text)'));
+  assert.ok(mediaInvoker.includes('revoke all on function private.can_access_student_portal_media(text)'));
+  assert.ok(mediaInvoker.includes('revoke all on function public.can_access_teaching_media(text) from public,anon'));
+  assert.ok(mediaInvoker.includes('grant execute on function public.can_access_teaching_media(text) to authenticated'));
+  assert.equal(mediaInvoker.includes('security definer\nset search_path'), false);
 });
 
 test('teaching media requires the same releasable assignment used by the portal', () => {
@@ -81,6 +86,7 @@ test('teaching media requires the same releasable assignment used by the portal'
   assert.ok(media.includes('a.student_visible_at'));
   assert.ok(media.includes('a.assignment_status'));
   assert.equal(media.includes('grant select on public.teaching_content_media to authenticated'), false);
+  assert.equal(mediaInvoker.includes('grant select on public.teaching_content_media'), false);
 });
 
 test('class media and private videos require ownership and pedagogical close', () => {
