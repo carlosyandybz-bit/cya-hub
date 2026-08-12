@@ -32,9 +32,15 @@ test('P24 daily quote assignment is one row per user and date with immutable tex
 test('P24 quote selection prioritizes date then recurring then rotation with recent-history avoidance',()=>{
   const exact=migration.indexOf("q.override_date=v_day");
   const recurring=migration.indexOf("q.month_day=to_char(v_day,'MM-DD')");
-  const rotation=migration.indexOf("v_recent_limit := greatest(v_base_count-1,0)");
+  const rotation=migration.indexOf("v_recent_limit := greatest(v_rotation_count-1,0)");
   assert.ok(exact>=0&&recurring>exact&&rotation>recurring);
   assert.match(migration,/order by a\.local_date desc\s+limit v_recent_limit/);
+});
+
+test('P24 rotation fallback can use existing recurring catalogue outside its scheduled date',()=>{
+  assert.match(migration,/select count\(\*\)::integer into v_rotation_count\s+from public\.daily_quotes q\s+where q\.active and q\.override_date is null/);
+  assert.match(migration,/select q\.id, q\.quote_text, 'rotation'[\s\S]*?from public\.daily_quotes q\s+where q\.active and q\.override_date is null\s+order by/);
+  assert.doesNotMatch(migration,/where q\.active and q\.override_date is null and q\.month_day is null/);
 });
 
 test('P24 does not allow deleting a quote with assignment history',()=>{
