@@ -1,0 +1,21 @@
+name: P24 Contextual Home
+on:
+  push:
+    branches: [feat/p24-contextual-home, main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node --test tests/p24-contextual-home.test.mjs
+      - run: npm run lint
+      - run: npm run build
