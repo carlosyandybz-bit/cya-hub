@@ -68,14 +68,12 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
           settings_path = Path('app/evaluation-settings/evaluation-settings-client.tsx')
           settings = settings_path.read_text()
           number_token = 'type="number"'
           if settings.count(number_token) != 4:
               raise SystemExit(f'expected four evaluation settings number inputs, got {settings.count(number_token)}')
           settings = settings.replace(number_token, 'type="text" inputMode="numeric" pattern="[0-9]*"')
-
           export_anchor = 'export default function EvaluationSettingsClient() {'
           helper = (
               'function integerFormValue(form:FormData,name:string,min:number,max:number) {\n'
@@ -88,14 +86,12 @@ jobs:
           if settings.count(export_anchor) != 1:
               raise SystemExit('evaluation settings export anchor changed')
           settings = settings.replace(export_anchor, helper + export_anchor, 1)
-
           if settings.count('threshold=Number(form.get("threshold"));') != 2:
               raise SystemExit('unexpected threshold parser count')
           settings = settings.replace('threshold=Number(form.get("threshold"));', 'threshold=integerFormValue(form,"threshold",1,100);')
           if settings.count('!Number.isInteger(threshold) || threshold<1 || threshold>100') != 2:
               raise SystemExit('unexpected threshold validation count')
           settings = settings.replace('!Number.isInteger(threshold) || threshold<1 || threshold>100', 'threshold===null')
-
           if settings.count('score=Number(form.get("score"));') != 2:
               raise SystemExit('unexpected score parser count')
           settings = settings.replace('score=Number(form.get("score"));', 'score=integerFormValue(form,"score",0,100);')
@@ -115,7 +111,6 @@ jobs:
           if test.count(declaration_anchor) != 1:
               raise SystemExit('numeric test declaration anchor changed')
           test = test.replace(declaration_anchor, declaration_replacement, 1)
-
           test_start = test.find('test("evaluation keeps five discrete controls instead of a free numeric input", () => {')
           if test_start < 0:
               raise SystemExit('legacy numeric evaluation test start not found')
@@ -141,6 +136,120 @@ jobs:
           test_path.write_text(test[:test_start] + replacement + test[test_end:])
           PY
 
+      - name: Fix existing React lint blockers without behavior changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path_name, old, new, label):
+              path = Path(path_name)
+              text = path.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, got {count}')
+              path.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'app/account-pages.tsx',
+              '''function ProfileAvatar({ src, name }: { src: string | null; name: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  return (
+    <span className={styles.avatar} aria-label={`Foto de ${name || "perfil"}`}>
+      {src && !failed ? <img src={src} alt="" onError={() => setFailed(true)} /> : <CircleUserRound />}
+    </span>
+  );
+}''',
+              '''function ProfileAvatar({ src, name }: { src: string | null; name: string }) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const visibleSrc = src && failedSrc !== src ? src : null;
+  return (
+    <span className={styles.avatar} aria-label={`Foto de ${name || "perfil"}`}>
+      {visibleSrc ? <img src={visibleSrc} alt="" onError={() => setFailedSrc(visibleSrc)} /> : <CircleUserRound />}
+    </span>
+  );
+}''',
+              'profile avatar effect cleanup',
+          )
+
+          replace_once(
+              'app/evaluation-radar.tsx',
+              'import { useEffect, useMemo, useState } from "react";',
+              'import { useMemo, useState } from "react";',
+              'evaluation radar import cleanup',
+          )
+          replace_once(
+              'app/evaluation-radar.tsx',
+              '''  const [selectedId, setSelectedId] = useState<number | null>(items[0]?.id ?? null);
+  useEffect(() => {
+    if (!items.length) setSelectedId(null);
+    else if (!items.some((item) => item.id === selectedId)) setSelectedId(items[0].id);
+  }, [items, selectedId]);
+
+  const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;''',
+              '''  const [selectedId, setSelectedId] = useState<number | null>(items[0]?.id ?? null);
+  const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;''',
+              'evaluation radar derived selection',
+          )
+
+          replace_once(
+              'app/student-detail.tsx',
+              '''  useEffect(() => {
+    const primary=danceProfiles.find((item) => item.is_primary) ?? danceProfiles[0];
+    if (!primary) return;
+    setEvaluationProfileId((current) => current ?? primary.id);
+    setEvaluationLevelId((current) => current ?? primary.level_term_id);
+  },[danceProfiles]);
+
+''',
+              '',
+              'student evaluation default effect cleanup',
+          )
+          replace_once(
+              'app/student-detail.tsx',
+              "  const evaluationLevel=terms.find((term) => term.id===evaluationLevelId && term.taxonomy==='dance_level') ?? null;",
+              "  const effectiveEvaluationLevelId=evaluationLevelId ?? evaluationProfile?.level_term_id ?? null;\n  const evaluationLevel=terms.find((term) => term.id===effectiveEvaluationLevelId && term.taxonomy==='dance_level') ?? null;",
+              'student effective evaluation level',
+          )
+          replace_once(
+              'app/student-detail.tsx',
+              "    if (!evaluationProfile || !evaluationLevelId) return setError('Selecciona primero el nivel y el contexto de baile.');",
+              "    if (!evaluationProfile || !effectiveEvaluationLevelId) return setError('Selecciona primero el nivel y el contexto de baile.');",
+              'student evaluation start guard',
+          )
+          replace_once(
+              'app/student-detail.tsx',
+              'p_person_id:student.id,p_level_term_id:evaluationLevelId,p_evaluation_kind:kind',
+              'p_person_id:student.id,p_level_term_id:effectiveEvaluationLevelId,p_evaluation_kind:kind',
+              'student evaluation rpc level',
+          )
+          replace_once(
+              'app/student-detail.tsx',
+              "<select value={evaluationLevelId ?? ''} onChange={(event) => setEvaluationLevelId(event.target.value?Number(event.target.value):null)}>",
+              "<select value={effectiveEvaluationLevelId ?? ''} onChange={(event) => setEvaluationLevelId(event.target.value?Number(event.target.value):null)}>",
+              'student evaluation level selector',
+          )
+          replace_once(
+              'app/student-detail.tsx',
+              "<select value={evaluationProfileId ?? ''} onChange={(event) => setEvaluationProfileId(Number(event.target.value))}>",
+              "<select value={evaluationProfile?.id ?? ''} onChange={(event) => setEvaluationProfileId(Number(event.target.value))}>",
+              'student evaluation profile selector',
+          )
+          replace_once(
+              'app/student-detail.tsx',
+              "disabled={!evaluationLevelId || !evaluationProfile || evaluationBusy==='start'}",
+              "disabled={!effectiveEvaluationLevelId || !evaluationProfile || evaluationBusy==='start'}",
+              'student evaluation continue guard',
+          )
+
+          replace_once(
+              'app/teaching-media-editor.tsx',
+              '_key: `class-video-${video.id}-${Date.now()}`',
+              '_key: `class-video-${video.id}-${video.external_file_id}`',
+              'reusable class video deterministic key',
+          )
+          PY
+
       - name: P21 and financial regression gate
         run: >-
           node --test
@@ -157,33 +266,6 @@ jobs:
           tests/class-summary-content-editor.test.mjs
           tests/p17-evaluation-cutover.test.mjs
           tests/p19-persona-unica.test.mjs
-
-      - name: Diagnose failing regression file
-        if: failure()
-        run: |
-          set +e
-          for test_file in \
-            tests/p21-dar-clase.test.mjs \
-            tests/point8-final-close-v30.test.mjs \
-            tests/class-close-extras.test.mjs \
-            tests/class-close-partial-video.test.mjs \
-            tests/compatible-credit-selection.test.mjs \
-            tests/no-real-time-class-duration.test.mjs \
-            tests/numeric-inputs.test.mjs \
-            tests/live-session-dedup.test.mjs \
-            tests/live-class-search-point11.test.mjs \
-            tests/start-class-transition.test.mjs \
-            tests/class-summary-content-editor.test.mjs \
-            tests/p17-evaluation-cutover.test.mjs \
-            tests/p19-persona-unica.test.mjs
-          do
-            node --test "$test_file"
-            status=$?
-            if [ "$status" -ne 0 ]; then
-              echo "::error file=$test_file::Regression failed in $test_file (exit $status)"
-            fi
-          done
-          exit 0
 
       - name: Lint application
         run: npm run lint
@@ -202,6 +284,6 @@ jobs:
           fi
           git config user.name 'carlosyandybz-bit'
           git config user.email 'carlosyandy@gmail.com'
-          git add app/cya-app.tsx app/evaluation-settings/evaluation-settings-client.tsx tests/p21-dar-clase.test.mjs tests/numeric-inputs.test.mjs docs/P21_DAR_CLASE_RECONCILIACION.md tools/p21_finalize_setup_reopen.py
+          git add app/cya-app.tsx app/account-pages.tsx app/evaluation-radar.tsx app/student-detail.tsx app/teaching-media-editor.tsx app/evaluation-settings/evaluation-settings-client.tsx tests/p21-dar-clase.test.mjs tests/numeric-inputs.test.mjs docs/P21_DAR_CLASE_RECONCILIACION.md tools/p21_finalize_setup_reopen.py
           git commit -m 'P21.4: finalize progressive setup and reopen guard'
           git push origin HEAD:p21/dar-clase-definitivo
