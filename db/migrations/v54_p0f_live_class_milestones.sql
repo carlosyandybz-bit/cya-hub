@@ -50,18 +50,18 @@ create index if not exists student_aptitude_progress_current_milestone_idx
 
 -- Compatibilidad histórica: cualquier hito previamente aceptado pasa a ser hito actual.
 update public.student_aptitude_progress p
-set current_milestone_id = accepted.milestone_id,
+set current_milestone_id = (
+      select d.milestone_id
+      from public.evaluation_milestone_decisions d
+      join public.evaluation_milestones m on m.id=d.milestone_id
+      where d.progress_id=p.id and d.decision='accepted'
+      order by m.threshold_score desc,d.created_at desc,d.id desc
+      limit 1
+    ),
     effective_score = p.raw_score,
     updated_at = now()
-from lateral (
-  select d.milestone_id
-  from public.evaluation_milestone_decisions d
-  join public.evaluation_milestones m on m.id=d.milestone_id
-  where d.progress_id=p.id and d.decision='accepted'
-  order by m.threshold_score desc,d.created_at desc,d.id desc
-  limit 1
-) accepted
-where p.current_milestone_id is null;
+where p.current_milestone_id is null
+  and exists(select 1 from public.evaluation_milestone_decisions d where d.progress_id=p.id and d.decision='accepted');
 
 update public.student_aptitude_progress
 set effective_score=raw_score

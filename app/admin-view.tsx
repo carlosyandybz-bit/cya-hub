@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { IdentityContext } from "./v14-types";
 import { AdminDataTransfer } from "./admin-data-transfer";
 import { AdminFormLibrary } from "./admin-form-library";
+import { P0fEvaluationAdmin } from "./p0f-evaluation-admin";
 
 type AdminSection = "general" | "team" | "forms" | "teaching" | "missions" | "notifications" | "data" | "integrations" | "appearance" | "security";
 
@@ -180,7 +181,7 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
   }
 
   function teachingSection() {
-    return <section className="admin-stack"><header className="admin-section-head"><div><h2>Configuración pedagógica</h2><p>Estilos, roles, niveles, aptitudes y categorías compartidos por toda la aplicación.</p></div></header><div className="admin-taxonomy-grid">{termGroups.map(([taxonomy, values]) => <article className="card pad" key={taxonomy}><div className="card-head"><h2>{taxonomyLabels[taxonomy] ?? taxonomy}</h2><span>{values.length}</span></div><div className="term-list">{values.sort((a, b) => a.sort_order - b.sort_order).map((term) => <div key={term.id}><span>{term.label}</span><small>{term.term_key}</small></div>)}</div></article>)}</div></section>;
+    return <section className="admin-stack"><header className="admin-section-head"><div><h2>Configuración pedagógica</h2><p>Estilos, roles, niveles, aptitudes y categorías compartidos por toda la aplicación.</p></div></header><div className="admin-taxonomy-grid">{termGroups.map(([taxonomy, values]) => <article className="card pad" key={taxonomy}><div className="card-head"><h2>{taxonomyLabels[taxonomy] ?? taxonomy}</h2><span>{values.length}</span></div><div className="term-list">{values.sort((a, b) => a.sort_order - b.sort_order).map((term) => <div key={term.id}><span>{term.label}</span><small>{term.term_key}</small></div>)}</div></article>)}</div><P0fEvaluationAdmin client={client} terms={terms} notify={notify} /></section>;
   }
 
   function missionsSection() {

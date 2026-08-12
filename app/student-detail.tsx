@@ -22,7 +22,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { TeachingContentCard, type TeachingCardMedia } from "./teaching-content-card";
 import { EvaluationRadar } from "./evaluation-radar";
-import { ContextEvaluationPanel } from "./context-evaluation-panel";
+import { ContextEvaluationPanel } from "./context-evaluation-panel-p0f";
 import { StudentIdentityEditor } from "./person-identity-editor";
 import styles from "./student-detail.module.css";
 
@@ -511,7 +511,7 @@ export function StudentMasterDetail({
         key={assignment.id}
         kindLabel={contentLabels[assignment.teaching_contents.content_type] ?? assignment.teaching_contents.content_type}
         title={assignment.teaching_contents.title}
-        subtitle={`${assignmentLabels[assignment.assignment_status] ?? assignment.assignment_status}${assignment.current_frequency !== null ? ` · Frec. ${assignment.current_frequency}` : ""}${assignment.current_importance !== null ? ` · Importancia ${assignment.current_importance}` : ""}`}
+        subtitle={`${assignmentLabels[assignment.assignment_status] ?? assignment.assignment_status}${assignment.current_frequency !== null ? ` · Frec. ${assignment.current_frequency}` : ""}${assignment.current_importance !== null ? ` · Influencia ${assignment.current_importance}` : ""}`}
         statusLabel={assignmentLabels[assignment.assignment_status] ?? assignment.assignment_status}
         statusTone={["corrected","explained","completed"].includes(assignment.assignment_status) ? "success" : "default"}
         description={assignment.teaching_contents.description}
