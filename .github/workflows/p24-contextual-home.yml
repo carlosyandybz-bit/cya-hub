@@ -16,6 +16,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: node --test tests/p24-contextual-home.test.mjs
+      - name: P24 contract tests
+        run: node --test tests/p24-contextual-home.test.mjs
+      - name: Preserve P17 P18 P19 contracts
+        run: node --test tests/p17-evaluation-cutover.test.mjs tests/p0e-optional-evaluation.test.mjs tests/p0f-milestone-admin-contract.test.mjs tests/p18-identity-navigation.test.mjs tests/p19-persona-unica.test.mjs
       - run: npm run lint
       - run: npm run build
