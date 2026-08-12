@@ -22,6 +22,7 @@ import type { IdentityContext } from "./v14-types";
 import { AdminDataTransfer } from "./admin-data-transfer";
 import { AdminFormLibrary } from "./admin-form-library";
 import { P0fEvaluationAdmin } from "./p0f-evaluation-admin";
+import { AdminDailyQuotes } from "./admin-daily-quotes";
 
 type AdminSection = "general" | "team" | "forms" | "teaching" | "missions" | "notifications" | "data" | "integrations" | "appearance" | "security";
 
@@ -166,6 +167,7 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
     return <div className="admin-content-grid">
       <article className="card pad admin-system"><div className="card-head"><h2>Estado de CYA Hub</h2><span className="badge portal">Operativo</span></div><div className="admin-metric-grid"><div><strong>{data.members.filter((member) => member.active).length}</strong><span>roles activos</span></div><div><strong>{data.forms.filter((form) => form.status === "active").length}</strong><span>formularios</span></div><div><strong>{data.missionRules.filter((rule) => rule.enabled).length}</strong><span>reglas de misión</span></div><div><strong>{data.notificationRules.filter((rule) => rule.enabled).length}</strong><span>avisos activos</span></div></div></article>
       <article className="card pad"><div className="card-head"><h2>Configuración general</h2><Settings /></div><div className="admin-read-list"><div><span>Zona horaria</span><strong>{identity.timezone}</strong></div><div><span>Perfil principal</span><strong>{identity.profile_name}</strong></div><div><span>Experiencias disponibles</span><strong>{[identity.can_teach && "Profesor", identity.can_study && "Alumno", identity.can_admin && "Administrador"].filter(Boolean).join(" · ")}</strong></div></div></article>
+      <AdminDailyQuotes client={client} notify={notify} />
     </div>;
   }
 

@@ -6,6 +6,8 @@ const EXPECTED_ISSUER = "https://token.actions.githubusercontent.com";
 const EXPECTED_AUDIENCE = "cya-hub-qa";
 const EXPECTED_REPOSITORY = "carlosyandybz-bit/cya-hub";
 const EXPECTED_REPOSITORY_ID = "1328286685";
+const EXPECTED_ACTOR = "carlosyandybz-bit";
+const EXPECTED_ACTOR_ID = "306267740";
 const EXPECTED_WORKFLOW_PREFIX = `${EXPECTED_REPOSITORY}/.github/workflows/cya-qa-e2e.yml@`;
 const GITHUB_JWKS_URL = "https://token.actions.githubusercontent.com/.well-known/jwks";
 const ALL_APP_ROLES = ["admin", "teacher_admin", "teacher", "student"] as const;
@@ -18,6 +20,8 @@ type GitHubClaims = {
   repository?: string;
   repository_id?: string;
   repository_visibility?: string;
+  actor?: string;
+  actor_id?: string;
   workflow_ref?: string;
   runner_environment?: string;
   event_name?: string;
@@ -114,7 +118,12 @@ async function verifyGitHubOidc(token: string): Promise<GitHubClaims> {
   if (claims.repository !== EXPECTED_REPOSITORY || claims.repository_id !== EXPECTED_REPOSITORY_ID) {
     throw new Error("OIDC token belongs to another repository");
   }
-  if (claims.repository_visibility !== "private") throw new Error("QA bootstrap requires the private repository");
+  if (!["private", "public"].includes(claims.repository_visibility ?? "")) {
+    throw new Error("Unsupported OIDC repository visibility");
+  }
+  if (claims.actor !== EXPECTED_ACTOR || claims.actor_id !== EXPECTED_ACTOR_ID) {
+    throw new Error("Untrusted OIDC actor");
+  }
   if (!claims.workflow_ref?.startsWith(EXPECTED_WORKFLOW_PREFIX)) throw new Error("OIDC token belongs to another workflow");
   if (claims.runner_environment !== "github-hosted") throw new Error("QA bootstrap requires a GitHub-hosted runner");
   if (!eventAllowed) throw new Error("Unsupported workflow event");
