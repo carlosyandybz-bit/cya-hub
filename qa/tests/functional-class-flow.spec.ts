@@ -68,7 +68,9 @@ test.describe("CYA Hub functional class lifecycle", () => {
     const studentSummary = `QA E2E resumen ${runId} ${testInfo.project.name}`;
 
     await login(page, "teacher");
-    await page.getByText("Dar clase", { exact: true }).first().click();
+    const visibleClassNav = page.locator("nav button:visible").filter({ hasText: /^Dar clase$/ }).first();
+    await expect(visibleClassNav).toBeVisible();
+    await visibleClassNav.click();
     await expect(page.getByRole("heading", { name: "Centro de clases" })).toBeVisible();
 
     const classRow = page.locator(".scheduled-section .class-center-row")
@@ -78,8 +80,9 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(classRow).toBeVisible();
     await classRow.click();
 
-    await expect(page.getByRole("button", { name: /Dar clase/ })).toBeVisible();
-    await page.getByRole("button", { name: /Dar clase/ }).click();
+    const startClassButton = page.getByRole("main").getByRole("button", { name: "Dar clase", exact: true });
+    await expect(startClassButton).toBeVisible();
+    await startClassButton.click();
     await expect(page.getByText("DANDO CLASE", { exact: true })).toBeVisible({ timeout: 20_000 });
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-teacher-live-start`);
 
@@ -109,7 +112,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(score75).toHaveAttribute("aria-pressed", "true", { timeout: 15_000 });
 
     await page.getByRole("button", { name: /^Terminar$/ }).click();
-    const finishDialog = page.getByRole("dialog");
+    const finishDialog = page.locator("section:visible").filter({ has: page.getByRole("heading", { name: "Terminar clase" }) }).last();
     await expect(finishDialog.getByRole("heading", { name: "Terminar clase" })).toBeVisible();
     await expect(finishDialog.locator("select").first()).not.toHaveValue("");
     await finishDialog.getByRole("button", { name: "Terminar clase" }).click();
