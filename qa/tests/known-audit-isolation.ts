@@ -6,7 +6,10 @@ import type { Page } from "@playwright/test";
  * The current initial-evaluation gate is global and can cover unrelated surfaces whenever
  * any staff-visible class needs a baseline. P0C audits touch targets, not evaluation flow,
  * so generic navigation/lifecycle tests hide only that known dialog while P17 remains the
- * evaluation-domain gate. Remove this helper when P0E makes the baseline non-blocking.
+ * evaluation-domain gate.
+ *
+ * This helper is TEST-ONLY. It must never be imported by app/runtime code and must be
+ * removed when P0E makes the baseline evaluation optional and non-blocking in Dar clase.
  */
 export async function isolateInitialEvaluationGateForUnrelatedQa(page: Page) {
   await page.addInitScript(() => {
