@@ -20,6 +20,7 @@ type QaFunctionalFixtures = {
 const QA_TEACHER_EMAIL = "carlosyandybz+qa-teacher@gmail.com";
 const QA_STUDENT_EMAIL = "carlosyandybz+qa-student@gmail.com";
 const QA_PREFIX = "CYA_QA:";
+const QA_CORRECTION_PREFIX = "QA E2E corrección ";
 
 async function requireIdentity(sql: Sql, email: string) {
   const rows = await sql<{ user_id: string; person_id: string; display_name: string }[]>`
@@ -35,7 +36,22 @@ async function requireIdentity(sql: Sql, email: string) {
   return row;
 }
 
-async function cleanupOldFunctionalFixtures(sql: Sql, teacherUserId: string) {
+async function cleanupOldFunctionalFixtures(
+  sql: Sql,
+  teacherUserId: string,
+  studentPersonId: string,
+) {
+  /* Dedicated QA evaluation state is disposable. Purge it before deleting classes so
+     class_id SET NULL relationships cannot leave detached sessions/progress behind. */
+  await sql`
+    delete from public.evaluation_sessions
+    where person_id = ${studentPersonId}::bigint
+  `;
+  await sql`
+    delete from public.student_aptitude_progress
+    where person_id = ${studentPersonId}::bigint
+  `;
+
   const classRows = await sql<{ id: string }[]>`
     select c.id::text as id
     from public.classes c
@@ -71,6 +87,38 @@ async function cleanupOldFunctionalFixtures(sql: Sql, teacherUserId: string) {
   for (const row of grantRows) {
     await sql`delete from public.credit_movements where grant_id = ${row.id}::bigint`;
     await sql`delete from public.credit_grants where id = ${row.id}::bigint`;
+  }
+
+  /* Quick-created corrections are removed only when they were created by the QA teacher,
+     have the explicit QA title prefix, have no non-QA student assignment/event, and are
+     not referenced by a progress award. All normal content relations cascade safely. */
+  const contentRows = await sql<{ id: string }[]>`
+    select tc.id::text as id
+    from public.teaching_contents tc
+    where tc.created_by = ${teacherUserId}::uuid
+      and tc.title like ${`${QA_CORRECTION_PREFIX}%`}
+      and not exists (
+        select 1
+        from public.student_content_assignments sca
+        join public.people p on p.id = sca.person_id
+        where sca.content_id = tc.id
+          and p.source is distinct from 'qa_automation'
+      )
+      and not exists (
+        select 1
+        from public.class_content_events cce
+        join public.people p on p.id = cce.person_id
+        where cce.content_id = tc.id
+          and p.source is distinct from 'qa_automation'
+      )
+      and not exists (
+        select 1
+        from public.evaluation_progress_awards epa
+        where epa.content_id = tc.id
+      )
+  `;
+  for (const row of contentRows) {
+    await sql`delete from public.teaching_contents where id = ${row.id}::bigint`;
   }
 }
 
@@ -196,7 +244,7 @@ export async function seedFunctionalQaFixtures(sql: Sql, runId: string): Promise
   const teacher = await requireIdentity(sql, QA_TEACHER_EMAIL);
   const student = await requireIdentity(sql, QA_STUDENT_EMAIL);
 
-  await cleanupOldFunctionalFixtures(sql, teacher.user_id);
+  await cleanupOldFunctionalFixtures(sql, teacher.user_id, student.person_id);
 
   await sql`
     update public.student_profiles
