@@ -75,14 +75,7 @@ jobs:
               raise SystemExit(f'expected four evaluation settings number inputs, got {settings.count(number_token)}')
           settings = settings.replace(number_token, 'type="text" inputMode="numeric" pattern="[0-9]*"')
           export_anchor = 'export default function EvaluationSettingsClient() {'
-          helper = (
-              'function integerFormValue(form:FormData,name:string,min:number,max:number) {\n'
-              '  const raw=String(form.get(name) ?? "").trim();\n'
-              '  if (!/^\\d+$/.test(raw)) return null;\n'
-              '  const value=Number(raw);\n'
-              '  return Number.isInteger(value) && value>=min && value<=max ? value : null;\n'
-              '}\n\n'
-          )
+          helper = 'function integerFormValue(form:FormData,name:string,min:number,max:number) {\n  const raw=String(form.get(name) ?? "").trim();\n  if (!/^\\d+$/.test(raw)) return null;\n  const value=Number(raw);\n  return Number.isInteger(value) && value>=min && value<=max ? value : null;\n}\n\n'
           if settings.count(export_anchor) != 1:
               raise SystemExit('evaluation settings export anchor changed')
           settings = settings.replace(export_anchor, helper + export_anchor, 1)
@@ -103,11 +96,7 @@ jobs:
           test_path = Path('tests/numeric-inputs.test.mjs')
           test = test_path.read_text()
           declaration_anchor = 'const evaluationRadar = fs.readFileSync("app/evaluation-radar.tsx", "utf8");\n'
-          declaration_replacement = declaration_anchor + (
-              'const initialEvaluation = fs.readFileSync("app/evaluation-initial-class.tsx", "utf8");\n'
-              'const postEvaluation = fs.readFileSync("app/evaluation-post-class.tsx", "utf8");\n'
-              'const evaluationSettings = fs.readFileSync("app/evaluation-settings/evaluation-settings-client.tsx", "utf8");\n'
-          )
+          declaration_replacement = declaration_anchor + 'const initialEvaluation = fs.readFileSync("app/evaluation-initial-class.tsx", "utf8");\nconst postEvaluation = fs.readFileSync("app/evaluation-post-class.tsx", "utf8");\nconst evaluationSettings = fs.readFileSync("app/evaluation-settings/evaluation-settings-client.tsx", "utf8");\n'
           if test.count(declaration_anchor) != 1:
               raise SystemExit('numeric test declaration anchor changed')
           test = test.replace(declaration_anchor, declaration_replacement, 1)
@@ -118,25 +107,11 @@ jobs:
           if test_end < 0:
               raise SystemExit('legacy numeric evaluation test end not found')
           test_end += len('\n});')
-          replacement = (
-              'test("guided evaluation uses observable choices instead of a free numeric input", () => {\n'
-              '  assert.match(initialEvaluation, /answerOptions\\.map\\(\\(option\\)=><button/);\n'
-              '  assert.match(initialEvaluation, /review_evaluation_question/);\n'
-              '  assert.doesNotMatch(initialEvaluation, /<input\\b/);\n'
-              '  assert.match(postEvaluation, /review_evaluation_question/);\n'
-              '  assert.match(postEvaluation, /<select value=\\{currentValue\\}/);\n'
-              '  assert.doesNotMatch(postEvaluation, /type="number"/);\n'
-              '  assert.match(evaluationRadar, /scale\\.map\\(\\(option\\) => <button/);\n'
-              '  assert.match(evaluationRadar, /onChange\\?\\.\\(selected\\.id, option\\.score\\)/);\n'
-              '  assert.doesNotMatch(evaluationRadar, /<input\\b/);\n'
-              '  assert.match(evaluationSettings, /inputMode="numeric"/);\n'
-              '  assert.doesNotMatch(evaluationSettings, /type="number"/);\n'
-              '});'
-          )
+          replacement = 'test("guided evaluation uses observable choices instead of a free numeric input", () => {\n  assert.match(initialEvaluation, /answerOptions\\.map\\(\\(option\\)=><button/);\n  assert.match(initialEvaluation, /review_evaluation_question/);\n  assert.doesNotMatch(initialEvaluation, /<input\\b/);\n  assert.match(postEvaluation, /review_evaluation_question/);\n  assert.match(postEvaluation, /<select value=\\{currentValue\\}/);\n  assert.doesNotMatch(postEvaluation, /type="number"/);\n  assert.match(evaluationRadar, /scale\\.map\\(\\(option\\) => <button/);\n  assert.match(evaluationRadar, /onChange\\?\\.\\(selected\\.id, option\\.score\\)/);\n  assert.doesNotMatch(evaluationRadar, /<input\\b/);\n  assert.match(evaluationSettings, /inputMode="numeric"/);\n  assert.doesNotMatch(evaluationSettings, /type="number"/);\n});'
           test_path.write_text(test[:test_start] + replacement + test[test_end:])
           PY
 
-      - name: Fix existing React lint blockers without behavior changes
+      - name: Fix baseline React lint blockers required by P21 gate
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -149,105 +124,21 @@ jobs:
                   raise SystemExit(f'{label}: expected one match, got {count}')
               path.write_text(text.replace(old, new, 1))
 
-          replace_once(
-              'app/account-pages.tsx',
-              '''function ProfileAvatar({ src, name }: { src: string | null; name: string }) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [src]);
-  return (
-    <span className={styles.avatar} aria-label={`Foto de ${name || "perfil"}`}>
-      {src && !failed ? <img src={src} alt="" onError={() => setFailed(true)} /> : <CircleUserRound />}
-    </span>
-  );
-}''',
-              '''function ProfileAvatar({ src, name }: { src: string | null; name: string }) {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const visibleSrc = src && failedSrc !== src ? src : null;
-  return (
-    <span className={styles.avatar} aria-label={`Foto de ${name || "perfil"}`}>
-      {visibleSrc ? <img src={visibleSrc} alt="" onError={() => setFailedSrc(visibleSrc)} /> : <CircleUserRound />}
-    </span>
-  );
-}''',
-              'profile avatar effect cleanup',
-          )
+          replace_once('app/account-pages.tsx', '  const [failed, setFailed] = useState(false);\n  useEffect(() => setFailed(false), [src]);', '  const [failedSrc, setFailedSrc] = useState<string | null>(null);\n  const visibleSrc = src && failedSrc !== src ? src : null;', 'profile avatar state')
+          replace_once('app/account-pages.tsx', '{src && !failed ? <img src={src} alt="" onError={() => setFailed(true)} /> : <CircleUserRound />}', '{visibleSrc ? <img src={visibleSrc} alt="" onError={() => setFailedSrc(visibleSrc)} /> : <CircleUserRound />}', 'profile avatar render')
 
-          replace_once(
-              'app/evaluation-radar.tsx',
-              'import { useEffect, useMemo, useState } from "react";',
-              'import { useMemo, useState } from "react";',
-              'evaluation radar import cleanup',
-          )
-          replace_once(
-              'app/evaluation-radar.tsx',
-              '''  const [selectedId, setSelectedId] = useState<number | null>(items[0]?.id ?? null);
-  useEffect(() => {
-    if (!items.length) setSelectedId(null);
-    else if (!items.some((item) => item.id === selectedId)) setSelectedId(items[0].id);
-  }, [items, selectedId]);
+          replace_once('app/evaluation-radar.tsx', 'import { useEffect, useMemo, useState } from "react";', 'import { useMemo, useState } from "react";', 'evaluation radar import')
+          replace_once('app/evaluation-radar.tsx', '  useEffect(() => {\n    if (!items.length) setSelectedId(null);\n    else if (!items.some((item) => item.id === selectedId)) setSelectedId(items[0].id);\n  }, [items, selectedId]);\n\n', '', 'evaluation radar effect')
 
-  const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;''',
-              '''  const [selectedId, setSelectedId] = useState<number | null>(items[0]?.id ?? null);
-  const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null;''',
-              'evaluation radar derived selection',
-          )
+          replace_once('app/student-detail.tsx', '  useEffect(() => {\n    const primary=danceProfiles.find((item) => item.is_primary) ?? danceProfiles[0];\n    if (!primary) return;\n    setEvaluationProfileId((current) => current ?? primary.id);\n    setEvaluationLevelId((current) => current ?? primary.level_term_id);\n  },[danceProfiles]);\n\n', '', 'student evaluation default effect')
+          replace_once('app/student-detail.tsx', "  const evaluationLevel=terms.find((term) => term.id===evaluationLevelId && term.taxonomy==='dance_level') ?? null;", "  const effectiveEvaluationLevelId=evaluationLevelId ?? evaluationProfile?.level_term_id ?? null;\n  const evaluationLevel=terms.find((term) => term.id===effectiveEvaluationLevelId && term.taxonomy==='dance_level') ?? null;", 'student effective level')
+          replace_once('app/student-detail.tsx', "    if (!evaluationProfile || !evaluationLevelId) return setError('Selecciona primero el nivel y el contexto de baile.');", "    if (!evaluationProfile || !effectiveEvaluationLevelId) return setError('Selecciona primero el nivel y el contexto de baile.');", 'student start guard')
+          replace_once('app/student-detail.tsx', 'p_person_id:student.id,p_level_term_id:evaluationLevelId,p_evaluation_kind:kind', 'p_person_id:student.id,p_level_term_id:effectiveEvaluationLevelId,p_evaluation_kind:kind', 'student rpc level')
+          replace_once('app/student-detail.tsx', "<select value={evaluationLevelId ?? ''} onChange={(event) => setEvaluationLevelId(event.target.value?Number(event.target.value):null)}>", "<select value={effectiveEvaluationLevelId ?? ''} onChange={(event) => setEvaluationLevelId(event.target.value?Number(event.target.value):null)}>", 'student level selector')
+          replace_once('app/student-detail.tsx', "<select value={evaluationProfileId ?? ''} onChange={(event) => setEvaluationProfileId(Number(event.target.value))}>", "<select value={evaluationProfile?.id ?? ''} onChange={(event) => setEvaluationProfileId(Number(event.target.value))}>", 'student profile selector')
+          replace_once('app/student-detail.tsx', "disabled={!evaluationLevelId || !evaluationProfile || evaluationBusy==='start'}", "disabled={!effectiveEvaluationLevelId || !evaluationProfile || evaluationBusy==='start'}", 'student continue guard')
 
-          replace_once(
-              'app/student-detail.tsx',
-              '''  useEffect(() => {
-    const primary=danceProfiles.find((item) => item.is_primary) ?? danceProfiles[0];
-    if (!primary) return;
-    setEvaluationProfileId((current) => current ?? primary.id);
-    setEvaluationLevelId((current) => current ?? primary.level_term_id);
-  },[danceProfiles]);
-
-''',
-              '',
-              'student evaluation default effect cleanup',
-          )
-          replace_once(
-              'app/student-detail.tsx',
-              "  const evaluationLevel=terms.find((term) => term.id===evaluationLevelId && term.taxonomy==='dance_level') ?? null;",
-              "  const effectiveEvaluationLevelId=evaluationLevelId ?? evaluationProfile?.level_term_id ?? null;\n  const evaluationLevel=terms.find((term) => term.id===effectiveEvaluationLevelId && term.taxonomy==='dance_level') ?? null;",
-              'student effective evaluation level',
-          )
-          replace_once(
-              'app/student-detail.tsx',
-              "    if (!evaluationProfile || !evaluationLevelId) return setError('Selecciona primero el nivel y el contexto de baile.');",
-              "    if (!evaluationProfile || !effectiveEvaluationLevelId) return setError('Selecciona primero el nivel y el contexto de baile.');",
-              'student evaluation start guard',
-          )
-          replace_once(
-              'app/student-detail.tsx',
-              'p_person_id:student.id,p_level_term_id:evaluationLevelId,p_evaluation_kind:kind',
-              'p_person_id:student.id,p_level_term_id:effectiveEvaluationLevelId,p_evaluation_kind:kind',
-              'student evaluation rpc level',
-          )
-          replace_once(
-              'app/student-detail.tsx',
-              "<select value={evaluationLevelId ?? ''} onChange={(event) => setEvaluationLevelId(event.target.value?Number(event.target.value):null)}>",
-              "<select value={effectiveEvaluationLevelId ?? ''} onChange={(event) => setEvaluationLevelId(event.target.value?Number(event.target.value):null)}>",
-              'student evaluation level selector',
-          )
-          replace_once(
-              'app/student-detail.tsx',
-              "<select value={evaluationProfileId ?? ''} onChange={(event) => setEvaluationProfileId(Number(event.target.value))}>",
-              "<select value={evaluationProfile?.id ?? ''} onChange={(event) => setEvaluationProfileId(Number(event.target.value))}>",
-              'student evaluation profile selector',
-          )
-          replace_once(
-              'app/student-detail.tsx',
-              "disabled={!evaluationLevelId || !evaluationProfile || evaluationBusy==='start'}",
-              "disabled={!effectiveEvaluationLevelId || !evaluationProfile || evaluationBusy==='start'}",
-              'student evaluation continue guard',
-          )
-
-          replace_once(
-              'app/teaching-media-editor.tsx',
-              '_key: `class-video-${video.id}-${Date.now()}`',
-              '_key: `class-video-${video.id}-${video.external_file_id}`',
-              'reusable class video deterministic key',
-          )
+          replace_once('app/teaching-media-editor.tsx', '_key: `class-video-${video.id}-${Date.now()}`', '_key: `class-video-${video.id}-${video.external_file_id}`', 'reusable class video key')
           PY
 
       - name: P21 and financial regression gate
