@@ -23,13 +23,16 @@ test('P23 closure and P24 handoff stay canonical', () => {
   assert.doesNotMatch(plan, /# 6\. P23 — Enseñanza \+ relaciones \+ árboles 🟣 AHORA/);
 });
 
-test('living audit records the resolved P0 regressions', () => {
+test('living audit records P0A-P0D closures and the next P0E corrective', () => {
   assert.match(audit, /CYA-AUD-001[\s\S]*?\*\*RESUELTO — P0B\*\*/);
   assert.match(audit, /CYA-AUD-005[\s\S]*?\*\*RESUELTO/);
-  assert.match(audit, /CYA-AUD-006[\s\S]*?22\/22/);
+  assert.match(audit, /CYA-AUD-006[\s\S]*?26\/26/);
+  assert.match(audit, /CYA-AUD-007[\s\S]*?\*\*RESUELTO — P0C\*\*/);
   assert.match(audit, /CYA-AUD-008[\s\S]*?\*\*RESUELTO — P0A\*\*/);
-  assert.match(audit, /31583225189/);
+  assert.match(audit, /CYA-AUD-013[\s\S]*?P0E/);
+  assert.match(audit, /31592129261/);
 
+  assert.doesNotMatch(audit, /CYA-AUD-007[^\n]*\*\*ABIERTO/);
   assert.doesNotMatch(audit, /CYA-AUD-008[^\n]*\*\*ABIERTO/);
   assert.doesNotMatch(audit, /Playwright total: \*\*19 passed \/ 1 failed\*\*/);
 });
