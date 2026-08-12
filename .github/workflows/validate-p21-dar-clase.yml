@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'app/**'
+      - 'db/migrations/**'
       - 'supabase/v49_p21_class_workflow_search.sql'
       - 'tests/**'
       - 'docs/P21_DAR_CLASE_RECONCILIACION.md'
@@ -27,6 +28,7 @@ jobs:
       - name: P21 complete regression gate
         run: >-
           node --test
+          tests/p0g-compact-ui.test.mjs
           tests/p21-dar-clase.test.mjs
           tests/point8-final-close-v30.test.mjs
           tests/class-close-extras.test.mjs

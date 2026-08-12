@@ -59,12 +59,13 @@ test.describe("CYA Hub functional class lifecycle", () => {
   test.describe.configure({ retries: 0 });
 
   test("teacher closes a QA class, student receives it, and admin remains healthy", async ({ page }, testInfo) => {
-    // P0F: evaluation is the student's shared optional state. The class lifecycle must close without creating or completing a dedicated post-class evaluation.
+    // P0F: evaluation is the student's shared optional state. P0G: correction metrics/note are selected before adding and the collapsed card stays compact.
     const fixtures = qaFixtures();
     const fixture = fixtures.projects[testInfo.project.name];
     if (!fixture) throw new Error(`No functional fixture for ${testInfo.project.name}`);
     const runId = process.env.QA_RUN_ID || "local";
     const correctionTitle = `QA E2E corrección ${runId} ${testInfo.project.name}`;
+    const correctionObservation = `QA E2E observación corrección ${runId} ${testInfo.project.name}`;
     const observation = `QA E2E observación ${runId} ${testInfo.project.name}`;
     const studentSummary = `QA E2E resumen ${runId} ${testInfo.project.name}`;
 
@@ -111,16 +112,30 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await quickCreate.locator("summary").click();
     await quickCreate.locator("select").first().selectOption("correction");
     await quickCreate.locator('input[placeholder="Título corto"]').fill(correctionTitle);
+    await quickCreate.getByLabel("Frecuencia inicial").selectOption("50");
+    await quickCreate.getByLabel("Influencia inicial").selectOption("75");
+    await quickCreate.locator('textarea[placeholder="Algo concreto de este alumno…"]').fill(correctionObservation);
+    await quickCreate.getByLabel("Visibilidad de la observación inicial").selectOption("internal");
     await quickCreate.getByRole("button", { name: "Crear", exact: true }).click();
     await expect(page.getByText(correctionTitle, { exact: true })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("EN CLASE", { exact: true })).toBeVisible();
 
     const createdCorrection = page.locator(".live-content-card").filter({ hasText: correctionTitle }).first();
     await expect(createdCorrection).toBeVisible();
-    await expect(createdCorrection.locator('.p0f-status-chip')).toHaveValue("pending");
-    await expect(createdCorrection.locator('.p0f-measure-chip')).toHaveCount(0);
-    await expect(createdCorrection.getByText("+ Medir", { exact: true })).toBeVisible();
+    await expect(createdCorrection.getByText("Pend.", { exact: true })).toBeVisible();
+    await expect(createdCorrection.locator('[aria-label="Frecuencia: A menudo"]')).toBeVisible();
+    await expect(createdCorrection.locator('[aria-label="Influencia: Limita claramente el movimiento"]')).toBeVisible();
+    await expect(createdCorrection.getByText("+ Medir", { exact: true })).toHaveCount(0);
     await expect(createdCorrection.getByText("NUEVO", { exact: true })).toBeVisible();
+
+    await createdCorrection.getByRole("button", { name: `Abrir Corrección: ${correctionTitle}` }).click();
+    const correctionDialog = page.getByRole("dialog", { name: `Corrección: ${correctionTitle}` });
+    await expect(correctionDialog).toBeVisible();
+    await expect(correctionDialog.getByLabel(`Estado de ${correctionTitle}`)).toHaveValue("pending");
+    await expect(correctionDialog.getByLabel(`Frecuencia de ${correctionTitle}`)).toHaveValue("50");
+    await expect(correctionDialog.getByLabel(`Influencia de ${correctionTitle}`)).toHaveValue("75");
+    await expect(correctionDialog.getByLabel("Observación del alumno")).toHaveValue(correctionObservation);
+    await correctionDialog.getByRole("button", { name: "Cerrar contenido" }).click();
 
     await page.getByRole("button", { name: /^Terminar$/ }).click();
     const finishDialog = page.locator("section:visible").filter({ has: page.getByRole("heading", { name: "Terminar clase" }) }).last();

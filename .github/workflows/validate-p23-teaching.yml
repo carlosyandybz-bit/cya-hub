@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'app/**'
+      - 'db/migrations/**'
       - 'supabase/v51_p23_teaching_graph_contract.sql'
       - 'tests/**'
       - 'docs/P23_ENSENANZA_RELACIONES_ARBOLES.md'
@@ -27,6 +28,7 @@ jobs:
       - name: P23 teaching regression gate
         run: >-
           node --test
+          tests/p0g-compact-ui.test.mjs
           tests/p23-teaching-contract.test.mjs
           tests/p22-student-portal.test.mjs
           tests/p21-dar-clase.test.mjs
