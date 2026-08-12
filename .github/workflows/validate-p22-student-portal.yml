@@ -1,0 +1,40 @@
+name: Validate P22 Portal alumno
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'supabase/v50_p22_student_portal_media_access.sql'
+      - 'tests/**'
+      - 'docs/P22_PORTAL_ALUMNO_RECONCILIACION.md'
+      - '.github/workflows/validate-p22-student-portal.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: P22 portal regression gate
+        run: >-
+          node --test
+          tests/p22-student-portal.test.mjs
+          tests/point10-student-delivery.test.mjs
+          tests/p17-evaluation-cutover.test.mjs
+          tests/p19-persona-unica.test.mjs
+          tests/p21-dar-clase.test.mjs
+      - name: Lint complete application
+        run: npm run lint
+      - name: Production build
+        run: npm run build
+      - name: Reject whitespace errors
+        run: git diff --check
