@@ -1,14 +1,14 @@
 # CYA HUB — PLAN MAESTRO ÚNICO DE CIERRE
 
-Versión: **3.8**  
+Versión: **3.9**  
 Fecha de corte: **2026-08-12**  
 Repositorio canónico: `carlosyandybz-bit/cya-hub`  
 Producción: `main` + Supabase `CyA hub 2` + Hostinger  
 Dominio CYA Hub: `app.carlosyandy.com`  
-Última actualización secuencial cerrada: **P21 / v49**  
-Siguiente actualización: **P22 — Portal del alumno**
+Última actualización secuencial cerrada: **P22 / v50 + v50b**  
+Siguiente actualización: **P23 — Enseñanza + relaciones + árboles**
 
-Correctivos adelantados que deben preservarse y revalidarse en su punto original: **F42/P32 v44–v44e**. Los adelantos de Dar clase (`v45`, transición fiable de inicio y alta rápida provisional) quedaron revalidados y absorbidos definitivamente por P21.
+Correctivos adelantados que deben preservarse y revalidarse en su punto original: **F42/P32 v44–v44e**. Los adelantos de Dar clase (`v45`, transición fiable de inicio y alta rápida provisional) quedaron revalidados y absorbidos definitivamente por P21. El portal del alumno y su frontera multimedia quedaron absorbidos por P22.
 
 ---
 
@@ -53,7 +53,8 @@ Cuando aparezca una incidencia nueva:
 - P18 — identidad, multirol, navegación y `Ver como`, v46.
 - P19 — persona única + identidades + lifecycle derivado, v47.
 - P20 — formularios versionados + datos canónicos, v48 + v48b.
-- **P21 — DAR CLASE definitivo, v49.**
+- P21 — DAR CLASE definitivo, v49.
+- **P22 — Portal del alumno, v50 + v50b.**
 
 ## ✅ Correctivos/adelantos ya absorbidos
 
@@ -63,6 +64,9 @@ Cuando aparezca una incidencia nueva:
 - Evaluación numérica antigua retirada físicamente de Dar clase → P21.
 - Setup progresivo G7 → P21.
 - Reapertura administrativa con doble confirmación G6 → P21.
+- Perfil canónico del alumno reutiliza P20 → P22.
+- Evolución del alumno separada por estilo/rol/nivel → P22.
+- Multimedia de portal alineada con publicación/propiedad → P22 v50/v50b.
 
 ## ✅ Adelanto pendiente de revalidación final
 
@@ -70,13 +74,13 @@ Cuando aparezca una incidencia nueva:
 
 ## 🟣 AHORA
 
-### P22 — Portal del alumno
+### P23 — Enseñanza + relaciones + árboles
 
-P22 debe cerrar la experiencia real del alumno: próxima clase, historial, bonos/saldo, formación asignada, multimedia autorizada, evolución, evaluaciones y perfil, con RLS estricta y sin filtrar datos internos.
+P23 debe cerrar el modelo pedagógico de Correcciones, Explicaciones, Ejercicios y Secuencias, sus categorías/etiquetas/relaciones, multimedia externa y los ocho árboles táctiles por estilo/rol, sin mezclar asignaciones personales ni convertir vídeos de clase en nodos pedagógicos automáticamente.
 
 ## ⏳ FALTA DESPUÉS
 
-**P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
+**P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
 
 ---
 
@@ -91,6 +95,7 @@ Evidencias obtenidas:
 - P17: Hostinger mostró el commit de evaluación como Actual/completado antes de v43.
 - P20: `/api/build-info` devolvió `p20-form-runtime-v48-ready` antes de v48.
 - P21: Hostinger mostró `app.carlosyandy.com` como **Actual / Se ha completado** sobre `main@8f8673c7`; ese commit es no-op respecto al árbol funcional P21 `c9341750` y fue el redeploy forzado previo a v49.
+- P22: runner externo GitHub `31557437770` consultó producción y obtuvo en el primer intento `p22-student-portal-v50-ready` antes de aplicar v50.
 
 Regla permanente: **frontend compatible primero; cutover backend después**.
 
@@ -145,7 +150,7 @@ Jerarquía operativa:
 
 `override de clase → preferencia estilo/rol → valor global → preguntar solo si falta`.
 
-P19 fijó persona canónica. P20 fijó formularios canónicos. P21 aplicó G7 al setup de clase. Los P siguientes deben reutilizar la misma información.
+P19 fijó persona canónica. P20 fijó formularios canónicos. P21 aplicó G7 al setup de clase. P22 reutilizó P20 para el perfil del alumno. Los P siguientes deben conservar esa jerarquía.
 
 ## G8 — Esquema real > historial supuesto
 
@@ -181,10 +186,11 @@ La verdad final es el runtime/esquema real.
 17. **`Realizar en pareja / Necesita pareja` existe solo para Ejercicios.**
 18. **Crear provisional desde Dar clase no abandona el flujo.**
 19. **El portal del alumno nunca expone borradores, incompletos internos ni datos de otras personas.**
+20. **Una relación pedagógica no convierte automáticamente multimedia de clase en contenido del árbol.**
 
 ---
 
-# 4. Evidencia de P17–P21 cerrados
+# 4. Evidencia de P17–P22 cerrados
 
 ## P17 — Evaluaciones ✅
 
@@ -231,7 +237,7 @@ La verdad final es el runtime/esquema real.
 
 Contrato: `docs/P20_FORMULARIOS_VERSIONADOS_DATOS_CANONICOS.md`.
 
-## P21 — DAR CLASE definitivo ✅ CERRADO
+## P21 — DAR CLASE definitivo ✅
 
 ### Frontend/UX
 
@@ -259,57 +265,55 @@ Contrato: `docs/P20_FORMULARIOS_VERSIONADOS_DATOS_CANONICOS.md`.
 - commit funcional: `c9341750ff337c6deb24345e04e975c88f4f3bfb`;
 - redeploy Hostinger no-op: `8f8673c7a67bb7ac3adb7bb7bd28cb730f8e8fa3`;
 - v49 ledger **`20260812020727`**;
-- preflight: 27 clases, 2 `finished+administrative` a reconciliar;
 - post-cutover: **0 incoherencias closed / administrative / live**;
-- `anon` no ejecuta el buscador; `authenticated` sí;
-- función trigger privada no es ejecutable por `anon/authenticated`;
-- llamada sin sesión al buscador rechazada `42501`;
-- advisors sin hallazgo nuevo específico de v49 que exija rollback.
+- acceso no autenticado al buscador rechazado `42501`.
 
 Contrato: `docs/P21_DAR_CLASE_RECONCILIACION.md`.
 
----
+## P22 — Portal del alumno ✅ CERRADO
 
-# 5. P22 — Portal del alumno 🟣 AHORA
+### Frontend/UX
 
-Debe cerrar:
+- portal existente consolidado; no hay segunda aplicación de alumno;
+- próxima clase, historial completo, bonos/saldo, formación, multimedia, evolución y perfil;
+- perfil del alumno reutiliza `RuntimeForm` P20 `student_personal`;
+- email permanece no escribible por alumno y `teacher_notes` no se expone;
+- evolución agrupada por último estilo + rol + nivel;
+- clases anteriores accesibles sin perder densidad inicial;
+- `explained` deja de contarse como formación activa.
 
-- próxima clase;
-- clases e historial;
-- bonos/saldo;
-- formación asignada: Correcciones/Explicaciones/Ejercicios/Secuencias;
-- multimedia autorizada;
-- evolución;
-- evaluaciones;
-- perfil;
-- solo información permitida por RLS.
+### Seguridad/RLS
 
-Reglas:
+- `student_portal_snapshot_for(otra_persona)` → `42501`;
+- acceso cruzado a notas/vídeos/documentación/evaluaciones/asignaciones → **0**;
+- multimedia solo para asignación liberada o recurso de clase propio pedagógicamente cerrado;
+- sin SELECT directo de alumnado sobre `teaching_content_media`.
 
-- alumno solo ve lo suyo;
-- borradores/incompletos internos no se filtran;
-- multirol no escala privilegios;
-- profesor con rol alumno puede validar UX mediante `Ver como`;
-- ningún dato interno del profesor, CRM, financiero de terceros o contenido no publicado debe aparecer;
-- móvil/iPhone es referencia principal.
+### QA/cutover
 
-Gate de cierre P22:
+- PR #26 → merge `10940bffe61c29b93967be86921ce4000ee50621`;
+- workflow P22 `31557290394` → tests + lint + build + whitespace **success**;
+- G1 → `p22-student-portal-v50-ready` verificado por runner `31557437770`;
+- v50 ledger **`20260812023916`**;
+- post-cutover: snapshot propio con evaluaciones contextuales y RLS cruzada intacta;
+- Advisor detectó un único warning nuevo en el wrapper público de media y se corrigió dentro de P22;
+- PR #27 v50b → merge `2378b0b6a025fcf0e694584d4b15e4acf2abf5f4`;
+- v50b ledger **`20260812024534`**;
+- wrapper final `public.can_access_teaching_media` = `SECURITY INVOKER`;
+- Security Advisor ya no muestra ese warning;
+- smoke final v50b → success.
 
-- alumno real y profesor/admin en `Ver como Alumno`;
-- próxima clase correcta;
-- historial de clases propio;
-- bono/saldo propio;
-- formación publicada y asignada por los cuatro tipos;
-- multimedia autorizada;
-- evolución/evaluaciones visibles según reglas P17;
-- edición de perfil solo sobre campos autorizados;
-- RLS negativa contra datos de otro alumno;
-- iPhone + desktop;
-- regresión P17–P21.
+Contrato: `docs/P22_PORTAL_ALUMNO_RECONCILIACION.md`.
 
 ---
 
-# 6. P23 — Enseñanza + relaciones + árboles ⏳
+# 5. P22 — Portal del alumno ✅ CERRADO
+
+P22 queda cerrado por la evidencia del apartado 4. No volver a modificarlo salvo correctivo demostrado.
+
+---
+
+# 6. P23 — Enseñanza + relaciones + árboles 🟣 AHORA
 
 Absorbe F16–F20.
 
@@ -328,7 +332,9 @@ Reglas:
 - `Realizar en pareja / Necesita pareja` solo para Ejercicios;
 - explicación Leader/Follower homóloga sin mezclar asignaciones individuales;
 - contenido reutilizable en diferentes rutas;
-- vídeo asociado no entra automáticamente en grafo.
+- vídeo asociado no entra automáticamente en grafo;
+- incompletos/borradores siguen siendo internos;
+- relaciones del grafo y asignaciones a personas son dominios distintos.
 
 Ocho árboles conceptuales:
 
@@ -341,7 +347,30 @@ Ocho árboles conceptuales:
 7. Bachazouk Leader
 8. Bachazouk Follower
 
-UX móvil: pan, zoom, centrar, ruta, volver/reset, filtros estilo/rol/nivel/tipo y búsqueda.
+UX móvil:
+
+- pan;
+- zoom;
+- centrar;
+- ruta;
+- volver/reset;
+- filtros estilo/rol/nivel/tipo;
+- búsqueda;
+- interacción táctil fluida en iPhone.
+
+Gate P23:
+
+- CRUD de cuatro tipos sin campos impropios;
+- categorías/etiquetas coherentes;
+- relaciones bidireccionales/dirigidas según contrato;
+- homólogas Leader/Follower verificadas;
+- ejercicios en pareja solo en Ejercicios;
+- secuencias y pasos ordenables;
+- media Drive autorizada sin crear nodos automáticos;
+- ocho árboles derivados del mismo grafo canónico, no ocho bases paralelas;
+- RLS profesor/alumno correcta;
+- iPhone + desktop;
+- regresión P17–P22.
 
 ---
 
@@ -610,14 +639,14 @@ Release:
 | F2 navegación atrás | ✅ P18 |
 | F3 visual global | ✅ base / QA permanente |
 | F3B inputs numéricos | ✅ revalidado P21; G3 permanente + P29/P31 |
-| F4 perfil/preferencias/portal | P18 base + → P22 portal |
+| F4 perfil/preferencias/portal | ✅ P18 base + P22 portal |
 | F5 centro notificaciones | ✅ base → automatización P27 |
 | F6 temporizadores | ✅ regla permanente P21 |
 | F7 duración prevista/bono | ✅ P21 |
 | F8–F11 Dar clase | ✅ P21 |
 | F12–F15 evaluaciones | ✅ P17 |
 | F16–F20 Enseñanza | → P23 |
-| F21–F25 Personas/Alumnado | ✅ P19 + formularios ✅ P20 + alta rápida ✅ P21 + portal → P22 |
+| F21–F25 Personas/Alumnado | ✅ P19 + P20 + P21 + P22 |
 | F26–F31 Marketing | → P29 |
 | F32–F33 Misiones/worker | → P25 |
 | F34 notificaciones automáticas | → P27 |
@@ -669,13 +698,17 @@ Release:
 | FK P20 `published_by` sin índice | ✅ P20/v48b |
 | workflow de clase incoherente | ✅ P21/v49 |
 | buscador no cubría categoría/relaciones | ✅ P21/v49 |
+| historial alumno recortado | ✅ P22 |
+| evolución alumno mezclaba contextos | ✅ P22/v50 |
+| media de portal y Drive desalineadas | ✅ P22/v50 |
+| wrapper media público SECURITY DEFINER | ✅ P22/v50b |
 
 ---
 
 # 18. Orden inmediato desde este corte
 
-**P22 → P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
+**P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
 
-No volver a P21 salvo un correctivo demostrado. No volver al antiguo orden F8 → F3B → F9 como secuencia de implementación: esos requisitos ya están absorbidos por P21.
+No volver a P22 salvo un correctivo demostrado. No volver al antiguo orden F8 → F3B → F9 como secuencia de implementación: esos requisitos ya están absorbidos por P21.
 
 Este documento sustituye las hojas parciales anteriores y debe actualizarse al inicio y cierre de cada paquete.
