@@ -9,7 +9,8 @@
   .page-head > .btn,
   .marketing-section-head .btn,
   .student-row-actions .btn,
-  .export-grid .btn {
+  .export-grid .btn,
+  a[href="/evaluation-settings"] {
     min-height: 44px !important;
   }
 
