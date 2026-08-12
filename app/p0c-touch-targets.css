@@ -10,7 +10,8 @@
   .marketing-section-head .btn,
   .student-row-actions .btn,
   .export-grid .btn,
-  a[href="/evaluation-settings"] {
+  a[href="/evaluation-settings"],
+  [class*="kindSwitch"] > button {
     min-height: 44px !important;
   }
 
