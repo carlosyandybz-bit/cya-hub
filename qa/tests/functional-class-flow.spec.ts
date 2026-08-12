@@ -26,6 +26,7 @@ type EvaluationSession = {
 type ProgressRow = { id: number };
 type ParticipantRow = { person_id: number };
 type ScaleRow = { id: number };
+type SessionIdRow = { id: number };
 
 function credentialsFor(role: QaRole) {
   const prefix = `QA_${role.toUpperCase()}`;
@@ -129,10 +130,21 @@ async function reviewSession(page: Page, session: EvaluationSession, scaleId: nu
 
 async function ensureQaInitialBaseline(page: Page, classId: number) {
   const participants = await supabaseRequest<ParticipantRow[]>(page, `class_participants?class_id=eq.${classId}&select=person_id`);
-  if (!participants[0]?.person_id) throw new Error(`QA class ${classId} has no participant`);
+  const personId = participants[0]?.person_id;
+  if (!personId) throw new Error(`QA class ${classId} has no participant`);
+
+  // The iPhone and desktop projects intentionally share the same isolated QA student/context.
+  // Once the first project establishes the baseline, the second must reuse it instead of
+  // trying to create a duplicate initial evaluation.
+  const existing = await supabaseRequest<SessionIdRow[]>(
+    page,
+    `evaluation_sessions?person_id=eq.${personId}&evaluation_kind=eq.initial&status=eq.completed&select=id&limit=1`,
+  );
+  if (existing.length) return;
+
   const raw = await rpc<EvaluationSession | EvaluationSession[]>(page, "start_initial_evaluation", {
     p_class_id: classId,
-    p_person_id: participants[0].person_id,
+    p_person_id: personId,
   });
   const session = Array.isArray(raw) ? raw[0] : raw;
   if (!session?.id || session.status === "completed") return;
