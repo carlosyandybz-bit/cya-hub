@@ -1,14 +1,21 @@
 # CYA HUB — PLAN MAESTRO ÚNICO DE CIERRE
 
-Versión: **3.9**  
+Versión: **4.1**  
 Fecha de corte: **2026-08-12**  
 Repositorio canónico: `carlosyandybz-bit/cya-hub`  
 Producción: `main` + Supabase `CyA hub 2` + Hostinger  
 Dominio CYA Hub: `app.carlosyandy.com`  
-Última actualización secuencial cerrada: **P22 / v50 + v50b**  
-Siguiente actualización: **P23 — Enseñanza + relaciones + árboles**
+Última actualización secuencial cerrada: **P23 / v51**  
+Siguiente actualización funcional: **P24 — Inicio contextual**
 
-Correctivos adelantados que deben preservarse y revalidarse en su punto original: **F42/P32 v44–v44e**. Los adelantos de Dar clase (`v45`, transición fiable de inicio y alta rápida provisional) quedaron revalidados y absorbidos definitivamente por P21. El portal del alumno y su frontera multimedia quedaron absorbidos por P22.
+Correctivos adelantados que deben preservarse y revalidarse en su punto original: **F42/P32 v44–v44e**. Los adelantos de Dar clase (`v45`, transición fiable de inicio y alta rápida provisional) quedaron revalidados y absorbidos definitivamente por P21. El portal del alumno y su frontera multimedia quedaron absorbidos por P22. Enseñanza, relaciones y árboles quedaron cerrados por P23/v51.
+
+Correctivos de auditoría P0 ya integrados o canonizados en esta versión:
+
+- **P0A ✅** — Centro de clases y modo clase activo separados; navegación móvil corregida y protegida por E2E.
+- **P0B ✅** — este documento queda canonizado a P23 cerrado → P24 actual y protegido por un check automático de consistencia documental.
+- **P0C ⏳** — targets táctiles críticos ≥44 px.
+- **P0D ✅** — `release-wide-audit` integrado como gate permanente; QA post-P0A verde 22/22.
 
 ---
 
@@ -38,6 +45,13 @@ Cuando aparezca una incidencia nueva:
 - los adelantos se revalidan al llegar a su P original;
 - no se reconstruye lo que ya funciona solo por cambiar de paquete.
 
+Regla documental permanente desde P0B:
+
+- un documento de cierre formal (`Pxx_*.md`) no puede coexistir con este Plan Maestro declarando ese mismo paquete como pendiente/actual;
+- la transición canónica actual es **P23 cerrado → P24 actual**;
+- `tests/documentation-consistency.test.mjs` debe fallar si una rama vuelve a introducir el estado P22/P23 anterior;
+- cuando P24 se cierre, la transición se actualizará explícitamente en el cierre de P24 y en este test. Nunca se avanza o retrocede por un merge accidental.
+
 ---
 
 # 1. Estado ejecutivo
@@ -54,11 +68,12 @@ Cuando aparezca una incidencia nueva:
 - P19 — persona única + identidades + lifecycle derivado, v47.
 - P20 — formularios versionados + datos canónicos, v48 + v48b.
 - P21 — DAR CLASE definitivo, v49.
-- **P22 — Portal del alumno, v50 + v50b.**
+- P22 — Portal del alumno, v50 + v50b.
+- **P23 — Enseñanza + relaciones + árboles, v51.**
 
 ## ✅ Correctivos/adelantos ya absorbidos
 
-- Resumen pedagógico editable y corrección RLS enseñanza: v45 → revalidado P21.
+- Resumen pedagógico editable y corrección RLS enseñanza: v45 → revalidado P21 y P23.
 - Inicio de clase desacoplado de Marketing y protegido contra `Abriendo…` infinito → revalidado P21.
 - Creación/reutilización de provisional dentro de Dar clase → revalidado P21.
 - Evaluación numérica antigua retirada físicamente de Dar clase → P21.
@@ -67,6 +82,9 @@ Cuando aparezca una incidencia nueva:
 - Perfil canónico del alumno reutiliza P20 → P22.
 - Evolución del alumno separada por estilo/rol/nivel → P22.
 - Multimedia de portal alineada con publicación/propiedad → P22 v50/v50b.
+- Modelo canónico de Correcciones/Explicaciones/Ejercicios/Secuencias + relaciones + ocho árboles → P23/v51.
+- Navegación móvil del Centro `Dar clase` → P0A sobre P21.
+- Auditoría transversal release-wide → P0D.
 
 ## ✅ Adelanto pendiente de revalidación final
 
@@ -74,13 +92,13 @@ Cuando aparezca una incidencia nueva:
 
 ## 🟣 AHORA
 
-### P23 — Enseñanza + relaciones + árboles
+### P24 — Inicio contextual
 
-P23 debe cerrar el modelo pedagógico de Correcciones, Explicaciones, Ejercicios y Secuencias, sus categorías/etiquetas/relaciones, multimedia externa y los ocho árboles táctiles por estilo/rol, sin mezclar asignaciones personales ni convertir vídeos de clase en nodos pedagógicos automáticamente.
+P24 debe convertir Inicio en un lanzador inteligente del día: saludo, frase diaria persistente, siguiente acción, misiones visibles, agenda, avisos, accesos rápidos y resumen del día. Una clase próxima debe dominar Inicio 30 minutos antes, sin absorber todavía el motor servidor completo de Misiones que pertenece a P25.
 
 ## ⏳ FALTA DESPUÉS
 
-**P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
+**P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
 
 ---
 
@@ -96,6 +114,7 @@ Evidencias obtenidas:
 - P20: `/api/build-info` devolvió `p20-form-runtime-v48-ready` antes de v48.
 - P21: Hostinger mostró `app.carlosyandy.com` como **Actual / Se ha completado** sobre `main@8f8673c7`; ese commit es no-op respecto al árbol funcional P21 `c9341750` y fue el redeploy forzado previo a v49.
 - P22: runner externo GitHub `31557437770` consultó producción y obtuvo en el primer intento `p22-student-portal-v50-ready` antes de aplicar v50.
+- P23: G1 Hostinger run `31560051530` verificó `p23-teaching-graph-v51-ready`.
 
 Regla permanente: **frontend compatible primero; cutover backend después**.
 
@@ -122,9 +141,13 @@ Todo formulario/control nuevo o modificado debe cumplir:
 - nunca forzar `0` durante edición;
 - escribir `5` produce `5`, nunca `05`/`050`.
 
+Correctivo vivo: P0C debe elevar los targets táctiles críticos detectados por la auditoría a un área efectiva mínima de 44 px sin perder densidad visual.
+
 ## G4 — Regresión antes de merge
 
 Cada P debe probar las reglas que modifica. Un build verde no sustituye QA funcional.
+
+Desde P0B, la regresión incluye también consistencia documental canónica. El workflow `CYA QA E2E` ejecuta `tests/documentation-consistency.test.mjs` antes del bootstrap de QA. Una rama que vuelva a P23 como pendiente o rompa la transición P23 cerrado → P24 actual debe quedar roja.
 
 ## G5 — Integridad de datos y multimedia
 
@@ -150,7 +173,7 @@ Jerarquía operativa:
 
 `override de clase → preferencia estilo/rol → valor global → preguntar solo si falta`.
 
-P19 fijó persona canónica. P20 fijó formularios canónicos. P21 aplicó G7 al setup de clase. P22 reutilizó P20 para el perfil del alumno. Los P siguientes deben conservar esa jerarquía.
+P19 fijó persona canónica. P20 fijó formularios canónicos. P21 aplicó G7 al setup de clase. P22 reutilizó P20 para el perfil del alumno. P23 mantuvo un único grafo pedagógico canónico. Los P siguientes deben conservar esa jerarquía.
 
 ## G8 — Esquema real > historial supuesto
 
@@ -187,10 +210,12 @@ La verdad final es el runtime/esquema real.
 18. **Crear provisional desde Dar clase no abandona el flujo.**
 19. **El portal del alumno nunca expone borradores, incompletos internos ni datos de otras personas.**
 20. **Una relación pedagógica no convierte automáticamente multimedia de clase en contenido del árbol.**
+21. **El Centro `Dar clase` conserva navegación móvil; el chrome solo se oculta con clase realmente activa (`status=active` + `workflow_stage=live`).**
+22. **Un cierre formal de paquete no puede retroceder documentalmente por un merge posterior.**
 
 ---
 
-# 4. Evidencia de P17–P22 cerrados
+# 4. Evidencia de P17–P23 cerrados
 
 ## P17 — Evaluaciones ✅
 
@@ -270,6 +295,14 @@ Contrato: `docs/P20_FORMULARIOS_VERSIONADOS_DATOS_CANONICOS.md`.
 
 Contrato: `docs/P21_DAR_CLASE_RECONCILIACION.md`.
 
+Correctivo P0A posterior a P21:
+
+- PR #32 → merge `85e1d7954cd67190735a118d682c002ddfc2569a`;
+- `mobile-nav` ya no depende de `view === 'live'`, sino de clase seleccionada realmente `active/live`;
+- Centro de clases y preparación conservan `Inicio | Alumnado | Dar clase | Enseñanza | Marketing`;
+- clase activa oculta el chrome móvil y cierre/retorno lo restaura;
+- QA post-merge `31583225189`: **22/22**.
+
 ## P22 — Portal del alumno ✅ CERRADO
 
 ### Frontend/UX
@@ -305,6 +338,23 @@ Contrato: `docs/P21_DAR_CLASE_RECONCILIACION.md`.
 
 Contrato: `docs/P22_PORTAL_ALUMNO_RECONCILIACION.md`.
 
+## P23 — Enseñanza + relaciones + árboles ✅ CERRADO
+
+- v51 ledger `20260812031009`;
+- backend PR #28 → `4e95cdb5ee909391b51c33abea6d1c5baa7d41ce`;
+- frontend PR #29 → `f94eb1a6c154515f68659f29facf15903af227c8`;
+- head final QA `a8f9e17193f47d83f2e4c7320200ab5703f7b6c3`;
+- workflow P23 `31559914700` y regresión P17–P23 completas en success;
+- G1 Hostinger run `31560051530` → `p23-teaching-graph-v51-ready`;
+- ocho árboles derivados de un único grafo canónico;
+- Ruta, pan/zoom/centrar/reset/atrás y filtros táctiles activos;
+- `Necesita pareja` solo para Ejercicios y autoridad servidor verificada;
+- homólogas Leader/Follower y Secuencias protegidas por v51;
+- multimedia permanece fuera de la generación automática del grafo;
+- sin blocker nuevo de Advisors atribuible a P23.
+
+Contrato: `docs/P23_ENSENANZA_RELACIONES_ARBOLES.md`.
+
 ---
 
 # 5. P22 — Portal del alumno ✅ CERRADO
@@ -313,7 +363,7 @@ P22 queda cerrado por la evidencia del apartado 4. No volver a modificarlo salvo
 
 ---
 
-# 6. P23 — Enseñanza + relaciones + árboles 🟣 AHORA
+# 6. P23 — Enseñanza + relaciones + árboles ✅ CERRADO
 
 Absorbe F16–F20.
 
@@ -358,23 +408,25 @@ UX móvil:
 - búsqueda;
 - interacción táctil fluida en iPhone.
 
-Gate P23:
+Cierre P23:
 
-- CRUD de cuatro tipos sin campos impropios;
-- categorías/etiquetas coherentes;
-- relaciones bidireccionales/dirigidas según contrato;
+- CRUD de cuatro tipos sin campos impropios cubierto;
+- categorías/etiquetas y relaciones coherentes;
 - homólogas Leader/Follower verificadas;
 - ejercicios en pareja solo en Ejercicios;
-- secuencias y pasos ordenables;
+- secuencias representadas mediante `teaching_content_relations(relation_type='sequence_item', position)`;
 - media Drive autorizada sin crear nodos automáticos;
 - ocho árboles derivados del mismo grafo canónico, no ocho bases paralelas;
-- RLS profesor/alumno correcta;
+- RLS profesor/alumno verificada;
 - iPhone + desktop;
-- regresión P17–P22.
+- regresión P17–P23 verde;
+- v51 ledger `20260812031009` y G1 de producción documentado.
+
+No volver a abrir P23 salvo correctivo demostrado.
 
 ---
 
-# 7. P24 — Inicio contextual ⏳
+# 7. P24 — Inicio contextual 🟣 AHORA
 
 Inicio = lanzador inteligente.
 
@@ -417,6 +469,8 @@ Prioridad: normal / prioritaria / urgente.
 El motor corre en servidor, no depende de abrir la app.
 
 Reglas iniciales: cierre de clases, bonos, perfiles incompletos, preparación, contenido pendiente, revisión y vencimientos.
+
+Correctivo obligatorio al entrar en P25: definir e implementar la semántica `failure_behavior='expire'` para que una misión vencida no permanezca `available`.
 
 ---
 
@@ -643,9 +697,9 @@ Release:
 | F5 centro notificaciones | ✅ base → automatización P27 |
 | F6 temporizadores | ✅ regla permanente P21 |
 | F7 duración prevista/bono | ✅ P21 |
-| F8–F11 Dar clase | ✅ P21 |
+| F8–F11 Dar clase | ✅ P21 + P0A navegación del Centro |
 | F12–F15 evaluaciones | ✅ P17 |
-| F16–F20 Enseñanza | → P23 |
+| F16–F20 Enseñanza | ✅ P23 |
 | F21–F25 Personas/Alumnado | ✅ P19 + P20 + P21 + P22 |
 | F26–F31 Marketing | → P29 |
 | F32–F33 Misiones/worker | → P25 |
@@ -658,7 +712,7 @@ Release:
 | F40–F41 estadísticas | → P30 |
 | F42 reset | ✅ base v44–v44e; reauditar P32 |
 | F43 seguridad/destructivas | G6 + P31/P32 |
-| F44 QA | → P32 |
+| F44 QA | ✅ release-wide P0D + cierre final P32 |
 | F45 auditoría funcional final | → P32 |
 | F46 producción | → P32 |
 
@@ -671,7 +725,7 @@ Release:
 | `05`/`050` en campos numéricos | ✅ P21 + G3 permanente |
 | varios vídeos por clase | ✅ P21 |
 | vídeo pareja → Ambos por defecto | ✅ P21 |
-| vídeos fuera de árboles | ✅ P21 + revalidar P23 |
+| vídeos fuera de árboles | ✅ P21 + P23 |
 | reabrir clase revierte cierre | ✅ P21 |
 | transferencia individual→pareja | ✅ P21 |
 | bono compartido una sola vez | ✅ P21 |
@@ -681,7 +735,7 @@ Release:
 | provisional in-flow | ✅ P19↔P21 |
 | clase abierta no bloquea otra | ✅ P21 |
 | alerta clase olvidada | → P27 |
-| ejercicio en pareja solo Ejercicios | → P23 |
+| ejercicio en pareja solo Ejercicios | ✅ P23 |
 | sin fase/cronómetro de 3 min | ✅ P21 / regla permanente |
 | revisión postclase reaparecía/recargaba | ✅ P17 |
 | leaked password protection | G2/P32 |
@@ -689,7 +743,7 @@ Release:
 | reset seguro | ✅ base v44–v44e / P32 final |
 | copia descargada no habilitaba reset | ✅ v44e |
 | resumen final editable | ✅ v45 + P21 |
-| recursión RLS enseñanza | ✅ v45 + revalidar P23 |
+| recursión RLS enseñanza | ✅ v45 + P23 |
 | inicio quedaba `Abriendo…` | ✅ P21 |
 | Ver como sin autoridad servidor | ✅ P18/v46 |
 | personas duplicadas | ✅ P19/v47 |
@@ -702,13 +756,20 @@ Release:
 | evolución alumno mezclaba contextos | ✅ P22/v50 |
 | media de portal y Drive desalineadas | ✅ P22/v50 |
 | wrapper media público SECURITY DEFINER | ✅ P22/v50b |
+| Centro Dar clase perdía navegación móvil | ✅ P0A / PR #32 / QA 22/22 |
+| no existía auditoría transversal permanente | ✅ P0D / PR #32 |
+| Plan Maestro retrocedió a P22/P23 pese al cierre P23 | ✅ P0B / gate documental CI |
+| targets táctiles <44 px detectados por release-wide | → P0C |
+| misiones `expire` siguen `available` | → P25 |
 
 ---
 
 # 18. Orden inmediato desde este corte
 
-**P23 → P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
+**P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
 
-No volver a P22 salvo un correctivo demostrado. No volver al antiguo orden F8 → F3B → F9 como secuencia de implementación: esos requisitos ya están absorbidos por P21.
+Antes de modificar funcionalmente P24 queda pendiente únicamente el correctivo transversal **P0C** de targets táctiles, según la secuencia de auditoría aprobada.
 
-Este documento sustituye las hojas parciales anteriores y debe actualizarse al inicio y cierre de cada paquete.
+No volver a P23 salvo un correctivo demostrado. No volver al antiguo orden F8 → F3B → F9 como secuencia de implementación: esos requisitos ya están absorbidos por P21.
+
+Este documento sustituye las hojas parciales anteriores y debe actualizarse al inicio y cierre de cada paquete. El gate documental de P0B debe impedir que un merge basado en documentación antigua lo haga retroceder de nuevo.
