@@ -127,7 +127,7 @@ begin
       updated_at = now()
   where id = p_connection_id
     and user_id = (select auth.uid())
-    and status = 'connected'
+    and status in ('connected','error')
     and sync_enabled = true
     and (sync_lock_token is null or sync_started_at < now() - interval '15 minutes');
 
@@ -156,6 +156,7 @@ begin
       sync_lock_token = null,
       sync_error_count = 0,
       last_error = null,
+      status = 'connected',
       updated_at = now()
   where id = p_connection_id
     and user_id = (select auth.uid())

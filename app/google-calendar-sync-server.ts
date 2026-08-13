@@ -368,13 +368,9 @@ export async function syncGoogleCalendar(accessToken: string, connection: Calend
           body: JSON.stringify(googleEventBody(local)),
         });
         if (!created.id) throw new Error("Google no devolvió el ID del evento creado.");
-        mapping = await insertMapping(accessToken, {
-          connection_id: connection.id,
-          provider: "google",
+        const mappingData = {
           external_calendar_id: connection.external_calendar_id,
           external_event_id: created.id,
-          source_type: sourceType(local),
-          source_id: String(local.id),
           title: local.title,
           starts_at: local.starts_at,
           ends_at: local.ends_at,
@@ -386,7 +382,20 @@ export async function syncGoogleCalendar(accessToken: string, connection: Calend
           last_synced_at: new Date().toISOString(),
           conflict_data: {},
           metadata: { managed_by_cya: true },
-        });
+          deleted_at: null,
+        };
+        if (mapping) {
+          await patchMapping(accessToken, mapping.id, mappingData);
+          mapping = { ...mapping, ...mappingData } as CalendarMapping;
+        } else {
+          mapping = await insertMapping(accessToken, {
+            connection_id: connection.id,
+            provider: "google",
+            source_type: sourceType(local),
+            source_id: String(local.id),
+            ...mappingData,
+          });
+        }
         mappingBySource.set(key, mapping);
         mappingByExternal.set(created.id, mapping);
         metrics.created += 1;

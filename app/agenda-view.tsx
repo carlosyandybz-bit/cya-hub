@@ -13,6 +13,7 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CalendarItem, CalendarSnapshot } from "./v14-types";
+import { GoogleCalendarSync } from "./google-calendar-sync";
 
 type CalendarMode = "day" | "week" | "month" | "list";
 type CalendarType = CalendarItem["type"];
@@ -176,6 +177,7 @@ export function AgendaView({ client, timezone, schedule, openClass, notify }: Ag
 
   return <>
     <header className="page-head agenda-head"><div><p className="eyebrow">Agenda</p><h1>Calendario CYA</h1><p>Clases, misiones, eventos y calendario sincronizado sin duplicar la información pedagógica.</p></div><button className="btn" onClick={schedule}><Plus /> Programar clase</button></header>
+    <GoogleCalendarSync client={client} notify={notify} onSynced={load} compact />
     <section className="calendar-toolbar card">
       <div className="calendar-nav"><button className="icon-btn" onClick={() => move(-1)} aria-label="Anterior"><ChevronLeft /></button><button className="today-button" onClick={() => setKey(localKey(new Date(), timezone))}>Hoy</button><button className="icon-btn" onClick={() => move(1)} aria-label="Siguiente"><ChevronRight /></button><strong>{modeTitle(mode, key, timezone)}</strong></div>
       <div className="calendar-modes">{(["day", "week", "month", "list"] as CalendarMode[]).map((value) => <button key={value} className={mode === value ? "active" : ""} onClick={() => setMode(value)}>{value === "day" ? "Día" : value === "week" ? "Semana" : value === "month" ? "Mes" : "Lista"}</button>)}</div>

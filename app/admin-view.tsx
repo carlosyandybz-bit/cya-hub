@@ -23,6 +23,7 @@ import { AdminDataTransfer } from "./admin-data-transfer";
 import { AdminFormLibrary } from "./admin-form-library";
 import { P0fEvaluationAdmin } from "./p0f-evaluation-admin";
 import { AdminDailyQuotes } from "./admin-daily-quotes";
+import { GoogleCalendarSync } from "./google-calendar-sync";
 
 type AdminSection = "general" | "team" | "forms" | "teaching" | "missions" | "notifications" | "data" | "integrations" | "appearance" | "security";
 
@@ -231,7 +232,7 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
   }
 
   function integrationsSection() {
-    return <section className="admin-stack"><header className="admin-section-head"><div><h2>Integraciones</h2><p>Estado de los servicios externos, sin mostrar credenciales.</p></div></header><div className="integration-grid">{data.integrations.map((integration) => <article className="card pad" key={integration.integration_key}><div className="card-head"><Link2 /><span className={`badge ${integration.status === "connected" ? "portal" : ""}`}>{integration.status === "connected" ? "Conectada" : integration.status === "available" ? "Disponible" : integration.status}</span></div><h3>{integration.label}</h3><p>{integration.last_error || (integration.last_checked_at ? `Última comprobación ${new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(integration.last_checked_at))}` : "Lista para configurar cuando se necesite.")}</p></article>)}</div></section>;
+    return <section className="admin-stack"><header className="admin-section-head"><div><h2>Integraciones</h2><p>Estado de los servicios externos, sin mostrar credenciales.</p></div></header><div className="integration-grid"><GoogleCalendarSync client={client} notify={notify} />{data.integrations.filter((integration) => integration.integration_key !== "google_calendar").map((integration) => <article className="card pad" key={integration.integration_key}><div className="card-head"><Link2 /><span className={`badge ${integration.status === "connected" ? "portal" : ""}`}>{integration.status === "connected" ? "Conectada" : integration.status === "available" ? "Disponible" : integration.status}</span></div><h3>{integration.label}</h3><p>{integration.last_error || (integration.last_checked_at ? `Última comprobación ${new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(integration.last_checked_at))}` : "Lista para configurar cuando se necesite.")}</p></article>)}</div></section>;
   }
 
   function appearanceSection() {
