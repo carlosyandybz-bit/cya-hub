@@ -15,8 +15,9 @@ create table if not exists public.app_appearance_settings (
 
 alter table public.app_appearance_settings enable row level security;
 
-grant select on public.app_appearance_settings to anon, authenticated;
-grant insert, update on public.app_appearance_settings to authenticated;
+revoke all on table public.app_appearance_settings from public, anon, authenticated;
+grant select on table public.app_appearance_settings to anon, authenticated;
+grant insert, update on table public.app_appearance_settings to authenticated;
 
 drop policy if exists app_appearance_settings_read on public.app_appearance_settings;
 create policy app_appearance_settings_read on public.app_appearance_settings
