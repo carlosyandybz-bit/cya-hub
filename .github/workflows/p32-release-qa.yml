@@ -6,7 +6,9 @@ on:
     paths:
       - 'app/**'
       - 'db/migrations/v72*.sql'
+      - '.env.example'
       - 'tests/p32-release-qa.test.mjs'
+      - 'tests/p32-api-hardening.test.mjs'
       - '.github/workflows/p32-release-qa.yml'
   pull_request:
     branches: [feat/p31-admin-config, main]
@@ -25,7 +27,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: P32 release contracts
-        run: node --test tests/p32-release-qa.test.mjs
+        run: node --test tests/p32-release-qa.test.mjs tests/p32-api-hardening.test.mjs
       - name: Preserve P19-P31 contracts
         run: >-
           node --test
