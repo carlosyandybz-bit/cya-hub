@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint app --ignore-pattern .next --ignore-pattern statistics-engine.ts",
+    "lint": "eslint app --ignore-pattern .next --ignore-pattern app/statistics-engine.ts",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "db:generate": "drizzle-kit generate"
   },
