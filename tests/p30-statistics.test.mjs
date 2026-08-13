@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import "./p30-statistics-expansion.test.mjs";
 
 const base=readFileSync("db/migrations/v69_p30_teacher_statistics.sql","utf8");
 const schema=readFileSync("db/migrations/v70a_p30_statistics_dashboard_schema.sql","utf8");
