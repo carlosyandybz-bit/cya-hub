@@ -1,0 +1,53 @@
+name: P25 Missions
+
+on:
+  push:
+    branches: [feat/p25-mission-expiry-engine, main]
+    paths:
+      - 'app/admin-view.tsx'
+      - 'app/home-view.tsx'
+      - 'db/migrations/v58_p24_contextual_home.sql'
+      - 'db/migrations/v60_p25_mission_expiry_engine.sql'
+      - 'db/migrations/v61_p25_repeat_successor.sql'
+      - 'tests/**'
+      - 'qa/tests/p25-missions.spec.ts'
+      - '.github/workflows/p25-missions.yml'
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: P25 mission contracts
+        run: node --test tests/p25-missions.test.mjs
+      - name: Preserve P17-P24 and compact UI contracts
+        run: >-
+          node --test
+          tests/p17-evaluation-cutover.test.mjs
+          tests/p0e-optional-evaluation.test.mjs
+          tests/p0f-milestone-admin-contract.test.mjs
+          tests/p0g-compact-ui.test.mjs
+          tests/p18-identity-navigation.test.mjs
+          tests/p19-persona-unica.test.mjs
+          tests/p20-form-engine.test.mjs
+          tests/p21-dar-clase.test.mjs
+          tests/p22-student-portal.test.mjs
+          tests/p23-teaching-contract.test.mjs
+          tests/p24-contextual-home.test.mjs
+          tests/documentation-consistency.test.mjs
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Whitespace
+        run: git diff --check
