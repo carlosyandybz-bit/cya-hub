@@ -6,6 +6,7 @@ const backup = readFileSync("db/migrations/v72a_p32_backup_inventory_final.sql",
 const fullReset = readFileSync("db/migrations/v72b_p32_full_reset_statistics.sql", "utf8");
 const privateGrants = readFileSync("db/migrations/v72c_p32_private_definer_grants.sql", "utf8");
 const experienceContext = readFileSync("db/migrations/v72d_p32_experience_context_invoker.sql", "utf8");
+const performance = readFileSync("db/migrations/v72e_p32_performance_indexes.sql", "utf8");
 
 const finalTables = [
   "statistics_dashboards",
@@ -59,4 +60,12 @@ test("experience context uses RLS instead of SECURITY DEFINER", () => {
   assert.match(experienceContext, /alter function public\.set_experience_context\(text\) security invoker/i);
   assert.match(experienceContext, /revoke all on function public\.set_experience_context\(text\) from public, anon/i);
   assert.match(experienceContext, /grant execute on function public\.set_experience_context\(text\) to authenticated/i);
+});
+
+test("P32 performance closure is evidence based", () => {
+  for (const index of ["app_appearance_settings_updated_by_idx", "app_operational_defaults_location_idx", "app_operational_defaults_updated_by_idx"]) {
+    assert.match(performance, new RegExp(`create index if not exists ${index}`, "i"), index);
+  }
+  assert.match(performance, /drop index if exists public\.teaching_content_relations_sequence_position_uidx/i);
+  assert.doesNotMatch(performance, /drop index[^;]*people_created_by_idx|drop index[^;]*classes_teacher_schedule_idx/i);
 });
