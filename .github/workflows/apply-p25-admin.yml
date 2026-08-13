@@ -6,6 +6,7 @@ on:
       - feat/p25-mission-expiry-engine
     paths:
       - scripts/patch-p25-admin.mjs
+      - tests/p25-missions.test.mjs
       - .github/workflows/apply-p25-admin.yml
 
 permissions:
