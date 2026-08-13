@@ -5,6 +5,7 @@ import test from "node:test";
 const backup = readFileSync("db/migrations/v72a_p32_backup_inventory_final.sql", "utf8");
 const fullReset = readFileSync("db/migrations/v72b_p32_full_reset_statistics.sql", "utf8");
 const privateGrants = readFileSync("db/migrations/v72c_p32_private_definer_grants.sql", "utf8");
+const experienceContext = readFileSync("db/migrations/v72d_p32_experience_context_invoker.sql", "utf8");
 
 const finalTables = [
   "statistics_dashboards",
@@ -52,4 +53,10 @@ test("P32 removes anonymous access to unchecked private definers", () => {
   assert.match(privateGrants, /revoke all on function private\.person_lifecycle_status_unchecked\(bigint\)[\s\S]*from public, anon, authenticated/i);
   assert.match(privateGrants, /revoke all on function private\.match_person_identity\(text,text,bigint\)[\s\S]*from public, anon, authenticated/i);
   assert.match(privateGrants, /grant execute on function private\.match_person_identity\(text,text,bigint\)[\s\S]*to authenticated/i);
+});
+
+test("experience context uses RLS instead of SECURITY DEFINER", () => {
+  assert.match(experienceContext, /alter function public\.set_experience_context\(text\) security invoker/i);
+  assert.match(experienceContext, /revoke all on function public\.set_experience_context\(text\) from public, anon/i);
+  assert.match(experienceContext, /grant execute on function public\.set_experience_context\(text\) to authenticated/i);
 });
