@@ -27,7 +27,7 @@ export type StatisticsDashboardCard = {
 
 export type StatisticsDashboardSnapshot={dashboard:StatisticsDashboard|null;cards:StatisticsDashboardCard[]};
 
-type Assignment={dashboard_id:number;is_default:boolean};
+type Assignment={dashboard_id:number;is_default:boolean;active:boolean};
 
 async function dashboardById(client:SupabaseClient,id:number){
   const result=await client.from("statistics_dashboards").select("id,name,description,scope,target_user_id,active,is_default,updated_at").eq("id",id).eq("active",true).maybeSingle();
@@ -51,7 +51,7 @@ export async function resolveStatisticsDashboard(client:SupabaseClient):Promise<
 
   let dashboard=await firstDashboard(client,"personal",userId);
   if(!dashboard){
-    const assignmentResult=await client.from("statistics_dashboard_assignments").select("dashboard_id,is_default").eq("user_id",userId).order("is_default",{ascending:false}).order("assigned_at",{ascending:false});
+    const assignmentResult=await client.from("statistics_dashboard_assignments").select("dashboard_id,is_default,active").eq("user_id",userId).eq("active",true).order("is_default",{ascending:false}).order("assigned_at",{ascending:false});
     if(assignmentResult.error)throw new Error(assignmentResult.error.message);
     const assignments=(assignmentResult.data??[]) as Assignment[];
     for(const assignment of assignments){
