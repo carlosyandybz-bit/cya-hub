@@ -2,7 +2,7 @@
 
 import { BarChart3, SlidersHorizontal } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { StatisticsView } from "./statistics-view";
 
 type Dashboard = { id:number; name:string; description:string|null };
@@ -28,8 +28,8 @@ export function ConfigurableStatisticsView({client,leave,notify}:{client:Supabas
     const resolved=await Promise.all((next.cards??[]).map(async(card)=>{const value=await client.rpc("statistics_card_value",{p_metric_key:card.metric_key,p_period_kind:card.period_kind,p_period_days:card.period_days,p_filters:card.filters??{}});return [card.id,value] as const;}));
     const map:Record<number,CardResult>={};for(const [id,resultValue] of resolved){if(resultValue.error)notify(resultValue.error.message);else map[id]=resultValue.data as CardResult;}setValues(map);setLoading(false);
   },[client,notify]);
-  useEffect(()=>{void load();},[load]);
-  const cards=dashboard?.cards??[];const locationHint=useMemo(()=>cards.some((c)=>c.filters?.class_location),[cards]);
+  useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[load]);
+  const cards=dashboard?.cards??[];const locationHint=cards.some((c)=>c.filters?.class_location);
   if(explore)return <StatisticsView client={client} leave={()=>setExplore(false)} notify={notify}/>;
   return <section className="statistics-configurable">
     <header className="page-head"><div><p className="eyebrow">Análisis CYA</p><h1>{dashboard?.dashboard?.name??"Estadísticas"}</h1><p>{dashboard?.dashboard?.description??"Tu panel rápido con las cifras que más te interesan."}</p></div><div className="actions"><button className="btn ghost" onClick={()=>setExplore(true)}><BarChart3/>Todas las estadísticas</button><button className="btn ghost" onClick={leave}>Volver</button></div></header>
