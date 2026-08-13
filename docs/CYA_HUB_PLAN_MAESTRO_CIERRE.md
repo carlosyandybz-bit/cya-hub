@@ -1,19 +1,19 @@
 # CYA HUB — PLAN MAESTRO ÚNICO DE CIERRE
 
-Versión: **4.2**  
-Fecha de corte: **2026-08-12**  
+Versión: **4.3**
+Fecha de corte: **2026-08-13**
 Repositorio canónico: `carlosyandybz-bit/cya-hub`  
 Producción: `main` + Supabase `CyA hub 2` + Hostinger  
 Dominio CYA Hub: `app.carlosyandy.com`  
-Última actualización secuencial cerrada: **P23 / v51**  
-Siguiente actualización funcional: **P24 — Inicio contextual**
+Última actualización secuencial cerrada: **P24 / v58–v59**
+Siguiente actualización funcional: **P25 — Misiones — pendiente de aprobación**
 
 Correctivos adelantados que deben preservarse y revalidarse en su punto original: **F42/P32 v44–v44e**. Los adelantos de Dar clase (`v45`, transición fiable de inicio y alta rápida provisional) quedaron revalidados y absorbidos definitivamente por P21. El portal del alumno y su frontera multimedia quedaron absorbidos por P22. Enseñanza, relaciones y árboles quedaron cerrados por P23/v51.
 
 Correctivos de auditoría P0 ya integrados o canonizados en esta versión:
 
 - **P0A ✅** — Centro de clases y modo clase activo separados; navegación móvil corregida y protegida por E2E.
-- **P0B ✅** — este documento queda canonizado a P23 cerrado → P24 actual y protegido por un check automático de consistencia documental.
+- **P0B ✅** — el documento permanece protegido por un check automático; la transición canónica vigente se actualiza deliberadamente a P24 cerrado → P25 siguiente.
 - **P0C ✅** — targets táctiles auditados ≥44 px; gate `mobile-touch-targets` permanente; QA post-merge 26/26.
 - **P0D ✅** — `release-wide-audit` integrado como gate permanente; QA actual post-P0C verde 26/26.
 - **P0E ✅** — evaluación contextual opcional, baseline derivada de la primera evaluación completa válida y gates globales eliminados; v53 + PR #36 integrados y recertificados 26/26.
@@ -49,9 +49,9 @@ Cuando aparezca una incidencia nueva:
 Regla documental permanente desde P0B:
 
 - un documento de cierre formal (`Pxx_*.md`) no puede coexistir con este Plan Maestro declarando ese mismo paquete como pendiente/actual;
-- la transición canónica actual es **P23 cerrado → P24 actual**;
-- `tests/documentation-consistency.test.mjs` debe fallar si una rama vuelve a introducir el estado P22/P23 anterior;
-- cuando P24 se cierre, la transición se actualizará explícitamente en el cierre de P24 y en este test. Nunca se avanza o retrocede por un merge accidental.
+- la transición canónica actual es **P24 cerrado → P25 siguiente / pendiente de aprobación**;
+- `tests/documentation-consistency.test.mjs` debe fallar si una rama vuelve a declarar P24 como pendiente/actual o retrocede al estado P22/P23 anterior;
+- cualquier avance posterior a P25 se actualizará explícitamente en el cierre del paquete correspondiente y en este test. Nunca se avanza o retrocede por un merge accidental.
 
 ---
 
@@ -71,6 +71,7 @@ Regla documental permanente desde P0B:
 - P21 — DAR CLASE definitivo, v49.
 - P22 — Portal del alumno, v50 + v50b.
 - **P23 — Enseñanza + relaciones + árboles, v51.**
+- **P24 — Inicio contextual, v58 + v59; PR #41 + correctivo OIDC PR #42; QA final 36/36.**
 
 ## ✅ Correctivos/adelantos ya absorbidos
 
@@ -93,15 +94,15 @@ Regla documental permanente desde P0B:
 
 - Administración → Datos → borrado/reinicio seguro: v44–v44e → reauditar P32.
 
-## 🟣 AHORA
+## 🟣 SIGUIENTE PROPUESTA — PENDIENTE DE APROBACIÓN
 
-### P24 — Inicio contextual
+### P25 — Misiones
 
-P24 debe convertir Inicio en un lanzador inteligente del día: saludo, frase diaria persistente, siguiente acción, misiones visibles, agenda, avisos, accesos rápidos y resumen del día. Una clase próxima debe dominar Inicio 30 minutos antes, sin absorber todavía el motor servidor completo de Misiones que pertenece a P25.
+P25 todavía NO se ha iniciado. La auditoría real confirma que debe cerrar la semántica de vencimiento/`failure_behavior`, automatización server-side, estados y configuración del motor de Misiones. La propuesta completa se presenta a Carlos antes de modificar código o Supabase.
 
 ## ⏳ FALTA DESPUÉS
 
-**P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
+**P26 → P27 → P28 → P29 → P30 → P31 → P32.**
 
 ---
 
@@ -150,7 +151,7 @@ P0C cerró el correctivo táctil: los targets auditados tienen un área efectiva
 
 Cada P debe probar las reglas que modifica. Un build verde no sustituye QA funcional.
 
-Desde P0B, la regresión incluye también consistencia documental canónica. El workflow `CYA QA E2E` ejecuta `tests/documentation-consistency.test.mjs` antes del bootstrap de QA. Una rama que vuelva a P23 como pendiente o rompa la transición P23 cerrado → P24 actual debe quedar roja.
+Desde P0B, la regresión incluye también consistencia documental canónica. El workflow `CYA QA E2E` ejecuta `tests/documentation-consistency.test.mjs` antes del bootstrap de QA. Una rama que vuelva a P24 como pendiente/actual o rompa la transición P24 cerrado → P25 siguiente debe quedar roja.
 
 ## G5 — Integridad de datos y multimedia
 
@@ -219,7 +220,7 @@ La verdad final es el runtime/esquema real.
 
 ---
 
-# 4. Evidencia de P17–P23 cerrados
+# 4. Evidencia de P17–P24 cerrados
 
 ## P17 — Evaluaciones ✅
 
@@ -361,6 +362,22 @@ Contrato: `docs/P22_PORTAL_ALUMNO_RECONCILIACION.md`.
 
 Contrato: `docs/P23_ENSENANZA_RELACIONES_ARBOLES.md`.
 
+## P24 — Inicio contextual ✅ CERRADO
+
+- v58 ledger `20260812214733` + v59 ledger `20260812214904`;
+- prioridad canónica: clase activa → clase ≤30 min → misión;
+- reloj vivo, saludo Madrid y transición exacta 31→30 minutos sin recarga;
+- frase diaria persistida por usuario+fecha con snapshot inmutable y rotación segura sobre las 15 frases existentes;
+- Administración > General incorpora gestión de frases, fecha/recurrencia, preview y CSV con conflictos;
+- `home_snapshot()` y `preview_daily_quote(date)` son SECURITY INVOKER; anon sin EXECUTE;
+- PR #41 funcional + PR #42 hardening OIDC para repositorio público;
+- `cya-qa-bootstrap` v6 ACTIVE y restringido a propietario o dispatch interno exacto de main;
+- certificación final `main@50fda0cdbc554f33ae5b5ce0a0d6c6977e66f06f`: gate P24 `31652164663` PASS y Browser QA `31652169267` = 36/36;
+- artifact final `9163051155`;
+- producción/Hostinger G1 continúa como gate independiente P32.
+
+Contrato: `docs/P24_INICIO_CONTEXTUAL.md`.
+
 ---
 
 # 5. P22 — Portal del alumno ✅ CERRADO
@@ -432,39 +449,19 @@ No volver a abrir P23 salvo correctivo demostrado.
 
 ---
 
-# 7. P24 — Inicio contextual 🟣 AHORA
+# 7. P24 — Inicio contextual ✅ CERRADO
 
-Inicio = lanzador inteligente.
+P24 queda cerrado por la evidencia del apartado 4 y el contrato `docs/P24_INICIO_CONTEXTUAL.md`. No volver a abrirlo salvo correctivo demostrado.
 
-Debe incluir:
-
-- saludo por franja horaria y nombre;
-- frase diaria persistente;
-- siguiente acción;
-- misiones;
-- agenda/calendario;
-- avisos;
-- accesos rápidos;
-- resumen del día.
-
-Clase próxima domina Inicio **30 minutos antes**.
-
-Frases:
-
-- mañana 05:00–11:59;
-- tarde 12:00–19:59;
-- noche 20:00–04:59;
-- activar/desactivar;
-- CSV;
-- fecha específica;
-- evitar duplicados;
-- preview.
+Inicio responde a «qué toca hacer ahora» con reloj vivo, saludo contextual, frase diaria persistida, una única acción dominante, resumen del día y accesos rápidos. Una clase realmente activa domina siempre; una clase programada domina desde 30 minutos o menos; a 31 minutos no desplaza una misión. P25 conserva la responsabilidad exclusiva sobre la semántica del motor de Misiones.
 
 ---
 
-# 8. P25 — Misiones + worker ⏳
+# 8. P25 — Misiones + worker 🟣 SIGUIENTE / PENDIENTE DE APROBACIÓN
 
 Absorbe F32–F33.
+
+**P25 no se ha iniciado. Requiere aprobación expresa de Carlos antes de modificar código, Supabase o datos.**
 
 Tipos: principal / diaria / crecimiento.
 
