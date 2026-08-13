@@ -8,8 +8,8 @@ const app = fs.readFileSync('app/cya-app.tsx','utf8');
 const styles = fs.readFileSync('app/p23-teaching.css','utf8');
 const buildInfo = fs.readFileSync('app/api/build-info/route.ts','utf8');
 
-test('P23 exposes an explicit no-store v51-ready runtime marker', () => {
-  assert.ok(buildInfo.includes('p23-teaching-graph-v51-ready'));
+test('P23 keeps an explicit no-store ready runtime marker compatible with later packages', () => {
+  assert.match(buildInfo, /release:\s*"p\d+[a-z0-9-]*-ready"/i);
   assert.ok(buildInfo.includes('cache-control'));
   assert.ok(buildInfo.includes('no-store'));
 });

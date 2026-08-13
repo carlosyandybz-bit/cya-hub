@@ -1,0 +1,54 @@
+name: P32 Release QA
+
+on:
+  push:
+    branches: [feat/p32-release-qa, main]
+    paths:
+      - 'app/**'
+      - 'db/migrations/v72*.sql'
+      - '.env.example'
+      - 'tests/p32-release-qa.test.mjs'
+      - 'tests/p32-api-hardening.test.mjs'
+      - '.github/workflows/p32-release-qa.yml'
+  pull_request:
+    branches: [feat/p31-admin-config, main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: P32 release contracts
+        run: node --test tests/p32-release-qa.test.mjs tests/p32-api-hardening.test.mjs
+      - name: Preserve P19-P31 contracts
+        run: >-
+          node --test
+          tests/p19-persona-unica.test.mjs
+          tests/p20-form-engine.test.mjs
+          tests/p21-dar-clase.test.mjs
+          tests/p22-student-portal.test.mjs
+          tests/p23-teaching-contract.test.mjs
+          tests/p24-contextual-home.test.mjs
+          tests/p25-missions.test.mjs
+          tests/p26-calendar-sync.test.mjs
+          tests/p27-notification-engine.test.mjs
+          tests/p27-notification-reactivation.test.mjs
+          tests/p28-data-transfer.test.mjs
+          tests/p29-marketing.test.mjs
+          tests/p30-statistics.test.mjs
+          tests/p31-admin-config.test.mjs
+          tests/documentation-consistency.test.mjs
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Whitespace
+        run: git diff --check
