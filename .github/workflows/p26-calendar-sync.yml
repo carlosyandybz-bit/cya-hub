@@ -1,0 +1,57 @@
+name: P26 Calendar Sync
+
+on:
+  push:
+    branches: [feat/p26-agenda-google-calendar, main]
+    paths:
+      - 'app/agenda-view.tsx'
+      - 'app/admin-view.tsx'
+      - 'app/google-calendar-*.ts'
+      - 'app/google-calendar-*.tsx'
+      - 'app/api/google-calendar/**'
+      - 'app/v14-types.ts'
+      - 'db/migrations/v63_p26_google_calendar_sync.sql'
+      - 'tests/**'
+      - 'qa/tests/p26-agenda.spec.ts'
+      - '.env.example'
+      - '.github/workflows/p26-calendar-sync.yml'
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: P26 Google Calendar contracts
+        run: node --test tests/p26-calendar-sync.test.mjs
+      - name: Preserve P17-P25 and compact UI contracts
+        run: >-
+          node --test
+          tests/p17-evaluation-cutover.test.mjs
+          tests/p0e-optional-evaluation.test.mjs
+          tests/p0f-milestone-admin-contract.test.mjs
+          tests/p0g-compact-ui.test.mjs
+          tests/p18-identity-navigation.test.mjs
+          tests/p19-persona-unica.test.mjs
+          tests/p20-form-engine.test.mjs
+          tests/p21-dar-clase.test.mjs
+          tests/p22-student-portal.test.mjs
+          tests/p23-teaching-contract.test.mjs
+          tests/p24-contextual-home.test.mjs
+          tests/p25-missions.test.mjs
+          tests/documentation-consistency.test.mjs
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Whitespace
+        run: git diff --check
