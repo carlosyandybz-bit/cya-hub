@@ -34,10 +34,12 @@ test("catalog editing preserves stable keys and reversible active state",()=>{
   assert.match(rates,/p_active: active/);
 });
 
-test("teaching tag rename is a single admin governed merge operation",()=>{
+test("teaching tag rename is administrator governed and non-destructive",()=>{
   assert.match(tagMigration,/security invoker/i);
   assert.match(tagMigration,/private\.is_admin\(\)/);
-  assert.match(tagMigration,/on conflict \(content_id, tag\) do nothing/i);
+  assert.match(tagMigration,/teaching_content_tags_admin_update/);
+  assert.match(tagMigration,/update public\.teaching_content_tags/);
+  assert.match(tagMigration,/Ya existe una etiqueta con ese nombre/);
   assert.match(tagMigration,/audit_events/);
   assert.match(tagMigration,/authenticated/);
   assert.match(catalogs,/admin_rename_teaching_tag/);
