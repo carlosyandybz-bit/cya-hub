@@ -17,6 +17,7 @@ const tagMigration=readFileSync("db/migrations/v71a_p31_safe_tag_rename.sql","ut
 const appearanceMigration=readFileSync("db/migrations/v71b_p31_appearance_settings.sql","utf8");
 const defaultsMigration=readFileSync("db/migrations/v71c_p31_operational_defaults.sql","utf8");
 const scheduleMigration=readFileSync("db/migrations/v71d_p31_schedule_default_location.sql","utf8");
+const appearanceReadPolicyMigration=readFileSync("db/migrations/v71e_p31_appearance_read_policy.sql","utf8");
 
 test("Administration centralizes P31 on canonical models",()=>{
   for(const token of ["P31CatalogAdmin","P31RatesAdmin","P31IntegrationsAdmin","P31AppearanceAdmin","Tarifas","Integraciones","Apariencia"]) assert.ok(admin.includes(token),token);
@@ -80,6 +81,7 @@ test("appearance is constrained, persistent and administrator controlled",()=>{
   assert.match(appearanceMigration,/private\.is_admin\(\)/);
   assert.match(appearanceMigration,/enable row level security/);
   assert.doesNotMatch(appearanceMigration,/dark|css_text|custom_css/i);
+  assert.match(appearanceReadPolicyMigration,/for select\s+to public\s+using \(true\)/i);
   assert.match(appearance,/from\("app_appearance_settings"\)/);
   assert.match(appearanceRuntime,/--purple/);
   assert.match(appearanceRuntime,/--cya-font-family/);
