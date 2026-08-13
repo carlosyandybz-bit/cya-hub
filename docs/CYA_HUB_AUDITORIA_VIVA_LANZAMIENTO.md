@@ -2,10 +2,10 @@
 
 Fecha de corte: **2026-08-13**
 Repositorio: `carlosyandybz-bit/cya-hub`  
-Base funcional actual auditada: `main@50fda0cdbc554f33ae5b5ce0a0d6c6977e66f06f` + Supabase `CyA hub 2` (`ldvyeyhzrepaaouzavgs`)
+Base funcional actual auditada: `main@e32bd7885f6e09df23098d61a267c48157974396` + Supabase `CyA hub 2` (`ldvyeyhzrepaaouzavgs`)
 Auditoría transversal integrada: PR **#32 — P0 audit: add release-wide Playwright coverage**  
 Control documental P0B: `CYA_HUB_PLAN_MAESTRO_CIERRE.md` + `P23_ENSENANZA_RELACIONES_ARBOLES.md` + `tests/documentation-consistency.test.mjs`  
-Estado: **AUDITORÍA VIVA — P24 cerrado; P25 — Misiones es la siguiente propuesta pendiente de aprobación; todavía existen gates antes del release**
+Estado: **AUDITORÍA VIVA — P25 cerrado; P26 — Agenda + Google Calendar es la siguiente propuesta pendiente de aprobación; todavía existen gates antes del release**
 
 ---
 
@@ -34,7 +34,7 @@ Estados de la matriz:
 Regla documental añadida por P0B:
 
 - el Plan Maestro no puede declarar como pendiente/actual un paquete que tenga documento de cierre formal incompatible;
-- la transición canónica vigente es **P24 cerrado → P25 siguiente / pendiente de aprobación**;
+- la transición canónica vigente es **P25 cerrado → P26 siguiente / pendiente de aprobación**;
 - el CI debe bloquear una regresión documental equivalente a CYA-AUD-001 antes de que vuelva a `main`.
 
 ---
@@ -60,19 +60,19 @@ Cada superficie genera:
 - controles visibles sin etiqueta;
 - targets táctiles efectivos por debajo de 44 px.
 
-### Resultado actual post-P24 en `main`
+### Resultado actual post-P25 en `main`
 
-Workflow `CYA QA E2E`, run **31652169267**, ejecutado sobre `main@50fda0cdbc554f33ae5b5ce0a0d6c6977e66f06f`:
+Workflow `CYA QA E2E`, run **31658833258**, ejecutado sobre `main@e32bd7885f6e09df23098d61a267c48157974396`:
 
 - bootstrap QA OIDC → Supabase: **OK**;
 - gate documental: **2/2**;
 - lint: **0 errores / 25 warnings no bloqueantes**;
 - build Next.js: **OK**;
 - servidor local: **OK**;
-- Playwright total: **36/36 passed**;
+- Playwright total: **38/38 passed**;
 - targets táctiles auditados por debajo de 44 px en iPhone: **0**;
 - ciclo Profesor → Alumno → Administrador: **OK**;
-- artifacts: **OK**, artifact `9163051155`.
+- artifacts: **OK**, artifact `9165485286`.
 
 En todas las superficies auditadas:
 
@@ -92,12 +92,12 @@ El resultado histórico 19/20 corresponde únicamente al corte previo a P0A y ya
 
 | ID | Área | Severidad | Estado | Evidencia | Acción / destino |
 |---|---|---:|---|---|---|
-| **CYA-AUD-001** | Proceso / documentación | Alta | **RESUELTO — P0B / transición P24** | `P24_INICIO_CONTEXTUAL.md` declara P24 cerrado y P25 siguiente; el Plan Maestro v4.3 queda canonizado a `P24 / v58–v59` cerrado y `P25 — Misiones` pendiente de aprobación. `tests/documentation-consistency.test.mjs` protege la transición y el workflow `CYA QA E2E` lo ejecuta antes del navegador. | Mantener el gate y actualizarlo deliberadamente en cada cierre secuencial. |
+| **CYA-AUD-001** | Proceso / documentación | Alta | **RESUELTO — P0B / transición P25** | `P25_MISIONES.md` declara P25 cerrado y P26 siguiente; el Plan Maestro v4.4 queda canonizado a `P25 / v60–v62` cerrado y `P26 — Agenda + Google Calendar` pendiente de aprobación. `tests/documentation-consistency.test.mjs` protege la transición y CYA QA E2E ejecuta ese gate antes del navegador. | Mantener el gate y actualizarlo deliberadamente en cada cierre secuencial. |
 | **CYA-AUD-002** | Formularios | — | **CERRADO / RECLASIFICADO** | La auditoría anterior asumía que una versión publicada debía tener `status='published'`. El contrato real usa `form_versions.status='active'`; `publish_form_version` y `form_runtime` son coherentes con ese contrato. | Corregir texto histórico; no tocar runtime. |
-| **CYA-AUD-003** | Misiones | Media | **ABIERTO — BUG CONFIRMADO** | Corte 13/08: 3 misiones vencidas de `daily.review_information` con `failure_behavior='expire'` siguen `available`; además existe 1 `daily.complete_internal_content` vencida con `failure_behavior='repeat'` aún `available`. `refresh_missions()` solo implementa la transición vencida `mark_not_done`. | P25 debe definir `expire` y `repeat`, automatización server-side y backfill seguro sin borrar historial. |
+| **CYA-AUD-003** | Misiones | Media | **RESUELTO — P25** | v60/v61/v62 aplicadas. Las 3 instancias `expire` vencidas y la instancia `repeat` dejaron de permanecer `available`; `not_done` permaneció en 3; `repeat` creó una única sucesora `upcoming`; cron `cya-mission-engine` ejecutó autónomamente con estado `succeeded`. PR #44 y Browser QA post-merge 38/38. | Mantener `tests/p25-missions.test.mjs`, QA de Administración/Misiones y cron como regresión; reauditar globalmente en P32. |
 | **CYA-AUD-004** | Enseñanza / visibilidad | Baja | **ABIERTO** | Contenidos archivados/inactivos `Pinball` y `Cadera contraria` conservan `visibility='student'`. No se exponen ahora por `active=false`, pero el estado es semánticamente ambiguo. | Definir/normalizar invariante de archivado y visibilidad. Correctivo Enseñanza/P32. |
 | **CYA-AUD-005** | QA integral | Alta | **RESUELTO — P0D** | `release-wide-audit` está integrado en `main` mediante PR #32 y recorre superficies Profesor/Alumno/Admin. | Mantenerlo como gate permanente y ampliarlo en P32 para destructivas/integraciones. |
-| **CYA-AUD-006** | QA release-wide | — | **EJECUTADO — 36/36** | Run post-merge P24 `31652169267`: documentación 2/2 + Playwright 36/36, iPhone + desktop, ciclo Profesor→Alumno→Admin, frontera 31/30, saludo Madrid, frase estable tras reload y Administración de frases; artifact `9163051155`. | Mantener como gate real tras cada paquete relevante y en P32. |
+| **CYA-AUD-006** | QA release-wide | — | **EJECUTADO — 38/38** | Run post-merge P25 `31658833258`: documentación + Playwright 38/38, iPhone + desktop, P24 y P25, ciclo Profesor→Alumno→Admin y Administración/Misiones; artifact `9165485286`. | Mantener como gate real tras cada paquete relevante y en P32. |
 | **CYA-AUD-007** | Responsive / iPhone | Media | **RESUELTO — P0C** | PR #34 + merge `c253ff5135e7955c69d152038434c96cc70777f8`; `p0c-touch-targets.css` eleva el área efectiva auditada a ≥44 px manteniendo switches visualmente compactos. Run main `31592129261`: 26/26 y `touchTargetsUnder44=0` en todas las superficies iPhone auditadas. | Mantener `mobile-touch-targets.spec.ts` como gate permanente y reauditar componentes nuevos/modificados. |
 | **CYA-AUD-008** | Navegación / Dar clase | Media | **RESUELTO — P0A** | PR #32: `.mobile-nav` ya no se oculta por `view === 'live'`; se oculta únicamente con clase seleccionada realmente `status='active'` + `workflow_stage='live'`. Centro y preparación mantienen cinco accesos; clase activa oculta chrome; cierre lo restaura. Run `31583225189` verde. | Mantener `class-center-navigation.spec.ts` + lifecycle E2E como regresión permanente. |
 | **CYA-AUD-009** | Seguridad | Media | **ABIERTO — HARDENING** | Advisor avisa de RPC `SECURITY DEFINER` ejecutables por `authenticated`. Las RPC sensibles de formularios/reset inspeccionadas contienen guards `private.is_admin()` y `anon` no puede ejecutarlas; no se observó escalada. Leaked Password Protection sigue desactivado. `pg_net` está en `public`. | Reducir superficie EXECUTE/SECURITY DEFINER, revisar policies, activar leaked password protection y endurecer extensiones antes de release. P32. |
@@ -153,7 +153,7 @@ P0A/P0B/P0C/P0D no exigieron migración funcional. P0E aplicó v53 de forma incr
 | Enseñanza + relaciones + 8 árboles | **EXISTE / P23 CERRADO** | `P23_ENSENANZA_RELACIONES_ARBOLES.md`; backend/frontend P23; release-wide | Normalizar archivados CYA-AUD-004 y cubrir Drive E2E CYA-AUD-012. |
 | Inicio contextual | **EXISTE / P24 CERRADO** | v58/v59 + PR #41/#42 + Browser QA 36/36 | Mantener regresión; P25 modifica Misiones, no la prioridad P24. |
 | Frases diarias | **EXISTE / P24 CERRADO** | 15 frases preservadas + `daily_quote_assignments`; Admin General + CSV/preview/fecha/recurrencia | Mantener integridad usuario+fecha, snapshots y privilegios v59. |
-| Misiones | **PARCIAL — BUG** | 53 misiones, 8 reglas, motor y UI existentes | CYA-AUD-003 `expire`; demostrar worker server-side y cerrar estados/config completa en P25. |
+| Misiones | **EXISTE / P25 CERRADO** | v60/v61/v62 + PR #44; estado `expired`, repeat sucesor, cron server-side y Admin verificados | Mantener cron/idempotencia como regresión. P26 no modifica semántica P25. |
 | Agenda | **PARCIAL AVANZADO** | Día/Semana/Mes/Lista + capas class/mission/event en `AgendaView` | P26: sincronización Google Calendar real, conflictos/idempotencia. |
 | Google Calendar | **PARCIAL / NO OPERATIVO** | Tablas/conexión existen; `integration_settings` indica `disconnected`; 0 conexiones/eventos | Conectar y probar sync bidireccional/seguro en P26. |
 | Centro de notificaciones | **EXISTE BASE** | 119 notificaciones internas; vista pendiente/historial | Hay 116 sin leer en el corte: revisar calidad/ruido y automatización. |
