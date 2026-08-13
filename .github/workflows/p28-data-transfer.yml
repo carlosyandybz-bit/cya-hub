@@ -8,6 +8,7 @@ on:
       - 'app/data-transfer-formats.ts'
       - 'app/data-transfer-formats-safe.ts'
       - 'db/migrations/v66_p28_data_transfer_closure.sql'
+      - 'db/migrations/v67_p28_data_transfer_validation_followup.sql'
       - 'tests/p28-data-transfer.test.mjs'
       - '.github/workflows/p28-data-transfer.yml'
   pull_request:
