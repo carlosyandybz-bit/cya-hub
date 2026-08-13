@@ -1,19 +1,19 @@
 # CYA HUB — PLAN MAESTRO ÚNICO DE CIERRE
 
-Versión: **4.3**
+Versión: **4.4**
 Fecha de corte: **2026-08-13**
 Repositorio canónico: `carlosyandybz-bit/cya-hub`  
 Producción: `main` + Supabase `CyA hub 2` + Hostinger  
 Dominio CYA Hub: `app.carlosyandy.com`  
-Última actualización secuencial cerrada: **P24 / v58–v59**
-Siguiente actualización funcional: **P25 — Misiones — pendiente de aprobación**
+Última actualización secuencial cerrada: **P25 / v60–v62**
+Siguiente actualización funcional: **P26 — Agenda + Google Calendar — pendiente de aprobación**
 
 Correctivos adelantados que deben preservarse y revalidarse en su punto original: **F42/P32 v44–v44e**. Los adelantos de Dar clase (`v45`, transición fiable de inicio y alta rápida provisional) quedaron revalidados y absorbidos definitivamente por P21. El portal del alumno y su frontera multimedia quedaron absorbidos por P22. Enseñanza, relaciones y árboles quedaron cerrados por P23/v51.
 
 Correctivos de auditoría P0 ya integrados o canonizados en esta versión:
 
 - **P0A ✅** — Centro de clases y modo clase activo separados; navegación móvil corregida y protegida por E2E.
-- **P0B ✅** — el documento permanece protegido por un check automático; la transición canónica vigente se actualiza deliberadamente a P24 cerrado → P25 siguiente.
+- **P0B ✅** — el documento permanece protegido por un check automático; la transición canónica vigente se actualiza deliberadamente a P25 cerrado → P26 siguiente.
 - **P0C ✅** — targets táctiles auditados ≥44 px; gate `mobile-touch-targets` permanente; QA post-merge 26/26.
 - **P0D ✅** — `release-wide-audit` integrado como gate permanente; QA actual post-P0C verde 26/26.
 - **P0E ✅** — evaluación contextual opcional, baseline derivada de la primera evaluación completa válida y gates globales eliminados; v53 + PR #36 integrados y recertificados 26/26.
@@ -49,8 +49,8 @@ Cuando aparezca una incidencia nueva:
 Regla documental permanente desde P0B:
 
 - un documento de cierre formal (`Pxx_*.md`) no puede coexistir con este Plan Maestro declarando ese mismo paquete como pendiente/actual;
-- la transición canónica actual es **P24 cerrado → P25 siguiente / pendiente de aprobación**;
-- `tests/documentation-consistency.test.mjs` debe fallar si una rama vuelve a declarar P24 como pendiente/actual o retrocede al estado P22/P23 anterior;
+- la transición canónica actual es **P25 cerrado → P26 siguiente / pendiente de aprobación**;
+- `tests/documentation-consistency.test.mjs` debe fallar si una rama vuelve a declarar P25 como pendiente/actual o rompe la transición P25 cerrado → P26 siguiente;
 - cualquier avance posterior a P25 se actualizará explícitamente en el cierre del paquete correspondiente y en este test. Nunca se avanza o retrocede por un merge accidental.
 
 ---
@@ -72,6 +72,7 @@ Regla documental permanente desde P0B:
 - P22 — Portal del alumno, v50 + v50b.
 - **P23 — Enseñanza + relaciones + árboles, v51.**
 - **P24 — Inicio contextual, v58 + v59; PR #41 + correctivo OIDC PR #42; QA final 36/36.**
+- **P25 — Misiones + worker, v60 + v61 + v62; PR #44; QA final 38/38.**
 
 ## ✅ Correctivos/adelantos ya absorbidos
 
@@ -96,9 +97,9 @@ Regla documental permanente desde P0B:
 
 ## 🟣 SIGUIENTE PROPUESTA — PENDIENTE DE APROBACIÓN
 
-### P25 — Misiones
+### P26 — Agenda + Google Calendar
 
-P25 todavía NO se ha iniciado. La auditoría real confirma que debe cerrar la semántica de vencimiento/`failure_behavior`, automatización server-side, estados y configuración del motor de Misiones. La propuesta completa se presenta a Carlos antes de modificar código o Supabase.
+P26 todavía NO se ha iniciado. Debe cerrar la conexión y sincronización real con Google Calendar, external IDs, errores, conflictos e idempotencia sin destruir participantes, saldos, estado pedagógico ni historial. La propuesta completa se presenta a Carlos antes de modificar código, Supabase o calendarios reales.
 
 ## ⏳ FALTA DESPUÉS
 
@@ -151,7 +152,7 @@ P0C cerró el correctivo táctil: los targets auditados tienen un área efectiva
 
 Cada P debe probar las reglas que modifica. Un build verde no sustituye QA funcional.
 
-Desde P0B, la regresión incluye también consistencia documental canónica. El workflow `CYA QA E2E` ejecuta `tests/documentation-consistency.test.mjs` antes del bootstrap de QA. Una rama que vuelva a P24 como pendiente/actual o rompa la transición P24 cerrado → P25 siguiente debe quedar roja.
+Desde P0B, la regresión incluye también consistencia documental canónica. El workflow `CYA QA E2E` ejecuta `tests/documentation-consistency.test.mjs` antes del bootstrap de QA. Una rama que vuelva a P25 como pendiente/actual o rompa la transición P25 cerrado → P26 siguiente debe quedar roja.
 
 ## G5 — Integridad de datos y multimedia
 
@@ -457,27 +458,27 @@ Inicio responde a «qué toca hacer ahora» con reloj vivo, saludo contextual, f
 
 ---
 
-# 8. P25 — Misiones + worker 🟣 SIGUIENTE / PENDIENTE DE APROBACIÓN
+# 8. P25 — Misiones + worker ✅ CERRADO
 
-Absorbe F32–F33.
+Absorbe F32–F33 y cierra CYA-AUD-003.
 
-**P25 no se ha iniciado. Requiere aprobación expresa de Carlos antes de modificar código, Supabase o datos.**
+- estado terminal `expired` + `expired_at`;
+- `mark_not_done` → `not_done`; `expire` → `expired`; `repeat` → histórico `expired` + una única siguiente ocurrencia `upcoming`;
+- posponer funciona como snooze y no reescribe `due_at`;
+- `expired` es histórico terminal y no puede reactivarse mediante `act_on_mission`;
+- zona horaria operativa configurable, actualmente `Europe/Madrid`;
+- motor server-side idempotente y Supabase Cron cada 15 minutos;
+- backfill real: 3 `expire` + 1 `repeat` dejaron de permanecer `available`; `not_done` permaneció inalterado;
+- Administración > Misiones muestra comportamiento de vencimiento con etiquetas humanas y configuración del motor;
+- v60/v61/v62 aplicadas; PR #44 integrado; Browser QA post-merge 38/38.
 
-Tipos: principal / diaria / crecimiento.
-
-Estados: próxima / disponible / en progreso / bloqueada / pospuesta / completada / no realizada / no aplicable / cancelada / automática.
-
-Prioridad: normal / prioritaria / urgente.
-
-El motor corre en servidor, no depende de abrir la app.
-
-Reglas iniciales: cierre de clases, bonos, perfiles incompletos, preparación, contenido pendiente, revisión y vencimientos.
-
-Correctivo obligatorio al entrar en P25: definir e implementar la semántica `failure_behavior='expire'` para que una misión vencida no permanezca `available`.
+Contrato: `docs/P25_MISIONES.md`. No volver a abrir P25 salvo correctivo demostrado.
 
 ---
 
-# 9. P26 — Agenda + Google Calendar ⏳
+# 9. P26 — Agenda + Google Calendar 🟣 SIGUIENTE / PENDIENTE DE APROBACIÓN
+
+**P26 no se ha iniciado. Requiere aprobación expresa de Carlos antes de modificar código, Supabase o Google Calendar.**
 
 Vistas: Día / Semana / Mes / Lista.
 
@@ -705,7 +706,7 @@ Release:
 | F16–F20 Enseñanza | ✅ P23 |
 | F21–F25 Personas/Alumnado | ✅ P19 + P20 + P21 + P22 |
 | F26–F31 Marketing | → P29 |
-| F32–F33 Misiones/worker | → P25 |
+| F32–F33 Misiones/worker | ✅ P25 |
 | F34 notificaciones automáticas | → P27 |
 | F35 Agenda/Calendar | → P26 |
 | F36 formularios/admin/transferencia | formularios ✅ P20; transferencia P28; admin P31 |
@@ -763,15 +764,15 @@ Release:
 | no existía auditoría transversal permanente | ✅ P0D / PR #32 |
 | Plan Maestro retrocedió a P22/P23 pese al cierre P23 | ✅ P0B / gate documental CI |
 | targets táctiles <44 px detectados por release-wide | ✅ P0C |
-| misiones `expire` siguen `available` | → P25 |
+| misiones `expire` siguen `available` | ✅ P25 / CYA-AUD-003 cerrado |
 
 ---
 
 # 18. Orden inmediato desde este corte
 
-**P24 → P25 → P26 → P27 → P28 → P29 → P30 → P31 → P32.**
+**P26 → P27 → P28 → P29 → P30 → P31 → P32.**
 
-Los correctivos de auditoría **P0A–P0E están cerrados**. El siguiente paquete funcional es **P24 — Inicio contextual**.
+Los correctivos de auditoría **P0A–P0E están cerrados**. P24 y P25 también están cerrados. El siguiente paquete funcional es **P26 — Agenda + Google Calendar**, pendiente de aprobación.
 
 No volver a P23 salvo un correctivo demostrado. No volver al antiguo orden F8 → F3B → F9 como secuencia de implementación: esos requisitos ya están absorbidos por P21.
 
