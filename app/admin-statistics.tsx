@@ -163,12 +163,12 @@ export function AdminStatistics({client,notify}:{client:SupabaseClient;notify:(m
 
   async function duplicateDashboard(){
     if(!selectedDashboard)return;setBusy(true);
-    const duplicate=await client.from("statistics_dashboards").insert({name:`${selectedDashboard.name} · copia`,description:selectedDashboard.description,scope:selectedDashboard.scope,target_user_id:selectedDashboard.target_user_id,active:true,is_default:false}).select("id").single();
+    const duplicate=await client.from("statistics_dashboards").insert({name:`${selectedDashboard.name} · copia`,description:selectedDashboard.description,scope:selectedDashboard.scope,target_user_id:selectedDashboard.target_user_id,active:false,is_default:false}).select("id").single();
     if(duplicate.error)notify(duplicate.error.message);
     else{
       const source=selectedCards.map((card,index)=>({dashboard_id:duplicate.data.id,title:card.title,metric_key:card.metric_key,period_kind:card.period_kind,period_days:card.period_days,filters:card.filters,comparison_kind:card.comparison_kind,display_kind:card.display_kind,position:index*10+10,width:card.width,active:true}));
       if(source.length){const copied=await client.from("statistics_dashboard_cards").insert(source);if(copied.error)notify(copied.error.message);}
-      setSelected(duplicate.data.id);await load();notify("Panel duplicado.");
+      setSelected(duplicate.data.id);await load();notify("Panel duplicado como borrador.");
     }
     setBusy(false);
   }
