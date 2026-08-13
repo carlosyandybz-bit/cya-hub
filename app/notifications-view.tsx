@@ -48,7 +48,7 @@ type Props = {
 };
 
 const validTargets = new Set(["home", "students", "classes", "credits", "agenda", "live", "teaching", "marketing", "admin"]);
-const resolvedMissionStates = new Set(["completed", "completed_automatically", "cancelled"]);
+const resolvedMissionStates = new Set(["completed", "completed_automatically", "cancelled", "not_done", "not_applicable", "expired"]);
 
 function priorityLabel(value?: string) {
   if (value === "urgent") return "Urgente";

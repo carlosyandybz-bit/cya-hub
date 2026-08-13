@@ -24,6 +24,7 @@ import { AdminFormLibrary } from "./admin-form-library";
 import { P0fEvaluationAdmin } from "./p0f-evaluation-admin";
 import { AdminDailyQuotes } from "./admin-daily-quotes";
 import { GoogleCalendarSync } from "./google-calendar-sync";
+import { P27NotificationsAdmin } from "./p27-notifications-admin";
 
 type AdminSection = "general" | "team" | "forms" | "teaching" | "missions" | "notifications" | "data" | "integrations" | "appearance" | "security";
 
@@ -224,7 +225,7 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
   }
 
   function notificationsSection() {
-    return <section className="admin-stack"><header className="admin-section-head"><div><h2>Avisos y comunicaciones</h2><p>El aviso interno y los envíos externos se configuran por separado.</p></div></header><div className="notification-rule-list">{data.notificationRules.map((rule) => <article className="card notification-rule" key={rule.event_key}><div><Bell /><span><strong>{rule.label}</strong><small>{rule.channels.map((channel) => channel === "internal" ? "Aviso interno" : channel === "email" ? "Email" : channel === "whatsapp" ? "WhatsApp" : channel).join(" · ")}</small></span></div><label className="field"><span>Anticipación</span><input type="text" inputMode="numeric" pattern="[0-9]*" defaultValue={rule.anticipation_minutes} onBlur={(event) => { const value = boundedInteger(event.currentTarget.value, 0, 10080); if (value === null) { event.currentTarget.value = String(rule.anticipation_minutes); notify("Indica una anticipación entre 0 y 10080 minutos."); return; } void updateRow("notification_rules", "event_key", rule.event_key, { anticipation_minutes: value }, `notification-time-${rule.event_key}`); }} /></label><Switch checked={rule.enabled} label={`Activar ${rule.label}`} onChange={(checked) => updateRow("notification_rules", "event_key", rule.event_key, { enabled: checked }, `notification-${rule.event_key}`)} /></article>)}</div></section>;
+    return <P27NotificationsAdmin client={client} notify={notify} />;
   }
 
   function dataSection() {
