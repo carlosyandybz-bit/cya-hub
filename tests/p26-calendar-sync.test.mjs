@@ -12,6 +12,7 @@ const resolve = read("app/api/google-calendar/resolve/route.ts");
 const ui = read("app/google-calendar-sync.tsx");
 const agenda = read("app/agenda-view.tsx");
 const admin = read("app/admin-view.tsx");
+const p31Integrations = read("app/p31-integrations-admin.tsx");
 const env = read(".env.example");
 
 test("P26 database model scopes mappings and external visibility by connection owner", () => {
@@ -75,8 +76,10 @@ test("P26 never writes Google edits back into CYA class or business-domain rows"
 test("P26 is wired into Agenda and Administration without duplicate generic Google card", () => {
   assert.match(agenda, /import \{ GoogleCalendarSync \}/);
   assert.match(agenda, /<GoogleCalendarSync client=\{client\} notify=\{notify\} onSynced=\{load\} compact \/>/);
-  assert.match(admin, /import \{ GoogleCalendarSync \}/);
-  assert.match(admin, /integration\.integration_key !== "google_calendar"/);
+  assert.match(admin, /import \{ P31IntegrationsAdmin \}/);
+  assert.match(admin, /<P31IntegrationsAdmin client=\{client\}/);
+  assert.match(p31Integrations, /import \{ GoogleCalendarSync \}/);
+  assert.match(p31Integrations, /<GoogleCalendarSync client=\{client\} notify=\{notify\} \/>/);
   assert.match(ui, /Conectar Google Calendar/);
   assert.match(ui, /Sincronizar ahora/);
   assert.match(ui, /Mantener CYA/);
