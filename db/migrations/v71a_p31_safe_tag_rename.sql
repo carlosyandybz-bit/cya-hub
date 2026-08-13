@@ -1,4 +1,14 @@
--- P31 — Administración de etiquetas sin duplicar catálogo ni perder relaciones.
+-- P31 — Renombrado seguro de etiquetas sin eliminar relaciones.
+
+grant update on table public.teaching_content_tags to authenticated;
+
+drop policy if exists teaching_content_tags_admin_update on public.teaching_content_tags;
+create policy teaching_content_tags_admin_update
+on public.teaching_content_tags
+for update
+to authenticated
+using ((select private.is_admin()))
+with check ((select private.is_admin()));
 
 create or replace function public.admin_rename_teaching_tag(
   p_old_tag text,
@@ -28,22 +38,23 @@ begin
     raise exception 'El nuevo nombre debe ser diferente.' using errcode = '22023';
   end if;
 
-  select count(*)::integer into v_count
-  from public.teaching_content_tags
+  if exists (
+    select 1
+    from public.teaching_content_tags
+    where lower(tag) = lower(v_new)
+      and tag <> v_old
+  ) then
+    raise exception 'Ya existe una etiqueta con ese nombre. Elige otro nombre para evitar una fusión implícita.' using errcode = '23505';
+  end if;
+
+  update public.teaching_content_tags
+  set tag = v_new
   where tag = v_old;
 
+  get diagnostics v_count = row_count;
   if v_count = 0 then
     return 0;
   end if;
-
-  insert into public.teaching_content_tags(content_id, tag)
-  select content_id, v_new
-  from public.teaching_content_tags
-  where tag = v_old
-  on conflict (content_id, tag) do nothing;
-
-  delete from public.teaching_content_tags
-  where tag = v_old;
 
   insert into public.audit_events(event_type, entity_type, entity_id, summary, detail, actor_user_id)
   values (
@@ -63,4 +74,4 @@ revoke all on function public.admin_rename_teaching_tag(text, text) from public,
 grant execute on function public.admin_rename_teaching_tag(text, text) to authenticated;
 
 comment on function public.admin_rename_teaching_tag(text, text) is
-  'P31: renombra una etiqueta global de Enseñanza, fusiona duplicados y conserva las relaciones mediante SECURITY INVOKER + RLS.';
+  'P31: renombra una etiqueta global hacia un nombre libre, conservando relaciones mediante UPDATE, SECURITY INVOKER y RLS.';
