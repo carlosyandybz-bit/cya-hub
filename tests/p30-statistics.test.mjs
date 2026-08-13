@@ -52,10 +52,10 @@ test("direct engine uses explicit Supabase sources and no RPC or dynamic SQL",()
   assert.match(engine,/Métrica no soportada/);
 });
 
-test("Administration exposes real filters from the same catalog",()=>{
+test("Administration exposes real filters and reversible teacher assignment",()=>{
   assert.match(admin,/statisticCatalog/);
   assert.doesNotMatch(admin,/statistics_metric_catalog/);
-  for(const label of ["Profesor","Alumno","Estilo","Campaña","Ubicación","Estado de clase","País","Pago","Contenido","Tipo de misión","Prioridad","Canal","Tipo de aviso","Preferente","Profesores que usarán este panel","Todos los profesores"]) assert.match(admin,new RegExp(label));
+  for(const label of ["Profesor","Alumno","Estilo","Campaña","Ubicación","Estado de clase","País","Pago","Contenido","Tipo de misión","Prioridad","Canal","Tipo de aviso","Preferente","Todos los profesores","El profesor principal pertenece al panel","Asignación retirada"]) assert.match(admin,new RegExp(label));
 });
 
 test("dashboard and explorer share one calculation engine",()=>{
