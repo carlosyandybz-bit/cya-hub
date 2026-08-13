@@ -26,8 +26,8 @@ test("P26 Agenda exposes Google Calendar safely without requiring OAuth secrets 
   await expect(page.getByRole("button",{name:"Lista"})).toBeVisible();
   const connect=page.getByRole("button",{name:/Conectar Google Calendar/});
   await expect(connect).toBeVisible();
+  await expect(page.getByText("El servidor todavía no tiene disponible el cliente OAuth de Google Calendar.",{exact:true})).toBeVisible({timeout:20_000});
   await expect(connect).toBeDisabled();
-  await expect(page.getByText("No configurada",{exact:true})).toBeVisible();
 });
 
 test("P26 Administration uses one real Google Calendar integration card",async({page})=>{
