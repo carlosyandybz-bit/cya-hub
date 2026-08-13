@@ -33,8 +33,6 @@ const taxonomies = [
   ["location", "Ubicaciones"],
 ] as const;
 
-const taxonomyLabels = new Map<string, string>(taxonomies);
-
 function slug(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()
     .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 80);
@@ -187,7 +185,7 @@ export function P31CatalogAdmin({ client, notify }: Props) {
 
     <article className="card pad">
       <div className="card-head"><div><p className="eyebrow">Enseñanza</p><h2>Etiquetas utilizadas</h2></div><Tag /></div>
-      <p>Las etiquetas nacen dentro del contenido. Aquí puedes renombrarlas globalmente; si el nuevo nombre ya existe, CYA fusiona las relaciones sin duplicarlas.</p>
+      <p>Las etiquetas nacen dentro del contenido. Aquí puedes renombrarlas conservando todas sus relaciones. El nuevo nombre debe estar libre para evitar fusiones implícitas.</p>
       {tags.length ? <div className="admin-read-list">
         {tags.map((item) => <div key={item.tag}>
           <span><strong>{item.tag}</strong><small>{item.count} contenido{item.count === 1 ? "" : "s"}</small></span>
