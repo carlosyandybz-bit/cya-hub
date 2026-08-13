@@ -7,6 +7,7 @@ const fullReset = readFileSync("db/migrations/v72b_p32_full_reset_statistics.sql
 const privateGrants = readFileSync("db/migrations/v72c_p32_private_definer_grants.sql", "utf8");
 const experienceContext = readFileSync("db/migrations/v72d_p32_experience_context_invoker.sql", "utf8");
 const performance = readFileSync("db/migrations/v72e_p32_performance_indexes.sql", "utf8");
+const duplicateIndex = readFileSync("db/migrations/v72f_p32_duplicate_sequence_index.sql", "utf8");
 
 const finalTables = [
   "statistics_dashboards",
@@ -66,6 +67,7 @@ test("P32 performance closure is evidence based", () => {
   for (const index of ["app_appearance_settings_updated_by_idx", "app_operational_defaults_location_idx", "app_operational_defaults_updated_by_idx"]) {
     assert.match(performance, new RegExp(`create index if not exists ${index}`, "i"), index);
   }
-  assert.match(performance, /drop index if exists public\.teaching_content_relations_sequence_position_uidx/i);
-  assert.doesNotMatch(performance, /drop index[^;]*people_created_by_idx|drop index[^;]*classes_teacher_schedule_idx/i);
+  assert.doesNotMatch(performance, /drop index/i);
+  assert.match(duplicateIndex, /drop index if exists public\.teaching_content_relations_sequence_position_uidx/i);
+  assert.doesNotMatch(duplicateIndex, /people_created_by_idx|classes_teacher_schedule_idx/i);
 });
