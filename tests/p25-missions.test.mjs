@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const migration = fs.readFileSync('db/migrations/v60_p25_mission_expiry_engine.sql', 'utf8');
 const repeatMigration = fs.readFileSync('db/migrations/v61_p25_repeat_successor.sql', 'utf8');
+const terminalMigration = fs.readFileSync('db/migrations/v62_p25_expired_terminal_guard.sql', 'utf8');
 const admin = fs.readFileSync('app/admin-view.tsx', 'utf8');
 const home = fs.readFileSync('db/migrations/v58_p24_contextual_home.sql', 'utf8');
 
@@ -39,6 +40,13 @@ test('P25 repeat materializes exactly one future valid occurrence as upcoming', 
   assert.match(repeatMigration, /where state='upcoming' and available_at<=p_now/);
 });
 
+test('P25 expired history cannot be restarted, completed, postponed or cancelled', () => {
+  assert.match(terminalMigration, /v_mission\.state='expired' and p_action not in \('open','comment'\)/);
+  assert.match(terminalMigration, /se conserva únicamente como histórico/);
+  assert.match(terminalMigration, /p_action='comment'/);
+  assert.match(terminalMigration, /p_action='start'/);
+});
+
 test('P25 treats postpone as snooze before applying expiry behavior', () => {
   const wake = migration.indexOf("where state='postponed'");
   const markNotDone = migration.indexOf("r.failure_behavior='mark_not_done'");
@@ -56,7 +64,7 @@ test('P25 schedules the final database engine every 15 minutes through cron.sche
 test('P25 backfill is semantic and never hardcodes generated mission ids', () => {
   assert.match(migration, /r\.failure_behavior in \('expire','repeat'\)/);
   assert.match(migration, /m\.due_at<now\(\)/);
-  assert.doesNotMatch(migration + repeatMigration, /\bid\s+in\s*\(\s*99\s*,\s*694\s*,\s*963\s*,\s*964\s*\)/i);
+  assert.doesNotMatch(migration + repeatMigration + terminalMigration, /\bid\s+in\s*\(\s*99\s*,\s*694\s*,\s*963\s*,\s*964\s*\)/i);
 });
 
 test('P25 Admin exposes understandable expiry labels and engine timezone', () => {
