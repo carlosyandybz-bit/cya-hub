@@ -1,4 +1,4 @@
--- P30D — Preferencias globales y panel personal por profesor.
+-- P30D — Preferencias globales y disponibilidad de métricas gobernadas por Administración.
 create table if not exists public.statistics_settings (
   singleton boolean primary key default true check(singleton),
   quick_periods integer[] not null default array[7,30,90,365]::integer[],
@@ -17,27 +17,30 @@ create table if not exists public.statistics_metric_settings (
   updated_at timestamptz not null default now()
 );
 
+create index if not exists statistics_settings_updated_by_idx on public.statistics_settings(updated_by) where updated_by is not null;
+create index if not exists statistics_metric_settings_updated_by_idx on public.statistics_metric_settings(updated_by) where updated_by is not null;
+
 alter table public.statistics_settings enable row level security;
 alter table public.statistics_metric_settings enable row level security;
+
+drop policy if exists statistics_settings_staff_read on public.statistics_settings;
+drop policy if exists statistics_settings_admin_write on public.statistics_settings;
+drop policy if exists statistics_settings_admin_insert on public.statistics_settings;
+drop policy if exists statistics_settings_admin_update on public.statistics_settings;
 create policy statistics_settings_staff_read on public.statistics_settings for select to authenticated using(private.is_staff());
-create policy statistics_settings_admin_write on public.statistics_settings for all to authenticated using(private.is_admin()) with check(private.is_admin());
+create policy statistics_settings_admin_insert on public.statistics_settings for insert to authenticated with check(private.is_admin());
+create policy statistics_settings_admin_update on public.statistics_settings for update to authenticated using(private.is_admin()) with check(private.is_admin());
+
+drop policy if exists statistics_metric_settings_staff_read on public.statistics_metric_settings;
+drop policy if exists statistics_metric_settings_admin_write on public.statistics_metric_settings;
+drop policy if exists statistics_metric_settings_admin_insert on public.statistics_metric_settings;
+drop policy if exists statistics_metric_settings_admin_update on public.statistics_metric_settings;
 create policy statistics_metric_settings_staff_read on public.statistics_metric_settings for select to authenticated using(private.is_staff());
-create policy statistics_metric_settings_admin_write on public.statistics_metric_settings for all to authenticated using(private.is_admin()) with check(private.is_admin());
+create policy statistics_metric_settings_admin_insert on public.statistics_metric_settings for insert to authenticated with check(private.is_admin());
+create policy statistics_metric_settings_admin_update on public.statistics_metric_settings for update to authenticated using(private.is_admin()) with check(private.is_admin());
 
--- Los profesores pueden crear/editar únicamente su panel personal.
-create policy statistics_dashboards_personal_insert on public.statistics_dashboards for insert to authenticated
-with check(private.is_staff() and scope='personal' and target_user_id=auth.uid() and created_by=auth.uid());
-create policy statistics_dashboards_personal_update on public.statistics_dashboards for update to authenticated
-using(private.is_staff() and scope='personal' and target_user_id=auth.uid())
-with check(scope='personal' and target_user_id=auth.uid());
-create policy statistics_dashboards_personal_delete on public.statistics_dashboards for delete to authenticated
-using(private.is_staff() and scope='personal' and target_user_id=auth.uid());
-create policy statistics_cards_personal_insert on public.statistics_dashboard_cards for insert to authenticated
-with check(private.is_staff() and exists(select 1 from public.statistics_dashboards d where d.id=dashboard_id and d.scope='personal' and d.target_user_id=auth.uid()));
-create policy statistics_cards_personal_update on public.statistics_dashboard_cards for update to authenticated
-using(private.is_staff() and exists(select 1 from public.statistics_dashboards d where d.id=dashboard_id and d.scope='personal' and d.target_user_id=auth.uid()));
-create policy statistics_cards_personal_delete on public.statistics_dashboard_cards for delete to authenticated
-using(private.is_staff() and exists(select 1 from public.statistics_dashboards d where d.id=dashboard_id and d.scope='personal' and d.target_user_id=auth.uid()));
+grant select,insert,update on table public.statistics_settings to authenticated;
+grant select,insert,update on table public.statistics_metric_settings to authenticated;
 
-comment on table public.statistics_settings is 'P30 global Statistics UI preferences managed by administrators.';
+comment on table public.statistics_settings is 'P30 Statistics UI preferences managed by administrators.';
 comment on table public.statistics_metric_settings is 'P30 metric availability and featured ordering.';
