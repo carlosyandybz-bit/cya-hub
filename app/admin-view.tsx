@@ -2,7 +2,6 @@
 
 import {
   Bell,
-  CheckCircle2,
   ChevronRight,
   Database,
   FileText,
@@ -15,6 +14,7 @@ import {
   ShieldCheck,
   Target,
   UsersRound,
+  WalletCards,
 } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -23,10 +23,13 @@ import { AdminDataTransfer } from "./admin-data-transfer";
 import { AdminFormLibrary } from "./admin-form-library";
 import { P0fEvaluationAdmin } from "./p0f-evaluation-admin";
 import { AdminDailyQuotes } from "./admin-daily-quotes";
-import { GoogleCalendarSync } from "./google-calendar-sync";
 import { P27NotificationsAdmin } from "./p27-notifications-admin";
+import { P31AppearanceAdmin } from "./p31-appearance-admin";
+import { P31CatalogAdmin } from "./p31-catalog-admin";
+import { P31IntegrationsAdmin } from "./p31-integrations-admin";
+import { P31RatesAdmin } from "./p31-rates-admin";
 
-type AdminSection = "general" | "team" | "forms" | "teaching" | "missions" | "notifications" | "data" | "integrations" | "appearance" | "security";
+type AdminSection = "general" | "team" | "forms" | "teaching" | "missions" | "notifications" | "data" | "rates" | "integrations" | "appearance" | "security";
 
 type Term = { id: number; label: string; term_key: string; taxonomy: string; active?: boolean; sort_order: number };
 type MemberRole = { user_id: string; role: string; active: boolean; created_at: string };
@@ -65,6 +68,7 @@ const sections: Array<[AdminSection, string, typeof Settings]> = [
   ["missions", "Misiones", Target],
   ["notifications", "Notificaciones", Bell],
   ["data", "Datos", Database],
+  ["rates", "Tarifas", WalletCards],
   ["integrations", "Integraciones", Link2],
   ["appearance", "Apariencia", Palette],
   ["security", "Seguridad", ShieldCheck],
@@ -172,6 +176,7 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
   const selectedVersion = selectedForm ? data.versions.find((version) => version.form_id === selectedForm.id && version.version_number === selectedForm.active_version) ?? null : null;
   const selectedFields = selectedVersion ? data.fields.filter((field) => field.form_version_id === selectedVersion.id).sort((a, b) => a.sort_order - b.sort_order) : [];
   const termGroups = useMemo(() => Object.entries(terms.reduce<Record<string, Term[]>>((groups, term) => ({ ...groups, [term.taxonomy]: [...(groups[term.taxonomy] ?? []), term] }), {})), [terms]);
+  void selectedFields;
 
   function generalSection() {
     return <div className="admin-content-grid">
@@ -193,7 +198,7 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
   }
 
   function teachingSection() {
-    return <section className="admin-stack"><header className="admin-section-head"><div><h2>Configuración pedagógica</h2><p>Estilos, roles, niveles, aptitudes y categorías compartidos por toda la aplicación.</p></div></header><div className="admin-taxonomy-grid">{termGroups.map(([taxonomy, values]) => <article className="card pad" key={taxonomy}><div className="card-head"><h2>{taxonomyLabels[taxonomy] ?? taxonomy}</h2><span>{values.length}</span></div><div className="term-list">{values.sort((a, b) => a.sort_order - b.sort_order).map((term) => <div key={term.id}><span>{term.label}</span><small>{term.term_key}</small></div>)}</div></article>)}</div><P0fEvaluationAdmin client={client} terms={terms} notify={notify} /></section>;
+    return <section className="admin-stack"><header className="admin-section-head"><div><h2>Configuración pedagógica</h2><p>Estilos, roles, niveles, aptitudes, categorías y ubicaciones comparten una única fuente de verdad.</p></div></header><div className="admin-metric-grid">{termGroups.slice(0, 4).map(([taxonomy, values]) => <div key={taxonomy}><strong>{values.length}</strong><span>{taxonomyLabels[taxonomy] ?? taxonomy}</span></div>)}</div><P31CatalogAdmin client={client} notify={notify} /><P0fEvaluationAdmin client={client} terms={terms} notify={notify} /></section>;
   }
 
   function missionsSection() {
@@ -232,19 +237,23 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
     return <AdminDataTransfer client={client} transfers={data.transfers} refresh={load} notify={notify} />;
   }
 
+  function ratesSection() {
+    return <P31RatesAdmin client={client} notify={notify} />;
+  }
+
   function integrationsSection() {
-    return <section className="admin-stack"><header className="admin-section-head"><div><h2>Integraciones</h2><p>Estado de los servicios externos, sin mostrar credenciales.</p></div></header><div className="integration-grid"><GoogleCalendarSync client={client} notify={notify} />{data.integrations.filter((integration) => integration.integration_key !== "google_calendar").map((integration) => <article className="card pad" key={integration.integration_key}><div className="card-head"><Link2 /><span className={`badge ${integration.status === "connected" ? "portal" : ""}`}>{integration.status === "connected" ? "Conectada" : integration.status === "available" ? "Disponible" : integration.status}</span></div><h3>{integration.label}</h3><p>{integration.last_error || (integration.last_checked_at ? `Última comprobación ${new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(integration.last_checked_at))}` : "Lista para configurar cuando se necesite.")}</p></article>)}</div></section>;
+    return <P31IntegrationsAdmin client={client} integrations={data.integrations} notify={notify} />;
   }
 
   function appearanceSection() {
-    return <section className="admin-content-grid"><article className="card pad appearance-preview"><div className="brand-preview">CYA</div><div><p className="eyebrow">Identidad activa</p><h2>CYA Hub</h2><p>Morado CYA, iconos limpios, contraste legible y márgenes seguros para iPhone.</p></div></article><article className="card pad"><div className="card-head"><h2>Reglas visuales</h2><Palette /></div><div className="status-list"><div><CheckCircle2 /> Sin amarillo fluorescente</div><div><CheckCircle2 /> Iconos sin cuadrados decorativos</div><div><CheckCircle2 /> Barra inferior fuera del contenido</div><div><CheckCircle2 /> Tipografía unificada</div></div></article></section>;
+    return <P31AppearanceAdmin client={client} notify={notify} />;
   }
 
   function securitySection() {
     return <section className="admin-stack"><article className="card pad security-summary"><ShieldCheck /><div><p className="eyebrow">Protección activa</p><h2>Permisos reales en servidor</h2><p>“Ver como” cambia la experiencia visual, pero cada operación vuelve a comprobar el permiso auténtico de la cuenta.</p></div></article><article className="card pad"><div className="card-head"><h2>Actividad reciente</h2><span>{data.audits.length}</span></div>{data.audits.length ? <div className="audit-list">{data.audits.map((event) => <div key={event.id}><span>{event.event_type}</span><strong>{event.summary}</strong><small>{new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(event.created_at))}</small></div>)}</div> : <div className="compact-empty"><ShieldCheck /><span>No hay operaciones sensibles recientes.</span></div>}</article></section>;
   }
 
-  const content = section === "general" ? generalSection() : section === "team" ? teamSection() : section === "forms" ? formsSection() : section === "teaching" ? teachingSection() : section === "missions" ? missionsSection() : section === "notifications" ? notificationsSection() : section === "data" ? dataSection() : section === "integrations" ? integrationsSection() : section === "appearance" ? appearanceSection() : securitySection();
+  const content = section === "general" ? generalSection() : section === "team" ? teamSection() : section === "forms" ? formsSection() : section === "teaching" ? teachingSection() : section === "missions" ? missionsSection() : section === "notifications" ? notificationsSection() : section === "data" ? dataSection() : section === "rates" ? ratesSection() : section === "integrations" ? integrationsSection() : section === "appearance" ? appearanceSection() : securitySection();
 
   return <><header className="page-head admin-page-head"><div><p className="eyebrow">Inicio · Administración</p><h1>Administración</h1><p>Configuración organizada por finalidad, con autoridad real en CYA Hub.</p></div><button className="btn ghost" onClick={leave}>Volver a Inicio</button></header><div className="admin-layout"><nav className="admin-nav" aria-label="Secciones de Administración">{sections.map(([value, label, Icon]) => <button key={value} className={section === value ? "active" : ""} onClick={() => setSection(value)}><Icon /><span>{label}</span><ChevronRight /></button>)}</nav><main className="admin-panel">{loading ? <div className="admin-loading"><span className="spinner" /><p>Preparando Administración…</p></div> : content}</main></div>{busy ? <div className="saving-indicator"><Save /> Guardando</div> : null}</>;
 }
