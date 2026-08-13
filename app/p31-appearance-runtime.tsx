@@ -18,6 +18,8 @@ const typographyStacks: Record<AppearanceSettings["typography"], string> = {
   rounded: 'ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold",var(--font-geist-sans),sans-serif',
 };
 
+let appearanceRequest: Promise<AppearanceSettings | null> | null = null;
+
 function softColor(hex: string) {
   const value = hex.replace("#", "");
   if (!/^[0-9a-f]{6}$/i.test(value)) return "#f1edff";
@@ -65,15 +67,21 @@ export function applyAppearanceSettings(settings: AppearanceSettings) {
   document.title = settings.app_name;
 }
 
+function loadAppearance() {
+  if (!appearanceRequest) {
+    appearanceRequest = fetch("/api/appearance", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() as Promise<AppearanceSettings> : null)
+      .catch(() => null);
+  }
+  return appearanceRequest;
+}
+
 export function P31AppearanceRuntime() {
   useEffect(() => {
     let active = true;
-    void fetch("/api/appearance", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((settings: AppearanceSettings | null) => {
-        if (active && settings) applyAppearanceSettings(settings);
-      })
-      .catch(() => undefined);
+    void loadAppearance().then((settings) => {
+      if (active && settings) applyAppearanceSettings(settings);
+    });
     return () => { active = false; };
   }, []);
   return null;
