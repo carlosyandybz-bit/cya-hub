@@ -26,7 +26,26 @@ function softColor(hex: string) {
   return `#${mixed.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
 }
 
+function ensureAppearanceStyles() {
+  if (document.getElementById("cya-p31-appearance")) return;
+  const style = document.createElement("style");
+  style.id = "cya-p31-appearance";
+  style.textContent = `
+    body{font-family:var(--cya-font-family,var(--font-geist-sans),-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif)}
+    .brand-mark{background-color:var(--purple);background-image:var(--cya-logo-image,none);background-position:center;background-repeat:no-repeat;background-size:contain;font-size:0}
+    .brand-mark::after{content:var(--cya-short-mark,"CYA");font-size:12px;color:white}
+    html[data-cya-logo="true"] .brand-mark::after{content:""}
+    .brand>span:last-child{font-size:0}
+    .brand>span:last-child::after{content:var(--cya-app-name,"CYA Hub");font-size:14px}
+    html[data-cya-header="compact"] .page-head{margin-bottom:16px}
+    html[data-cya-header="compact"] .page-head h1{font-size:clamp(26px,4vw,36px)}
+    html[data-cya-header="compact"] .main{padding-top:24px}
+  `;
+  document.head.appendChild(style);
+}
+
 export function applyAppearanceSettings(settings: AppearanceSettings) {
+  ensureAppearanceStyles();
   const root = document.documentElement;
   root.style.setProperty("--purple", settings.primary_color);
   root.style.setProperty("--purple2", settings.secondary_color);
