@@ -41,11 +41,12 @@ test("P24 teacher home renders contextual day summary and keeps the quote after 
   await expect(page.getByRole("heading",{name:/Agenda del día/})).toBeVisible();
   const quote=page.locator(".daily-quote");
   await expect(quote).toBeVisible();
+  await expect(quote).not.toHaveText("Preparando tu día…",{timeout:20_000});
   const first=(await quote.innerText()).trim();
   expect(first.length).toBeGreaterThan(0);
   await page.reload({waitUntil:"domcontentloaded"});
   await expect(page.getByLabel("Resumen del día")).toBeVisible({timeout:20_000});
-  await expect(page.locator(".daily-quote")).toHaveText(first);
+  await expect(page.locator(".daily-quote")).toHaveText(first,{timeout:20_000});
 });
 
 test("P24 admin exposes daily quote management",async({page})=>{
