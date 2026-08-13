@@ -1,0 +1,40 @@
+name: Patch P24 documentation transition
+
+on:
+  push:
+    branches: [docs/p24-close-p25-handoff]
+    paths:
+      - 'scripts/patch-p24-documentation.mjs'
+      - '.github/workflows/patch-p24-documentation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/p24-close-p25-handoff
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Patch canonical documents
+        run: node scripts/patch-p24-documentation.mjs
+      - name: Validate documentation contract
+        run: node --test tests/documentation-consistency.test.mjs
+      - name: Validate whitespace
+        run: git diff --check
+      - name: Commit transition and remove temporary patcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f scripts/patch-p24-documentation.mjs .github/workflows/patch-p24-documentation.yml
+          git add -A
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: close P24 and hand off to P25'
+          git push origin HEAD:docs/p24-close-p25-handoff
