@@ -9,8 +9,8 @@ create table if not exists public.app_operational_defaults (
 
 alter table public.app_operational_defaults enable row level security;
 
-grant select on public.app_operational_defaults to authenticated;
-grant update on public.app_operational_defaults to authenticated;
+revoke all on table public.app_operational_defaults from public, anon, authenticated;
+grant select, update on table public.app_operational_defaults to authenticated;
 
 drop policy if exists app_operational_defaults_staff_read on public.app_operational_defaults;
 create policy app_operational_defaults_staff_read on public.app_operational_defaults
