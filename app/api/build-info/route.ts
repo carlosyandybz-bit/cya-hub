@@ -17,7 +17,7 @@ export async function GET() {
   return NextResponse.json(
     {
       app: "cya-hub",
-      release: "p32-release",
+      release: "p32-release-ready",
       commit: commit ? commit.slice(0, 12) : null,
     },
     {
