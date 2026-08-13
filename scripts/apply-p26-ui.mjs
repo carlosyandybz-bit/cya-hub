@@ -53,8 +53,8 @@ patch("db/migrations/v63_p26_google_calendar_sync.sql", (text) => {
     "    and status in ('connected','error')\n    and sync_enabled = true",
     "retry errored connection");
   text = replaceOnce(text,
-    '      last_error = null,\n      updated_at = now()',
-    "      last_error = null,\n      status = 'connected',\n      updated_at = now()",
+    '  set sync_cursor = p_sync_cursor,\n      last_synced_at = now(),\n      sync_completed_at = now(),\n      sync_started_at = null,\n      sync_lock_token = null,\n      sync_error_count = 0,\n      last_error = null,\n      updated_at = now()',
+    "  set sync_cursor = p_sync_cursor,\n      last_synced_at = now(),\n      sync_completed_at = now(),\n      sync_started_at = null,\n      sync_lock_token = null,\n      sync_error_count = 0,\n      last_error = null,\n      status = 'connected',\n      updated_at = now()",
     "successful sync restores connected");
   return text;
 });
