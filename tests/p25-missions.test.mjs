@@ -21,9 +21,10 @@ test('P25 has one server-side engine independent from auth uid for postgres cron
 });
 
 test('P25 implements mark_not_done, expire and repeat as distinct expiry behaviors', () => {
-  assert.match(migration, /failure_behavior='mark_not_done'[\s\S]*?set state='not_done'/);
-  assert.match(migration, /failure_behavior='expire'[\s\S]*?set state='expired'/);
-  assert.match(migration, /failure_behavior='repeat'[\s\S]*?set state='expired'/);
+  assert.match(migration, /set state='not_done'[\s\S]*?r\.failure_behavior='mark_not_done'/);
+  assert.match(migration, /set state='expired'[\s\S]*?r\.failure_behavior='expire'/);
+  const repeatBlock = migration.match(/update public\.missions m\s+set state='expired'[\s\S]*?r\.failure_behavior='repeat'[\s\S]*?get diagnostics v_repeat_expired = row_count;/);
+  assert.ok(repeatBlock, 'repeat must expire the overdue instance explicitly');
   assert.match(migration, /expired_at=coalesce\(m\.expired_at,p_now\)/);
 });
 
