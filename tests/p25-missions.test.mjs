@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const migration = fs.readFileSync('db/migrations/v60_p25_mission_expiry_engine.sql', 'utf8');
+const repeatMigration = fs.readFileSync('db/migrations/v61_p25_repeat_successor.sql', 'utf8');
 const admin = fs.readFileSync('app/admin-view.tsx', 'utf8');
 const home = fs.readFileSync('db/migrations/v58_p24_contextual_home.sql', 'utf8');
 
@@ -13,11 +14,12 @@ test('P25 adds terminal expired state and operational timezone', () => {
   assert.match(migration, /pg_catalog\.pg_timezone_names/);
 });
 
-test('P25 has one server-side engine independent from auth uid for postgres cron', () => {
+test('P25 has a server-side engine independent from auth uid for postgres cron', () => {
   assert.match(migration, /function private\.run_mission_engine\(p_now timestamptz default now\(\)\)/);
   assert.match(migration, /current_user <> 'postgres'/);
   assert.match(migration, /private\.is_staff\(\)/);
-  assert.match(migration, /v_result:=private\.run_mission_engine\(now\(\)\)/);
+  assert.match(repeatMigration, /function private\.run_mission_engine_p25/);
+  assert.match(repeatMigration, /v_result:=private\.run_mission_engine\(p_now\)/);
 });
 
 test('P25 implements mark_not_done, expire and repeat as distinct expiry behaviors', () => {
@@ -28,6 +30,15 @@ test('P25 implements mark_not_done, expire and repeat as distinct expiry behavio
   assert.match(migration, /expired_at=coalesce\(m\.expired_at,p_now\)/);
 });
 
+test('P25 repeat materializes exactly one future valid occurrence as upcoming', () => {
+  assert.match(repeatMigration, /function private\.next_repeat_mission_date/);
+  assert.match(repeatMigration, /r\.failure_behavior='repeat'/);
+  assert.match(repeatMigration, /v_row\.rule_key\|\|':'\|\|v_next_date/);
+  assert.match(repeatMigration, /v_row\.mission_type,'upcoming'/);
+  assert.match(repeatMigration, /on conflict\(dedupe_key\) where dedupe_key is not null do nothing/);
+  assert.match(repeatMigration, /where state='upcoming' and available_at<=p_now/);
+});
+
 test('P25 treats postpone as snooze before applying expiry behavior', () => {
   const wake = migration.indexOf("where state='postponed'");
   const markNotDone = migration.indexOf("r.failure_behavior='mark_not_done'");
@@ -36,16 +47,16 @@ test('P25 treats postpone as snooze before applying expiry behavior', () => {
   assert.doesNotMatch(migration, /set[^;]*due_at[^;]*postponed_until/);
 });
 
-test('P25 schedules the database engine every 15 minutes through cron.schedule', () => {
-  assert.match(migration, /cron\.schedule\(\s*'cya-mission-engine',\s*'\*\/15 \* \* \* \*'/);
-  assert.match(migration, /'select private\.run_mission_engine\(\);'/);
-  assert.doesNotMatch(migration, /(?:insert\s+into|update)\s+cron\.job/i);
+test('P25 schedules the final database engine every 15 minutes through cron.schedule', () => {
+  assert.match(repeatMigration, /cron\.schedule\(\s*'cya-mission-engine',\s*'\*\/15 \* \* \* \*'/);
+  assert.match(repeatMigration, /'select private\.run_mission_engine_p25\(\);'/);
+  assert.doesNotMatch(migration + repeatMigration, /(?:insert\s+into|update)\s+cron\.job/i);
 });
 
 test('P25 backfill is semantic and never hardcodes generated mission ids', () => {
   assert.match(migration, /r\.failure_behavior in \('expire','repeat'\)/);
   assert.match(migration, /m\.due_at<now\(\)/);
-  assert.doesNotMatch(migration, /\bid\s+in\s*\(\s*99\s*,\s*694\s*,\s*963\s*,\s*964\s*\)/i);
+  assert.doesNotMatch(migration + repeatMigration, /\bid\s+in\s*\(\s*99\s*,\s*694\s*,\s*963\s*,\s*964\s*\)/i);
 });
 
 test('P25 Admin exposes understandable expiry labels and engine timezone', () => {
