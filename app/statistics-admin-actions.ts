@@ -25,6 +25,10 @@ export async function makeStatisticsDashboardGlobalDefault(client:SupabaseClient
 }
 
 export async function setStatisticsDashboardAssignment(client:SupabaseClient,dashboardId:number,userId:string,active:boolean){
+  if(active){
+    const previous=await client.from("statistics_dashboard_assignments").update({is_default:false}).eq("user_id",userId).eq("active",true).neq("dashboard_id",dashboardId);
+    if(previous.error)throw new Error(previous.error.message);
+  }
   const existing=await client.from("statistics_dashboard_assignments").select("dashboard_id,user_id").eq("dashboard_id",dashboardId).eq("user_id",userId).maybeSingle();
   if(existing.error)throw new Error(existing.error.message);
   if(existing.data){
