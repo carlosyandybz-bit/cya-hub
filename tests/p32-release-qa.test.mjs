@@ -4,6 +4,7 @@ import test from "node:test";
 
 const backup = readFileSync("db/migrations/v72a_p32_backup_inventory_final.sql", "utf8");
 const fullReset = readFileSync("db/migrations/v72b_p32_full_reset_statistics.sql", "utf8");
+const privateGrants = readFileSync("db/migrations/v72c_p32_private_definer_grants.sql", "utf8");
 
 const finalTables = [
   "statistics_dashboards",
@@ -44,4 +45,11 @@ test("P32 seals the legacy reset helpers from API roles", () => {
   assert.match(fullReset, /rename to execute_admin_data_reset_pre_p32/i);
   assert.match(fullReset, /revoke all on function private\.admin_reset_preview_counts_pre_p32\(text,bigint\)/i);
   assert.match(fullReset, /revoke all on function private\.execute_admin_data_reset_pre_p32\(text,bigint\)/i);
+});
+
+test("P32 removes anonymous access to unchecked private definers", () => {
+  assert.match(privateGrants, /revoke all on function private\.guard_last_admin_role\(\)[\s\S]*from public, anon, authenticated/i);
+  assert.match(privateGrants, /revoke all on function private\.person_lifecycle_status_unchecked\(bigint\)[\s\S]*from public, anon, authenticated/i);
+  assert.match(privateGrants, /revoke all on function private\.match_person_identity\(text,text,bigint\)[\s\S]*from public, anon, authenticated/i);
+  assert.match(privateGrants, /grant execute on function private\.match_person_identity\(text,text,bigint\)[\s\S]*to authenticated/i);
 });
