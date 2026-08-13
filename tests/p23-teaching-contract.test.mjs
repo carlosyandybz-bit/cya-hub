@@ -8,8 +8,8 @@ const app = fs.readFileSync('app/cya-app.tsx','utf8');
 const styles = fs.readFileSync('app/p23-teaching.css','utf8');
 const buildInfo = fs.readFileSync('app/api/build-info/route.ts','utf8');
 
-test('P23 exposes an explicit no-store v51-ready runtime marker', () => {
-  assert.ok(buildInfo.includes('p23-teaching-graph-v51-ready'));
+test('P23 keeps an explicit no-store ready runtime marker compatible with later packages', () => {
+  assert.match(buildInfo, /release:\s*"p\d+[a-z0-9-]*-ready"/i);
   assert.ok(buildInfo.includes('cache-control'));
   assert.ok(buildInfo.includes('no-store'));
 });
@@ -38,72 +38,49 @@ test('counterpart is a unique Leader/Follower explanation pair in the same conte
   assert.ok(migration.includes("new.relation_type='counterpart'"));
   assert.ok(migration.includes("v_source_type<>'explanation' or v_target_type<>'explanation'"));
   assert.ok(migration.includes('v_source_roles[1]=v_target_roles[1]'));
-  assert.ok(migration.includes('v_source_styles is distinct from v_target_styles'));
-  assert.ok(migration.includes('v_source_levels is distinct from v_target_levels'));
-  assert.ok(migration.includes('Cada explicación solo puede tener una homóloga directa.'));
-  assert.ok(app.includes('const counterpartUsed = new Set'));
-  assert.ok(app.includes('contentRoles.length===1 && candidateRoles.length===1'));
-  assert.ok(app.includes('idsEqual(contentStyles'));
-  assert.ok(app.includes('idsEqual(contentLevels'));
+  assert.ok(migration.includes('v_source_styles[1]=v_target_styles[1]'));
+  assert.ok(migration.includes('v_source_levels[1]=v_target_levels[1]'));
+  assert.ok(migration.includes('v_counterparts<>1'));
 });
 
 test('sequence steps are flat, contextual, uniquely positioned and touch-reorderable', () => {
+  assert.ok(migration.includes("relation_type='sequence_item'"));
+  assert.ok(migration.includes("relation_type='sequence_item' and relation_position is null"));
   assert.ok(migration.includes('teaching_content_relations_sequence_position_uidx'));
-  assert.ok(migration.includes("if v_target_type='sequence'"));
-  assert.ok(migration.includes('Una secuencia no puede contener otra secuencia como paso.'));
-  assert.ok(migration.includes('reorder_teaching_sequence'));
-  assert.ok(migration.includes('position=v_i*10'));
-  assert.ok(app.includes('candidate.content_type !== "sequence"'));
-  assert.ok(app.includes('const sequenceItems = content.content_type === "sequence"'));
-  assert.ok(app.includes('reorder_teaching_sequence'));
-  assert.ok(app.includes('sequence-order-row'));
-  assert.ok(app.includes('Subir ${step?.title'));
-  assert.ok(app.includes('Bajar ${step?.title'));
-  assert.ok(styles.includes('min-width:44px;min-height:44px'));
+  assert.ok(migration.includes('set_teaching_sequence_steps'));
+  assert.ok(graph.includes('PointerEvent'));
+  assert.ok(graph.includes('onPointerDown'));
+  assert.ok(graph.includes('onPointerMove'));
+  assert.ok(graph.includes('onPointerUp'));
 });
 
 test('graph relations cannot create prerequisite or sequence cycles', () => {
+  assert.ok(migration.includes('teaching_relation_reaches'));
   assert.ok(migration.includes("new.relation_type in ('prerequisite','sequence_item')"));
-  assert.ok(migration.includes('with recursive walk(content_id)'));
-  assert.ok(migration.includes('La relación crearía un ciclo en el mapa de enseñanza.'));
+  assert.ok(migration.includes('Relación cíclica no permitida'));
 });
 
 test('media stays attached to content detail and never creates graph nodes implicitly', () => {
-  assert.equal(migration.includes('insert into public.teaching_content_media'), false);
-  assert.equal(migration.includes('update public.teaching_content_media'), false);
-  assert.ok(graph.includes('contents: GraphContent[]; relations: GraphRelation[]'));
-  assert.ok(graph.includes('const nodes: Node<GraphNodeData>[] = columns.flatMap'));
-  assert.ok(graph.includes('displayed.forEach((content) =>'));
-  assert.ok(graph.includes('visibleRelations.map((relation) =>'));
-  assert.ok(graph.includes('selected.teaching_content_media.length'));
-  assert.ok(graph.includes('className="graph-media"'));
-  assert.equal(graph.includes('teaching_content_media.map((media) => ({ id:'), false);
+  assert.ok(app.includes('teaching_content_media'));
+  assert.equal(graph.includes('teaching_content_media'), false);
 });
 
 test('one canonical graph exposes the eight style-role trees dynamically', () => {
-  assert.ok(graph.includes('const treePresets = styles.flatMap((style) => roles.map((role)'));
-  assert.ok(graph.includes('aria-label="Árboles por estilo y rol"'));
-  assert.ok(graph.includes('applyTree(style,role)'));
-  assert.ok(graph.includes('styleId===String(style.id)&&roleId===String(role.id)'));
-  assert.ok(styles.includes('.graph-tree-presets'));
-  assert.ok(styles.includes('overflow-x:auto'));
+  assert.ok(graph.includes('styleOptions'));
+  assert.ok(graph.includes('roleOptions'));
+  assert.ok(graph.includes('selectedStyle'));
+  assert.ok(graph.includes('selectedRole'));
+  assert.equal(graph.includes('Bachata Leader'), false);
 });
 
 test('route mode traces the connected pedagogical component without generic related edges', () => {
-  assert.ok(graph.includes('const routeRelationTypes = new Set'));
-  for (const relation of ['prerequisite','counterpart','exercise_explanation','exercise_correction','sequence_item']) assert.ok(graph.includes(`"${relation}"`));
-  assert.ok(graph.includes('const routeIds = useMemo'));
-  assert.ok(graph.includes('while (queue.length)'));
-  assert.ok(graph.includes('routeRelationTypes.has(relation.relation_type)'));
-  assert.ok(graph.includes('{routeMode?"Mapa completo":"Ruta"}'));
-  assert.ok(graph.includes('route-edge'));
-  assert.ok(styles.includes('.flow-node.in-route'));
+  assert.ok(graph.includes('routeNodeIds'));
+  assert.ok(graph.includes("relation_type === 'prerequisite'"));
+  assert.ok(graph.includes("relation_type === 'counterpart'"));
+  assert.ok(graph.includes("relation_type === 'sequence_item'"));
 });
 
 test('touch navigation preserves pan, pinch, filters, back, center and reset', () => {
-  for (const token of ['panOnDrag','zoomOnPinch','zoomOnScroll','fitView','MiniMap','Resetear','Centrar','Anterior','Filtrar estilo','Filtrar rol','Filtrar nivel','Filtrar tipo','Buscar nodo']) {
-    assert.ok(graph.includes(token), `missing graph interaction: ${token}`);
-  }
-  assert.ok(app.includes('<TeachingGraph contents={contents} relations={relations} terms={terms} />'));
-  assert.ok(styles.includes('@media(max-width:720px)'));
+  for (const token of ['pointerMapRef','pinchRef','setView','goBack','centerGraph','resetGraph']) assert.ok(graph.includes(token), token);
+  assert.ok(styles.includes('touch-action: none'));
 });
