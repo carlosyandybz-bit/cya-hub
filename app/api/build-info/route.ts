@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+const releaseFamily = { release: "p32-release" } as const;
+
 function buildReference() {
   return (
     process.env.CYA_BUILD_SHA?.trim()
@@ -18,6 +20,7 @@ export async function GET() {
     {
       app: "cya-hub",
       release: "p32-release-ready",
+      release_family: releaseFamily.release,
       commit: commit ? commit.slice(0, 12) : null,
     },
     {
