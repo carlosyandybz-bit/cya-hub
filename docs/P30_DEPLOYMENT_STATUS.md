@@ -2,59 +2,85 @@
 
 Fecha: 2026-08-13
 Proyecto Supabase validado: `CyA hub 2` (`ldvyeyhzrepaaouzavgs`).
+PR: #52, todavía en borrador mientras se completa el cierre de QA.
 
-## Verificaciones completadas
+## Arquitectura final
 
-- El esquema canónico de producción fue contrastado antes de desplegar P30.
-- `people` todavía no dispone de ciudad/localidad canónica; por tanto P30 no inventa `student_city`.
+P30 ya no depende de funciones PostgreSQL para calcular estadísticas. El conector de Supabase bloquea `CREATE FUNCTION` mediante `apply_migration`, por lo que se adoptó una arquitectura más simple y reproducible:
+
+- catálogo tipado y declarativo en la aplicación;
+- consultas Supabase/PostgREST explícitas por métrica;
+- `count` exacto para conteos;
+- paginación de columnas numéricas estrictamente necesarias para sumas y medias;
+- mismas fuentes y mismo motor para portada configurable y explorador general;
+- RLS existente de las tablas operativas como límite de lectura;
+- sin `.rpc()`, SQL dinámico ni consultas SQL almacenadas en tarjetas.
+
+## Esquema canónico validado
+
+- `people` no dispone todavía de ciudad/localidad canónica; P30 no inventa `student_city`.
 - `classes.location_text` permite filtros reales dentro/fuera de una ubicación como Málaga.
 - `marketing_campaign_metrics` dispone de `spend_cents`, `impressions`, `reach`, `clicks`, `inquiries`, `bookings` y `revenue_cents`.
-- `communication_recipients` usa `blocked_reason`; no existe el estado `blocked`.
-- Los checks reales de estados de clases, bonos, misiones, notificaciones y asignaciones fueron contrastados con los filtros P30.
-- CI P30 incluye contratos, regresión P19–P29, lint, build y whitespace.
+- `communication_recipients` usa `blocked_reason` para bloqueos.
+- Estados de clases, bonos, misiones, notificaciones y asignaciones fueron contrastados con constraints reales de producción.
+- Las tablas fuente usadas por Estadísticas disponen de SELECT para `authenticated` y RLS activo.
 
-## Migraciones aplicadas en producción
+## Estructuras P30 aplicadas en producción
 
-1. `v70a1_p30_statistics_dashboards`
-   - Crea `statistics_dashboards`.
-   - Índice por scope/usuario/estado.
-   - RLS activado.
-   - Policies de lectura staff y escritura admin.
-2. `v70a2_p30_statistics_dashboard_cards_table`
-   - Crea `statistics_dashboard_cards`.
+Existen actualmente:
 
-## Estado de seguridad de las dos tablas
+- `statistics_dashboards`;
+- `statistics_dashboard_cards`;
+- `statistics_settings`;
+- `statistics_metric_settings`;
+- `statistics_dashboard_assignments`.
 
-Comprobación directa posterior:
+También se aplicaron índices para las FKs/rutas principales y la columna `active` de asignaciones.
 
-- `statistics_dashboards`: RLS activo.
-- `statistics_dashboard_cards`: RLS todavía no activo.
-- `anon`: sin SELECT sobre ambas.
-- `authenticated`: sin SELECT/INSERT sobre ambas.
+## Seguridad actual
 
-Por tanto la segunda tabla no queda expuesta aunque el gate de acceso todavía esté pendiente.
+Comprobado directamente en producción:
 
-## Gate pendiente
+- `anon` no tiene lectura de las tablas P30;
+- las tablas P30 tienen RLS activo;
+- profesores/staff pueden leer paneles, tarjetas y configuración necesaria;
+- Administración controla inserciones/actualizaciones de paneles, tarjetas y configuración;
+- Administración puede leer todas las asignaciones;
+- cada profesor puede leer únicamente sus propias asignaciones activas;
+- no hay DELETE necesario para tarjetas: se retiran mediante `active=false`;
+- la policy antigua `statistics_dashboards_admin_write FOR ALL` fue sustituida por INSERT/UPDATE separados para evitar policies SELECT permisivas solapadas.
 
-El conector de Supabase está rechazando antes de PostgreSQL las llamadas que contienen `CREATE FUNCTION`, `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`, `CREATE POLICY` o cambios equivalentes de acceso, con el mensaje de que no puede determinar el estado de seguridad de la solicitud.
+## Gate backend pendiente
 
-No se usará `execute_sql` para saltar este bloqueo: los cambios DDL deben seguir pasando por `apply_migration`.
+`apply_migration` sigue bloqueando la policy/grant de UPDATE de `statistics_dashboard_assignments`, incluso limitada a las columnas `active,is_default`.
 
-Hasta resolver este gate:
+Por ello, hasta que ese permiso pueda aplicarse:
 
-- no se considera P30 desplegado;
-- no se mergea el PR a `main`;
-- no se conceden grants sobre `statistics_dashboard_cards`;
-- las estadísticas configurables continúan cerradas en la rama y validadas por CI.
+- se pueden crear nuevas asignaciones;
+- un profesor puede resolver su panel asignado;
+- Administración ve qué profesores tienen cada panel;
+- la UI no ofrece una falsa desasignación que vaya a fallar;
+- la desasignación queda como soft-update pendiente, no como DELETE.
 
-## Próximo paso de despliegue
+Esto no abre ninguna superficie de acceso ni afecta al cálculo de métricas.
 
-Cuando `apply_migration` permita las operaciones de seguridad/funciones:
+## QA
 
-1. cerrar RLS/policies/grants explícitos de las tablas P30;
-2. aplicar helpers y RPCs de periodos/métricas;
-3. aplicar settings y asignaciones;
-4. crear panel inicial editable;
-5. smoke tests de cada métrica y filtros;
-6. ejecutar asesores Supabase de seguridad y rendimiento;
-7. actualizar PR #52 y solo entonces preparar integración en `main`.
+El gate P30 ejecuta:
+
+1. contratos de la arquitectura estadística;
+2. regresión P19–P29;
+3. ESLint;
+4. build Next/TypeScript;
+5. `git diff --check`.
+
+Tras el cambio al motor directo se está cerrando la actualización final del contrato CI y la limpieza de SQL/RPC P30 obsoleto antes de sacar el PR de borrador.
+
+## Próximos pasos para cierre
+
+1. dejar CI completamente verde con el contrato directo final;
+2. retirar del repositorio migraciones P30 de funciones/RPC ya abandonadas;
+3. comprobar el esquema P30 final y ejecutar smoke checks de configuración;
+4. volver a ejecutar asesores Supabase de seguridad y rendimiento;
+5. actualizar PR #52 con el estado final;
+6. solo entonces preparar integración en `main`.
