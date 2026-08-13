@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Metric = { key:string; block:string; label:string; format:string; filters:string[] };
 type Dashboard = { id:number; name:string; description:string|null; scope:"global"|"teacher"|"personal"; target_user_id:string|null; active:boolean; is_default:boolean };
-type Card = { id:number; dashboard_id:number; title:string; metric_key:string; period_kind:string; period_days:number|null; filters:Record<string,unknown>; position:number; width:string; active:boolean };
+type Card = { id:number; dashboard_id:number; title:string; metric_key:string; period_kind:string; period_days:number|null; filters:Record<string,unknown>; display_kind:string; position:number; width:string; active:boolean };
 type Profile = { id:string; display_name:string };
 type Assignment = { dashboard_id:number; user_id:string; is_default:boolean };
 type MetricSetting = { metric_key:string; active:boolean; featured:boolean; sort_order:number };
@@ -23,7 +23,7 @@ export function AdminStatistics({client,notify}:{client:SupabaseClient;notify:(m
   const load=useCallback(async()=>{
     const [catalog,d,c,p,a,s,ms]=await Promise.all([
       client.rpc("statistics_metric_catalog"),client.from("statistics_dashboards").select("id,name,description,scope,target_user_id,active,is_default").order("name"),
-      client.from("statistics_dashboard_cards").select("id,dashboard_id,title,metric_key,period_kind,period_days,filters,position,width,active").order("position"),
+      client.from("statistics_dashboard_cards").select("id,dashboard_id,title,metric_key,period_kind,period_days,filters,display_kind,position,width,active").order("position"),
       client.from("user_profiles").select("id,display_name").order("display_name"),client.from("statistics_dashboard_assignments").select("dashboard_id,user_id,is_default"),
       client.from("statistics_settings").select("quick_periods").eq("singleton",true).maybeSingle(),client.from("statistics_metric_settings").select("metric_key,active,featured,sort_order")
     ]);
@@ -31,7 +31,7 @@ export function AdminStatistics({client,notify}:{client:SupabaseClient;notify:(m
     const nextMetrics=(catalog.data??[]) as Metric[]; setMetrics(nextMetrics); setMetricSettings((ms.data??[]) as MetricSetting[]); setDashboards((d.data??[]) as Dashboard[]); setCards((c.data??[]) as Card[]); setProfiles((p.data??[]) as Profile[]); setAssignments((a.data??[]) as Assignment[]);
     if(s.data?.quick_periods)setQuickPeriods((s.data.quick_periods as number[]).join(",")); setSelected((value)=>value??((d.data?.[0] as Dashboard|undefined)?.id??null)); if(!metricKey&&nextMetrics[0])setMetricKey(nextMetrics[0].key);
   },[client,metricKey,notify]);
-  useEffect(()=>{void load();},[load]);
+  useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[load]);
 
   const selectedDashboard=dashboards.find((d)=>d.id===selected)??null;
   const selectedCards=cards.filter((c)=>c.dashboard_id===selected);
@@ -51,7 +51,17 @@ export function AdminStatistics({client,notify}:{client:SupabaseClient;notify:(m
   async function removeCard(id:number){setBusy(true);const r=await client.from("statistics_dashboard_cards").delete().eq("id",id);if(r.error)notify(r.error.message);else await load();setBusy(false);}
   async function toggleMetric(metric:Metric,field:"active"|"featured") { const current=settingsMap.get(metric.key)??{metric_key:metric.key,active:true,featured:false,sort_order:0}; const r=await client.from("statistics_metric_settings").upsert({...current,[field]:!current[field]});if(r.error)notify(r.error.message);else await load(); }
   async function savePeriods(){const values=[...new Set(quickPeriods.split(",").map((v)=>Number(v.trim())).filter((v)=>Number.isInteger(v)&&v>=1&&v<=3650))];if(!values.length){notify("Añade al menos un periodo válido.");return;}const r=await client.from("statistics_settings").update({quick_periods:values,updated_at:new Date().toISOString()}).eq("singleton",true);if(r.error)notify(r.error.message);else notify("Periodos rápidos guardados.");}
-  async function duplicateDashboard(){if(!selectedDashboard)return;setBusy(true);const d=await client.from("statistics_dashboards").insert({name:`${selectedDashboard.name} · copia`,scope:"global",active:true,is_default:false}).select("id").single();if(!d.error){const source=selectedCards.map(({id:_,dashboard_id:__,...card},index)=>({...card,dashboard_id:d.data.id,position:index}));if(source.length)await client.from("statistics_dashboard_cards").insert(source);setSelected(d.data.id);await load();}else notify(d.error.message);setBusy(false);}
+  async function duplicateDashboard(){
+    if(!selectedDashboard)return;
+    setBusy(true);
+    const d=await client.from("statistics_dashboards").insert({name:`${selectedDashboard.name} · copia`,scope:"global",active:true,is_default:false}).select("id").single();
+    if(!d.error){
+      const source=selectedCards.map((card,index)=>({dashboard_id:d.data.id,title:card.title,metric_key:card.metric_key,period_kind:card.period_kind,period_days:card.period_days,filters:card.filters,display_kind:card.display_kind,position:index,width:card.width,active:card.active}));
+      if(source.length)await client.from("statistics_dashboard_cards").insert(source);
+      setSelected(d.data.id);await load();
+    }else notify(d.error.message);
+    setBusy(false);
+  }
 
   return <section className="admin-stack statistics-admin">
     <header className="admin-section-head"><div><h2>Estadísticas</h2><p>Decide qué ve cada profesor al abrir Estadísticas y crea paneles con las métricas que realmente te interesan.</p></div><BarChart3 /></header>
