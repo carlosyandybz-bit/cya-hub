@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { P31AppearanceRuntime } from "./p31-appearance-runtime";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 import styles from "./account-menu.module.css";
 
@@ -145,86 +146,89 @@ export function AccountMenu({
   }
 
   return (
-    <div ref={rootRef} className={`${styles.root} ${variant === "sidebar" ? styles.sidebarRoot : styles.headerRoot}`}>
-      {variant === "sidebar" ? (
-        <button type="button" className={styles.sidebarTrigger} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-          {avatar(styles.sidebarAvatar)}
-          <span className={styles.sidebarIdentity}><strong>{displayName}</strong><small>{contextLabels[experience]}</small></span>
-          <ChevronRight className={open ? styles.chevronOpen : ""} />
-        </button>
-      ) : (
-        <button type="button" className={styles.headerTrigger} aria-label="Abrir cuenta y preferencias" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-          {avatar()}
-        </button>
-      )}
-
-      {open ? (
-        <div className={`${styles.menu} ${variant === "sidebar" ? styles.menuSidebar : styles.menuHeader}`} role="menu" aria-label="Cuenta CYA">
-          <div className={styles.menuIdentity}>
-            {avatar(styles.menuAvatar)}
-            <div><strong>{displayName}</strong><span>{email || "Cuenta CYA"}</span></div>
-          </div>
-
-          <div className={styles.portalBlock}>
-            <button type="button" className={styles.menuRow} onClick={() => setPortalOpen((value) => !value)} aria-expanded={portalOpen}>
-              <span className={styles.rowIcon}><PortalIcon value={experience} /></span>
-              <span className={styles.rowText}><strong>Ver como</strong><small>{contextLabels[experience]}</small></span>
-              <ChevronRight className={portalOpen ? styles.chevronOpen : ""} />
-            </button>
-            {portalOpen ? (
-              <div className={styles.portalOptions}>
-                {contexts.map((context) => (
-                  <button key={context} type="button" disabled={busy} onClick={() => void changePortal(context)}>
-                    <PortalIcon value={context} /><span>{contextLabels[context]}</span>{experience === context ? <Check /> : null}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          <div className={styles.separator} />
-          <button type="button" className={styles.menuRow} onClick={() => openPage(onOpenProfile)}>
-            <span className={styles.rowIcon}><Pencil /></span>
-            <span className={styles.rowText}><strong>Editar perfil</strong><small>Foto, nombre y datos personales</small></span>
-            <ChevronRight />
+    <>
+      <P31AppearanceRuntime />
+      <div ref={rootRef} className={`${styles.root} ${variant === "sidebar" ? styles.sidebarRoot : styles.headerRoot}`}>
+        {variant === "sidebar" ? (
+          <button type="button" className={styles.sidebarTrigger} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+            {avatar(styles.sidebarAvatar)}
+            <span className={styles.sidebarIdentity}><strong>{displayName}</strong><small>{contextLabels[experience]}</small></span>
+            <ChevronRight className={open ? styles.chevronOpen : ""} />
           </button>
-          <button type="button" className={styles.menuRow} onClick={() => openPage(onOpenPreferences)}>
-            <span className={styles.rowIcon}><Settings /></span>
-            <span className={styles.rowText}><strong>Preferencias</strong><small>Configuración personal de CYA Hub</small></span>
-            <ChevronRight />
+        ) : (
+          <button type="button" className={styles.headerTrigger} aria-label="Abrir cuenta y preferencias" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+            {avatar()}
           </button>
-          <button type="button" className={styles.menuRow} onClick={() => { setOpen(false); setPortalOpen(false); setAccountOpen(true); }}>
-            <span className={styles.rowIcon}><CircleUserRound /></span>
-            <span className={styles.rowText}><strong>Cuenta y sesión</strong><small>{identity.roles.map((role) => roleLabels[role] ?? role).join(" · ")}</small></span>
-          </button>
-          <div className={styles.separator} />
-          <button type="button" className={`${styles.menuRow} ${styles.signOutRow}`} disabled={busy} onClick={() => void signOut()}>
-            <span className={styles.rowIcon}><LogOut /></span>
-            <span className={styles.rowText}><strong>Cerrar sesión</strong><small>Salir de este dispositivo</small></span>
-          </button>
-        </div>
-      ) : null}
+        )}
 
-      {accountOpen && typeof document !== "undefined" ? createPortal(
-        <div className={styles.backdrop} onMouseDown={(event) => event.target === event.currentTarget && setAccountOpen(false)}>
-          <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="account-session-title">
-            <header className={styles.dialogHeader}>
-              <div><span>Mi cuenta</span><h2 id="account-session-title">Cuenta y sesión</h2></div>
-              <button type="button" className={styles.closeButton} onClick={() => setAccountOpen(false)} aria-label="Cerrar"><X /></button>
-            </header>
-            <div className={styles.dialogBody}>
-              <div className={styles.accountRows}>
-                <div><span>Email</span><strong>{email || "Sin email disponible"}</strong></div>
-                <div><span>Vista activa</span><strong>{contextLabels[experience]}</strong></div>
-                <div><span>Permisos</span><strong>{identity.roles.map((role) => roleLabels[role] ?? role).join(" · ")}</strong></div>
-              </div>
-              <p className={styles.accountNote}>Cambiar de vista no cambia tus permisos reales.</p>
-              <div className={styles.dialogActions}><button type="button" className={styles.secondaryButton} onClick={() => setAccountOpen(false)}>Cerrar</button><button type="button" className={styles.dangerButton} disabled={busy} onClick={() => void signOut()}><LogOut /> Cerrar sesión</button></div>
+        {open ? (
+          <div className={`${styles.menu} ${variant === "sidebar" ? styles.menuSidebar : styles.menuHeader}`} role="menu" aria-label="Cuenta CYA">
+            <div className={styles.menuIdentity}>
+              {avatar(styles.menuAvatar)}
+              <div><strong>{displayName}</strong><span>{email || "Cuenta CYA"}</span></div>
             </div>
-          </section>
-        </div>,
-        document.body,
-      ) : null}
-    </div>
+
+            <div className={styles.portalBlock}>
+              <button type="button" className={styles.menuRow} onClick={() => setPortalOpen((value) => !value)} aria-expanded={portalOpen}>
+                <span className={styles.rowIcon}><PortalIcon value={experience} /></span>
+                <span className={styles.rowText}><strong>Ver como</strong><small>{contextLabels[experience]}</small></span>
+                <ChevronRight className={portalOpen ? styles.chevronOpen : ""} />
+              </button>
+              {portalOpen ? (
+                <div className={styles.portalOptions}>
+                  {contexts.map((context) => (
+                    <button key={context} type="button" disabled={busy} onClick={() => void changePortal(context)}>
+                      <PortalIcon value={context} /><span>{contextLabels[context]}</span>{experience === context ? <Check /> : null}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className={styles.separator} />
+            <button type="button" className={styles.menuRow} onClick={() => openPage(onOpenProfile)}>
+              <span className={styles.rowIcon}><Pencil /></span>
+              <span className={styles.rowText}><strong>Editar perfil</strong><small>Foto, nombre y datos personales</small></span>
+              <ChevronRight />
+            </button>
+            <button type="button" className={styles.menuRow} onClick={() => openPage(onOpenPreferences)}>
+              <span className={styles.rowIcon}><Settings /></span>
+              <span className={styles.rowText}><strong>Preferencias</strong><small>Configuración personal de CYA Hub</small></span>
+              <ChevronRight />
+            </button>
+            <button type="button" className={styles.menuRow} onClick={() => { setOpen(false); setPortalOpen(false); setAccountOpen(true); }}>
+              <span className={styles.rowIcon}><CircleUserRound /></span>
+              <span className={styles.rowText}><strong>Cuenta y sesión</strong><small>{identity.roles.map((role) => roleLabels[role] ?? role).join(" · ")}</small></span>
+            </button>
+            <div className={styles.separator} />
+            <button type="button" className={`${styles.menuRow} ${styles.signOutRow}`} disabled={busy} onClick={() => void signOut()}>
+              <span className={styles.rowIcon}><LogOut /></span>
+              <span className={styles.rowText}><strong>Cerrar sesión</strong><small>Salir de este dispositivo</small></span>
+            </button>
+          </div>
+        ) : null}
+
+        {accountOpen && typeof document !== "undefined" ? createPortal(
+          <div className={styles.backdrop} onMouseDown={(event) => event.target === event.currentTarget && setAccountOpen(false)}>
+            <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="account-session-title">
+              <header className={styles.dialogHeader}>
+                <div><span>Mi cuenta</span><h2 id="account-session-title">Cuenta y sesión</h2></div>
+                <button type="button" className={styles.closeButton} onClick={() => setAccountOpen(false)} aria-label="Cerrar"><X /></button>
+              </header>
+              <div className={styles.dialogBody}>
+                <div className={styles.accountRows}>
+                  <div><span>Email</span><strong>{email || "Sin email disponible"}</strong></div>
+                  <div><span>Vista activa</span><strong>{contextLabels[experience]}</strong></div>
+                  <div><span>Permisos</span><strong>{identity.roles.map((role) => roleLabels[role] ?? role).join(" · ")}</strong></div>
+                </div>
+                <p className={styles.accountNote}>Cambiar de vista no cambia tus permisos reales.</p>
+                <div className={styles.dialogActions}><button type="button" className={styles.secondaryButton} onClick={() => setAccountOpen(false)}>Cerrar</button><button type="button" className={styles.dangerButton} disabled={busy} onClick={() => void signOut()}><LogOut /> Cerrar sesión</button></div>
+              </div>
+            </section>
+          </div>,
+          document.body,
+        ) : null}
+      </div>
+    </>
   );
 }
