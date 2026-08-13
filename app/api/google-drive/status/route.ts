@@ -1,13 +1,21 @@
-import { NextResponse } from "next/server";
-import { driveServerConfigured, teachingFolderMode, teachingFolderName } from "../../../google-drive-server";
+import { NextRequest, NextResponse } from "next/server";
+import { bearerToken, requireStaff } from "../../../google-calendar-server";
+import { teachingFolderMode, teachingFolderName, verifyGoogleDriveConnection } from "../../../google-drive-server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  return NextResponse.json({
-    configured: driveServerConfigured(),
-    folderMode: teachingFolderMode(),
-    folderId: process.env.GOOGLE_DRIVE_TEACHING_FOLDER_ID?.trim() || null,
-    folderName: teachingFolderName(),
-  }, { headers: { "cache-control": "no-store" } });
+export async function GET(request: NextRequest) {
+  try {
+    await requireStaff(bearerToken(request));
+    const verification = await verifyGoogleDriveConnection();
+    return NextResponse.json({
+      ...verification,
+      folderMode: teachingFolderMode(),
+      folderName: teachingFolderName(),
+    }, { headers: { "cache-control": "no-store" } });
+  } catch (error) {
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : "No se pudo comprobar Google Drive.",
+    }, { status: 403, headers: { "cache-control": "no-store" } });
+  }
 }
