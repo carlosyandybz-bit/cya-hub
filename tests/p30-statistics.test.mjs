@@ -66,10 +66,10 @@ test("P30 safe executor has explicit metric branches and no dynamic execute",()=
   assert.match(cardApi,/Métrica no soportada/);
 });
 
-test("P30 legacy snapshot uses only canonical campaign metric columns",()=>{
-  assert.match(base,/mm\.spend_cents/); assert.match(base,/mm\.revenue_cents/); assert.match(base,/mm\.bookings/);
-  assert.doesNotMatch(base,/mm\.inquiries|mm\.clicks/);
-  assert.doesNotMatch(teaching,/mm\.inquiries|mm\.clicks/);
+test("P30 snapshot matches the canonical CyA hub 2 marketing schema",()=>{
+  for(const column of ["spend_cents","impressions","reach","clicks","inquiries","bookings","revenue_cents"]) assert.match(base,new RegExp(`mm\\.${column}`));
+  assert.match(base,/cr\.blocked_reason is not null/);
+  assert.doesNotMatch(base,/cr\.status='blocked'/);
 });
 
 test("P30 Administration controls availability preferred metrics and teacher assignments",()=>{
