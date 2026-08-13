@@ -44,7 +44,9 @@ test("class explanatory videos upload to Drive and can be private or reusable", 
   assert.match(sql, /class_video_resources/);
   assert.match(sql, /visibility_scope in \('private_student','reusable'\)/);
   assert.match(uploadRoute, /x-cya-media-scope/);
-  assert.match(driveServer, /DEFAULT_CLASS_VIDEOS_FOLDER_ID/);
+  assert.match(driveServer, /GOOGLE_DRIVE_CLASS_VIDEOS_FOLDER_ID/);
+  assert.match(driveServer, /return ensureTeachingFolder\(token\)/);
+  assert.doesNotMatch(driveServer, /DEFAULT_CLASS_VIDEOS_FOLDER_ID/);
 });
 
 test("pair private videos default to both students and remain individually selectable", () => {
