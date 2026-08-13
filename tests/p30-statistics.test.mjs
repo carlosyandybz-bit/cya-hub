@@ -66,6 +66,12 @@ test("P30 safe executor has explicit metric branches and no dynamic execute",()=
   assert.match(cardApi,/Métrica no soportada/);
 });
 
+test("P30 legacy snapshot uses only canonical campaign metric columns",()=>{
+  assert.match(base,/mm\.spend_cents/); assert.match(base,/mm\.revenue_cents/); assert.match(base,/mm\.bookings/);
+  assert.doesNotMatch(base,/mm\.inquiries|mm\.clicks/);
+  assert.doesNotMatch(teaching,/mm\.inquiries|mm\.clicks/);
+});
+
 test("P30 Administration controls availability preferred metrics and teacher assignments",()=>{
   assert.match(preferences,/statistics_metric_settings/); assert.match(preferences,/featured/);
   assert.match(admin,/Preferente/); assert.match(admin,/Profesores que usarán este panel/); assert.match(admin,/Todos los profesores/);
