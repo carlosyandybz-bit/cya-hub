@@ -1,6 +1,7 @@
 "use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { useEffect, useMemo, useState } from "react";
 import {
   MarketingView as LegacyMarketingView,
   type CampaignMetric,
@@ -23,6 +24,16 @@ export type {
   MarketingEvent,
   MarketingRate,
 } from "./marketing-view-legacy";
+
+type BonusSummary = {
+  person_id: number;
+  active_grant_count: number;
+  active_balance_minutes: number;
+  latest_grant_label: string | null;
+  latest_grant_price_cents: number | null;
+  latest_grant_payment_status: string | null;
+  latest_grant_purchased_at: string | null;
+};
 
 function asArray<T>(value: T[] | T | null | undefined): T[] {
   if (Array.isArray(value)) return value;
@@ -64,6 +75,20 @@ function normalizeRecipients(items: CommunicationRecipient[]): CommunicationReci
   }));
 }
 
+function minutesLabel(total: number) {
+  if (total <= 0) return "Sin saldo";
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+  if (!hours) return `${minutes} min`;
+  return minutes ? `${hours} h ${minutes} min` : `${hours} h`;
+}
+
+function paymentLabel(value: string | null) {
+  if (value === "paid") return "Pagado";
+  if (value === "pending") return "Pendiente de pago";
+  return value || "Sin estado de pago";
+}
+
 export function MarketingView(props: {
   db: SupabaseClient;
   contacts: CrmContact[];
@@ -76,11 +101,42 @@ export function MarketingView(props: {
   refresh: () => Promise<void>;
   notify: (message: string) => void;
 }) {
-  return <LegacyMarketingView
-    {...props}
-    contacts={normalizeContacts(props.contacts)}
-    content={normalizeContent(props.content)}
-    campaigns={normalizeCampaigns(props.campaigns)}
-    recipients={normalizeRecipients(props.recipients)}
-  />;
+  const [bonuses, setBonuses] = useState<BonusSummary[]>([]);
+  const contacts = useMemo(() => normalizeContacts(props.contacts), [props.contacts]);
+  const contactNames = useMemo(() => new Map(contacts.map((contact) => [contact.id, contact.display_name])), [contacts]);
+
+  useEffect(() => {
+    let alive = true;
+    props.db.rpc("crm_bonus_summary").then(({ data, error }) => {
+      if (!alive) return;
+      if (error) {
+        setBonuses([]);
+        return;
+      }
+      setBonuses(asArray(data as BonusSummary[] | BonusSummary | null));
+    });
+    return () => { alive = false; };
+  }, [props.db, props.refresh]);
+
+  const visibleBonuses = bonuses.filter((bonus) => bonus.active_grant_count > 0 || bonus.latest_grant_label);
+
+  return <>
+    {visibleBonuses.length ? <details className="card pad p29-bonus-summary">
+      <summary>Bonos vinculados al CRM · {visibleBonuses.length}</summary>
+      <div className="p29-bonus-list">
+        {visibleBonuses.map((bonus) => <div className="p29-bonus-row" key={bonus.person_id}>
+          <span><strong>{contactNames.get(bonus.person_id) ?? "Alumno"}</strong>{bonus.latest_grant_label ? ` · ${bonus.latest_grant_label}` : ""}</span>
+          <small>{bonus.active_grant_count} activo{bonus.active_grant_count === 1 ? "" : "s"} · {paymentLabel(bonus.latest_grant_payment_status)}</small>
+          <strong>{minutesLabel(bonus.active_balance_minutes)}</strong>
+        </div>)}
+      </div>
+    </details> : null}
+    <LegacyMarketingView
+      {...props}
+      contacts={contacts}
+      content={normalizeContent(props.content)}
+      campaigns={normalizeCampaigns(props.campaigns)}
+      recipients={normalizeRecipients(props.recipients)}
+    />
+  </>;
 }
