@@ -62,16 +62,20 @@ begin
   select jsonb_build_object(
     'campaigns',(select count(*) from public.marketing_campaigns mc where mc.created_at>=v_from and mc.created_at<v_now),
     'spend_cents',(select coalesce(sum(mm.spend_cents),0) from public.marketing_campaign_metrics mm where mm.metric_date>=v_from::date and mm.metric_date<=v_now::date),
-    'revenue_cents',(select coalesce(sum(mm.revenue_cents),0) from public.marketing_campaign_metrics mm where mm.metric_date>=v_from::date and mm.metric_date<=v_now::date),
+    'impressions',(select coalesce(sum(mm.impressions),0) from public.marketing_campaign_metrics mm where mm.metric_date>=v_from::date and mm.metric_date<=v_now::date),
+    'reach',(select coalesce(sum(mm.reach),0) from public.marketing_campaign_metrics mm where mm.metric_date>=v_from::date and mm.metric_date<=v_now::date),
+    'clicks',(select coalesce(sum(mm.clicks),0) from public.marketing_campaign_metrics mm where mm.metric_date>=v_from::date and mm.metric_date<=v_now::date),
+    'inquiries',(select coalesce(sum(mm.inquiries),0) from public.marketing_campaign_metrics mm where mm.metric_date>=v_from::date and mm.metric_date<=v_now::date),
     'bookings',(select coalesce(sum(mm.bookings),0) from public.marketing_campaign_metrics mm where mm.metric_date>=v_from::date and mm.metric_date<=v_now::date),
+    'revenue_cents',(select coalesce(sum(mm.revenue_cents),0) from public.marketing_campaign_metrics mm where mm.metric_date>=v_from::date and mm.metric_date<=v_now::date),
     'metric_rows',(select count(*) from public.marketing_campaign_metrics mm where mm.metric_date>=v_from::date and mm.metric_date<=v_now::date),
     'messages_sent',(select count(*) from public.communication_recipients cr where cr.status='sent' and cr.sent_at>=v_from and cr.sent_at<v_now),
-    'messages_blocked',(select count(*) from public.communication_recipients cr where cr.status='blocked' and cr.created_at>=v_from and cr.created_at<v_now)
+    'messages_blocked',(select count(*) from public.communication_recipients cr where cr.blocked_reason is not null and cr.created_at>=v_from and cr.created_at<v_now)
   ) into v_marketing;
 
   select jsonb_build_object(
     'missions_completed',(select count(*) from public.missions m where m.state in ('completed','completed_automatically') and m.completed_at>=v_from and m.completed_at<v_now),
-    'missions_open',(select count(*) from public.missions m where m.state in ('available','upcoming')),
+    'missions_open',(select count(*) from public.missions m where m.state in ('available','upcoming','in_progress')),
     'missions_not_done',(select count(*) from public.missions m where m.state in ('not_done','expired') and coalesce(m.expired_at,m.updated_at)>=v_from),
     'notifications_sent',(select count(*) from public.notification_deliveries nd where nd.status='sent' and nd.sent_at>=v_from and nd.sent_at<v_now),
     'notifications_failed',(select count(*) from public.notification_deliveries nd where nd.status='failed' and coalesce(nd.last_attempt_at,nd.queued_at)>=v_from),
