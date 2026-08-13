@@ -1,5 +1,6 @@
 import fs from "node:fs";
 
+// One-shot deterministic source patch. Removed by its own workflow after success.
 function patch(path, transform) {
   const before = fs.readFileSync(path, "utf8");
   const after = transform(before);
