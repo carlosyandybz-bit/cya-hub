@@ -1,0 +1,35 @@
+name: Fix P25 Doc Stale Line
+
+on:
+  push:
+    branches: [docs/p25-closure]
+    paths:
+      - 'scripts/fix-p25-doc-stale-line.mjs'
+      - '.github/workflows/fix-p25-doc-stale-line.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/p25-closure
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: node scripts/fix-p25-doc-stale-line.mjs
+      - run: node --test tests/documentation-consistency.test.mjs tests/p25-missions.test.mjs
+      - run: git diff --check
+      - name: Materialize and clean helpers
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md
+          git rm scripts/fix-p25-doc-stale-line.mjs .github/workflows/fix-p25-doc-stale-line.yml
+          git commit -m "[docs] Align P25-P26 continuity wording"
+          git push origin HEAD:docs/p25-closure
