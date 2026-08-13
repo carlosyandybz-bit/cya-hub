@@ -1,0 +1,55 @@
+.marketing-tabs > button:last-child {
+  display: none;
+}
+
+.p29-bonus-summary {
+  margin: 0 0 14px;
+}
+
+.p29-bonus-summary > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.p29-bonus-list {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.p29-bonus-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border, rgba(120,120,140,.18));
+}
+
+.p29-bonus-row > span,
+.p29-bonus-row > small {
+  grid-column: 1;
+}
+
+.p29-bonus-row > strong {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.p29-integration-note {
+  margin: 0 0 14px;
+}
+
+.p29-integration-note strong,
+.p29-integration-note span {
+  display: block;
+}
+
+.p29-integration-note span {
+  margin-top: 4px;
+  opacity: .75;
+}
