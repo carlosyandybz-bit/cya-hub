@@ -17,6 +17,12 @@ const admin=readFileSync("app/admin-statistics.tsx","utf8");
 const configurable=readFileSync("app/statistics-configurable-view.tsx","utf8");
 const contract=readFileSync("docs/P30_ESTADISTICAS_CONFIGURABLES.md","utf8");
 
+function withoutPrivilegeExecute(sql){
+  return sql
+    .replace(/\bgrant\s+execute\s+on\s+function\b/gi,"grant on function")
+    .replace(/\brevoke\s+(?:all|execute)\s+on\s+function\b/gi,"revoke on function");
+}
+
 test("P30 global statistics are readable by any teacher, never by students",()=>{
   assert.match(base,/private\.is_staff\(\)/); assert.doesNotMatch(base,/private\.is_admin\(\)/);
   assert.match(cardApi,/private\.is_staff\(\)/); assert.match(cardApi,/revoke all[\s\S]*public,anon/);
@@ -56,7 +62,7 @@ test("P30 does not pretend student city exists before there is a canonical field
 });
 
 test("P30 safe executor has explicit metric branches and no dynamic execute",()=>{
-  for(const fn of [classMetrics,people,teaching,operations,cardApi]) assert.doesNotMatch(fn,/\bexecute\b/i);
+  for(const fn of [classMetrics,people,teaching,operations,cardApi]) assert.doesNotMatch(withoutPrivilegeExecute(fn),/\bexecute\b/i);
   assert.match(cardApi,/Métrica no soportada/);
 });
 
