@@ -81,7 +81,7 @@ test("appearance is constrained, persistent and administrator controlled",()=>{
   assert.match(appearanceMigration,/private\.is_admin\(\)/);
   assert.match(appearanceMigration,/enable row level security/);
   assert.doesNotMatch(appearanceMigration,/dark|css_text|custom_css/i);
-  assert.match(appearanceReadPolicyMigration,/for select\s+to public\s+using \(true\)/i);
+  assert.match(appearanceReadPolicyMigration,/alter policy app_appearance_settings_read[\s\S]*to public/i);
   assert.match(appearance,/from\("app_appearance_settings"\)/);
   assert.match(appearanceRuntime,/--purple/);
   assert.match(appearanceRuntime,/--cya-font-family/);
