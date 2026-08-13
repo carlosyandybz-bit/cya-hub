@@ -1,0 +1,3 @@
+-- P30F5 — RETIRADA.
+-- El cálculo final de tarjetas vive en app/statistics-engine.ts sobre consultas Supabase/PostgREST protegidas por RLS.
+-- Este archivo se conserva como no-op para mantener trazabilidad histórica sin crear statistics_card_value ni helpers RPC paralelos.

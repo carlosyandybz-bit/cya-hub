@@ -1,0 +1,3 @@
+-- P30F3 — RETIRADA.
+-- El catálogo final vive en app/statistics-catalog.ts y se consume directamente por el motor RLS-safe.
+-- Este archivo se conserva como no-op para mantener trazabilidad histórica sin recrear una API RPC paralela.

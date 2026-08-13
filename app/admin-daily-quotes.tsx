@@ -4,6 +4,7 @@ import { Eye, FileUp, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./p24-home.module.css";
+import { AdminStatistics } from "./admin-statistics";
 
 type Quote = { id:number; quote_text:string; month_day:string|null; override_date:string|null; active:boolean; source:string };
 type Assignment = { quote_id:number };
@@ -81,23 +82,26 @@ export function AdminDailyQuotes({client,notify}:{client:SupabaseClient;notify:(
 
   async function importCsv(){ const valid=csvRows.filter((row)=>row.status==="new"); if(!valid.length){ notify("No hay filas nuevas válidas."); return; } setBusy(true); const result=await client.from("daily_quotes").insert(valid.map(({quote_text,override_date,month_day,active})=>({quote_text,override_date,month_day,active,source:"csv"}))); if(result.error)notify(result.error.message); else { notify(`${valid.length} frases importadas.`); setCsvRows([]); await load(); } setBusy(false); }
 
-  return <section className={`card pad ${styles.quoteAdmin}`}>
-    <header className={styles.compactHead}><h2>Inicio · Frases diarias</h2><p>Una frase estable por persona y día. Editar el catálogo no cambia una frase ya asignada.</p></header>
-    <div className={styles.quoteForm}>
-      <textarea value={text} onChange={(e)=>setText(e.target.value)} placeholder="Frase diaria" aria-label="Frase diaria" />
-      <label className="field"><span>Fecha concreta</span><input type="date" value={date} onChange={(e)=>{setDate(e.target.value);if(e.target.value)setMonthDay("");}} /></label>
-      <label className="field"><span>Repite MM-DD</span><input value={monthDay} onChange={(e)=>{setMonthDay(e.target.value);if(e.target.value)setDate("");}} placeholder="08-12" inputMode="numeric" /></label>
-      <label className="field"><span>Estado</span><select value={active?"1":"0"} onChange={(e)=>setActive(e.target.value==="1")}><option value="1">Activa</option><option value="0">Inactiva</option></select></label>
-      <button className="btn" type="button" disabled={busy} onClick={()=>void save()}><Save /> {editId?"Guardar":"Crear"}</button>
-      {editId?<button className="btn ghost" type="button" onClick={reset}><X /> Cancelar</button>:null}
-    </div>
-    <div className={styles.quoteToolbar}>
-      <label className="field"><span>Previsualizar fecha</span><input type="date" value={previewDate} onChange={(e)=>setPreviewDate(e.target.value)} /></label>
-      <button className="btn ghost" type="button" onClick={()=>void runPreview()}><Eye /> Previsualizar</button>
-      <label className="btn ghost"><FileUp /> Importar CSV<input className={styles.fileInput} type="file" accept=".csv,text/csv" onChange={(e)=>void readCsv(e)} hidden /></label>
-    </div>
-    {preview?<div className={styles.preview}><strong>{preview.assigned?"Asignada":"Previsualización"} · {preview.selection_kind}</strong><div>{preview.text}</div></div>:null}
-    {csvRows.length?<div className={styles.csvPreview}><table><thead><tr><th>Frase</th><th>Programación</th><th>Estado</th></tr></thead><tbody>{csvRows.map((row,index)=><tr key={`${row.quote_text}-${index}`}><td>{row.quote_text}</td><td>{row.override_date??row.month_day??"Rotación"}</td><td className={row.status==="new"?styles.statusOk:styles.statusBad}>{row.reason}</td></tr>)}</tbody></table><div className="actions"><button className="btn" type="button" disabled={busy||!csvRows.some((row)=>row.status==="new")} onClick={()=>void importCsv()}><Plus /> Importar válidas</button><button className="btn ghost" type="button" onClick={()=>setCsvRows([])}><X /> Cerrar</button></div></div>:null}
-    <div className={styles.quoteList}>{quotes.map((quote)=><div className={styles.quoteRow} key={quote.id}><div><div className={styles.quoteText}>{quote.quote_text}</div><div className={styles.quoteMeta}>{quote.active?"Activa":"Inactiva"} · {quote.override_date?`Fecha ${quote.override_date}`:quote.month_day?`Cada ${quote.month_day}`:"Rotación"} · {used.has(quote.id)?"Con historial":"Sin uso"}</div></div><div className={styles.quoteActions}><button className="icon-btn" type="button" aria-label={`Editar ${quote.quote_text}`} onClick={()=>edit(quote)}><Pencil /></button><button className="icon-btn" type="button" aria-label={`${quote.active?"Desactivar":"Activar"} ${quote.quote_text}`} onClick={()=>void toggle(quote)}>{quote.active?"On":"Off"}</button><button className="icon-btn" type="button" aria-label={`Eliminar ${quote.quote_text}`} disabled={used.has(quote.id)||busy} onClick={()=>void remove(quote)}><Trash2 /></button></div></div>)}</div>
-  </section>;
+  return <>
+    <section className={`card pad ${styles.quoteAdmin}`}>
+      <header className={styles.compactHead}><h2>Inicio · Frases diarias</h2><p>Una frase estable por persona y día. Editar el catálogo no cambia una frase ya asignada.</p></header>
+      <div className={styles.quoteForm}>
+        <textarea value={text} onChange={(e)=>setText(e.target.value)} placeholder="Frase diaria" aria-label="Frase diaria" />
+        <label className="field"><span>Fecha concreta</span><input type="date" value={date} onChange={(e)=>{setDate(e.target.value);if(e.target.value)setMonthDay("");}} /></label>
+        <label className="field"><span>Repite MM-DD</span><input value={monthDay} onChange={(e)=>{setMonthDay(e.target.value);if(e.target.value)setDate("");}} placeholder="08-12" inputMode="numeric" /></label>
+        <label className="field"><span>Estado</span><select value={active?"1":"0"} onChange={(e)=>setActive(e.target.value==="1")}><option value="1">Activa</option><option value="0">Inactiva</option></select></label>
+        <button className="btn" type="button" disabled={busy} onClick={()=>void save()}><Save /> {editId?"Guardar":"Crear"}</button>
+        {editId?<button className="btn ghost" type="button" onClick={reset}><X /> Cancelar</button>:null}
+      </div>
+      <div className={styles.quoteToolbar}>
+        <label className="field"><span>Previsualizar fecha</span><input type="date" value={previewDate} onChange={(e)=>setPreviewDate(e.target.value)} /></label>
+        <button className="btn ghost" type="button" onClick={()=>void runPreview()}><Eye /> Previsualizar</button>
+        <label className="btn ghost"><FileUp /> Importar CSV<input className={styles.fileInput} type="file" accept=".csv,text/csv" onChange={(e)=>void readCsv(e)} hidden /></label>
+      </div>
+      {preview?<div className={styles.preview}><strong>{preview.assigned?"Asignada":"Previsualización"} · {preview.selection_kind}</strong><div>{preview.text}</div></div>:null}
+      {csvRows.length?<div className={styles.csvPreview}><table><thead><tr><th>Frase</th><th>Programación</th><th>Estado</th></tr></thead><tbody>{csvRows.map((row,index)=><tr key={`${row.quote_text}-${index}`}><td>{row.quote_text}</td><td>{row.override_date??row.month_day??"Rotación"}</td><td className={row.status==="new"?styles.statusOk:styles.statusBad}>{row.reason}</td></tr>)}</tbody></table><div className="actions"><button className="btn" type="button" disabled={busy||!csvRows.some((row)=>row.status==="new")} onClick={()=>void importCsv()}><Plus /> Importar válidas</button><button className="btn ghost" type="button" onClick={()=>setCsvRows([])}><X /> Cerrar</button></div></div>:null}
+      <div className={styles.quoteList}>{quotes.map((quote)=><div className={styles.quoteRow} key={quote.id}><div><div className={styles.quoteText}>{quote.quote_text}</div><div className={styles.quoteMeta}>{quote.active?"Activa":"Inactiva"} · {quote.override_date?`Fecha ${quote.override_date}`:quote.month_day?`Cada ${quote.month_day}`:"Rotación"} · {used.has(quote.id)?"Con historial":"Sin uso"}</div></div><div className={styles.quoteActions}><button className="icon-btn" type="button" aria-label={`Editar ${quote.quote_text}`} onClick={()=>edit(quote)}><Pencil /></button><button className="icon-btn" type="button" aria-label={`${quote.active?"Desactivar":"Activar"} ${quote.quote_text}`} onClick={()=>void toggle(quote)}>{quote.active?"On":"Off"}</button><button className="icon-btn" type="button" aria-label={`Eliminar ${quote.quote_text}`} disabled={used.has(quote.id)||busy} onClick={()=>void remove(quote)}><Trash2 /></button></div></div>)}</div>
+    </section>
+    <AdminStatistics client={client} notify={notify} />
+  </>;
 }

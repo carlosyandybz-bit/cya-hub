@@ -1,0 +1,3 @@
+-- P30F7 — RETIRADA.
+-- Las policies finales de paneles/tarjetas están consolidadas en v70a_p30_statistics_dashboard_schema.sql.
+-- P30 usa desactivación lógica; no añade una superficie DELETE administrativa para paneles o tarjetas.
