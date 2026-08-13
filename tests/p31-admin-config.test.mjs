@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const admin=readFileSync("app/admin-view.tsx","utf8");
-const catalogs=readFileSync("app/p31-catalog-admin.tsx","utf8");
+const catalogs=readFileSync("app/p31-catalog-admin-legacy.tsx","utf8");
+const catalogEntry=readFileSync("app/p31-catalog-admin.tsx","utf8");
+const defaults=readFileSync("app/p31-defaults-admin.tsx","utf8");
 const rates=readFileSync("app/p31-rates-admin.tsx","utf8");
 const integrations=readFileSync("app/p31-integrations-admin.tsx","utf8");
 const driveServer=readFileSync("app/google-drive-server.ts","utf8");
@@ -13,11 +15,14 @@ const appearanceRuntime=readFileSync("app/p31-appearance-runtime.tsx","utf8");
 const accountMenu=readFileSync("app/account-menu.tsx","utf8");
 const tagMigration=readFileSync("db/migrations/v71a_p31_safe_tag_rename.sql","utf8");
 const appearanceMigration=readFileSync("db/migrations/v71b_p31_appearance_settings.sql","utf8");
+const defaultsMigration=readFileSync("db/migrations/v71c_p31_operational_defaults.sql","utf8");
+const scheduleMigration=readFileSync("db/migrations/v71d_p31_schedule_default_location.sql","utf8");
 
 test("Administration centralizes P31 on canonical models",()=>{
   for(const token of ["P31CatalogAdmin","P31RatesAdmin","P31IntegrationsAdmin","P31AppearanceAdmin","Tarifas","Integraciones","Apariencia"]) assert.ok(admin.includes(token),token);
   assert.match(catalogs,/from\("catalog_terms"\)/);
   assert.match(catalogs,/\["location", "Ubicaciones"\]/);
+  assert.match(catalogEntry,/P31DefaultsAdmin/);
   assert.match(rates,/from\("marketing_rates"\)/);
   assert.match(rates,/rpc\("save_marketing_rate"/);
 });
@@ -36,6 +41,21 @@ test("teaching tag rename is a single admin governed merge operation",()=>{
   assert.match(tagMigration,/audit_events/);
   assert.match(tagMigration,/authenticated/);
   assert.match(catalogs,/admin_rename_teaching_tag/);
+});
+
+test("operational default location is canonical and consumed by schedule_class",()=>{
+  assert.match(defaultsMigration,/app_operational_defaults/);
+  assert.match(defaultsMigration,/default_location_term_id bigint null references public\.catalog_terms\(id\)/);
+  assert.match(defaultsMigration,/private\.is_staff\(\)/);
+  assert.match(defaultsMigration,/private\.is_admin\(\)/);
+  assert.match(defaults,/from\("catalog_terms"\)/);
+  assert.match(defaults,/eq\("taxonomy", "location"\)/);
+  assert.match(defaults,/from\("app_operational_defaults"\)/);
+  assert.match(scheduleMigration,/resolved_location_id:=p_location_term_id/);
+  assert.match(scheduleMigration,/default_location_term_id/);
+  assert.match(scheduleMigration,/t\.taxonomy='location'/);
+  assert.match(scheduleMigration,/p_style_term_id,resolved_location_id/);
+  assert.match(scheduleMigration,/security invoker/i);
 });
 
 test("Drive verification requires staff and a live Google response",()=>{
