@@ -50,7 +50,7 @@ Regla documental permanente desde P0B:
 
 - un documento de cierre formal (`Pxx_*.md`) no puede coexistir con este Plan Maestro declarando ese mismo paquete como pendiente/actual;
 - la transición canónica actual es **P25 cerrado → P26 siguiente / pendiente de aprobación**;
-- `tests/documentation-consistency.test.mjs` debe fallar si una rama vuelve a declarar P24 como pendiente/actual o retrocede al estado P22/P23 anterior;
+- `tests/documentation-consistency.test.mjs` debe fallar si una rama vuelve a declarar P25 como pendiente/actual o rompe la transición P25 cerrado → P26 siguiente;
 - cualquier avance posterior a P25 se actualizará explícitamente en el cierre del paquete correspondiente y en este test. Nunca se avanza o retrocede por un merge accidental.
 
 ---
