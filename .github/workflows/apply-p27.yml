@@ -1,0 +1,42 @@
+name: Apply P27 source patch
+
+on:
+  push:
+    branches:
+      - feat/p27-notificaciones-automaticas
+    paths:
+      - scripts/apply-p27.mjs
+      - .github/workflows/apply-p27.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/p27-notificaciones-automaticas
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: node scripts/apply-p27.mjs
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: git diff --check
+      - name: Commit permanent P27 source changes
+        run: |
+          rm scripts/apply-p27.mjs .github/workflows/apply-p27.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No P27 source changes to commit"
+            exit 1
+          fi
+          git commit -m "[p27-applied] Wire automatic notifications UI"
+          git push origin HEAD:feat/p27-notificaciones-automaticas
