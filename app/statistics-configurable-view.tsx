@@ -3,12 +3,9 @@
 import { BarChart3, SlidersHorizontal } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useState } from "react";
+import { resolveStatisticsDashboard, type StatisticsDashboardSnapshot, type StatisticsDashboardCard } from "./statistics-dashboard-data";
+import { calculateStatistic, type StatisticValue } from "./statistics-engine";
 import { StatisticsView } from "./statistics-view";
-
-type Dashboard = { id:number; name:string; description:string|null };
-type Card = { id:number; title:string; metric_key:string; period_kind:string; period_days:number|null; filters:Record<string,unknown>; display_kind:string; width:string };
-type CardResult = { metric_key:string; value:number|null; from:string; to:string };
-type DashboardSnapshot = { dashboard:Dashboard|null; cards:Card[] };
 
 function formatValue(value:number|null,kind:string){
   if(value==null)return "Sin datos";
@@ -17,16 +14,28 @@ function formatValue(value:number|null,kind:string){
   if(kind==="percentage")return `${Math.round(value*10)/10}%`;
   return new Intl.NumberFormat("es-ES",{maximumFractionDigits:1}).format(value);
 }
-function periodLabel(card:Card){if(card.period_kind==="today")return "Hoy";if(card.period_kind==="this_week")return "Esta semana";if(card.period_kind==="this_month")return "Este mes";if(card.period_kind==="this_year")return "Este año";if(card.period_kind==="rolling_days")return `Últimos ${card.period_days??30} días`;return "Periodo personalizado";}
+function periodLabel(card:StatisticsDashboardCard){if(card.period_kind==="today")return "Hoy";if(card.period_kind==="this_week")return "Esta semana";if(card.period_kind==="this_month")return "Este mes";if(card.period_kind==="this_year")return "Este año";if(card.period_kind==="rolling_days")return `Últimos ${card.period_days??30} días`;return "Periodo personalizado";}
+function errorMessage(error:unknown){return error instanceof Error?error.message:"No se ha podido calcular una estadística.";}
 
 export function ConfigurableStatisticsView({client,leave,notify}:{client:SupabaseClient;leave:()=>void;notify:(message:string)=>void}){
-  const [dashboard,setDashboard]=useState<DashboardSnapshot|null>(null),[values,setValues]=useState<Record<number,CardResult>>({}),[explore,setExplore]=useState(false),[loading,setLoading]=useState(true);
+  const [dashboard,setDashboard]=useState<StatisticsDashboardSnapshot|null>(null),[values,setValues]=useState<Record<number,StatisticValue>>({}),[explore,setExplore]=useState(false),[loading,setLoading]=useState(true);
   const load=useCallback(async()=>{
-    setLoading(true);const result=await client.rpc("statistics_dashboard_for_current_user");
-    if(result.error){notify(result.error.message);setLoading(false);return;}
-    const next=result.data as DashboardSnapshot;setDashboard(next);
-    const resolved=await Promise.all((next.cards??[]).map(async(card)=>{const value=await client.rpc("statistics_card_value",{p_metric_key:card.metric_key,p_period_kind:card.period_kind,p_period_days:card.period_days,p_filters:card.filters??{}});return [card.id,value] as const;}));
-    const map:Record<number,CardResult>={};for(const [id,resultValue] of resolved){if(resultValue.error)notify(resultValue.error.message);else map[id]=resultValue.data as CardResult;}setValues(map);setLoading(false);
+    setLoading(true);
+    try{
+      const next=await resolveStatisticsDashboard(client);setDashboard(next);
+      const resolved=await Promise.all((next.cards??[]).map(async(card)=>{
+        try{
+          const value=await calculateStatistic(client,card.metric_key,{kind:card.period_kind,days:card.period_days},card.filters??{});
+          return {id:card.id,value,error:null as string|null};
+        }catch(error){return {id:card.id,value:null,error:errorMessage(error)};}
+      }));
+      const map:Record<number,StatisticValue>={};
+      const errors:string[]=[];
+      for(const item of resolved){if(item.value)map[item.id]=item.value;if(item.error)errors.push(item.error);}
+      setValues(map);
+      if(errors.length)notify([...new Set(errors)].slice(0,2).join(" · "));
+    }catch(error){notify(errorMessage(error));setDashboard({dashboard:null,cards:[]});setValues({});}
+    setLoading(false);
   },[client,notify]);
   useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[load]);
   const cards=dashboard?.cards??[];const locationHint=cards.some((c)=>c.filters?.class_location);
