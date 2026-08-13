@@ -1,0 +1,51 @@
+name: P28 Data Transfer
+
+on:
+  push:
+    branches: [feat/p28-import-export, main]
+    paths:
+      - 'app/admin-data-transfer.tsx'
+      - 'app/data-transfer-formats.ts'
+      - 'app/data-transfer-formats-safe.ts'
+      - 'db/migrations/v66_p28_data_transfer_closure.sql'
+      - 'db/migrations/v67_p28_data_transfer_validation_followup.sql'
+      - 'tests/p28-data-transfer.test.mjs'
+      - '.github/workflows/p28-data-transfer.yml'
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: P28 data-transfer contracts
+        run: node --test tests/p28-data-transfer.test.mjs
+      - name: Preserve P19-P27 contracts
+        run: >-
+          node --test
+          tests/p19-persona-unica.test.mjs
+          tests/p20-form-engine.test.mjs
+          tests/p21-dar-clase.test.mjs
+          tests/p22-student-portal.test.mjs
+          tests/p23-teaching-contract.test.mjs
+          tests/p24-contextual-home.test.mjs
+          tests/p25-missions.test.mjs
+          tests/p26-calendar-sync.test.mjs
+          tests/p27-notification-engine.test.mjs
+          tests/p27-notification-reactivation.test.mjs
+          tests/documentation-consistency.test.mjs
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Whitespace
+        run: git diff --check
