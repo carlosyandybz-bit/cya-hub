@@ -107,6 +107,29 @@ export async function googleAccessToken() {
   return json.access_token;
 }
 
+export async function verifyGoogleDriveConnection() {
+  if (!driveServerConfigured()) {
+    return { configured: false, verified: false, error: null as string | null };
+  }
+  try {
+    const token = await googleAccessToken();
+    const params = new URLSearchParams({ pageSize: "1", spaces: "drive", fields: "files(id)" });
+    const response = await fetch(`${DRIVE_API}/files?${params.toString()}`, {
+      headers: { authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    const body = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+    if (!response.ok) throw new Error(body?.error?.message || `Google Drive respondió ${response.status}.`);
+    return { configured: true, verified: true, error: null as string | null };
+  } catch (error) {
+    return {
+      configured: true,
+      verified: false,
+      error: error instanceof Error ? error.message : "No se pudo verificar Google Drive.",
+    };
+  }
+}
+
 function driveQueryString(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
