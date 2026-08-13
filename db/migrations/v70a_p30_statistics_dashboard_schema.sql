@@ -21,7 +21,7 @@ create table if not exists public.statistics_dashboard_cards (
   period_kind text not null default 'rolling_days' check (period_kind in ('today','this_week','this_month','this_year','rolling_days','custom')),
   period_days integer check (period_days is null or period_days between 1 and 3650),
   filters jsonb not null default '{}'::jsonb check (jsonb_typeof(filters)='object'),
-  comparison_kind text not null default 'previous_period' check (comparison_kind in ('none','previous_period','previous_year')),
+  comparison_kind text not null default 'none' check (comparison_kind in ('none','previous_period','previous_year')),
   display_kind text not null default 'number' check (display_kind in ('number','currency','minutes','percentage','trend')),
   position integer not null default 0 check (position between 0 and 999),
   width text not null default 'small' check (width in ('small','medium','large','full')),
