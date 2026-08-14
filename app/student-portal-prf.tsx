@@ -87,6 +87,47 @@ type PortalEvaluation = {
   created_at: string;
 };
 
+type PortalCredit = {
+  id: number;
+  label: string | null;
+  modality: "individual" | "pair";
+  total_minutes: number;
+  balance_minutes: number;
+  status: string;
+  purchased_at: string;
+  expires_at: string | null;
+};
+
+type ClassSummary = { class_id: number; student_message: string | null; closed_at: string };
+type ClassMediaSnapshot = {
+  id: number;
+  class_id: number;
+  media_kind: "class_document" | "final_dance";
+  media_type: "image" | "video";
+  external_file_id: string;
+  title: string | null;
+  mime_type: string | null;
+  created_at: string;
+};
+type ClassPrivateVideo = {
+  id: number;
+  class_id: number;
+  person_id: number;
+  external_file_id: string;
+  title: string | null;
+  mime_type: string | null;
+  created_at: string;
+};
+type StudentClassNote = {
+  id: number;
+  class_id: number;
+  person_id: number | null;
+  content_id: number | null;
+  body: string;
+  visibility_scope: "internal" | "student";
+  created_at: string;
+};
+
 type StudentPortalSnapshot = {
   profile: {
     id: number;
@@ -106,9 +147,12 @@ type StudentPortalSnapshot = {
     open_incident_count: number;
   };
   classes: PortalClass[];
+  credits: PortalCredit[];
   assignments: PortalAssignment[];
   evaluations: PortalEvaluation[];
   class_activity?: Array<{ id: number; class_id: number; content_id: number; title: string; content_type: string; event_type: string; created_at: string }>;
+  class_summaries?: ClassSummary[];
+  class_media?: ClassMediaSnapshot[];
 };
 
 type BzSnapshot = { balance_points: number; earned_points: number; next_class: { id: number } | null };
@@ -165,6 +209,14 @@ function greetingForNow(timezone: string) {
   if (hour >= 5 && hour < 12) return "Buenos días";
   if (hour >= 12 && hour < 20) return "Buenas tardes";
   return "Buenas noches";
+}
+
+function classStatusLabel(value: string) {
+  if (value === "finished") return "Realizada";
+  if (value === "scheduled") return "Programada";
+  if (value === "active") return "En clase";
+  if (value === "cancelled") return "Cancelada";
+  return value;
 }
 
 function safeLink(value: string | null) {
@@ -360,11 +412,12 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
   const [snapshot, setSnapshot] = useState<StudentPortalSnapshot | null>(null);
   const [homeSnapshot, setHomeSnapshot] = useState<HomeSnapshot | null>(null);
   const [bzSnapshot, setBzSnapshot] = useState<BzSnapshot | null>(null);
+  const [privateVideos, setPrivateVideos] = useState<ClassPrivateVideo[]>([]);
+  const [studentNotes, setStudentNotes] = useState<StudentClassNote[]>([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
-  const [portalNow, setPortalNow] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -376,7 +429,22 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
       client.from("internal_notifications").select("id", { count: "exact", head: true }).is("read_at", null),
     ]);
     if (portalResult.error) { setError(portalResult.error.message); setLoading(false); return; }
-    setSnapshot(portalResult.data as StudentPortalSnapshot);
+    const nextSnapshot = portalResult.data as StudentPortalSnapshot;
+    setSnapshot(nextSnapshot);
+    const [videoResult, noteResult] = await Promise.all([
+      client.from("class_video_resources")
+        .select("id,class_id,person_id,external_file_id,title,mime_type,created_at")
+        .eq("visibility_scope", "private_student")
+        .eq("person_id", nextSnapshot.profile.id)
+        .order("created_at", { ascending: false }),
+      client.from("class_notes")
+        .select("id,class_id,person_id,content_id,body,visibility_scope,created_at")
+        .eq("visibility_scope", "student")
+        .eq("person_id", nextSnapshot.profile.id)
+        .order("created_at", { ascending: false }),
+    ]);
+    if (!videoResult.error) setPrivateVideos((videoResult.data ?? []) as ClassPrivateVideo[]);
+    if (!noteResult.error) setStudentNotes((noteResult.data ?? []) as StudentClassNote[]);
     if (!homeResult.error) setHomeSnapshot(homeResult.data as HomeSnapshot);
     if (!bzResult.error) setBzSnapshot(bzResult.data as BzSnapshot);
     if (!unreadResult.error) setUnread(unreadResult.count ?? 0);
@@ -384,10 +452,9 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
   }, [client]);
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
-  useEffect(() => { const timer = window.setTimeout(() => setPortalNow(Date.now()), 0); return () => clearTimeout(timer); }, []);
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 3500); return () => clearTimeout(timer); }, [toast]);
 
-  const upcoming = useMemo(() => (snapshot?.classes ?? []).filter((item) => item.status !== "finished" && item.status !== "cancelled" && (!portalNow || new Date(item.scheduled_start_at).getTime() > portalNow)).sort((a, b) => new Date(a.scheduled_start_at).getTime() - new Date(b.scheduled_start_at).getTime()), [snapshot?.classes, portalNow]);
+  const upcoming = useMemo(() => (snapshot?.classes ?? []).filter((item) => item.status !== "finished" && item.status !== "cancelled").sort((a, b) => new Date(a.scheduled_start_at).getTime() - new Date(b.scheduled_start_at).getTime()), [snapshot?.classes]);
   const nextClass = upcoming[0] ?? null;
   const activeAssignments = useMemo(() => (snapshot?.assignments ?? []).filter((item) => !["corrected", "completed"].includes(item.assignment_status)), [snapshot?.assignments]);
   const latestAssignments = useMemo(() => [...(snapshot?.assignments ?? [])].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()).slice(0, 3), [snapshot?.assignments]);
@@ -434,7 +501,7 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
     <main className={styles.main}>
       {screen === "home" ? <>
         <section className={styles.welcome}>
-          <div><h1>{greetingForNow(identity.timezone)}, {firstName}</h1><p>{nextClass ? "Tenemos cosas bonitas que preparar para la próxima clase." : "Este es tu espacio para seguir aprendiendo, practicando y descubriendo cosas nuevas."}</p></div>
+          <div><h1>{greetingForNow(identity.timezone)}, {firstName}</h1><p>{nextClass ? "Tenemos cosas bonitas que preparar para la próxima clase." : "Este es tu espacio para seguir aprendiendo, practicando y descubriendo cosas nuevas."}</p><span>Profesor · CARLOS Y ANDY</span></div>
         </section>
 
         <section className={styles.nowSection} aria-labelledby="portal-now-title">
@@ -468,9 +535,15 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
       {screen === "progress" ? <section className={styles.pageSection}><header className={styles.pageHeading}><span>PROGRESO</span><h1>En qué enfocarte ahora</h1><p>Primero lo que te ayuda hoy; después, toda tu evolución.</p></header><div className={styles.focusList}>{activeAssignments.slice(0, 3).map((item) => <article key={item.id}><Target /><div><span>{contentTypeLabels[item.content_type] ?? item.content_type}</span><strong>{item.title}</strong><small>{assignmentStateLabels[item.assignment_status] ?? item.assignment_status}</small></div></article>)}{!activeAssignments.length ? <p className={styles.emptyText}>Ahora mismo no tienes nada marcado como prioritario. Eso también significa que puedes elegir por dónde seguir.</p> : null}</div><article className={styles.openSection}><div className={styles.sectionHeading}><div><span>TU EVALUACIÓN</span><h2>Última foto de tu progreso</h2></div><strong>{latestScores.length}</strong></div>{latestScores.length ? <div className={styles.scoreList}>{latestScores.map((item) => <div key={item.aptitude_term_id}><span>{item.aptitude}</span><strong>{item.score}</strong></div>)}</div> : <p className={styles.emptyText}>Aún no hemos guardado una evaluación completa. Tu progreso puede seguir construyéndose mientras tanto.</p>}</article></section> : null}
 
       {screen === "formation" ? <section className={styles.pageSection}><header className={styles.pageHeading}><span>MI FORMACIÓN</span><h1>{formationTab === "summary" ? "Resumen" : formationTab === "practice" ? "A practicar" : formationTab === "classes" ? "Clases realizadas" : "Contenido"}</h1><p>{formationTab === "summary" ? "Tu aprendizaje, ordenado para saber qué toca y dónde encontrarlo." : formationTab === "practice" ? "Todo lo que merece práctica ahora, junto y sin hacerte buscar." : formationTab === "classes" ? "Tu historia de clases, ordenada por cada vez que nos vimos." : "Todo lo que ya forma parte de tu espacio de aprendizaje."}</p></header>
-        {formationTab === "summary" ? <div className={styles.formationAccess}><button type="button" onClick={() => goFormation("practice")}><Target /><span><strong>A practicar</strong><small>{activeAssignments.length} elementos activos</small></span><ChevronRight /></button><button type="button" onClick={() => goFormation("classes")}><CalendarDays /><span><strong>Clases realizadas</strong><small>{snapshot?.classes.filter((item) => item.status === "finished").length ?? 0} en tu historial</small></span><ChevronRight /></button><button type="button" onClick={() => goFormation("content")}><BookOpen /><span><strong>Contenido</strong><small>{snapshot?.assignments.length ?? 0} elementos en tu espacio</small></span><ChevronRight /></button></div> : null}
+        {formationTab === "summary" ? <><div className={styles.formationAccess}><button type="button" onClick={() => goFormation("practice")}><Target /><span><strong>A practicar</strong><small>{activeAssignments.length} elementos activos</small></span><ChevronRight /></button><button type="button" onClick={() => goFormation("classes")}><CalendarDays /><span><strong>Clases realizadas</strong><small>{snapshot?.classes.filter((item) => item.status === "finished").length ?? 0} en tu historial</small></span><ChevronRight /></button><button type="button" onClick={() => goFormation("content")}><BookOpen /><span><strong>Contenido</strong><small>{snapshot?.assignments.length ?? 0} elementos en tu espacio</small></span><ChevronRight /></button></div>{snapshot?.credits?.length ? <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>SALDO</span><h2>Mis bonos</h2></div><strong>{snapshot.credits.length}</strong></div><div className={styles.activityList}>{snapshot.credits.map((credit) => <div key={credit.id}><CircleCheck /><span><strong>{credit.label || (credit.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong><small>{minutesLabel(credit.balance_minutes)} disponibles</small></span></div>)}</div></article> : null}</> : null}
         {formationTab === "practice" ? <div className={styles.contentList}>{activeAssignments.map((item) => <article key={item.id}><div><span>{contentTypeLabels[item.content_type] ?? item.content_type}</span><h3>{item.title}</h3><p>{item.description || item.correction_guidance || "Lo tienes guardado para seguir trabajándolo."}</p></div><strong>{assignmentStateLabels[item.assignment_status] ?? item.assignment_status}</strong></article>)}{!activeAssignments.length ? <p className={styles.emptyText}>No tienes tareas activas ahora mismo.</p> : null}</div> : null}
-        {formationTab === "classes" ? <div className={styles.classList}>{snapshot?.classes.filter((item) => item.status === "finished").sort((a, b) => new Date(b.scheduled_start_at).getTime() - new Date(a.scheduled_start_at).getTime()).map((item) => <article key={item.id}><CalendarDays /><div><strong>{item.style || "Clase"}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(item.duration_minutes)}</span></div></article>)}{!snapshot?.classes.some((item) => item.status === "finished") ? <p className={styles.emptyText}>Cuando tengas clases realizadas, aquí podrás recorrerlas una a una.</p> : null}</div> : null}
+        {formationTab === "classes" ? <div className={styles.homeColumns}>
+          {snapshot?.class_summaries?.length ? <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>CIERRES PEDAGÓGICOS</span><h2>Resumen de mis clases</h2></div><strong>{snapshot.class_summaries.length}</strong></div><div className={styles.activityList}>{snapshot.class_summaries.slice(0, 8).map((summary) => <div key={summary.class_id}><CircleCheck /><span><strong>{dateLabel(summary.closed_at, false)}</strong><small>{summary.student_message || "Clase cerrada y documentación actualizada."}</small></span></div>)}</div></article> : null}
+          {studentNotes.length ? <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>MENSAJES DE CLASE</span><h2>Observaciones de mis clases</h2></div><strong>{studentNotes.length}</strong></div><div className={styles.activityList}>{studentNotes.slice(0, 10).map((note) => <div key={note.id}><MessageCircle /><span><strong>{dateLabel(note.created_at, false)}</strong><small>{note.body}</small></span></div>)}</div></article> : null}
+          {privateVideos.length ? <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>MULTIMEDIA</span><h2>Vídeos de mis clases</h2></div><strong>{privateVideos.length}</strong></div>{privateVideos.slice(0, 8).map((video) => <div key={video.id}><SecureDriveAsset fileId={video.external_file_id} mediaType="video" title={video.title || "Vídeo de clase"} controls className={styles.prepVideo} /><p className={styles.emptyText}>{video.title || "Vídeo de clase"}</p></div>)}</article> : null}
+          {snapshot?.class_media?.length ? <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>ARCHIVOS</span><h2>Documentación de clase</h2></div><strong>{snapshot.class_media.length}</strong></div>{snapshot.class_media.slice(0, 8).map((media) => <div key={media.id}><SecureDriveAsset fileId={media.external_file_id} mediaType={media.media_type} title={media.title || (media.media_kind === "final_dance" ? "Baile final" : "Documento de clase")} controls={media.media_type === "video"} className={styles.prepVideo} /><p className={styles.emptyText}>{media.title || (media.media_kind === "final_dance" ? "Baile final" : "Documento de clase")}</p></div>)}</article> : null}
+          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>HISTORIAL</span><h2>Mis clases</h2></div><strong>{snapshot?.classes.length ?? 0}</strong></div><div className={styles.classList}>{snapshot?.classes.sort((a, b) => new Date(b.scheduled_start_at).getTime() - new Date(a.scheduled_start_at).getTime()).map((item) => <article key={item.id}><CalendarDays /><div><strong>{item.style || "Clase"}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(item.duration_minutes)} · {classStatusLabel(item.status)}</span></div></article>)}</div>{!snapshot?.classes.length ? <p className={styles.emptyText}>Cuando tengas clases, aquí podrás recorrerlas una a una.</p> : null}</article>
+        </div> : null}
         {formationTab === "content" ? <div className={styles.contentList}>{snapshot?.assignments.map((item) => <article key={item.id}><div><span>{contentTypeLabels[item.content_type] ?? item.content_type}</span><h3>{item.title}</h3><p>{item.description || "Este contenido ya forma parte de tu espacio."}</p></div><strong>{assignmentStateLabels[item.assignment_status] ?? item.assignment_status}</strong></article>)}</div> : null}
       </section> : null}
 
