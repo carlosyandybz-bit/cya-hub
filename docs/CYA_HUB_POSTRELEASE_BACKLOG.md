@@ -22,20 +22,20 @@ Este documento gobierna el trabajo posterior al cierre P32. No volver a tratar P
 
 # PR-A — Cierres transversales
 
-## Ficha profesional de profesor — PARCIAL
-Existe históricamente `teacher_profile` con Nombre profesional, Teléfono, Biografía, Estilos impartidos y Especialidades, pero está inactivo. Las rutas `teacher_profiles.*` nunca se materializaron y la tabla no existe. Debe reutilizarse el formulario histórico sobre un modelo canónico real y mostrarse en Mi perfil para cualquier profesor.
+## Ficha profesional de profesor — COMPLETADO
+`teacher_profiles` es el modelo canónico activo y `Mi perfil` expone el formulario versionado `teacher_profile` para cualquier identidad con rol de profesor. Nombre profesional, biografía, estilos y especialidades se editan sobre la misma persona P19.
 
-## Alta de profesores — PARCIAL
-Administración solo activa roles a usuarios existentes. Falta un flujo claro y seguro de invitación/alta de profesor sin duplicar identidad.
+## Alta de profesores — COMPLETADO
+Administración dispone de `Añadir profesor`, reutiliza la persona canónica P19, crea o reutiliza Auth de forma segura, activa roles `teacher` + `student` y conserva rollback compensatorio ante una finalización incompleta.
 
-## País completo — PARCIAL
-La BD debe conservar `country_code` ISO. La UI debe dejar de pedir/mostrar solo `ES`, `FR`, etc. y usar selector/nombre completo (`España`, `Francia`...).
+## País completo — COMPLETADO
+La BD conserva `country_code` ISO-2. Altas de alumnado, edición de identidad, CRM, formularios versionados y alta de profesores usan selector completo; las superficies de lectura presentan el nombre del país en español (`España`, `Francia`...) mediante la utilidad común de países.
 
-## Preferencias — PARCIAL
-Actualmente: zona horaria, límites de saludo y contexto preferido. Ampliar únicamente preferencias personales reales, sin duplicar configuración global.
+## Preferencias — COMPLETADO
+Las preferencias personales con efecto real son zona horaria, límites de saludo y contexto/portal preferido. Apariencia, misiones, notificaciones globales, integraciones, estadísticas y defaults operativos permanecen en Administración; los datos de alumno/profesor siguen en la persona canónica. No se añaden opciones sin efecto ni duplicados de configuración global.
 
-## Copy de producto — PENDIENTE
-Eliminar mensajes de migraciones, motores, arquitectura, despliegue o desarrollo de cualquier UI final. Sustituirlos por copy breve y dedicado a profesor/alumno.
+## Copy de producto — COMPLETADO
+Las superficies finales dejan de exponer términos de migraciones, motores, arquitectura, despliegue, PostgreSQL/Supabase o desarrollo cuando no aportan una acción al usuario. Administración conserva la información funcional necesaria con lenguaje de producto y los errores de integraciones no filtran detalles internos del backend.
 
 ## Agrupación de notificaciones — PENDIENTE
 `internal_notifications` ya tiene `event_key` canónico. Agrupar visualmente las notificaciones del mismo tipo por `event_key`, con contador, expansión y lectura/destino preservados.
