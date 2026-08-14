@@ -28,7 +28,7 @@ begin
   if v_first is null then raise exception 'El nombre es obligatorio.' using errcode='22023'; end if;
   if v_email is null then raise exception 'El email es obligatorio para enviar la invitación.' using errcode='22023'; end if;
   if v_country is not null and length(v_country)<>2 then raise exception 'Selecciona un país válido.' using errcode='22023'; end if;
-  if v_phone is not null and length(private.normalize_person_phone(v_phone))<7 then raise exception 'El teléfono no es válido.' using errcode='22023'; end if;
+  if v_phone is not null and coalesce(length(private.normalize_person_phone(v_phone)),0)<7 then raise exception 'El teléfono no es válido.' using errcode='22023'; end if;
 
   select private.match_person_identity(v_email,v_phone,null) into v_person_id;
   if v_person_id is not null then
@@ -85,7 +85,7 @@ begin
   if v_first is null then raise exception 'El nombre es obligatorio.' using errcode='22023'; end if;
   if v_email is null then raise exception 'El email es obligatorio.' using errcode='22023'; end if;
   if v_country is not null and length(v_country)<>2 then raise exception 'Selecciona un país válido.' using errcode='22023'; end if;
-  if v_phone is not null and length(private.normalize_person_phone(v_phone))<7 then raise exception 'El teléfono no es válido.' using errcode='22023'; end if;
+  if v_phone is not null and coalesce(length(private.normalize_person_phone(v_phone)),0)<7 then raise exception 'El teléfono no es válido.' using errcode='22023'; end if;
 
   select private.normalize_person_email(u.email) into v_auth_email
   from auth.users u where u.id=p_auth_user_id;
