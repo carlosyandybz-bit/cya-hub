@@ -2,7 +2,7 @@ name: P28 Data Transfer
 
 on:
   push:
-    branches: [feat/p28-import-export, main]
+    branches: [feat/p28-import-export]
     paths:
       - 'app/admin-data-transfer.tsx'
       - 'app/data-transfer-formats.ts'
@@ -11,8 +11,7 @@ on:
       - 'db/migrations/v67_p28_data_transfer_validation_followup.sql'
       - 'tests/p28-data-transfer.test.mjs'
       - '.github/workflows/p28-data-transfer.yml'
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read

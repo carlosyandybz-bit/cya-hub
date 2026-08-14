@@ -2,7 +2,7 @@ name: P25 Missions
 
 on:
   push:
-    branches: [feat/p25-mission-expiry-engine, main]
+    branches: [feat/p25-mission-expiry-engine]
     paths:
       - 'app/admin-view.tsx'
       - 'app/home-view.tsx'
@@ -12,8 +12,7 @@ on:
       - 'tests/**'
       - 'qa/tests/p25-missions.spec.ts'
       - '.github/workflows/p25-missions.yml'
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read

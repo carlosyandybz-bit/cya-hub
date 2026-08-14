@@ -1,14 +1,6 @@
 name: Validate P23 Enseñanza
 
 on:
-  pull_request:
-    paths:
-      - 'app/**'
-      - 'db/migrations/**'
-      - 'supabase/v51_p23_teaching_graph_contract.sql'
-      - 'tests/**'
-      - 'docs/P23_ENSENANZA_RELACIONES_ARBOLES.md'
-      - '.github/workflows/validate-p23-teaching.yml'
   workflow_dispatch:
 
 permissions:

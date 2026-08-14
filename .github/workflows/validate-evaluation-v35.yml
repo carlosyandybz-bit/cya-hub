@@ -3,11 +3,6 @@ name: Validate CYA Hub main
 on:
   push:
     branches: [main]
-    paths:
-      - "app/**/*.tsx"
-      - "app/**/*.css"
-      - "supabase/*.sql"
-      - ".github/workflows/validate-evaluation-v35.yml"
   workflow_dispatch:
 
 permissions:

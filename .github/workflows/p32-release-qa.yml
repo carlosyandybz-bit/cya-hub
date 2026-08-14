@@ -2,7 +2,7 @@ name: P32 Release QA
 
 on:
   push:
-    branches: [feat/p32-release-qa, main]
+    branches: [feat/p32-release-qa]
     paths:
       - 'app/**'
       - 'db/migrations/v72*.sql'
@@ -11,7 +11,8 @@ on:
       - 'tests/p32-api-hardening.test.mjs'
       - '.github/workflows/p32-release-qa.yml'
   pull_request:
-    branches: [feat/p31-admin-config, main]
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,8 +27,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: P32 release contracts
-        run: node --test tests/p32-release-qa.test.mjs tests/p32-api-hardening.test.mjs
+      - name: P32 release and CI contracts
+        run: node --test tests/p32-release-qa.test.mjs tests/p32-api-hardening.test.mjs tests/ci-workflow-scope.test.mjs
       - name: Preserve P19-P31 contracts
         run: >-
           node --test
@@ -45,6 +46,7 @@ jobs:
           tests/p29-marketing.test.mjs
           tests/p30-statistics.test.mjs
           tests/p31-admin-config.test.mjs
+          tests/postrelease-teacher-invite.test.mjs
           tests/documentation-consistency.test.mjs
       - name: Lint
         run: npm run lint
