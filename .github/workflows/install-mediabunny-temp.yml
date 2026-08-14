@@ -1,0 +1,31 @@
+name: Install Mediabunny temporary
+
+on:
+  push:
+    branches: [feat/postrelease-video-compression]
+    paths:
+      - '.github/workflows/install-mediabunny-temp.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/postrelease-video-compression
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install mediabunny@1.51.0 --save
+      - run: npm ls mediabunny
+      - name: Commit dependency
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json
+          git commit -m 'Add Mediabunny video processing dependency'
+          git push origin HEAD:feat/postrelease-video-compression
