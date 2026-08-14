@@ -1,0 +1,179 @@
+.shell {
+  display: grid;
+  gap: 18px;
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.heroText {
+  display: grid;
+  gap: 6px;
+}
+
+.heroText h1,
+.heroText h2,
+.heroText p {
+  margin: 0;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric {
+  min-height: 92px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+
+.metric strong {
+  font-size: 1.45rem;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 2fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.programList,
+.lessonList,
+.enrollmentList,
+.moduleList {
+  display: grid;
+  gap: 8px;
+}
+
+.programButton,
+.lessonRow,
+.enrollmentRow,
+.moduleRow {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+}
+
+.programButton span,
+.lessonRow span,
+.enrollmentRow span,
+.moduleRow span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.programButton small,
+.lessonRow small,
+.enrollmentRow small,
+.moduleRow small {
+  opacity: .72;
+}
+
+.programButtonActive {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.formWide {
+  grid-column: 1 / -1;
+}
+
+.actions,
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rowActions button,
+.actions button,
+.moduleRow button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.lessonNumber {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.soon {
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 28px;
+}
+
+.soonInner {
+  max-width: 560px;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.soonIcon {
+  width: 58px;
+  height: 58px;
+}
+
+.empty {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  opacity: .72;
+}
+
+@media (max-width: 900px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .hero {
+    align-items: flex-start;
+  }
+
+  .formGrid,
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .programButton,
+  .lessonRow,
+  .enrollmentRow,
+  .moduleRow {
+    min-height: 52px;
+  }
+}

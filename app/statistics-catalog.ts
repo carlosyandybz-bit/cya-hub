@@ -1,5 +1,5 @@
 export type StatisticFormat = "number" | "currency" | "minutes" | "percentage";
-export type StatisticBlock = "classes" | "students" | "business" | "teaching" | "bz" | "feedback" | "marketing" | "operations";
+export type StatisticBlock = "classes" | "students" | "business" | "teaching" | "bz" | "feedback" | "academy" | "marketing" | "operations";
 export type StatisticFilterKey =
   | "teacher"
   | "student"
@@ -32,6 +32,7 @@ export const statisticBlockLabels: Record<StatisticBlock, string> = {
   teaching: "Enseñanza",
   bz: "BZ Points",
   feedback: "Feedback Online",
+  academy: "Academia Online",
   marketing: "Marketing",
   operations: "Operación",
 };
@@ -65,6 +66,11 @@ export const statisticCatalog: StatisticMetric[] = [
   { key:"feedback_response_hours", block:"feedback", label:"Tiempo medio de respuesta", format:"number", filters:["student","style"], description:"Horas medias entre el envío del vídeo y la finalización del Feedback." },
   { key:"feedback_credits_purchased", block:"feedback", label:"Créditos de Feedback comprados", format:"number", filters:["student"], description:"Créditos añadidos por compras confirmadas; excluye ajustes manuales." },
   { key:"feedback_credits_consumed", block:"feedback", label:"Créditos de Feedback consumidos", format:"number", filters:["student"], description:"Créditos consumidos al enviar solicitudes; excluye ajustes y reembolsos." },
+
+  { key:"academy_programs_published", block:"academy", label:"Programas publicados", format:"number", filters:["style"], description:"Programas de Academia publicados durante el periodo." },
+  { key:"academy_enrollments_active", block:"academy", label:"Matrículas activas", format:"number", filters:["student"], description:"Matrículas activadas durante el periodo que continúan activas." },
+  { key:"academy_people_enrolled", block:"academy", label:"Personas matriculadas", format:"number", filters:[], description:"Personas distintas matriculadas durante el periodo." },
+  { key:"academy_progress_percent", block:"academy", label:"Progreso medio", format:"percentage", filters:["student"], description:"Porcentaje de lecciones completadas en las matrículas iniciadas durante el periodo." },
 
   { key:"marketing_spend", block:"marketing", label:"Inversión en campañas", format:"currency", filters:["campaign"], description:"Inversión registrada en campañas." },
   { key:"marketing_revenue", block:"marketing", label:"Ingresos atribuidos", format:"currency", filters:["campaign"], description:"Ingresos atribuidos a campañas." },

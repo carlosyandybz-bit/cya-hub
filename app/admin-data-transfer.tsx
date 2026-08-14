@@ -30,6 +30,7 @@ const exportDomains = [
   ["calendar", "Agenda y calendario"],
   ["bz", "BZ Points y recompensas"],
   ["feedback", "Feedback Online"],
+  ["academy", "Academia Online"],
   ["settings", "Configuración"],
   ["complete", "Copia completa"],
 ] as const;
@@ -46,6 +47,7 @@ const importDomains = [
   ["marketing_rates", "Tarifas"],
   ["bz", "BZ Points y recompensas"],
   ["feedback", "Feedback Online"],
+  ["academy", "Academia Online"],
   ["complete", "Copia CYA completa"],
 ] as const;
 
@@ -99,6 +101,7 @@ export function AdminDataTransfer({
     try {
       const parsed = await parseTransferFile(importFile);
       if (parsed.kind === "rows" && importDomain === "feedback") throw new Error("Feedback Online se importa desde una copia JSON exportada por CYA Hub, no desde CSV/Excel plano.");
+      if (parsed.kind === "rows" && importDomain === "academy") throw new Error("Academia Online se importa desde una copia JSON exportada por CYA Hub, no desde CSV/Excel plano.");
       if (parsed.kind === "bundle") {
         if (importDomain !== "complete" && parsed.bundle.domain !== importDomain && !(importDomain === "teaching" && parsed.bundle.domain === "teaching")) {
           throw new Error(`El archivo es una copia de «${parsed.bundle.domain}». Selecciona ese tipo o «Copia CYA completa».`);

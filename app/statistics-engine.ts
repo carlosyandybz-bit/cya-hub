@@ -324,6 +324,41 @@ async function feedbackMetric(client:SupabaseClient,bounds:PeriodBounds,filters:
   throw new Error("Métrica de Feedback Online no soportada.");
 }
 
+
+async function academyMetric(client:SupabaseClient,bounds:PeriodBounds,filters:StatisticFilters,key:string){
+  const student=numberFilter(filters,"student"),style=numberFilter(filters,"style");
+  if(key==="academy_programs_published"){
+    let query=client.from("academy_programs").select("id",{count:"exact",head:true}).eq("publication_status","published").gte("published_at",bounds.fromIso).lt("published_at",bounds.toIso);
+    if(style)query=query.eq("style_term_id",style);
+    return exactCount(query);
+  }
+  if(key==="academy_enrollments_active"){
+    let query=client.from("academy_enrollments").select("id",{count:"exact",head:true}).eq("status","active").gte("starts_at",bounds.fromIso).lt("starts_at",bounds.toIso);
+    if(student)query=query.eq("person_id",student);
+    return exactCount(query);
+  }
+  if(key==="academy_people_enrolled"){
+    type Row={person_id:number};
+    const rows=await collectPages<Row>(async(from,to)=>{
+      const result=await client.from("academy_enrollments").select("person_id").in("status",["active","completed"]).gte("starts_at",bounds.fromIso).lt("starts_at",bounds.toIso).range(from,to);
+      return {data:(result.data??[]) as Row[],error:result.error};
+    });
+    return new Set(rows.map((row)=>row.person_id)).size;
+  }
+  if(key==="academy_progress_percent"){
+    type EnrollmentRef={person_id:number;starts_at:string};
+    type Row={status:string;academy_enrollments:EnrollmentRef|EnrollmentRef[]|null};
+    const rows=await collectPages<Row>(async(from,to)=>{
+      let query=client.from("academy_progress").select("status,academy_enrollments!inner(person_id,starts_at)").gte("academy_enrollments.starts_at",bounds.fromIso).lt("academy_enrollments.starts_at",bounds.toIso);
+      if(student)query=query.eq("academy_enrollments.person_id",student);
+      const result=await query.range(from,to);
+      return {data:(result.data??[]) as Row[],error:result.error};
+    });
+    return rows.length?Math.round(rows.filter((row)=>row.status==="completed").length*1000/rows.length)/10:null;
+  }
+  throw new Error("Métrica de Academia Online no soportada.");
+}
+
 export async function calculateStatistic(client:SupabaseClient,metricKey:string,period:StatisticPeriod,filters:StatisticFilters={}):Promise<StatisticValue>{
   const metric=statisticCatalogByKey.get(metricKey);
   if(!metric)throw new Error(`Métrica no soportada: ${metricKey}`);
@@ -339,6 +374,7 @@ export async function calculateStatistic(client:SupabaseClient,metricKey:string,
   else if(metricKey==="evaluations_count"||metricKey==="evaluation_average")value=await evaluationMetric(client,bounds,filters,metricKey==="evaluation_average");
   else if(metric.block==="bz")value=await bzMetric(client,bounds,filters,metricKey);
   else if(metric.block==="feedback")value=await feedbackMetric(client,bounds,filters,metricKey);
+  else if(metric.block==="academy")value=await academyMetric(client,bounds,filters,metricKey);
   else if(metric.block==="marketing")value=marketingValue(metricKey,await marketingRows(client,bounds,filters));
   else if(metricKey.startsWith("missions_"))value=await missionMetric(client,bounds,filters,metricKey);
   else if(metricKey.startsWith("notification"))value=await notificationMetric(client,bounds,filters,metricKey);
