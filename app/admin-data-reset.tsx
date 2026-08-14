@@ -84,13 +84,13 @@ const scopes: Array<{
   {
     scope: "students",
     title: "Todos los alumnos",
-    description: "Perfiles de alumno, clases, bonos, evaluaciones, medidas, asignaciones, incidencias e historial BZ. Los contactos CRM se conservan.",
+    description: "Perfiles de alumno, clases, bonos, evaluaciones, medidas, asignaciones, incidencias, historial BZ y actividad de Feedback Online. Los contactos CRM se conservan.",
     icon: UserRoundX,
   },
   {
     scope: "teaching",
     title: "Toda la enseñanza",
-    description: "Correcciones, explicaciones, ejercicios, secuencias, relaciones, multimedia y sus asignaciones/medidas.",
+    description: "Correcciones, explicaciones, ejercicios, secuencias, relaciones, multimedia, asignaciones/medidas y vínculos de Feedback Online con ese contenido.",
     icon: GraduationCap,
   },
   {
@@ -126,13 +126,13 @@ const scopes: Array<{
   {
     scope: "operational",
     title: "Limpiar datos operativos",
-    description: "Borra personas no vinculadas al equipo, alumnado, clases, bonos, evaluaciones, CRM, marketing, misiones, agenda, avisos, formularios enviados e historial BZ. Conserva la biblioteca de enseñanza y la configuración de BZ.",
+    description: "Borra personas no vinculadas al equipo, alumnado, clases, bonos, evaluaciones, CRM, marketing, misiones, agenda, avisos, formularios enviados, historial BZ y actividad de Feedback Online. Conserva la biblioteca de enseñanza y la configuración de BZ/Feedback.",
     icon: RotateCcw,
   },
   {
     scope: "full",
     title: "Reinicio completo de CYA Hub",
-    description: "Deja la aplicación vacía de datos de negocio y contenido creado: alumnado, personas de prueba, enseñanza, clases, bonos, evaluaciones, medidas, CRM, marketing, estadísticas, misiones, agenda, formularios enviados, tarifas, frases e historial BZ/de pruebas. Conserva la configuración base de BZ.",
+    description: "Deja la aplicación vacía de datos de negocio y contenido creado: alumnado, personas de prueba, enseñanza, clases, bonos, evaluaciones, medidas, CRM, marketing, estadísticas, misiones, agenda, formularios enviados, tarifas, frases, historial BZ y actividad de Feedback Online. Conserva la configuración base de BZ/Feedback.",
     icon: ShieldAlert,
   },
 ];
@@ -156,6 +156,7 @@ const countLabels: Record<string, string> = {
   premios: "premios",
   premios_progreso: "premios de progreso",
   bz_points: "movimientos y acciones BZ",
+  feedback_online: "registros de Feedback Online",
   medidas: "medidas",
   medidas_contenido: "medidas de contenido",
   asignaciones: "asignaciones",

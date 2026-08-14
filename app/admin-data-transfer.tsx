@@ -29,6 +29,7 @@ const exportDomains = [
   ["forms", "Formularios"],
   ["calendar", "Agenda y calendario"],
   ["bz", "BZ Points y recompensas"],
+  ["feedback", "Feedback Online"],
   ["settings", "Configuración"],
   ["complete", "Copia completa"],
 ] as const;
@@ -44,6 +45,7 @@ const importDomains = [
   ["mission_rules", "Reglas de misión"],
   ["marketing_rates", "Tarifas"],
   ["bz", "BZ Points y recompensas"],
+  ["feedback", "Feedback Online"],
   ["complete", "Copia CYA completa"],
 ] as const;
 
@@ -96,6 +98,7 @@ export function AdminDataTransfer({
     setRestoreConfirmation("");
     try {
       const parsed = await parseTransferFile(importFile);
+      if (parsed.kind === "rows" && importDomain === "feedback") throw new Error("Feedback Online se importa desde una copia JSON exportada por CYA Hub, no desde CSV/Excel plano.");
       if (parsed.kind === "bundle") {
         if (importDomain !== "complete" && parsed.bundle.domain !== importDomain && !(importDomain === "teaching" && parsed.bundle.domain === "teaching")) {
           throw new Error(`El archivo es una copia de «${parsed.bundle.domain}». Selecciona ese tipo o «Copia CYA completa».`);
