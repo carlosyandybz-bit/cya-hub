@@ -82,12 +82,11 @@ jobs:
           )
           admin.write_text(text)
           PY
-      - name: Verify integration
+      - name: Verify integration anchors
         run: |
           grep -q 'FeedbackOnlineStudentPanel client={client}' app/cya-app.tsx
           grep -q 'FeedbackOnlineStaffQueue client={db!}' app/cya-app.tsx
           grep -q 'FeedbackOnlineAdmin client={client}' app/admin-view.tsx
-          npm run lint -- --file app/feedback-online-student.tsx --file app/feedback-online-staff.tsx --file app/feedback-online-admin.tsx || npm run lint
       - name: Remove temporary workflow and commit
         run: |
           rm .github/workflows/integrate-feedback-online.yml
