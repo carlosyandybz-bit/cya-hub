@@ -50,14 +50,12 @@ test("purchasing Feedback activates the existing canonical person as a student w
 });
 
 test("credits are ledger-derived, serialized and idempotent on submit/refund",()=>{
-  assert.match(v80,/idempotency_key text not null unique/);
-  assert.match(v80,/on conflict\(idempotency_key\) do nothing/);
-  assert.match(v80,/perform 1 from public\.people where id=v_person and active for update/);
-  assert.match(v80,/'feedback:request:'\|\|v_request\.id\|\|':consume'/);
-  assert.match(v80,/'feedback:request:'\|\|v_request\.id\|\|':refund'/);
-  assert.match(v80,/private\.feedback_add_ledger\(v_person,null,v_request\.id,'consumption',-1/);
-  assert.match(v80,/private\.feedback_add_ledger\(v_person,null,v_request\.id,'refund',1/);
-  assert.match(v80,/feedback_credit_balance[\s\S]*sum\(delta_credits\)/);
+  assert.ok(v80.includes("idempotency_key text not null unique"));
+  assert.ok(v80.includes("on conflict(idempotency_key) do nothing returning * into v_row"));
+  assert.ok(v80.includes("perform 1 from public.people where id=v_person and active for update;"));
+  assert.ok(v80.includes("private.feedback_add_ledger(v_person,null,v_request.id,'consumption',-1,'feedback:request:'||v_request.id||':consume'"));
+  assert.ok(v80.includes("private.feedback_add_ledger(v_person,null,v_request.id,'refund',1,'feedback:request:'||v_request.id||':refund'"));
+  assert.match(v80,/create or replace function public\.feedback_credit_balance[\s\S]*?from public\.feedback_credit_ledger where person_id=v_person;/);
 });
 
 test("all Feedback writes stay behind RLS and guarded RPCs",()=>{
