@@ -94,10 +94,10 @@ export function P31IntegrationsAdmin({ client, integrations, notify }: Props) {
         </div>
         <h3>Google Drive</h3>
         <p>{drive?.verified
-          ? `Acceso real confirmado. Carpeta de enseñanza: ${drive.folderName}.`
-          : drive?.error || (drive?.configured ? "Hay configuración de servidor, pero Google todavía no ha confirmado el acceso." : "El servidor todavía no dispone de una configuración completa de Drive.")}</p>
+          ? `Acceso confirmado. Carpeta de enseñanza: ${drive.folderName}.`
+          : drive?.error || (drive?.configured ? "La conexión está configurada, pero Google todavía no ha confirmado el acceso." : "Google Drive todavía no está configurado.")}</p>
         <div className="status-list">
-          <div><ShieldCheck /><span>Los binarios permanecen en Drive; CYA conserva referencias y organización.</span></div>
+          <div><ShieldCheck /><span>Los archivos permanecen en Drive; CYA conserva sus referencias y organización.</span></div>
         </div>
         <div className="actions">
           <button className="btn ghost" type="button" disabled={checkingDrive} onClick={() => void checkDrive(true)}>
@@ -107,23 +107,23 @@ export function P31IntegrationsAdmin({ client, integrations, notify }: Props) {
       </article>
 
       <article className="card pad">
-        <div className="card-head"><MessageCircle /><span className="badge">Sin API verificada</span></div>
+        <div className="card-head"><MessageCircle /><span className="badge">Sin automatización</span></div>
         <h3>{whatsapp?.label || "WhatsApp"}</h3>
-        <p>CYA puede preparar el mensaje y abrir WhatsApp para el envío manual. No se presenta como envío automático mientras no exista dispatcher/API verificado.</p>
+        <p>CYA puede preparar el mensaje y abrir WhatsApp para el envío manual. El envío automático seguirá desactivado hasta que haya una conexión compatible.</p>
         {whatsapp?.last_error ? <small>{whatsapp.last_error}</small> : null}
       </article>
 
       <article className="card pad">
-        <div className="card-head"><Mail /><span className="badge">Sin API verificada</span></div>
+        <div className="card-head"><Mail /><span className="badge">Sin automatización</span></div>
         <h3>{email?.label || "Email"}</h3>
-        <p>CYA puede preparar el correo y abrir el cliente del usuario. No se marca como conectado mientras no exista un proveedor de envío comprobado.</p>
+        <p>CYA puede preparar el correo y abrir tu aplicación de email. El envío automático seguirá desactivado hasta que haya una conexión compatible.</p>
         {email?.last_checked_at ? <small>Último registro: {humanDate(email.last_checked_at)}</small> : null}
       </article>
 
       <article className="card pad">
-        <div className="card-head"><Megaphone /><span className="badge">No integrada</span></div>
+        <div className="card-head"><Megaphone /><span className="badge">No conectada</span></div>
         <h3>{meta?.label || "Meta"}</h3>
-        <p>Instagram y Facebook siguen disponibles como canales de planificación de Marketing. Una conexión API de Meta solo se mostrará aquí cuando exista y pueda verificarse.</p>
+        <p>Instagram y Facebook siguen disponibles para planificar contenido. La publicación automática se activará solo cuando exista una conexión compatible y verificada.</p>
       </article>
     </div>
   </section>;
