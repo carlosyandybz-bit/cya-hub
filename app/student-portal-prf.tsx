@@ -370,7 +370,7 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
     setLoading(true); setError("");
     await client.rpc("refresh_missions");
     const [portalResult, homeResult, bzResult, unreadResult] = await Promise.all([
-      client.rpc("get_my_student_portal_v2"),
+      client.rpc("student_portal_snapshot"),
       client.rpc("home_snapshot"),
       client.rpc("bz_snapshot"),
       client.from("internal_notifications").select("id", { count: "exact", head: true }).is("read_at", null),
