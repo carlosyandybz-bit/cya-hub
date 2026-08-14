@@ -33,6 +33,10 @@ begin
   select private.match_person_identity(v_email,v_phone,null) into v_person_id;
   if v_person_id is not null then
     select * into v_person from public.people where id=v_person_id and active;
+    if private.normalize_person_email(v_person.email) is not null
+       and private.normalize_person_email(v_person.email) is distinct from v_email then
+      raise exception 'La ficha encontrada por teléfono ya tiene otro email. Revísala antes de enviar la invitación.' using errcode='23505';
+    end if;
   end if;
 
   return jsonb_build_object(
@@ -100,6 +104,10 @@ begin
   if v_person_id is not null then
     select * into v_person from public.people where id=v_person_id and active for update;
     v_reused:=true;
+    if private.normalize_person_email(v_person.email) is not null
+       and private.normalize_person_email(v_person.email) is distinct from v_email then
+      raise exception 'La ficha encontrada por teléfono ya tiene otro email. Revísala antes de continuar.' using errcode='23505';
+    end if;
     if v_person.auth_user_id is not null and v_person.auth_user_id is distinct from p_auth_user_id then
       raise exception 'La ficha encontrada ya está vinculada a otra cuenta. Revísala antes de continuar.' using errcode='23505';
     end if;
