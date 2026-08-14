@@ -1,0 +1,23 @@
+.loading {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  background: #f7f7fb;
+  color: #17151f;
+  text-align: center;
+}
+
+.loading strong {
+  color: #6d4aff;
+  font-size: 28px;
+  letter-spacing: -.06em;
+}
+
+.loading span {
+  color: #706d7b;
+  font-size: 14px;
+}
