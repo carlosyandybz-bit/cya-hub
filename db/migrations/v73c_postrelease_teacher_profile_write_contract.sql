@@ -30,7 +30,7 @@ begin
       raise exception 'Las notas internas solo puede editarlas el equipo.' using errcode='42501';
     end if;
     if v_key like 'teacher_profiles.%' and not p_staff then
-      raise exception 'El perfil profesional solo puede editarlo el equipo.' using errcode='42501';
+      raise exception 'El perfil profesional solo puede editlo el equipo.' using errcode='42501';
     end if;
   end loop;
 
@@ -88,6 +88,9 @@ begin
 
   if v_teacher_needed then
     if not p_staff then raise exception 'No tienes permiso para editar el perfil profesional.' using errcode='42501'; end if;
+    if p_person_id is distinct from (select private.current_person_id()) and not (select private.is_admin()) then
+      raise exception 'Solo puedes editar tu propio perfil profesional.' using errcode='42501';
+    end if;
 
     if p_updates ? 'teacher_profiles.styles' then
       v_styles:=p_updates->'teacher_profiles.styles';
