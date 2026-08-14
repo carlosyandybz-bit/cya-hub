@@ -37,6 +37,12 @@ test("same-tab auth changes wake the entry router on the active Supabase client 
   assert.doesNotMatch(router, /setInterval/);
 });
 
+test("entry router uses the canonical identity_context RPC used by CyaApp", () => {
+  assert.match(router, /client\.rpc\("identity_context"\)/);
+  assert.match(cyaApp, /db\.rpc\("identity_context"\)/);
+  assert.doesNotMatch(router, /get_identity_context/);
+});
+
 test("student header is logo + notifications + avatar, while greeting lives in Inicio", () => {
   const headerStart = portal.indexOf("<header className={styles.topbar}");
   const headerEnd = portal.indexOf("</header>", headerStart);
