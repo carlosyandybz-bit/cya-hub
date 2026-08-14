@@ -84,7 +84,7 @@ const scopes: Array<{
   {
     scope: "students",
     title: "Todos los alumnos",
-    description: "Perfiles de alumno, clases, bonos, evaluaciones, medidas, asignaciones e incidencias. Los contactos CRM se conservan.",
+    description: "Perfiles de alumno, clases, bonos, evaluaciones, medidas, asignaciones, incidencias e historial BZ. Los contactos CRM se conservan.",
     icon: UserRoundX,
   },
   {
@@ -96,13 +96,13 @@ const scopes: Array<{
   {
     scope: "classes",
     title: "Todas las clases",
-    description: "Clases, participantes, notas, archivos, contenidos trabajados, evaluaciones de clase y cierre financiero de esas clases.",
+    description: "Clases, participantes, notas, archivos, contenidos trabajados, evaluaciones, cierre financiero y movimientos BZ derivados de esas clases.",
     icon: CalendarClock,
   },
   {
     scope: "credits",
     title: "Bonos y finanzas",
-    description: "Todos los bonos, miembros y movimientos asociados. Las clases permanecen, pero pierden las referencias al bono borrado.",
+    description: "Todos los bonos, miembros, movimientos y BZ derivados de la compra. Las clases permanecen, pero pierden las referencias al bono borrado.",
     icon: WalletCards,
   },
   {
@@ -126,13 +126,13 @@ const scopes: Array<{
   {
     scope: "operational",
     title: "Limpiar datos operativos",
-    description: "Borra personas no vinculadas al equipo, alumnado, clases, bonos, evaluaciones, CRM, marketing, misiones, agenda, avisos y formularios enviados. Conserva la biblioteca de enseñanza y configuración.",
+    description: "Borra personas no vinculadas al equipo, alumnado, clases, bonos, evaluaciones, CRM, marketing, misiones, agenda, avisos, formularios enviados e historial BZ. Conserva la biblioteca de enseñanza y la configuración de BZ.",
     icon: RotateCcw,
   },
   {
     scope: "full",
     title: "Reinicio completo de CYA Hub",
-    description: "Deja la aplicación vacía de datos de negocio y contenido creado: alumnado, personas de prueba, enseñanza, clases, bonos, evaluaciones, medidas, CRM, marketing, estadísticas, misiones, agenda, formularios enviados, tarifas, frases e historial de pruebas.",
+    description: "Deja la aplicación vacía de datos de negocio y contenido creado: alumnado, personas de prueba, enseñanza, clases, bonos, evaluaciones, medidas, CRM, marketing, estadísticas, misiones, agenda, formularios enviados, tarifas, frases e historial BZ/de pruebas. Conserva la configuración base de BZ.",
     icon: ShieldAlert,
   },
 ];
@@ -155,6 +155,7 @@ const countLabels: Record<string, string> = {
   decisiones: "decisiones",
   premios: "premios",
   premios_progreso: "premios de progreso",
+  bz_points: "movimientos y acciones BZ",
   medidas: "medidas",
   medidas_contenido: "medidas de contenido",
   asignaciones: "asignaciones",
