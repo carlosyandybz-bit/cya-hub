@@ -27,8 +27,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: P32 release contracts
-        run: node --test tests/p32-release-qa.test.mjs tests/p32-api-hardening.test.mjs
+      - name: P32 release and CI contracts
+        run: node --test tests/p32-release-qa.test.mjs tests/p32-api-hardening.test.mjs tests/ci-workflow-scope.test.mjs
       - name: Preserve P19-P31 contracts
         run: >-
           node --test
