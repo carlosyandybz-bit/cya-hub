@@ -135,7 +135,19 @@ Deno.serve(async (request) => {
       p_phone: preflight.phone,
       p_country_code: preflight.country_code,
     });
-    if (finalize.error) return json({ ok: false, error: finalize.error.message, invitation_sent: invitationSent });
+    if (finalize.error) {
+      // Si esta operación acaba de crear la cuenta Auth, no dejamos una invitación
+      // parcialmente provisionada que pueda entrar solo como alumno.
+      if (invitationSent) {
+        try {
+          const cleanup = await admin.auth.admin.deleteUser(user.id);
+          if (cleanup.error) console.error("teacher-invite auth rollback failed", cleanup.error);
+        } catch (cleanupError) {
+          console.error("teacher-invite auth rollback failed", cleanupError);
+        }
+      }
+      return json({ ok: false, error: finalize.error.message, invitation_sent: invitationSent });
+    }
 
     return json({
       ok: true,
