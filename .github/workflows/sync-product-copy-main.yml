@@ -1,0 +1,44 @@
+name: Sync product copy with main
+
+on:
+  push:
+    branches: [feat/postrelease-product-copy]
+    paths:
+      - '.github/workflows/sync-product-copy-main.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/postrelease-product-copy
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Merge current main and extend canonical P32 gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+          node <<'NODE'
+          const { readFileSync, writeFileSync } = require('node:fs');
+          const path='.github/workflows/p32-release-qa.yml';
+          let source=readFileSync(path,'utf8');
+          const before='tests/p32-release-qa.test.mjs tests/p32-api-hardening.test.mjs tests/ci-workflow-scope.test.mjs tests/country-presentation.test.mjs';
+          const after=before+' tests/product-copy.test.mjs';
+          if(!source.includes(before) || source.includes(after)) throw new Error('Unexpected P32 contract line while syncing product copy');
+          source=source.replace(before,after);
+          writeFileSync(path,source);
+          NODE
+          git rm .github/workflows/sync-product-copy-main.yml
+          git add .github/workflows/p32-release-qa.yml
+          git commit --amend --no-edit
+          git push origin HEAD:feat/postrelease-product-copy
