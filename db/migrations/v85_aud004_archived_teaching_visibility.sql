@@ -17,40 +17,32 @@ where not active
   and publication_status='archived'
   and visibility<>'staff';
 
+-- Mantiene exactamente la firma pública existente (RETURNS teaching_contents).
 create or replace function public.archive_teaching_content(p_content_id bigint)
-returns void
+returns public.teaching_contents
 language plpgsql
-security invoker
 set search_path=''
 as $$
+declare
+  v_content public.teaching_contents;
 begin
   if not (select private.is_staff()) then
     raise exception 'No tienes permiso para archivar enseñanza.' using errcode='42501';
-  end if;
-
-  if not exists(
-    select 1
-    from public.teaching_contents
-    where id=p_content_id
-      and active
-  ) then
-    raise exception 'El contenido no existe o ya está archivado.' using errcode='P0002';
-  end if;
-
-  if exists(
-    select 1
-    from public.student_content_assignments
-    where content_id=p_content_id
-      and assignment_status not in ('corrected','explained','completed')
-  ) then
-    raise exception 'No puedes archivar un contenido con asignaciones activas.' using errcode='23503';
   end if;
 
   update public.teaching_contents
   set active=false,
       publication_status='archived',
       visibility='staff'
-  where id=p_content_id;
+  where id=p_content_id
+    and active
+  returning * into v_content;
+
+  if not found then
+    raise exception 'El contenido no existe o ya está archivado.' using errcode='P0002';
+  end if;
+
+  return v_content;
 end;
 $$;
 
