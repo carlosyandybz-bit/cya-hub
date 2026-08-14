@@ -157,12 +157,15 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await login(page, "student");
     await expect(page.getByText("Profesor · CARLOS Y ANDY", { exact: true })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText("QA · Profesor", { exact: true })).toHaveCount(0);
+    const portalNav = page.getByRole("navigation", { name: "Portal CYA" });
+    await portalNav.getByRole("button", { name: "Mi formación", exact: true }).click();
+    await page.getByRole("button", { name: /Clases realizadas/i }).first().click();
     await expect(page.getByRole("heading", { name: "Resumen de mis clases" })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(studentSummary, { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Observaciones de mis clases" })).toBeVisible();
     await expect(page.getByText(observation, { exact: true })).toBeVisible();
-    const classHistory = page.locator("article").filter({ has: page.getByRole("heading", { name: "Mis clases" }) });
-    await expect(classHistory.getByText("Realizada", { exact: true }).first()).toBeVisible();
+    const classHistory = page.locator("article").filter({ has: page.getByRole("heading", { name: "Mis clases", exact: true }) });
+    await expect(classHistory).toContainText("Realizada");
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-student-received-class`);
 
     await resetBrowserSession(page);

@@ -132,6 +132,7 @@ export function AccountMenu({
     setBusy(true);
     try {
       await onExperience(value);
+      window.dispatchEvent(new CustomEvent("cya:experience-change", { detail: value }));
       setOpen(false);
       setPortalOpen(false);
     } finally {

@@ -1,126 +1,154 @@
 # CYA HUB — BACKLOG POST-RELEASE
 
 **Corte:** 14/08/2026  
-**Base:** `main` tras P32 + hotfix post-release  
-**P18–P32:** CERRADOS en código y Supabase producción.
+**Base técnica:** `main` tras PR #73  
+**Orden operativo:** Auditoría Viva de Google Drive.
 
-Este documento gobierna el trabajo posterior al cierre P32. No volver a tratar P18–P32 como paquetes pendientes.
+Este documento resume el estado técnico post-release. No sustituye el orden ni las decisiones funcionales de la Auditoría Viva en Drive.
 
 ## Estado confirmado
 
-- `main` y Supabase producción alineados hasta el último bloque fusionado; BZ Points backend v76–v79 está desplegado y el frontend se integra mediante PR-B.
-- Browser QA final verde en profesor/alumno/admin e iPhone/escritorio en el último `main` cerrado.
-- Backup completo actual: 92 tablas, incluidas las 5 tablas canónicas de BZ Points.
-- Reset completo conoce Estadísticas P30 y BZ Points, y preserva configuración P31 + reglas/recompensas BZ.
-- Hotfix de frases diarias, copy de producto y agrupación por entidad de Notificaciones integrados.
+- P18–P32 cerrados en código y Supabase producción.
+- PR-A cierres transversales: completado.
+- PR-B BZ Points: completado y desplegado.
+- PR-C Feedback Online: completado y desplegado, producto configurable/inactivo por defecto hasta configuración real.
+- PR-D Academia Online: backend/profesor/admin completados; alumno permanece en `Próximamente` hasta apertura comercial real.
+- PR-E multimedia/vídeo: completado con compresión oportunista y subida directa resumible a Drive.
+- PR-F rediseño global: **activo**; PR-F1 portal de usuario/alumno en implementación.
+- Browser QA del último `main` cerrado: verde en profesor/alumno/admin e iPhone/escritorio.
+- Copia completa CYA tras Academia: 97 tablas.
 
 ## Gates externos
 
 - **Hostinger:** `carlosyandy.com` continúa sirviendo la web pública existente. No mover el dominio principal hasta demostrar CYA Hub en una URL de app independiente.
-- **Supabase Auth:** Leaked Password Protection continúa desactivado; requiere ajuste externo de Auth/plan compatible.
+- **Supabase Auth:** Leaked Password Protection continúa siendo un ajuste externo.
 
 # PR-A — Cierres transversales — COMPLETADO
 
-## Ficha profesional de profesor — COMPLETADO
-`teacher_profiles` es el modelo canónico activo y `Mi perfil` expone el formulario versionado `teacher_profile` para cualquier identidad con rol de profesor. Nombre profesional, biografía, estilos y especialidades se editan sobre la misma persona P19.
+Incluye:
 
-## Alta de profesores — COMPLETADO
-Administración dispone de `Añadir profesor`, reutiliza la persona canónica P19, crea o reutiliza Auth de forma segura, activa roles `teacher` + `student` y conserva rollback compensatorio ante una finalización incompleta.
+- ficha profesional de profesor sobre `teacher_profiles` y persona P19;
+- alta de profesores reutilizando persona/Auth y roles reales;
+- país completo: ISO-2 en BD y nombre localizado en UI;
+- preferencias personales separadas de configuración global;
+- copy de producto sin jerga técnica innecesaria;
+- agrupación de notificaciones por entidad + regla + destino.
 
-## País completo — COMPLETADO
-La BD conserva `country_code` ISO-2. Altas de alumnado, edición de identidad, CRM, formularios versionados y alta de profesores usan selector completo; las superficies de lectura presentan el nombre del país en español (`España`, `Francia`...) mediante la utilidad común de países.
+# PR-B — BZ Points y recompensas — COMPLETADO
 
-## Preferencias — COMPLETADO
-Las preferencias personales con efecto real son zona horaria, límites de saludo y contexto/portal preferido. Apariencia, misiones, notificaciones globales, integraciones, estadísticas y defaults operativos permanecen en Administración; los datos de alumno/profesor siguen en la persona canónica. No se añaden opciones sin efecto ni duplicados de configuración global.
+Economía de engagement independiente de puntuación pedagógica.
 
-## Copy de producto — COMPLETADO
-Las superficies finales dejan de exponer términos de migraciones, motores, arquitectura, despliegue, PostgreSQL/Supabase o desarrollo cuando no aportan una acción al usuario. Administración conserva la información funcional necesaria con lenguaje de producto y los errores de integraciones no filtran detalles internos del backend.
+Garantías principales:
 
-## Agrupación de notificaciones — COMPLETADO
-La bandeja agrupa avisos repetidos por entidad concreta + regla + destino, no solo por tipo general. Avisos de alumnos, clases, contenidos o bonos distintos permanecen separados; duplicados de la misma entidad se contraen con contador y expansión, conservando lectura, prioridad y navegación individual. Las reglas reales `classes.preparation_needed` y `bonuses.low_or_expiring` tienen etiquetas de producto explícitas.
+- ledger inmutable/auditable;
+- saldo derivado, nunca editable directamente;
+- reglas y recompensas administrables;
+- idempotencia/antiabuso;
+- acciones premiables reales;
+- preparación de próxima clase conectada a `class_preparation_requests`;
+- integración P28/P30/P32.
 
-# PR-B — BZ Points y recompensas — COMPLETADO EN BACKEND / INTEGRACIÓN EN PR
+Producción: v76–v79 aplicadas; smokes transaccionales y rollback verdes.
 
-BZ Points utiliza un ledger auditable independiente de los puntos pedagógicos. El saldo siempre es la suma de movimientos; el cliente nunca decide cuántos puntos conceder.
+# PR-C — Feedback Online — COMPLETADO
 
-Acciones iniciales implementadas:
-- registrarse: premio único desde persona registrada + perfil de alumno;
-- inicio de sesión diario: una vez por día local, calculado en servidor con la zona horaria personal;
-- comprar bono: una vez por bono pagado con importe positivo y miembro;
-- realizar clase: una vez por clase finalizada con asistencia presente;
-- realizar ejercicio indicado: una vez por ejercicio distinto completado por alumno;
-- confirmar antes de clase que se repasó la clase anterior: una vez al día y solo para la próxima clase;
-- elegir contenido de la siguiente clase: una vez por próxima clase; cambiar la elección actualiza la petición sin volver a premiar.
+Dominio propio, no clase falsa ni consumo de minutos.
 
-Administración puede editar puntos/activación por regla, crear/editar recompensas de cupón/descuento, consultar saldos y registrar ajustes manuales auditados. El alumno ve saldo, formas de ganar, preparación de próxima clase, recompensas, cupones e historial.
+Incluye:
 
-Garantías:
-- `active_from` impide backfill histórico al activar el sistema;
-- idempotencia por claves únicas para todas las acciones premiables;
-- RLS y DML directo cerrados; los cambios pasan por RPCs validadas;
-- reglas BZ y Misiones son sistemas independientes;
-- la elección de contenido alimenta `class_preparation_requests`, visible en Dar clase;
-- P28 exporta/restaura un dominio BZ propio;
-- P32 incluye BZ en copia completa y limpia historial BZ con el scope correspondiente, preservando reglas/recompensas de configuración;
-- P30 incorpora métricas de puntos ganados/canjeados, acciones premiadas, personas premiadas y recompensas canjeadas.
+- créditos discretos propios;
+- vídeo privado en Drive;
+- subida de alumno con ownership/HMAC;
+- cola de profesor dentro de DAR CLASE;
+- asignación pedagógica/evaluación sin crear una clase;
+- Administración;
+- P27/P28/P30/P32;
+- identidad P19 única.
 
-Producción: migraciones v76, v77, v78 y v79 aplicadas. Smokes transaccionales de idempotencia, permisos, canje, preparación de clase y reset individual pasaron con `ROLLBACK`, sin datos de prueba persistentes.
+Producción: v80–v81 aplicadas. PR #71 fusionado.
 
-# PR-C — Feedback Online — FALTA
+# PR-D — Academia Online — COMPLETADO EN SU ALCANCE ACTUAL
 
-- compra de 1 crédito de Feedback Online;
-- subida de vídeo;
-- persona tratada como alumno pedagógico sin duplicar identidad;
-- cola de pendientes dentro de DAR CLASE;
-- profesor trabaja sobre el vídeo y asigna contenido/evaluación cuando corresponda;
-- pendientes en Notificaciones;
-- estados, historial, tiempos de respuesta y estadísticas P30.
+Academia organiza contenido canónico de Enseñanza; no duplica biblioteca, personas ni evaluación.
 
-# PR-D — Academia Online — FALTA
+Incluye:
 
-Módulo principal propio, visible para cualquier profesor y alumno.
+- programas y orden de contenidos;
+- matrículas/accesos;
+- progreso de consumo separado del estado pedagógico;
+- profesor y Administración;
+- integración P28/P30/P32;
+- alumno `Academia Online · Próximamente`.
 
-- Profesor: módulo independiente.
-- Alumno: pantalla `Próximamente` desde la primera integración.
-- Administración: gobernanza/configuración.
-- Contenido, precios y estadísticas específicas se gestionan desde Academia Online.
-- La navegación mantiene DAR CLASE central y Administración puede ordenar Inicio, Alumnado, Enseñanza, Marketing, Estadísticas y Academia Online.
+Producción: v82–v83 aplicadas. PR #72 fusionado.
 
-# PR-E — Multimedia / vídeo — FALTA COMPRESIÓN
+La apertura comercial del alumno queda condicionada a un flujo real de compra/acceso aprobado.
 
-La subida actual envía el vídeo original a Drive (máx. 1 GB). Diseñar compresión/transcodificación previa compatible con iPhone y navegador, con fallback seguro y sin degradar la utilidad pedagógica. No asumir FFmpeg instalado en Hostinger.
+# PR-E — Multimedia / vídeo — COMPLETADO
 
-# PR-F — Rediseño global
+Arquitectura final:
 
-## Panel alumno — FUNCIONAL, REQUIERE REDISEÑO
-Reorganizar por próxima acción, progreso, formación, saldo/bonos, misiones/BZ Points y evolución.
+- Mediabunny + WebCodecs en cliente cuando sea compatible;
+- compresión oportunista, nunca bloqueante;
+- H.264/AAC y tamaño acotado como perfil inicial;
+- usar comprimido solo cuando aporta ahorro real;
+- subida directa resumible a Google Drive;
+- HMAC de sesión y verificación servidor;
+- proxy streaming como fallback;
+- sin `arrayBuffer()` completo de vídeos grandes;
+- sin dependencia de FFmpeg/Hostinger no demostrada.
 
-## Ficha alumno en profesor — FUNCIONAL, MUY DENSA
-Actualmente concentra Resumen, Formación, Evaluación, Clases, Bonos, Datos y CRM. Reorganizar por contexto/frecuencia sin eliminar capacidad.
+PR #73 fusionado en `main` (`57ff649c…`).
 
-## Administración — FUNCIONAL CON DEUDA VISUAL
-Auditar layouts, jerarquía y acciones. El copy técnico principal ya se retiró; mantener esa regla en cualquier superficie nueva.
+# PR-F — Rediseño global — ACTIVO
 
-## Ver como — REQUIERE REDISEÑO
-Reorganizar visualmente Profesor/Alumno/Administrador, mostrando relación entre experiencias sin alterar permisos.
+Dirección: moderna, urbana, elegante, clara y lúdica sin resultar infantil. iPhone como referencia. No perder funciones ni cambiar permisos.
 
-## Dirección visual
-Estética moderna, urbana, elegante y lúdica; microinteracciones y animaciones útiles; evitar interfaz infantil. iPhone como referencia.
+## PR-F1 — Portal de usuario/alumno — EN IMPLEMENTACIÓN
+
+Arquitectura aprobada en Drive y reflejada en `docs/PR_F_PORTAL_USUARIO_APRENDIZAJE.md`:
+
+- cabecera: logo CYA + Notificaciones + avatar;
+- saludo dentro de Inicio, no en cabecera;
+- barra inferior: Inicio · Progreso · **MI FORMACIÓN** · Descubre · Misiones;
+- Mi Formación central y con subnavegación Resumen / A practicar / Clases realizadas / Contenido;
+- Descubre agrupa Aprende Online + Eventos;
+- Eventos usa arquitectura canónica híbrida sin registros duplicados;
+- Inicio resume `Ahora`, próxima clase, BZ, Misiones, Progreso, Feedback, novedades y actividad;
+- preparación colaborativa de próxima clase reutiliza `class_preparation_requests` para contenido, mensajes, vídeos y enlaces;
+- tono cercano, humano y orientado a crear confianza.
+
+### Orden posterior dentro del portal
+
+El detalle exacto se ejecutará según Drive y con resumen + aprobación previa del usuario antes de cada bloque:
+
+- Mi Formación: Resumen + A practicar;
+- Clases realizadas + Contenido;
+- Progreso + Mis vídeos;
+- Misiones + Descubre/Aprende/Eventos + Avatar/Mis profesores.
+
+## Ficha alumno en profesor — PENDIENTE TRAS PORTAL
+
+Conservar las siete áreas actuales y reorganizarlas por intención/frecuencia sin eliminar capacidad.
+
+## Ver como — PENDIENTE SEGÚN ORDEN DE DRIVE
+
+Reorganizar Profesor/Alumno/Administrador sin elevar permisos. El selector solo presenta experiencias autorizadas por servidor.
+
+## Administración — PENDIENTE SEGÚN ORDEN DE DRIVE
+
+Reorganizar las 14 áreas por propósito y eliminar el scroller horizontal principal en móvil, manteniendo toda la capacidad existente.
 
 # Reglas transversales
 
-1. Una persona canónica; no duplicar profesor/alumno/cliente.
-2. Toda función nueva define RLS y matriz Profesor/Alumno/Admin.
-3. Toda función nueva emite estadísticas compatibles con P30.
+1. Una persona canónica P19; no duplicar profesor/alumno/cliente.
+2. Toda función nueva define permisos/RLS reales.
+3. Integrar estadísticas P30 cuando el dominio genere métricas nuevas relevantes.
 4. Multimedia pesada va a Drive, no PostgreSQL.
-5. Notificaciones nuevas usan P27/`event_key` y son agrupables.
-6. Import/export P28 y backup/reset P32 se amplían antes de producción.
+5. Notificaciones nuevas reutilizan P27 y agrupación por entidad/regla/destino.
+6. P28/P32 se amplían antes de producción si aparece un nuevo dominio persistente.
 7. Touch targets >=44 px y safe areas iPhone.
-8. No mostrar copy técnico de desarrollo en la UI.
+8. No mostrar copy técnico de desarrollo en UI de producto.
 9. No mover `carlosyandy.com` hasta demostrar runtime CYA Hub separado.
-10. Mantener ISO `country_code`; traducirlo solo en presentación/selector.
-
-
-## Estado PR-C · Feedback Online
-
-**Completado y desplegado en producción el 2026-08-14.** Backend, portal alumno, cola docente, Administración, Drive seguro, P27, P28/P32 y P30 integrados. La copia completa CYA cubre 92 tablas. Ver `docs/PR_C_FEEDBACK_ONLINE.md`.
+10. Mantener ISO `country_code`; traducir solo en presentación/selector.
+11. Google Drive es memoria operativa y define orden mediante la Auditoría Viva; GitHub conserva la implementación técnica.

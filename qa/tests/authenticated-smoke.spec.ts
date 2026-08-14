@@ -73,8 +73,41 @@ test("teacher can open Academia Online workspace", async ({ page }, testInfo) =>
   await expect(page.locator("body")).toContainText("Matrículas activas");
 });
 
-test("student sees Academia Online coming soon", async ({ page }, testInfo) => {
+test("student portal renders approved PR-F1 header and five-item navigation", async ({ page }, testInfo) => {
   await login(page, "student", testInfo);
+
+  await expect(page.getByRole("button", { name: "Ir a Inicio" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Notificaciones/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Abrir cuenta y preferencias" })).toBeVisible();
+
+  const nav = page.getByRole("navigation", { name: "Portal CYA" });
+  await expect(nav).toBeVisible();
+  for (const label of ["Inicio", "Progreso", "Mi formación", "Descubre", "Misiones"]) {
+    await expect(nav.getByText(label, { exact: true })).toBeVisible();
+  }
+
+  const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+  expect(horizontalOverflow).toBe(false);
+
+  await testInfo.attach("student-prf1-home", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+});
+
+test("student with a scheduled class sees the collaborative preparation entry", async ({ page }, testInfo) => {
+  await login(page, "student", testInfo);
+  await expect(page.getByRole("heading", { name: "¿Qué te apetece trabajar cuando nos veamos?" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("Envíanos un vídeo", { exact: true })).toBeVisible();
+  await expect(page.getByPlaceholder("Pega un enlace de Instagram, YouTube…")).toBeVisible();
+});
+
+test("student discovers Academia Online from Descubre instead of a competing home module", async ({ page }, testInfo) => {
+  await login(page, "student", testInfo);
+  const nav = page.getByRole("navigation", { name: "Portal CYA" });
+  await nav.getByRole("button", { name: /Descubre/i }).click();
+  await expect(page.locator("body")).toContainText("APRENDE ONLINE");
+  await expect(page.locator("body")).toContainText("EVENTOS");
   await expect(page.locator("body")).toContainText("Academia Online");
   await expect(page.getByRole("heading", { name: "Próximamente" })).toBeVisible();
 });

@@ -2,7 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { DriveUploadScope } from "./google-drive-server";
 
 export type DriveUploadTicketPayload = {
-  purpose: "teaching-upload" | "feedback-upload";
+  purpose: "teaching-upload" | "feedback-upload" | "class-preparation-upload";
   uploadUrl: string;
   name: string;
   mimeType: string;
@@ -11,6 +11,7 @@ export type DriveUploadTicketPayload = {
   exp: number;
   requestId?: number;
   personId?: number;
+  classId?: number;
   previousFileId?: string | null;
 };
 

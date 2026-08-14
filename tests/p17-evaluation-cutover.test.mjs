@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const page=fs.readFileSync('app/page.tsx','utf8');
+const router=fs.readFileSync('app/app-entry-router.tsx','utf8');
 const cya=fs.readFileSync('app/cya-app.tsx','utf8');
 const post=fs.readFileSync('app/evaluation-post-class.tsx','utf8');
 const panel=fs.readFileSync('app/context-evaluation-panel.tsx','utf8');
@@ -19,7 +20,9 @@ function sqlFunctionBody(name){
 
 test('P0E removes evaluation gates from the application root',()=>{
   assert.doesNotMatch(page,/InitialEvaluationClassGate|EvaluationPostClassGate|EvaluationPostClassPreparer/);
-  assert.match(page,/return <CyaApp \/>/);
+  assert.match(page,/return <AppEntryRouter \/>/);
+  assert.match(router,/if \(!studentState\) return <CyaApp \/>/);
+  assert.doesNotMatch(router,/InitialEvaluationClassGate|EvaluationPostClassGate|EvaluationPostClassPreparer/);
 });
 
 test('P0E exposes one contextual evaluation engine in class and student profile',()=>{
