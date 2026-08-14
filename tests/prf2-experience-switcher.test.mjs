@@ -44,6 +44,9 @@ test("PR-F2 carries the authorized destination across StudentPortal and staff sh
   assert.match(router, /view: experience === "admin" \? "admin" : "home"/);
   assert.match(router, /window\.history\.replaceState\(state, "", window\.location\.href\)/);
   assert.match(router, /new PopStateEvent\("popstate", \{ state \}\)/);
+  assert.match(router, /new MutationObserver/);
+  assert.match(router, /document\.querySelector\("\.shell"\)/);
+  assert.match(router, /observer\.disconnect\(\)/);
   assert.match(router, /setStaffExperience\(experience === "admin" \? "admin" : "teacher"\)/);
   assert.match(router, /if \(staffExperience\) return <StaffExperienceBridge experience=\{staffExperience\} \/>/);
 });
