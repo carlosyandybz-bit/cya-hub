@@ -18,6 +18,23 @@ jobs:
         with:
           ref: feat/postrelease-feedback-online
           fetch-depth: 0
+      - name: Align patch script with current transfer UI
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path=Path("scripts/patch-feedback-transversal.py")
+          text=path.read_text()
+          old='text = one(text, \'  ["bz", "BZ Points y recompensas"],\\n];\\n\', \'  ["bz", "BZ Points y recompensas"],\\n  ["feedback", "Feedback Online"],\\n];\\n\', "import feedback domain")'
+          new='text = one(text, \'  ["bz", "BZ Points y recompensas"],\\n  ["complete", "Copia CYA completa"],\', \'  ["bz", "BZ Points y recompensas"],\\n  ["feedback", "Feedback Online"],\\n  ["complete", "Copia CYA completa"],\', "import feedback domain")'
+          if old not in text:
+              raise SystemExit("import-domain patch-script anchor missing")
+          text=text.replace(old,new,1)
+          old='text = one(text, \'    setBusy("preview-import");\\n    try {\\n      const parsed = await parseImportFile(importFile);\', \'    setBusy("preview-import");\\n    try {\\n      const parsed = await parseImportFile(importFile);\\n      if (parsed.kind === "rows" && importDomain === "feedback") throw new Error("Feedback Online se importa desde una copia JSON exportada por CYA Hub, no desde CSV/Excel plano.");\', "feedback raw import guard")'
+          new='text = one(text, \'      const parsed = await parseTransferFile(importFile);\', \'      const parsed = await parseTransferFile(importFile);\\n      if (parsed.kind === "rows" && importDomain === "feedback") throw new Error("Feedback Online se importa desde una copia JSON exportada por CYA Hub, no desde CSV/Excel plano.");\', "feedback raw import guard")'
+          if old not in text:
+              raise SystemExit("raw-import patch-script anchor missing")
+          path.write_text(text.replace(old,new,1))
+          PY
       - name: Patch
         run: python scripts/patch-feedback-transversal.py
       - name: Verify
