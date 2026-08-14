@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
+// Canonical Browser QA traversal for PR-F3 grouped Administration.
 const SECTION_GROUP: Record<string, string> = {
   "General": "Sistema",
   "Equipo y roles": "Sistema",
