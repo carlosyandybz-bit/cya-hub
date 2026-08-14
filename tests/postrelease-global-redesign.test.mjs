@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [portal, css, router, page, menu, migration, videoMigration, uploadRoute, cyaApp, docs] = await Promise.all([
+const [portal, css, router, page, menu, migration, videoMigration, securityMigration, uploadRoute, cyaApp, docs] = await Promise.all([
   read("app/student-portal-prf.tsx"),
   read("app/student-portal-prf.module.css"),
   read("app/app-entry-router.tsx"),
@@ -12,6 +12,7 @@ const [portal, css, router, page, menu, migration, videoMigration, uploadRoute, 
   read("app/account-menu.tsx"),
   read("db/migrations/v84_prf1_student_class_preparation.sql"),
   read("db/migrations/v84b_prf1_student_preparation_video_registration.sql"),
+  read("db/migrations/v84c_prf1_preparation_rpc_security.sql"),
   read("app/api/class-preparation/upload/route.ts"),
   read("app/cya-app.tsx"),
   read("docs/PR_F_PORTAL_USUARIO_APRENDIZAJE.md"),
@@ -97,8 +98,16 @@ test("class preparation video upload is owner/class scoped and registered server
   assert.match(uploadRoute, /createDriveResumableUpload\(name, mimeType, size, "class_video"\)/);
   assert.match(uploadRoute, /deleteDriveFile\(uploadedFileId\)/);
   assert.match(videoMigration, /c\.status='scheduled'/);
-  assert.match(videoMigration, /r\.person_id=v_person/);
   assert.match(migration, /class_preparation_requests r[\s\S]*request_type='video'/);
+});
+
+test("public preparation RPCs are invoker-only and privileged class lookup stays private", () => {
+  assert.match(securityMigration, /create or replace function private\.class_preparation_upload_context/);
+  assert.match(securityMigration, /create or replace function public\.class_preparation_upload_context[\s\S]*security invoker/);
+  assert.match(securityMigration, /create or replace function public\.register_class_preparation_video[\s\S]*security invoker/);
+  assert.match(securityMigration, /create or replace function public\.remove_class_preparation_video[\s\S]*security invoker/);
+  assert.match(securityMigration, /insert into public\.class_preparation_requests/);
+  assert.match(securityMigration, /delete from public\.class_preparation_requests/);
 });
 
 test("next-class content can contain several canonical choices while BZ remains class-idempotent", () => {
