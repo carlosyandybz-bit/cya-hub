@@ -103,3 +103,5 @@ text = one(
     "upload previous file type",
 )
 upload.write_text(text)
+
+# Trigger commit for the minimal apply workflow.
