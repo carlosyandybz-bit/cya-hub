@@ -28,7 +28,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: P32 release and CI contracts
-        run: node --test tests/p32-release-qa.test.mjs tests/p32-api-hardening.test.mjs tests/ci-workflow-scope.test.mjs tests/country-presentation.test.mjs tests/product-copy.test.mjs tests/notification-grouping.test.mjs tests/postrelease-bz-points.test.mjs tests/postrelease-feedback-online.test.mjs tests/postrelease-academia-online.test.mjs tests/postrelease-video-compression.test.mjs tests/postrelease-global-redesign.test.mjs
+        run: node --test tests/p32-release-qa.test.mjs tests/p32-api-hardening.test.mjs tests/ci-workflow-scope.test.mjs tests/country-presentation.test.mjs tests/product-copy.test.mjs tests/notification-grouping.test.mjs tests/postrelease-bz-points.test.mjs tests/postrelease-feedback-online.test.mjs tests/postrelease-academia-online.test.mjs tests/postrelease-video-compression.test.mjs tests/postrelease-global-redesign.test.mjs tests/prf2-student-master-detail.test.mjs
       - name: Preserve P19-P31 contracts
         run: >-
           node --test
