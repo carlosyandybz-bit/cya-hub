@@ -2,7 +2,7 @@ name: P30 Statistics
 
 on:
   push:
-    branches: [feat/p30-statistics, main]
+    branches: [feat/p30-statistics]
     paths:
       - 'app/statistics-*.tsx'
       - 'app/statistics-view.module.css'
@@ -13,8 +13,7 @@ on:
       - 'docs/P30_ESTADISTICAS_CONFIGURABLES.md'
       - 'tests/p30-statistics.test.mjs'
       - '.github/workflows/p30-statistics.yml'
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
