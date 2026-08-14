@@ -1,0 +1,110 @@
+# CYA HUB — BACKLOG POST-RELEASE
+
+**Corte:** 14/08/2026  
+**Base:** `main` tras P32 + hotfix post-release  
+**P18–P32:** CERRADOS en código y Supabase producción.
+
+Este documento gobierna el trabajo posterior al cierre P32. No volver a tratar P18–P32 como paquetes pendientes.
+
+## Estado confirmado
+
+- `main` y Supabase producción alineados.
+- Browser QA final verde en profesor/alumno/admin e iPhone/escritorio.
+- Backup completo final: 79 tablas.
+- Reset completo conoce Estadísticas P30 y preserva configuración P31.
+- Hotfix de frases diarias y solape móvil de Notificaciones integrado.
+- Sin PRs funcionales abiertos al cierre.
+
+## Gates externos
+
+- **Hostinger:** `carlosyandy.com` continúa sirviendo la web pública existente. No mover el dominio principal hasta demostrar CYA Hub en una URL de app independiente.
+- **Supabase Auth:** Leaked Password Protection continúa desactivado; requiere ajuste externo de Auth/plan compatible.
+
+# PR-A — Cierres transversales
+
+## Ficha profesional de profesor — PARCIAL
+Existe históricamente `teacher_profile` con Nombre profesional, Teléfono, Biografía, Estilos impartidos y Especialidades, pero está inactivo. Las rutas `teacher_profiles.*` nunca se materializaron y la tabla no existe. Debe reutilizarse el formulario histórico sobre un modelo canónico real y mostrarse en Mi perfil para cualquier profesor.
+
+## Alta de profesores — PARCIAL
+Administración solo activa roles a usuarios existentes. Falta un flujo claro y seguro de invitación/alta de profesor sin duplicar identidad.
+
+## País completo — PARCIAL
+La BD debe conservar `country_code` ISO. La UI debe dejar de pedir/mostrar solo `ES`, `FR`, etc. y usar selector/nombre completo (`España`, `Francia`...).
+
+## Preferencias — PARCIAL
+Actualmente: zona horaria, límites de saludo y contexto preferido. Ampliar únicamente preferencias personales reales, sin duplicar configuración global.
+
+## Copy de producto — PENDIENTE
+Eliminar mensajes de migraciones, motores, arquitectura, despliegue o desarrollo de cualquier UI final. Sustituirlos por copy breve y dedicado a profesor/alumno.
+
+## Agrupación de notificaciones — PENDIENTE
+`internal_notifications` ya tiene `event_key` canónico. Agrupar visualmente las notificaciones del mismo tipo por `event_key`, con contador, expansión y lectura/destino preservados.
+
+# PR-B — BZ Points y recompensas — FALTA
+
+Crear ledger auditable de puntos y catálogo de recompensas administrable.
+
+Acciones iniciales solicitadas:
+- registrarse;
+- inicio de sesión diario;
+- comprar bono;
+- realizar clase;
+- realizar ejercicio indicado;
+- confirmar una vez al día antes de clase que se repasó la clase anterior;
+- elegir contenido de la siguiente clase.
+
+Administración debe editar puntos por regla y recompensas/costes. Primer tipo de recompensa: cupones/descuentos. Misiones y BZ Points siguen siendo motores distintos: una misión puede generar un movimiento en el ledger.
+
+# PR-C — Feedback Online — FALTA
+
+- compra de 1 crédito de Feedback Online;
+- subida de vídeo;
+- persona tratada como alumno pedagógico sin duplicar identidad;
+- cola de pendientes dentro de DAR CLASE;
+- profesor trabaja sobre el vídeo y asigna contenido/evaluación cuando corresponda;
+- pendientes en Notificaciones;
+- estados, historial, tiempos de respuesta y estadísticas P30.
+
+# PR-D — Academia Online — FALTA
+
+Módulo principal propio, visible para cualquier profesor y alumno.
+
+- Profesor: módulo independiente.
+- Alumno: pantalla `Próximamente` desde la primera integración.
+- Administración: gobernanza/configuración.
+- Contenido, precios y estadísticas específicas se gestionan desde Academia Online.
+- La navegación mantiene DAR CLASE central y Administración puede ordenar Inicio, Alumnado, Enseñanza, Marketing, Estadísticas y Academia Online.
+
+# PR-E — Multimedia / vídeo — FALTA COMPRESIÓN
+
+La subida actual envía el vídeo original a Drive (máx. 1 GB). Diseñar compresión/transcodificación previa compatible con iPhone y navegador, con fallback seguro y sin degradar la utilidad pedagógica. No asumir FFmpeg instalado en Hostinger.
+
+# PR-F — Rediseño global
+
+## Panel alumno — FUNCIONAL, REQUIERE REDISEÑO
+Reorganizar por próxima acción, progreso, formación, saldo/bonos, misiones/BZ Points y evolución.
+
+## Ficha alumno en profesor — FUNCIONAL, MUY DENSA
+Actualmente concentra Resumen, Formación, Evaluación, Clases, Bonos, Datos y CRM. Reorganizar por contexto/frecuencia sin eliminar capacidad.
+
+## Administración — FUNCIONAL CON DEUDA VISUAL
+Auditar layouts, mensajes técnicos, jerarquía y acciones. Eliminar `progreso automático` de superficies vivas si todavía aparece.
+
+## Ver como — REQUIERE REDISEÑO
+Reorganizar visualmente Profesor/Alumno/Administrador, mostrando relación entre experiencias sin alterar permisos.
+
+## Dirección visual
+Estética moderna, urbana, elegante y lúdica; microinteracciones y animaciones útiles; evitar interfaz infantil. iPhone como referencia.
+
+# Reglas transversales
+
+1. Una persona canónica; no duplicar profesor/alumno/cliente.
+2. Toda función nueva define RLS y matriz Profesor/Alumno/Admin.
+3. Toda función nueva emite estadísticas compatibles con P30.
+4. Multimedia pesada va a Drive, no PostgreSQL.
+5. Notificaciones nuevas usan P27/`event_key` y son agrupables.
+6. Import/export P28 y backup/reset P32 se amplían antes de producción.
+7. Touch targets >=44 px y safe areas iPhone.
+8. No mostrar copy técnico de desarrollo en la UI.
+9. No mover `carlosyandy.com` hasta demostrar runtime CYA Hub separado.
+10. Mantener ISO `country_code`; traducirlo solo en presentación/selector.
