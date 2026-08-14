@@ -47,6 +47,31 @@ function preferredExperience(identity: IdentityContext, preferred: string | null
   return "student";
 }
 
+function staffHistoryState(experience: Exclude<ExperienceContext, "student">) {
+  return {
+    cyaHub: true,
+    view: experience === "admin" ? "admin" : "home",
+    experience,
+    selectedId: null,
+    overlay: null,
+    modalStudentId: null,
+    liveClassId: null,
+  };
+}
+
+function StaffExperienceBridge({ experience }: { experience: Exclude<ExperienceContext, "student"> }) {
+  useEffect(() => {
+    const state = staffHistoryState(experience);
+    window.history.replaceState(state, "", window.location.href);
+    const handoff = window.setTimeout(() => {
+      window.dispatchEvent(new PopStateEvent("popstate", { state }));
+    }, 0);
+    return () => window.clearTimeout(handoff);
+  }, [experience]);
+
+  return <CyaApp />;
+}
+
 type ActiveStudentState = {
   client: SupabaseClient;
   identity: IdentityContext;
@@ -56,6 +81,7 @@ type ActiveStudentState = {
 
 export default function AppEntryRouter() {
   const [studentState, setStudentState] = useState<ActiveStudentState | null>(null);
+  const [staffExperience, setStaffExperience] = useState<Exclude<ExperienceContext, "student"> | null>(null);
   const [checking, setChecking] = useState(true);
   const aliveRef = useRef(true);
 
@@ -65,7 +91,7 @@ export default function AppEntryRouter() {
       const sessionResult = await client.auth.getSession();
       const session = sessionResult.data.session;
       if (!session) {
-        if (aliveRef.current) { setStudentState(null); setChecking(false); }
+        if (aliveRef.current) { setStudentState(null); setStaffExperience(null); setChecking(false); }
         return;
       }
       const [identityResult, preferenceResult] = await Promise.all([
@@ -77,11 +103,17 @@ export default function AppEntryRouter() {
       const experience = preferredExperience(identity, preferenceResult.data?.preferred_context ?? null);
       if (typeof window !== "undefined") window.localStorage.setItem("cya:experience", experience);
       if (aliveRef.current) {
-        setStudentState(experience === "student" && identity.can_study ? { client, identity, email: session.user.email ?? "", experience } : null);
+        if (experience === "student" && identity.can_study) {
+          setStaffExperience(null);
+          setStudentState({ client, identity, email: session.user.email ?? "", experience });
+        } else {
+          setStudentState(null);
+          setStaffExperience(experience === "admin" ? "admin" : "teacher");
+        }
         setChecking(false);
       }
     } catch {
-      if (aliveRef.current) { setStudentState(null); setChecking(false); }
+      if (aliveRef.current) { setStudentState(null); setStaffExperience(null); setChecking(false); }
     }
   }, []);
 
@@ -110,8 +142,13 @@ export default function AppEntryRouter() {
     if (!allowed(identity, value)) throw new Error("No tienes acceso a esa vista.");
 
     window.localStorage.setItem("cya:experience", value);
-    if (value === "student") setStudentState((current) => current ? { ...current, identity, experience: value } : current);
-    else setStudentState(null);
+    if (value === "student") {
+      setStaffExperience(null);
+      setStudentState((current) => current ? { ...current, identity, experience: value } : current);
+    } else {
+      setStudentState(null);
+      setStaffExperience(value);
+    }
   }
 
   function patchIdentity(patch: Partial<IdentityContext>) {
@@ -119,8 +156,7 @@ export default function AppEntryRouter() {
   }
 
   if (checking) return <div className={styles.loading} role="status"><strong>CYA</strong><span>Preparando tu espacio…</span></div>;
-  if (!studentState) return <CyaApp />;
-  return <StudentPortalPrf
+  if (studentState) return <StudentPortalPrf
     client={studentState.client}
     identity={studentState.identity}
     email={studentState.email}
@@ -128,4 +164,6 @@ export default function AppEntryRouter() {
     onExperience={changeExperience}
     onIdentityPatch={patchIdentity}
   />;
+  if (staffExperience) return <StaffExperienceBridge experience={staffExperience} />;
+  return <CyaApp />;
 }
