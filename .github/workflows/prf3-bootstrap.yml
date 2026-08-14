@@ -1,0 +1,47 @@
+name: PR-F3 surgical bootstrap
+
+on:
+  push:
+    branches: [feat/prf3-admin-grouped-navigation]
+    paths:
+      - '.github/workflows/prf3-bootstrap.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/prf3-admin-grouped-navigation
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Patch AdminView without rewriting functional sections
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('app/admin-view.tsx')
+          text = path.read_text()
+          import_anchor = 'import { P31RatesAdmin } from "./p31-rates-admin";\n'
+          import_replacement = import_anchor + 'import { AdminGroupedNavigation } from "./admin-grouped-navigation";\n'
+          old_nav = '<nav className="admin-nav" aria-label="Secciones de Administración">{sections.map(([value, label, Icon]) => <button key={value} className={section === value ? "active" : ""} onClick={() => setSection(value)}><Icon /><span>{label}</span><ChevronRight /></button>)}</nav>'
+          new_nav = '<AdminGroupedNavigation section={section} sections={sections} onSection={setSection} />'
+          assert text.count(import_anchor) == 1, 'P31RatesAdmin import anchor must occur exactly once'
+          assert text.count(old_nav) == 1, 'legacy admin nav must occur exactly once'
+          assert 'AdminGroupedNavigation' not in text, 'grouped navigation already present'
+          text = text.replace(import_anchor, import_replacement, 1).replace(old_nav, new_nav, 1)
+          path.write_text(text)
+          Path('.github/workflows/prf3-bootstrap.yml').unlink()
+          PY
+      - name: Commit exact patch and remove bootstrap workflow
+        run: |
+          git config user.name 'carlosyandybz-bit'
+          git config user.email 'carlosyandybz@gmail.com'
+          git add app/admin-view.tsx .github/workflows/prf3-bootstrap.yml
+          git diff --cached --check
+          git commit -m 'PR-F3: group Administration navigation without touching section logic'
+          git push origin HEAD:feat/prf3-admin-grouped-navigation
