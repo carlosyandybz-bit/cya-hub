@@ -20,6 +20,7 @@ jobs:
       - name: P23 teaching regression gate
         run: >-
           node --test
+          tests/aud-004-archived-content-visibility.test.mjs
           tests/p0g-compact-ui.test.mjs
           tests/p23-teaching-contract.test.mjs
           tests/p22-student-portal.test.mjs
