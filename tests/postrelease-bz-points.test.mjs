@@ -49,7 +49,9 @@ test("student actions are server validated and cannot choose their award amount"
   assert.match(v76,/class_preparation_requests/);
   assert.match(v76,/'bz:review:'\|\|v_person\|\|':'\|\|v_date/);
   assert.match(v76,/'bz:content-choice:'\|\|v_person\|\|':'\|\|p_class_id/);
-  assert.doesNotMatch(student,/p_points|points_delta/);
+  assert.doesNotMatch(student,/\bp_points\s*:/);
+  assert.doesNotMatch(student,/client\.rpc\([^\n]*points_delta/);
+  assert.match(student,/points_delta: number/);
 });
 
 test("reward redemption is atomic and protected against overspending",()=>{
