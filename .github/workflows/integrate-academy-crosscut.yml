@@ -26,11 +26,10 @@ jobs:
           grep -q '\["academy", "Academia Online"\]' app/admin-data-transfer.tsx
           grep -q 'academy_online: "registros de Academia Online"' app/admin-data-reset.tsx
           grep -q 'postrelease-academia-online.test.mjs' .github/workflows/p32-release-qa.yml
-      - name: Commit and remove temporary tooling
+      - name: Commit integration
         run: |
-          rm scripts/integrate-academy-crosscut.py .github/workflows/integrate-academy-crosscut.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app/statistics-catalog.ts app/statistics-engine.ts app/admin-data-transfer.tsx app/admin-data-reset.tsx .github/workflows/p32-release-qa.yml scripts/integrate-academy-crosscut.py .github/workflows/integrate-academy-crosscut.yml
+          git add app/statistics-catalog.ts app/statistics-engine.ts app/admin-data-transfer.tsx app/admin-data-reset.tsx .github/workflows/p32-release-qa.yml
           git commit -m 'Integrate Academia with P28 P30 and P32'
           git push origin HEAD:feat/postrelease-academia-online
