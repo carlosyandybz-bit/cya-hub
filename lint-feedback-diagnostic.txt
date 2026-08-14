@@ -1,0 +1,156 @@
+
+> cya-hub-web@0.2.0 lint
+> eslint app --ignore-pattern .next --ignore-pattern app/statistics-engine.ts && eslint app/statistics-engine.ts --rule 'prefer-const: off'
+
+
+/home/runner/work/cya-hub/cya-hub/app/account-menu.tsx
+  115:28  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/home/runner/work/cya-hub/cya-hub/app/account-pages.tsx
+  83:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/home/runner/work/cya-hub/cya-hub/app/cya-app.tsx
+    4:107  warning  'CircleUserRound' is defined but never used  @typescript-eslint/no-unused-vars
+  693:52   warning  'personIds' is defined but never used        @typescript-eslint/no-unused-vars
+  980:73   warning  'title' is defined but never used            @typescript-eslint/no-unused-vars
+
+/home/runner/work/cya-hub/cya-hub/app/drive-media.tsx
+  93:37  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/home/runner/work/cya-hub/cya-hub/app/evaluation-history/evaluation-history-client.tsx
+  157:9  warning  The 'currentRows' conditional could make the dependencies of useMemo Hook (at line 160) change on every render. To fix this, wrap the initialization of 'currentRows' in its own useMemo() Hook          react-hooks/exhaustive-deps
+  158:9  warning  The 'previousRows' conditional could make the dependencies of useMemo Hook (at line 160) change on every render. To fix this, wrap the initialization of 'previousRows' in its own useMemo() Hook        react-hooks/exhaustive-deps
+  159:9  warning  The 'contextProgress' conditional could make the dependencies of useMemo Hook (at line 160) change on every render. To fix this, wrap the initialization of 'contextProgress' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+/home/runner/work/cya-hub/cya-hub/app/feedback-online-admin.tsx
+  64:26  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/cya-hub/cya-hub/app/feedback-online-admin.tsx:64:26
+  62 |   }, [client]);
+  63 |
+> 64 |   useEffect(() => { void load(); }, [load]);
+     |                          ^^^^ Avoid calling setState() directly within an effect
+  65 |
+  66 |   const pendingOrders = orders.filter((row) => row.payment_status === "pending");
+  67 |   const balanceByPerson = useMemo(() => ledger.reduce<Map<number, number>>((map, row) => map.set(row.person_id, (map.get(row.person_id) || 0) + Number(row.delta_credits || 0)), new Map()), [ledger]);  react-hooks/set-state-in-effect
+
+/home/runner/work/cya-hub/cya-hub/app/feedback-online-staff.tsx
+   96:48  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/cya-hub/cya-hub/app/feedback-online-staff.tsx:96:48
+  94 |   }, [client, selectedId]);
+  95 |
+> 96 |   useEffect(() => { if (!visible) return; void load(); }, [load, visible]);
+     |                                                ^^^^ Avoid calling setState() directly within an effect
+  97 |
+  98 |   const selected = requests.find((row) => row.id === selectedId) ?? requests[0] ?? null;
+  99 |   useEffect(() => { setSummary(selected?.teacher_summary || ""); }, [selected?.id, selected?.teacher_summary]);                                        react-hooks/set-state-in-effect
+   99:21  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/cya-hub/cya-hub/app/feedback-online-staff.tsx:99:21
+   97 |
+   98 |   const selected = requests.find((row) => row.id === selectedId) ?? requests[0] ?? null;
+>  99 |   useEffect(() => { setSummary(selected?.teacher_summary || ""); }, [selected?.id, selected?.teacher_summary]);
+      |                     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  100 |
+  101 |   const stylesTerms = terms.filter((term) => term.taxonomy === "dance_style");
+  102 |   const roleTerms = terms.filter((term) => term.taxonomy === "dance_role");   react-hooks/set-state-in-effect
+  106:9   warning  The 'linkedContentIds' object construction makes the dependencies of useMemo Hook (at line 118) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'linkedContentIds' in its own useMemo() Hook                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      react-hooks/exhaustive-deps
+  108:22  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. This value was memoized in source but not in compilation output.
+
+/home/runner/work/cya-hub/cya-hub/app/feedback-online-staff.tsx:108:22
+  106 |   const linkedContentIds = new Set(requestLinks.map((row) => row.content_id));
+  107 |   const contextReady = Boolean(selected?.style_term_id && selected?.role_term_id && selected?.level_term_id);
+> 108 |   const compatible = useMemo(() => {
+      |                      ^^^^^^^^^^^^^^^
+> 109 |     if (!selected || !contextReady) return [];
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 110 |     const q = search.trim().toLocaleLowerCase("es");
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 117 |     ).slice(0, 20);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 118 |   }, [contextReady, library, linkedContentIds, search, selected]);
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Could not preserve existing memoization
+  119 |
+  120 |   async function updateContext(field: "style" | "role" | "level", value: string) {
+  121 |     if (!selected) return;  react-hooks/preserve-manual-memoization
+  118:30  error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. This dependency may be mutated later, which could cause the value to change unexpectedly.
+
+/home/runner/work/cya-hub/cya-hub/app/feedback-online-staff.tsx:118:30
+  116 |       && (!q || content.title.toLocaleLowerCase("es").includes(q))
+  117 |     ).slice(0, 20);
+> 118 |   }, [contextReady, library, linkedContentIds, search, selected]);
+      |                              ^^^^^^^^^^^^^^^^ This dependency may be modified later
+  119 |
+  120 |   async function updateContext(field: "style" | "role" | "level", value: string) {
+  121 |     if (!selected) return;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-hooks/preserve-manual-memoization
+
+/home/runner/work/cya-hub/cya-hub/app/feedback-online-student.tsx
+  115:26  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/runner/work/cya-hub/cya-hub/app/feedback-online-student.tsx:115:26
+  113 |   }, [client]);
+  114 |
+> 115 |   useEffect(() => { void load(); }, [load]);
+      |                          ^^^^ Avoid calling setState() directly within an effect
+  116 |
+  117 |   const pendingOrder = orders.find((row) => row.payment_status === "pending") ?? null;
+  118 |   const openRequest = requests.find((row) => ["draft", "submitted", "in_review"].includes(row.status)) ?? null;  react-hooks/set-state-in-effect
+
+/home/runner/work/cya-hub/cya-hub/app/marketing-view.tsx
+  10:8  warning  'DriveMedia' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/runner/work/cya-hub/cya-hub/app/progress-summary/progress-summary-client.tsx
+  101:9  warning  The 'contextEvaluations' conditional could make the dependencies of useMemo Hook (at line 103) change on every render. To fix this, wrap the initialization of 'contextEvaluations' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  102:9  warning  The 'contextProgress' conditional could make the dependencies of useMemo Hook (at line 103) change on every render. To fix this, wrap the initialization of 'contextProgress' in its own useMemo() Hook        react-hooks/exhaustive-deps
+
+/home/runner/work/cya-hub/cya-hub/app/statistics-explorer.tsx
+  21:50  warning  'notify' is defined but never used  @typescript-eslint/no-unused-vars
+
+/home/runner/work/cya-hub/cya-hub/app/student-detail.tsx
+  277:10  warning  'evaluationDraftOpen' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  278:30  warning  'setEvaluationProfileId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  279:28  warning  'setEvaluationLevelId' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  280:25  warning  'setEvaluationKind' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  282:10  warning  'evaluationScores' is assigned a value but never used        @typescript-eslint/no-unused-vars
+  283:10  warning  'evaluationBusy' is assigned a value but never used          @typescript-eslint/no-unused-vars
+  451:9   warning  'evaluationAptitudes' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  455:18  warning  'startEvaluationCapture' is defined but never used           @typescript-eslint/no-unused-vars
+  464:18  warning  'saveEvaluationCapture' is defined but never used            @typescript-eslint/no-unused-vars
+  471:18  warning  'finishEvaluationCapture' is defined but never used          @typescript-eslint/no-unused-vars
+
+/home/runner/work/cya-hub/cya-hub/app/teaching-media-editor.tsx
+  56:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+✖ 31 problems (6 errors, 25 warnings)
+
+EXIT_STATUS=1
