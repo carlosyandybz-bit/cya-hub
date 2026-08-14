@@ -2,19 +2,16 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  Check,
   ChevronRight,
   CircleUserRound,
   LogOut,
   Pencil,
   Settings,
-  ShieldCheck,
-  UserRound,
-  UsersRound,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ExperienceSwitcher } from "./experience-switcher";
 import { P31AppearanceRuntime } from "./p31-appearance-runtime";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 import styles from "./account-menu.module.css";
@@ -45,12 +42,6 @@ const contextLabels: Record<ExperienceContext, string> = {
   admin: "Administrador",
 };
 
-function PortalIcon({ value }: { value: ExperienceContext }) {
-  if (value === "admin") return <ShieldCheck />;
-  if (value === "student") return <UserRound />;
-  return <UsersRound />;
-}
-
 export function AccountMenu({
   client,
   identity,
@@ -63,33 +54,18 @@ export function AccountMenu({
 }: AccountMenuProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [portalOpen, setPortalOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null);
 
-  const contexts = useMemo(() => {
-    const values: ExperienceContext[] = [];
-    if (identity.can_teach) values.push("teacher");
-    if (identity.can_study) values.push("student");
-    if (identity.can_admin) values.push("admin");
-    return values;
-  }, [identity.can_admin, identity.can_study, identity.can_teach]);
-
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-        setPortalOpen(false);
-      }
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     }
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       if (accountOpen) setAccountOpen(false);
-      else {
-        setOpen(false);
-        setPortalOpen(false);
-      }
+      else setOpen(false);
     }
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -119,14 +95,12 @@ export function AccountMenu({
 
   function openPage(callback: () => void) {
     setOpen(false);
-    setPortalOpen(false);
     callback();
   }
 
-  async function changePortal(value: ExperienceContext) {
+  async function changeExperience(value: ExperienceContext) {
     if (value === experience) {
       setOpen(false);
-      setPortalOpen(false);
       return;
     }
     setBusy(true);
@@ -134,7 +108,6 @@ export function AccountMenu({
       await onExperience(value);
       window.dispatchEvent(new CustomEvent("cya:experience-change", { detail: value }));
       setOpen(false);
-      setPortalOpen(false);
     } finally {
       setBusy(false);
     }
@@ -169,22 +142,7 @@ export function AccountMenu({
               <div><strong>{displayName}</strong><span>{email || "Cuenta CYA"}</span></div>
             </div>
 
-            <div className={styles.portalBlock}>
-              <button type="button" className={styles.menuRow} onClick={() => setPortalOpen((value) => !value)} aria-expanded={portalOpen}>
-                <span className={styles.rowIcon}><PortalIcon value={experience} /></span>
-                <span className={styles.rowText}><strong>Ver como</strong><small>{contextLabels[experience]}</small></span>
-                <ChevronRight className={portalOpen ? styles.chevronOpen : ""} />
-              </button>
-              {portalOpen ? (
-                <div className={styles.portalOptions}>
-                  {contexts.map((context) => (
-                    <button key={context} type="button" disabled={busy} onClick={() => void changePortal(context)}>
-                      <PortalIcon value={context} /><span>{contextLabels[context]}</span>{experience === context ? <Check /> : null}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+            <ExperienceSwitcher identity={identity} experience={experience} busy={busy} onSelect={changeExperience} />
 
             <div className={styles.separator} />
             <button type="button" className={styles.menuRow} onClick={() => openPage(onOpenProfile)}>
@@ -197,7 +155,7 @@ export function AccountMenu({
               <span className={styles.rowText}><strong>Preferencias</strong><small>Configuración personal de CYA Hub</small></span>
               <ChevronRight />
             </button>
-            <button type="button" className={styles.menuRow} onClick={() => { setOpen(false); setPortalOpen(false); setAccountOpen(true); }}>
+            <button type="button" className={styles.menuRow} onClick={() => { setOpen(false); setAccountOpen(true); }}>
               <span className={styles.rowIcon}><CircleUserRound /></span>
               <span className={styles.rowText}><strong>Cuenta y sesión</strong><small>{identity.roles.map((role) => roleLabels[role] ?? role).join(" · ")}</small></span>
             </button>
