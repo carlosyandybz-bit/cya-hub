@@ -69,7 +69,7 @@ export default function AppEntryRouter() {
         return;
       }
       const [identityResult, preferenceResult] = await Promise.all([
-        client.rpc("get_identity_context"),
+        client.rpc("identity_context"),
         client.from("user_preferences").select("preferred_context").eq("user_id", session.user.id).maybeSingle(),
       ]);
       if (identityResult.error || !identityResult.data) throw new Error(identityResult.error?.message || "No se ha podido leer tu perfil.");
