@@ -1,14 +1,6 @@
 name: Validate P21 Dar clase
 
 on:
-  pull_request:
-    paths:
-      - 'app/**'
-      - 'db/migrations/**'
-      - 'supabase/v49_p21_class_workflow_search.sql'
-      - 'tests/**'
-      - 'docs/P21_DAR_CLASE_RECONCILIACION.md'
-      - '.github/workflows/validate-p21-dar-clase.yml'
   workflow_dispatch:
 
 permissions:
