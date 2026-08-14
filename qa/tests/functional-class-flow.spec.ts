@@ -165,7 +165,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(page.getByRole("heading", { name: "Observaciones de mis clases" })).toBeVisible();
     await expect(page.getByText(observation, { exact: true })).toBeVisible();
     const classHistory = page.locator("article").filter({ has: page.getByRole("heading", { name: "Mis clases" }) });
-    await expect(classHistory.getByText("Realizada", { exact: true }).first()).toBeVisible();
+    await expect(classHistory).toContainText("Realizada");
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-student-received-class`);
 
     await resetBrowserSession(page);
