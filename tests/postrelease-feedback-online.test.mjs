@@ -33,7 +33,8 @@ test("Feedback Online is a separate discrete-credit domain, not a fake class or 
 test("product launch and payment remain explicit instead of inventing a price or payment success",()=>{
   assert.match(v80,/price_cents integer/);
   assert.match(v80,/active boolean not null default false/);
-  assert.match(v80,/price_cents,null,'EUR',1,null,false/);
+  assert.ok(v80.includes("feedback_products(name,description,price_cents,currency,credits_per_purchase,target_response_hours,active,sort_order)"));
+  assert.ok(v80.includes("select 'Feedback Online','Envía un vídeo y recibe una revisión pedagógica.',null,'EUR',1,null,false,10"));
   assert.match(v80,/payment_status text not null default 'pending'/);
   assert.match(v80,/feedback_request_purchase[\s\S]*'pending'/);
   assert.match(v80,/admin_feedback_confirm_purchase/);
@@ -80,6 +81,7 @@ test("student video upload is owner-scoped, server-associated and HMAC protected
   assert.match(upload,/signFeedbackUploadProof\(requestId, personId, payload\.id\)/);
   assert.match(upload,/attachFeedbackVideo\(accessToken/);
   assert.match(upload,/deleteDriveFile\(uploadedFileId\)/);
+  assert.match(upload,/deleteDriveFile\(previousFileId\)/);
   assert.doesNotMatch(upload,/service[_-]?role/i);
   assert.match(drive,/feedbackProofPayload\(requestId: number, personId: number, fileId: string\)/);
   assert.match(drive,/createHmac\("sha256", signingKey\(\)\)/);
@@ -141,7 +143,7 @@ test("P30 exposes Feedback metrics from requests and the audited credit ledger",
   assert.match(engine,/async function feedbackMetric/);
   assert.match(engine,/client\.from\("feedback_requests"\)/);
   assert.match(engine,/client\.from\("feedback_credit_ledger"\)/);
-  assert.match(engine,/movement==="purchase"/);
-  assert.match(engine,/movement==="consumption"/);
+  assert.ok(engine.includes('const movement=key==="feedback_credits_purchased"?"purchase":"consumption";'));
+  assert.ok(engine.includes('.eq("movement_type",movement)'));
   assert.match(engine,/metric\.block==="feedback"/);
 });
