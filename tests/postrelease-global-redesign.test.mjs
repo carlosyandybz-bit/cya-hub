@@ -4,10 +4,11 @@ import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [portal, css, router, page, menu, migration, videoMigration, securityMigration, uploadRoute, cyaApp, docs] = await Promise.all([
+const [portal, css, router, runtime, page, menu, migration, videoMigration, securityMigration, uploadRoute, cyaApp, docs] = await Promise.all([
   read("app/student-portal-prf.tsx"),
   read("app/student-portal-prf.module.css"),
   read("app/app-entry-router.tsx"),
+  read("app/supabase-runtime.ts"),
   read("app/page.tsx"),
   read("app/account-menu.tsx"),
   read("db/migrations/v84_prf1_student_class_preparation.sql"),
@@ -24,6 +25,15 @@ test("PR-F1 routes only the authorized student experience to the modular portal"
   assert.match(router, /set_experience_context/);
   assert.match(router, /allowed\(identity, value\)/);
   assert.match(menu, /cya:experience-change/);
+});
+
+test("same-tab auth changes wake the entry router without polling", () => {
+  assert.match(runtime, /onAuthStateChange/);
+  assert.match(runtime, /event !== "SIGNED_IN" && event !== "SIGNED_OUT"/);
+  assert.match(runtime, /CustomEvent\("cya:auth-change"/);
+  assert.match(router, /addEventListener\("cya:auth-change", onContextChange\)/);
+  assert.match(router, /removeEventListener\("cya:auth-change", onContextChange\)/);
+  assert.doesNotMatch(router, /setInterval/);
 });
 
 test("student header is logo + notifications + avatar, while greeting lives in Inicio", () => {
