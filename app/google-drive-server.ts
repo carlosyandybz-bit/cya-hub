@@ -76,7 +76,7 @@ async function supabaseRpc<T>(name: string, body: Record<string, unknown>, acces
     cache: "no-store",
   });
   const text = await response.text();
-  if (!response.ok) throw new Error(text || `Supabase RPC ${name} falló.`);
+  if (!response.ok) throw new Error(text || `No se pudo completar la operación de Google Drive.`);
   return (text ? JSON.parse(text) : null) as T;
 }
 

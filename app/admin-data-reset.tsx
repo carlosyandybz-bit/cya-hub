@@ -361,7 +361,7 @@ export function AdminDataReset({
         <ShieldAlert />
         <div>
           <strong>La infraestructura nunca se borra</strong>
-          <span>Auth, acceso administrativo, roles, migraciones, catálogos base, configuración e integraciones quedan protegidos para que CYA Hub siga arrancando.</span>
+          <span>Tu acceso, los roles, catálogos base, configuración e integraciones se conservan para que CYA Hub siga funcionando.</span>
         </div>
       </div>
 
@@ -516,7 +516,7 @@ export function AdminDataReset({
               <ShieldAlert />
               <div>
                 <strong>Confirmación final</strong>
-                <span>Se ejecutará ahora el borrado de «{preview.target_label || preview.preview.scope_label}». Si una operación interna falla, PostgreSQL revierte la transacción completa.</span>
+                <span>Se borrará ahora «{preview.target_label || preview.preview.scope_label}». Si algo falla durante el proceso, no se aplicará ningún cambio parcial.</span>
               </div>
               <button type="button" disabled={busy === "apply"} onClick={() => void applyReset()}>
                 <Trash2 /> {busy === "apply" ? "Borrando…" : "Sí, borrar definitivamente"}

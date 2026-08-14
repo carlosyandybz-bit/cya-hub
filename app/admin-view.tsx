@@ -209,8 +209,8 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
     return <section className="admin-stack">
       <article className="card pad mission-engine-settings">
         <div className="card-head">
-          <div><p className="eyebrow">Motor</p><h2>Misiones automáticas</h2></div>
-          {data.engine ? <Switch checked={data.engine.enabled} label="Activar motor de misiones" onChange={(checked) => updateRow("mission_engine_settings", "singleton", true, { enabled: checked }, "mission-engine")} /> : null}
+          <div><p className="eyebrow">Automatización</p><h2>Misiones automáticas</h2></div>
+          {data.engine ? <Switch checked={data.engine.enabled} label="Activar misiones automáticas" onChange={(checked) => updateRow("mission_engine_settings", "singleton", true, { enabled: checked }, "mission-engine")} /> : null}
         </div>
         {data.engine ? <div className="fields-3">
           <label className="field"><span>Máximo diario</span><input type="text" inputMode="numeric" pattern="[0-9]*" defaultValue={data.engine.max_daily} onBlur={(event) => { const value = boundedInteger(event.currentTarget.value, 1, 50); if (value === null) { event.currentTarget.value = String(data.engine?.max_daily ?? 1); notify("Indica un número entre 1 y 50."); return; } void updateRow("mission_engine_settings", "singleton", true, { max_daily: value }, "engine-max"); }} /></label>

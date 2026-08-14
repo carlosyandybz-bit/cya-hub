@@ -69,7 +69,7 @@ export function P31AppearanceAdmin({ client, notify }: Props) {
   if (loading) return <div className="admin-loading"><span className="spinner" /><p>Preparando apariencia…</p></div>;
 
   return <section className="admin-stack">
-    <header className="admin-section-head"><div><h2>Apariencia e identidad</h2><p>Configuración global segura, sin CSS arbitrario ni binarios almacenados en Postgres.</p></div></header>
+    <header className="admin-section-head"><div><h2>Apariencia e identidad</h2><p>Configura la identidad visual común de CYA Hub de forma segura y consistente.</p></div></header>
     <form className="card pad" onSubmit={save}>
       <div className="card-head"><div><p className="eyebrow">Identidad activa</p><h2>{settings.app_name}</h2></div><Palette /></div>
       <div className="fields-3">

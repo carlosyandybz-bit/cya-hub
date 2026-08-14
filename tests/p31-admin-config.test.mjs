@@ -73,8 +73,8 @@ test("Drive verification requires staff and a live Google response",()=>{
   assert.match(driveServer,/DRIVE_API.*files/);
   assert.match(driveServer,/verified: true/);
   assert.match(integrations,/drive\?\.verified \? "Verificada"/);
-  assert.match(integrations,/Sin API verificada/);
-  assert.match(integrations,/No integrada/);
+  assert.match(integrations,/Sin automatización/);
+  assert.match(integrations,/No conectada/);
   assert.doesNotMatch(integrations,/status === "connected"/);
 });
 
@@ -92,13 +92,15 @@ test("appearance is constrained, persistent and administrator controlled",()=>{
   assert.match(accountMenu,/P31AppearanceRuntime/);
 });
 
-test("manual communication channels never impersonate a verified API",()=>{
+test("manual communication channels never impersonate an automated connection",()=>{
   assert.match(integrations,/WhatsApp/);
   assert.match(integrations,/envío manual/);
+  assert.match(integrations,/envío automático seguirá desactivado/);
   assert.match(integrations,/Email/);
-  assert.match(integrations,/cliente del usuario/);
+  assert.match(integrations,/tu aplicación de email/);
   assert.match(integrations,/Meta/);
-  assert.match(integrations,/No integrada/);
+  assert.match(integrations,/No conectada/);
+  assert.match(integrations,/publicación automática se activará solo cuando exista una conexión compatible y verificada/);
 });
 
 test("teacher onboarding is admin-only, canonical and multi-role",()=>{

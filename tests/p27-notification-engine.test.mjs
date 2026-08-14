@@ -34,15 +34,15 @@ test("P27 does not fake external delivery", () => {
   assert.match(migration, /Canal externo no conectado o sin dispatcher verificado/);
   assert.match(migration, /No existe un dispatcher externo P27 verificado/);
   assert.match(admin, /Sin conexión verificada/);
-  assert.match(admin, /no generará un falso envío/);
+  assert.match(admin, /Este canal permanecerá desactivado hasta que exista una conexión lista para enviar/);
   assert.match(admin, /dispatch_ready/);
 });
 
-test("P27 administration exposes engine health rules and quiet hours", () => {
+test("P27 administration exposes notification status, rules and quiet hours", () => {
   assert.match(adminView, /P27NotificationsAdmin/);
-  assert.match(admin, /Motor de notificaciones/);
+  assert.match(admin, /NOTIFICACIONES AUTOMÁTICAS/);
   assert.match(admin, /Bandeja interna operativa/);
-  assert.match(admin, /Salud del motor/);
+  assert.match(admin, /Estado de entregas/);
   assert.match(admin, /quiet_hours_start/);
   assert.match(admin, /quiet_hours_end/);
 });

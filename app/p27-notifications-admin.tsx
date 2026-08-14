@@ -119,14 +119,14 @@ export function P27NotificationsAdmin({ client, notify }: Props) {
     setBusy("");
   }
 
-  if (loading) return <div className="admin-loading"><span className="spinner" /><p>Comprobando el motor de notificaciones…</p></div>;
+  if (loading) return <div className="admin-loading"><span className="spinner" /><p>Comprobando notificaciones…</p></div>;
 
   return <section className="admin-stack">
     <header className="admin-section-head">
       <div>
-        <p className="eyebrow">P27 · MOTOR AUTOMÁTICO</p>
-        <h2>Motor de notificaciones</h2>
-        <p>La bandeja interna funciona de forma automática. Un canal externo solo se habilita cuando su conexión y su dispatcher están verificados.</p>
+        <p className="eyebrow">NOTIFICACIONES AUTOMÁTICAS</p>
+        <h2>Notificaciones</h2>
+        <p>La bandeja interna funciona automáticamente. Email y WhatsApp solo se habilitan cuando su conexión está lista para enviar.</p>
       </div>
       <button className="btn ghost" type="button" onClick={() => void load()} disabled={Boolean(busy)}><RefreshCw /> Actualizar</button>
     </header>
@@ -134,7 +134,7 @@ export function P27NotificationsAdmin({ client, notify }: Props) {
     <div className="admin-content-grid">
       <article className="card pad">
         <div className="card-head"><div><p className="eyebrow">Canal interno</p><h2>Bandeja interna operativa</h2></div><span className="badge portal">Operativa</span></div>
-        <p>Los avisos se registran de forma idempotente, se resuelven cuando deja de existir la acción pendiente y cada miembro del equipo ve únicamente su propia bandeja.</p>
+        <p>Cada aviso aparece una sola vez por acción pendiente y desaparece cuando deja de requerir atención. Cada miembro del equipo ve únicamente su propia bandeja.</p>
         <div className="status-list">
           <div><CheckCircle2 /> Entrega automática interna</div>
           <div><CheckCircle2 /> Sin duplicados por evento y destinatario</div>
@@ -144,7 +144,7 @@ export function P27NotificationsAdmin({ client, notify }: Props) {
       </article>
 
       <article className="card pad">
-        <div className="card-head"><div><p className="eyebrow">Últimas 50 entregas</p><h2>Salud del motor</h2></div><BellRing /></div>
+        <div className="card-head"><div><p className="eyebrow">Últimas 50 entregas</p><h2>Estado de entregas</h2></div><BellRing /></div>
         <div className="admin-metric-grid">
           <div><strong>{counts.sent}</strong><span>entregadas</span></div>
           <div><strong>{counts.queued}</strong><span>en cola</span></div>
@@ -164,7 +164,7 @@ export function P27NotificationsAdmin({ client, notify }: Props) {
           return <article className="card pad" key={key}>
             <div className="card-head"><Icon /><span className={`badge ${ready ? "portal" : ""}`}>{ready ? "Disponible" : "Sin conexión verificada"}</span></div>
             <h3>{label}</h3>
-            <p>{ready ? "Conexión y dispatcher verificados." : integration?.last_error || "P27 no generará un falso envío por este canal mientras no exista una integración real."}</p>
+            <p>{ready ? "Conexión lista para enviar." : integration?.last_error || "Este canal permanecerá desactivado hasta que exista una conexión lista para enviar."}</p>
           </article>;
         })}
       </div>

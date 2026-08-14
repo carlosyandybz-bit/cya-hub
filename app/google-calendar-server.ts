@@ -96,7 +96,7 @@ export async function supabaseRequest<T>(path: string, accessToken: string, init
     cache: "no-store",
   });
   const text = await response.text();
-  if (!response.ok) throw new Error(text || `Supabase respondió ${response.status}.`);
+  if (!response.ok) throw new Error(text || `El servicio de calendario respondió ${response.status}.`);
   return (text ? JSON.parse(text) : null) as T;
 }
 

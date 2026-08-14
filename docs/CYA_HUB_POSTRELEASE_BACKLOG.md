@@ -31,11 +31,11 @@ Administración dispone de `Añadir profesor`, reutiliza la persona canónica P1
 ## País completo — COMPLETADO
 La BD conserva `country_code` ISO-2. Altas de alumnado, edición de identidad, CRM, formularios versionados y alta de profesores usan selector completo; las superficies de lectura presentan el nombre del país en español (`España`, `Francia`...) mediante la utilidad común de países.
 
-## Preferencias — PARCIAL
-Actualmente: zona horaria, límites de saludo y contexto preferido. Ampliar únicamente preferencias personales reales, sin duplicar configuración global.
+## Preferencias — COMPLETADO
+Las preferencias personales con efecto real son zona horaria, límites de saludo y contexto/portal preferido. Apariencia, misiones, notificaciones globales, integraciones, estadísticas y defaults operativos permanecen en Administración; los datos de alumno/profesor siguen en la persona canónica. No se añaden opciones sin efecto ni duplicados de configuración global.
 
-## Copy de producto — PENDIENTE
-Eliminar mensajes de migraciones, motores, arquitectura, despliegue o desarrollo de cualquier UI final. Sustituirlos por copy breve y dedicado a profesor/alumno.
+## Copy de producto — COMPLETADO
+Las superficies finales dejan de exponer términos de migraciones, motores, arquitectura, despliegue, PostgreSQL/Supabase o desarrollo cuando no aportan una acción al usuario. Administración conserva la información funcional necesaria con lenguaje de producto y los errores de integraciones no filtran detalles internos del backend.
 
 ## Agrupación de notificaciones — PENDIENTE
 `internal_notifications` ya tiene `event_key` canónico. Agrupar visualmente las notificaciones del mismo tipo por `event_key`, con contador, expansión y lectura/destino preservados.

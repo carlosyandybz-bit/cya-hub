@@ -112,17 +112,17 @@ export function AdminFormLibrary({ client, notify }: Props) {
   return <div className="admin-split">
     <aside className="card admin-choice-list">
       <header><h2>Formularios</h2><span>{forms.length}</span></header>
-      {engine==="ready"?<button className="admin-create-item" onClick={()=>setShowCreate((value)=>!value)}><FilePlus2/><span><strong>Nuevo formulario</strong><small>Crear motor genérico versionado</small></span><Plus/></button>:null}
+      {engine==="ready"?<button className="admin-create-item" onClick={()=>setShowCreate((value)=>!value)}><FilePlus2/><span><strong>Nuevo formulario</strong><small>Crear formulario configurable</small></span><Plus/></button>:null}
       {forms.map((form)=><button key={form.id} className={selectedId===form.id?"active":""} onClick={()=>{setSelectedId(form.id);setShowAddField(false);}}><FileText/><span><strong>{form.admin_name}</strong><small>{form.context_key} · {form.status}{form.settings?.runtime_engine==="domain_service"?" · módulo propio":` · v${form.active_version}`}</small></span><ChevronRight/></button>)}
     </aside>
     <section className="card pad admin-form-editor">
-      {engine==="pending"?<div className="notice"><strong>Motor P20 preparado para despliegue</strong><span>La biblioteca se muestra en modo lectura hasta que v48 esté activa. Las fichas de alumnado siguen usando el guardado seguro anterior durante esta transición.</span></div>:null}
+      {engine==="pending"?<div className="notice"><strong>Edición avanzada no disponible</strong><span>La biblioteca se muestra temporalmente en modo lectura. Las fichas de alumnado siguen funcionando con normalidad.</span></div>:null}
       {showCreate&&engine==="ready"?<CreateFormPanel busy={busy==="create"} close={()=>setShowCreate(false)} submit={createGeneric}/>:null}
       {selected?<>
         <div className="card-head"><div><p className="eyebrow">{domain?"Gestionado por módulo":draftVersion?`Borrador v${draftVersion.version_number}`:`Publicada v${selected.active_version}`}</p><h2>{selected.visible_title||selected.admin_name}</h2></div>{engine==="ready"&&generic?<button type="button" className="btn ghost" disabled={busy==="status"} onClick={toggleStatus}>{selected.status==="active"?"Pausar":"Activar"}</button>:null}</div>
         {selected.description?<p className="admin-description">{selected.description}</p>:null}
         <div className="admin-read-list"><div><span>Estado</span><strong>{selected.status}</strong></div><div><span>Tipo</span><strong>{selected.form_type}</strong></div><div><span>Versión publicada</span><strong>v{selected.active_version}</strong></div></div>
-        {domain?<div className="notice"><strong>Contrato histórico de un flujo de negocio</strong><span>Este elemento pertenece a bonos, vinculación, renovación u otra operación transaccional. Se conserva para trazabilidad, pero no se ejecuta como formulario JSON genérico.</span></div>:null}
+        {domain?<div className="notice"><strong>Configurado desde su módulo</strong><span>Este formulario pertenece a una operación específica y se gestiona desde su sección correspondiente.</span></div>:null}
         {engine==="ready"&&generic?<div className="actions">{!draftVersion?<button type="button" className="btn" disabled={busy==="draft"} onClick={createDraft}><CopyPlus size={17}/>{busy==="draft"?"Creando…":"Crear nueva versión"}</button>:<><button type="button" className="btn ghost" onClick={()=>setShowAddField((value)=>!value)}><Plus size={17}/>Añadir campo</button><button type="button" className="btn" disabled={busy==="publish"} onClick={publish}><CheckCircle2 size={17}/>{busy==="publish"?"Publicando…":`Publicar v${draftVersion.version_number}`}</button></>}</div>:null}
         {engine==="ready"&&generic?<p className="modal-intro">{draftVersion?"Estás editando un borrador. Los envíos y la versión publicada no cambian hasta que pulses Publicar.":"La versión publicada es inmutable. Crea una nueva versión para cambiar campos."}</p>:null}
         {showAddField&&editable?<AddFieldPanel busy={busy==="add-field"} submit={addField} close={()=>setShowAddField(false)}/>:null}
