@@ -1,315 +1,235 @@
 # PR-F — Portal de usuario / aprendizaje CYA
 
-Fecha: 2026-08-14
-Estado: especificación funcional aprobada parcialmente; la jerarquía visual final se decide junto con producto antes de implementar.
+Fecha: 2026-08-14  
+Estado: arquitectura de producto aprobada; PR-F1 en implementación.
+
+> La Auditoría Viva de Google Drive determina el orden operativo. Este documento conserva el contrato técnico de la rama y no sustituye a Drive.
 
 ## Principio
 
-El portal no es únicamente el área de alumnos que reciben clases con Carlos & Andy.
+El portal no es únicamente el área de personas que reciben clases con Carlos & Andy. Debe servir también a quien todavía no tome clases, consuma contenido gratuito, tenga contenido adquirido, utilice Feedback Online, complete misiones/BZ Points o construya su progreso personal.
 
-Debe servir también a cualquier persona que:
-- tenga cuenta CYA pero todavía no tome clases;
-- consuma contenido gratuito;
-- haya adquirido contenido;
-- quiera comprar contenido cuando Academia Online esté activa;
-- utilice Feedback Online;
-- complete misiones y gane BZ Points;
-- quiera construir y conservar su progreso mediante vídeos propios;
-- quiera empezar a aprender antes de convertirse en alumno habitual.
+Una persona sin clases, bono o profesor asignado no debe encontrar una experiencia vacía.
 
-La experiencia no debe quedar vacía si la persona no tiene clases, bono o profesor asignado.
+## Cabecera
 
-## Navegación móvil inferior
+La cabecera fija del portal contiene exactamente:
 
-La navegación principal móvil tendrá exactamente cinco grandes módulos:
+- logo CYA;
+- Notificaciones, con indicador de pendientes;
+- avatar/cuenta.
+
+**El saludo no pertenece a la cabecera.** Vive dentro de la pantalla Inicio.
+
+## Navegación inferior móvil
+
+Cinco módulos, en este orden:
 
 1. Inicio
-2. Mi formación
-3. Aprende online
-4. Progreso
+2. Progreso
+3. **MI FORMACIÓN** — posición central y tratamiento principal
+4. Descubre
 5. Misiones
 
-El avatar queda fuera de esta barra y funciona como acceso personal.
+Reglas:
 
-La barra debe:
-- respetar safe-area de iPhone;
-- mantener targets táctiles >= 44 px;
-- permanecer fija mientras se navega por el portal;
-- ocultarse únicamente en experiencias inmersivas justificadas, como reproducción de vídeo a pantalla completa;
-- no utilizar un botón “Más” para esconder uno de estos cinco módulos.
+- safe-area de iPhone;
+- targets táctiles >=44 px;
+- sin scroll horizontal como navegación principal;
+- `Mi Formación` abre `Resumen` al tocar el control principal;
+- su control secundario despliega `Resumen`, `A practicar`, `Clases realizadas` y `Contenido`;
+- el avatar no ocupa un hueco de esta barra.
 
-## 1. Inicio
+## Inicio — «qué está pasando»
 
-Inicio es una pantalla de actualidad y resumen, no la formación completa.
+Inicio es actualidad y resumen, no una copia de todos los demás módulos.
 
-Debe responder rápidamente a: “¿qué ha pasado y qué puedo hacer ahora?”.
+Orden funcional:
 
-Contenido principal:
-- novedades relevantes;
-- resumen breve de actividad;
-- BZ Points: saldo y último movimiento/logro relevante;
-- misiones: resumen y próxima misión importante;
-- acceso destacado a Feedback Online;
-- próxima clase, cuando exista;
-- contenido nuevo disponible o adquirido;
-- avisos relevantes;
-- progreso reciente resumido;
-- acceso rápido a enviar un vídeo o una duda cuando tenga sentido.
+1. saludo cercano dentro de la página;
+2. bloque `Ahora`, con un máximo de 1–3 asuntos realmente relevantes;
+3. próxima clase, cuando exista;
+4. resumen compacto de BZ Points, Misiones y Progreso;
+5. acceso destacado a Feedback Online;
+6. preparación colaborativa de próxima clase, cuando exista;
+7. novedades/contenido reciente;
+8. actividad reciente.
 
-Para una persona sin clases, Inicio debe seguir teniendo valor mediante novedades, contenido gratuito, BZ Points, misiones, Feedback Online y contenido disponible.
+Para una persona sin clases, Inicio sigue teniendo valor mediante contenido, novedades, Feedback, BZ, Misiones, Progreso y Descubre.
 
-## 2. Mi formación — módulo principal
+## Mi Formación
 
-Mi formación es el núcleo pedagógico del portal.
+Es el núcleo pedagógico. Su navegación interna es:
 
-El acceso principal abre siempre `Resumen`.
+- Resumen;
+- A practicar;
+- Clases realizadas;
+- Contenido.
 
-Al igual que el módulo principal del profesor, tendrá una acción secundaria/desplegable para navegar rápidamente entre:
-- Resumen
-- A practicar
-- Clases realizadas
-- Contenido
+### Resumen
 
-### 2.1 Resumen
+Pantalla corta: qué está trabajando ahora, qué tiene pendiente, próxima clase si existe y accesos directos a los tres submódulos.
 
-Debe ser corto y orientado a situación actual.
+### A practicar
 
-Incluye:
-- qué está trabajando ahora;
-- qué tiene pendiente;
-- contenido recientemente aprendido/adquirido;
-- próxima clase si existe;
-- máximo unas pocas métricas relevantes, no una cuadrícula extensa;
-- accesos claros a `A practicar`, `Clases realizadas` y `Contenido`.
+Reúne por prioridad —no en silos— correcciones activas, explicaciones en aprendizaje, ejercicios pendientes, secuencias, preparación de siguiente clase y contenido reciente que requiere acción.
 
-### 2.2 A practicar
+Debe permitir vídeo/duda en contexto cuando corresponda.
 
-Debe reunir todo lo que requiere acción o práctica ahora.
+### Clases realizadas
 
-Incluye:
-- ejercicios pendientes;
-- contenido marcado para practicar;
-- preparación de la siguiente clase;
-- cosas elegidas por el alumno para la siguiente clase;
-- contenido más reciente conseguido, explicado o desbloqueado;
-- correcciones activas/en corrección;
-- explicaciones explicadas/en aprendizaje;
-- ejercicios asociados;
-- secuencias activas cuando proceda;
-- prioridades actuales de práctica.
+La unidad principal es la **clase**. Cada clase podrá desplegar observaciones, correcciones, explicaciones, ejercicios, secuencias, evaluación/hitos, vídeos y evolución relacionada.
 
-Debe permitir contextualizar acciones:
-- subir vídeo de práctica;
-- asociar vídeo a una corrección, explicación, ejercicio o preparación;
-- enviar una duda para la siguiente clase;
-- marcar/revisar práctica cuando el modelo pedagógico lo permita.
+En la zona de próximos compromisos aparecerán también los **eventos a los que el usuario ya se haya apuntado**, sin duplicar la entidad Evento.
 
-### 2.3 Clases realizadas
+### Contenido
 
-Historial pedagógico organizado por clase, no por tipo de contenido.
+Biblioteca personal y catálogo de aprendizaje: contenido gratuito, adquirido, desbloqueado, explicado, recomendado y próximo. Cuando exista compra real de Academia podrá incorporar precios/adquisición; nunca se simula una compra sin proveedor real.
 
-Cada clase debe poder mostrar:
-- fecha y contexto;
-- observaciones de la clase;
-- correcciones trabajadas;
-- explicaciones dadas;
-- ejercicios indicados;
-- secuencias/contenido relacionado;
-- evaluación o hitos cuando corresponda;
-- vídeos vinculados a esa clase;
-- evolución o cambios relevantes derivados de la clase.
+Para quien tenga clase programada, el contenido compatible puede marcarse como algo que le gustaría trabajar en la próxima clase.
 
-Las clases deben estar ordenadas cronológicamente y permitir abrir/cerrar detalle sin convertir la pantalla en una lista interminable.
+## Descubre
 
-Acciones razonables por clase:
-- añadir/subir vídeo asociado;
-- consultar material de esa clase;
-- enviar una duda relacionada;
-- preparar la siguiente clase a partir de lo trabajado.
+`Descubre` agrupa dos grandes destinos:
 
-### 2.4 Contenido
+### Aprende Online
 
-Biblioteca personal y catálogo de aprendizaje.
+En la fase actual muestra una experiencia cuidada `Próximamente`. Después se convertirá en la experiencia alumno de Academia Online sin volver a cambiar la barra inferior.
 
-Debe mostrar:
-- contenido ya adquirido o desbloqueado;
-- contenido gratuito disponible;
-- contenido actualmente accesible;
-- próximos contenidos recomendados para aprender;
-- contenidos compatibles con el estilo/rol/nivel actual;
-- correcciones, explicaciones, ejercicios y secuencias de forma navegable;
-- estado de cada contenido cuando exista estado pedagógico.
+### Eventos
 
-Cuando Academia Online esté activa:
-- permitir adquirir contenido/programas compatibles;
-- mostrar precio únicamente si existe flujo de compra real;
-- no simular compras si no existe proveedor de pago.
+Arquitectura híbrida aprobada:
 
-Para alumnos que toman clases:
-- permitir seleccionar contenido como interés/preferencia para una próxima clase cuando sea compatible;
-- esa elección debe alimentar la preparación real de clase y no una lista paralela.
+- un evento disponible para descubrir vive en `Descubre → Eventos`;
+- un evento relevante puede resumirse/recomendarse en Inicio;
+- si el usuario se apunta, también aparece en `Mi Formación → Clases / Próximamente`;
+- si asistió, puede formar parte de actividad/historial;
+- existe **una sola entidad canónica Evento**; no se duplican registros por aparecer en varios contextos;
+- si tiene relación pedagógica, puede vincularse a contenido canónico de Enseñanza antes/después del evento.
 
-## 3. Aprende online
+La implementación completa de Eventos no pertenece a PR-F1; este contrato queda preparado para el bloque que corresponda según Drive.
 
-Es un gran módulo principal de la barra inferior.
+## Progreso
 
-En la primera versión de PR-F debe mostrar una experiencia cuidada de `Próximamente`.
+Orden final a desarrollar:
 
-No debe parecer un error ni una pantalla vacía.
+1. en qué enfocarte ahora;
+2. evaluación actual;
+3. qué ha mejorado desde la última evaluación;
+4. evolución;
+5. hitos;
+6. Mis vídeos.
 
-Debe anticipar:
-- programas de Academia Online;
-- contenido estructurado;
-- aprendizaje autónomo;
-- acceso futuro a material comprado/gratuito.
+Las mejoras deben derivarse de datos reales. No fabricar elogios, métricas ni causalidad.
 
-Hasta que Academia Online se abra al alumno, no se habilitan compras ni accesos ficticios.
+## Misiones
 
-## 4. Progreso
+Pantalla propia con `Ahora/prioritarias`, `Disponibles`, `En progreso` y `Completadas`. BZ Points actúa como recompensa transversal cuando corresponda, no como sexto módulo inferior.
 
-Progreso debe responder primero a: “¿qué tengo que mejorar ahora y dónde debería enfocarme?”.
+## Preparación colaborativa de la próxima clase
 
-Orden recomendado:
+Se reutiliza **`class_preparation_requests`**. No se crea un segundo buzón.
 
-### 4.1 En qué enfocarme ahora
-- principales aspectos a mejorar;
-- correcciones activas de mayor prioridad;
-- aptitudes/parámetros más débiles relevantes;
-- próximos hitos;
-- recomendaciones derivadas de evaluación/contenido real.
+Cuando exista una clase programada, el usuario puede:
 
-### 4.2 Evaluación actual
-- nivel/contexto;
-- radar/evaluación vigente;
-- parámetros evaluados;
-- hitos alcanzados y pendientes.
+- explicar con sus palabras qué le apetece trabajar;
+- enviar una duda/mensaje;
+- elegir uno o varios contenidos canónicos;
+- subir uno o varios vídeos propios/referencias;
+- pegar enlaces HTTP/HTTPS, incluidos Instagram y otros proveedores de vídeo compatibles;
+- editar/quitar su preparación mientras la clase siga programada.
 
-### 4.3 Qué ha mejorado desde la evaluación
-- correcciones resueltas;
-- contenido completado/aprendido;
-- cambios observables en parámetros;
-- hitos superados;
-- evolución temporal.
+El profesor consume esas mismas solicitudes en el flujo canónico de `DAR CLASE`.
 
-### 4.4 Evolución
-- historial de evaluaciones;
-- evolución de correcciones;
-- progreso de contenido;
-- hitos;
-- vídeos propios de progreso;
-- comparativas que aporten información real, evitando métricas decorativas.
+### BZ Points y contenido
 
-## 5. Misiones
+La primera elección de contenido para una clase mantiene el premio BZ idempotente. Añadir/cambiar otros contenidos no duplica puntos.
 
-Módulo principal independiente.
+### Vídeo
 
-Incluye:
-- misiones disponibles;
-- en progreso;
-- prioritarias/urgentes;
-- completadas;
-- recompensas cuando correspondan;
-- relación con BZ Points cuando una misión otorgue puntos.
+- Google Drive continúa siendo el almacenamiento privado;
+- PostgreSQL conserva metadata/relación, no binarios;
+- se reutiliza la compresión oportunista del cliente;
+- subida directa resumible cuando sea posible y proxy streaming como fallback;
+- el servidor valida identidad + participación + clase programada antes de crear/confirmar la subida;
+- si el registro final falla, el archivo recién subido se elimina para evitar huérfanos;
+- el propietario y staff autorizado pueden visualizarlo mediante el sistema de tickets multimedia existente.
 
-La experiencia debe ser clara y lúdica sin resultar infantil.
+### Enlaces
 
-## Avatar / cuenta personal
+- solo `http://` o `https://`;
+- longitud acotada;
+- se presentan como enlaces seguros, no como HTML/embeds arbitrarios;
+- no se ejecuta contenido externo dentro del portal sin un contrato específico posterior.
 
-El avatar queda accesible en la cabecera y no ocupa una posición de la barra inferior.
+## Avatar / cuenta
 
-Debe incluir como mínimo:
-- Perfil;
+Debe conservar:
+
+- Mi perfil;
 - Preferencias;
 - Mis profesores;
+- compras/accesos cuando corresponda;
+- Ver como cuando existan varias experiencias autorizadas;
 - Cuenta y sesión;
-- Ver como, cuando la persona tenga más de una experiencia autorizada;
-- cerrar sesión.
+- Cerrar sesión.
 
-### Mis profesores
+`Mis profesores` se completará en su bloque posterior. Para la experiencia actual, la identidad pública es CARLOS Y ANDY.
 
-Debe permitir abrir la ficha del profesor/equipo relacionado con el usuario.
+## Vídeos personales
 
-Para Carlos & Andy, la ficha puede incluir:
-- nombre/foto/identidad visual;
-- especialidades y estilos;
-- información autorizada;
-- formas de contacto;
-- acceso a enviar una duda;
-- preparación de próxima clase cuando exista;
-- Feedback Online cuando sea relevante.
-
-Una persona que todavía no tenga profesor asignado no debe ver un error: puede ver el equipo CYA disponible y las vías para empezar/aprender/contactar.
-
-## Vídeos personales y progreso
-
-El portal debe facilitar que el usuario conserve vídeos propios y los relacione con su aprendizaje.
-
-Puntos de entrada razonables:
-- Inicio: acción rápida `Enviar/Subir vídeo` cuando haya contexto relevante;
-- A practicar: subir vídeo asociado a corrección/explicación/ejercicio/práctica;
-- Clases realizadas: añadir vídeo de esa clase;
-- Progreso: `Mis vídeos` / videoteca cronológica de progreso;
-- Feedback Online: enviar vídeo para revisión profesional.
-
-Reglas:
-- reutilizar Google Drive/multimedia existente;
-- no almacenar vídeo pesado en PostgreSQL;
-- permitir descripción/contexto del vídeo;
-- conservar fecha y relaciones para comparar progreso posteriormente;
-- diferenciar vídeo personal de progreso de un vídeo enviado a Feedback Online;
-- la privacidad debe seguir al usuario; no hacer visible un vídeo a terceros sin autorización.
+El punto de entrada depende del contexto: Inicio/próxima clase, A practicar, clase realizada, Progreso, Feedback Online o Mis profesores. Todos los vídeos personales de evolución acabarán centralizados en `Progreso → Mis vídeos`, diferenciados de los vídeos enviados a Feedback Online.
 
 ## Dudas y contacto
 
-El portal debe ofrecer contacto contextual, no únicamente un enlace genérico escondido en Perfil.
+No crear un chat ficticio. Usar acciones contextuales `Tengo una duda` / `Cuéntanos` y conservar su origen. Para la siguiente clase, la duda entra en `class_preparation_requests`. Los canales externos solo se presentan como conectados si realmente lo están.
 
-Puntos razonables:
-- ficha `Mis profesores`;
-- preparación de próxima clase;
+## Tono
+
+Todo el portal debe sonar a Carlos & Andy acompañando al alumno:
+
+- cercano y humano;
+- breve;
+- constructivo;
+- sin regañar;
+- sin jerga técnica;
+- estados vacíos que invitan a algo útil;
+- errores que explican qué puede hacer ahora;
+- Feedback entendido como aprendizaje, no examen;
+- Misiones/BZ motivadoras sin estética infantil.
+
+Ejemplos aprobados:
+
+- `¿Qué te apetece trabajar cuando nos veamos?`
+- `Envíanos ese vídeo que tienes en mente.`
+- `Si viste algo en Instagram que quieres probar, déjanos el enlace.`
+- `Cuéntanos cualquier duda antes de vernos.`
+- `Así podemos preparar la clase pensando en ti.`
+
+## PR-F1 — alcance aprobado
+
+Implementar ahora:
+
+- shell del nuevo portal;
+- cabecera logo + Notificaciones + avatar;
+- barra inferior de cinco módulos;
+- Inicio nuevo;
+- preparación colaborativa de próxima clase;
+- extensión segura de enlaces/vídeo;
+- accesos funcionales provisionales a los módulos que se rediseñarán después, para no perder funcionalidad existente.
+
+No cerrar todavía el diseño final de:
+
+- Progreso;
 - A practicar;
-- detalle de una clase realizada;
-- Feedback Online;
-- acciones rápidas de Inicio cuando existe una duda/pendiente.
+- Clases realizadas;
+- Contenido;
+- Eventos;
+- Misiones;
+- Aprende Online;
+- Mis profesores/Avatar;
+- ficha del alumno del profesor;
+- Administración;
+- rediseño final de `Ver como`.
 
-Para preguntas sobre la próxima clase se debe reutilizar el sistema canónico de preparación de clase siempre que sea posible, evitando crear un segundo buzón desconectado.
-
-La primera versión puede utilizar los canales reales disponibles (por ejemplo WhatsApp/email/manual) mientras no exista un sistema de chat propio confirmado. No se debe presentar como chat en tiempo real si no lo es.
-
-## Comportamiento según tipo de usuario
-
-### Usuario sin clases
-Inicio, Contenido, Aprende online, Misiones, BZ Points, Feedback Online y Progreso personal deben seguir funcionando.
-
-No mostrar bloques vacíos de bonos/clases como protagonistas.
-
-### Alumno con clases
-Priorizar próxima clase, A practicar, preparación, clases realizadas, correcciones y evaluación.
-
-### Usuario con contenido adquirido pero sin clases
-Priorizar contenido disponible, práctica, progreso propio, misiones/BZ y Academia cuando esté activa.
-
-### Usuario mixto
-Combinar sin duplicar: una sola biblioteca/formación, una sola persona, un solo progreso y distintas fuentes de contenido.
-
-## Reglas visuales
-
-- iPhone como referencia principal;
-- barra inferior fija de cinco módulos;
-- información prioritaria primero;
-- no apilar todos los módulos completos en Inicio;
-- no usar cuadrículas de métricas como contenido principal;
-- iconos sin cuadrados decorativos de fondo;
-- morado CYA como acento, fondo claro;
-- sin amarillo fluorescente;
-- filas/tarjetas compactas y desplegables para detalle;
-- evitar scroll horizontal como navegación principal;
-- estados y acciones comprensibles sin lenguaje técnico;
-- microinteracciones útiles, no decoración infantil.
-
-## Pendientes de decisión conjunta antes de implementar UI final
-
-1. Orden visual exacto de los cinco botones inferiores y si `Mi formación` debe ocupar el centro con tratamiento visual principal.
-2. Estructura exacta de la cabecera de Inicio.
-3. Qué información pública/privada muestra la ficha `Mis profesores`.
-4. Cómo se presenta `Mis vídeos` dentro de Progreso (timeline, galería o híbrido).
-5. Canal inicial de `Enviar una duda`: preparación de clase + apertura de canal externo frente a bandeja interna futura.
+Estos bloques continúan en el orden que marque la Auditoría Viva de Drive y requieren resumen + aprobación antes de comenzar cada actualización.
