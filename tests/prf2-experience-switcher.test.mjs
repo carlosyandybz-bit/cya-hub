@@ -39,6 +39,15 @@ test("PR-F2 keeps experience changes server-authorized and canonical", () => {
   assert.doesNotMatch(router, /event\.detail/);
 });
 
+test("PR-F2 carries the authorized destination across StudentPortal and staff shell mounts", () => {
+  assert.match(router, /function StaffExperienceBridge/);
+  assert.match(router, /view: experience === "admin" \? "admin" : "home"/);
+  assert.match(router, /window\.history\.replaceState\(state, "", window\.location\.href\)/);
+  assert.match(router, /new PopStateEvent\("popstate", \{ state \}\)/);
+  assert.match(router, /setStaffExperience\(experience === "admin" \? "admin" : "teacher"\)/);
+  assert.match(router, /if \(staffExperience\) return <StaffExperienceBridge experience=\{staffExperience\} \/>/);
+});
+
 test("PR-F2 does not add polling or a parallel identity system", () => {
   assert.doesNotMatch(router, /setInterval/);
   assert.doesNotMatch(router, /get_identity_context/);
