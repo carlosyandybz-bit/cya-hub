@@ -113,9 +113,9 @@ test('frontend remains functional before v48 and switches to runtime after cutov
 test('admin builder is read-only until the P20 backend is actually active',()=>{
   assert.match(admin,/type EngineState = "checking" \| "ready" \| "pending"/);
   assert.match(admin,/PGRST202/);
-  assert.match(admin,/La biblioteca se muestra en modo lectura hasta que v48 esté activa/);
+  assert.match(admin,/La biblioteca se muestra temporalmente en modo lectura/);
   assert.match(admin,/engine==="ready"&&generic/);
-  assert.match(admin,/Contrato histórico de un flujo de negocio/);
+  assert.match(admin,/Configurado desde su módulo/);
 });
 
 test('build-info keeps an explicit no-store rollout marker for staged backend cutovers',()=>{
