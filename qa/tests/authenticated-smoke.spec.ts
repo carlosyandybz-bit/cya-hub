@@ -64,3 +64,17 @@ test("teacher primary navigation is rendered after login", async ({ page }, test
     await expect(page.locator("body")).toContainText(label);
   }
 });
+
+test("teacher can open Academia Online workspace", async ({ page }, testInfo) => {
+  await login(page, "teacher", testInfo);
+  await page.getByRole("button", { name: "Academia Online", exact: true }).first().click();
+  await expect(page.getByRole("heading", { name: "Programas y formación online" })).toBeVisible();
+  await expect(page.locator("body")).toContainText("Programas");
+  await expect(page.locator("body")).toContainText("Matrículas activas");
+});
+
+test("student sees Academia Online coming soon", async ({ page }, testInfo) => {
+  await login(page, "student", testInfo);
+  await expect(page.locator("body")).toContainText("Academia Online");
+  await expect(page.getByRole("heading", { name: "Próximamente" })).toBeVisible();
+});
