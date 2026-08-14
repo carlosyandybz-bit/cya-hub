@@ -1,0 +1,34 @@
+name: Apply BZ UI hooks
+
+on:
+  push:
+    branches: [feat/postrelease-bz-points]
+    paths:
+      - 'scripts/apply-bz-ui-hooks.mjs'
+      - '.github/workflows/apply-bz-ui-hooks.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/postrelease-bz-points
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: node scripts/apply-bz-ui-hooks.mjs
+      - run: git diff --check
+      - name: Commit hooks and remove one-shot tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm scripts/apply-bz-ui-hooks.mjs .github/workflows/apply-bz-ui-hooks.yml
+          git add app/cya-app.tsx app/admin-view.tsx
+          git commit -m "Integrate BZ Points into student portal and administration"
+          git push origin HEAD:feat/postrelease-bz-points
