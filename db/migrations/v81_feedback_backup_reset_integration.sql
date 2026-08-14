@@ -1,7 +1,14 @@
 -- v81 — Integrate Feedback Online into P28/P32 backup and reset.
 -- Product configuration is preserved like other Administration settings; operational orders, ledger and requests follow their data scope.
+-- Wrapper renames are guarded so this migration is safe to execute again.
 
-alter function private.backup_tables_for_domain(text) rename to backup_tables_for_domain_pre_feedback;
+do $$
+begin
+  if to_regprocedure('private.backup_tables_for_domain_pre_feedback(text)') is null then
+    alter function private.backup_tables_for_domain(text) rename to backup_tables_for_domain_pre_feedback;
+  end if;
+end;
+$$;
 
 create or replace function private.backup_tables_for_domain(p_domain text)
 returns text[]
@@ -45,7 +52,13 @@ $$;
 revoke all on function private.backup_tables_for_domain(text) from public,anon,authenticated;
 revoke all on function private.backup_tables_for_domain_pre_feedback(text) from public,anon,authenticated;
 
-alter function private.admin_reset_preview_counts(text,bigint) rename to admin_reset_preview_counts_pre_feedback;
+do $$
+begin
+  if to_regprocedure('private.admin_reset_preview_counts_pre_feedback(text,bigint)') is null then
+    alter function private.admin_reset_preview_counts(text,bigint) rename to admin_reset_preview_counts_pre_feedback;
+  end if;
+end;
+$$;
 
 create or replace function private.admin_reset_preview_counts(p_scope text,p_target_id bigint default null)
 returns jsonb
@@ -97,7 +110,13 @@ $$;
 revoke all on function private.admin_reset_preview_counts(text,bigint) from public,anon,authenticated;
 revoke all on function private.admin_reset_preview_counts_pre_feedback(text,bigint) from public,anon,authenticated;
 
-alter function private.execute_admin_data_reset(text,bigint) rename to execute_admin_data_reset_pre_feedback;
+do $$
+begin
+  if to_regprocedure('private.execute_admin_data_reset_pre_feedback(text,bigint)') is null then
+    alter function private.execute_admin_data_reset(text,bigint) rename to execute_admin_data_reset_pre_feedback;
+  end if;
+end;
+$$;
 
 create or replace function private.execute_admin_data_reset(p_scope text,p_target_id bigint default null)
 returns jsonb
