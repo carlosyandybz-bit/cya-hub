@@ -111,7 +111,6 @@ export default function AppEntryRouter() {
     window.localStorage.setItem("cya:experience", value);
     if (value === "student") setStudentState((current) => current ? { ...current, identity, experience: value } : current);
     else setStudentState(null);
-    window.dispatchEvent(new CustomEvent("cya:experience-change", { detail: value }));
   }
 
   function patchIdentity(patch: Partial<IdentityContext>) {
