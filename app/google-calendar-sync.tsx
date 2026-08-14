@@ -24,7 +24,11 @@ type Conflict = {
   conflict_data: { reason?: string; remote?: { title?: string; starts_at?: string; ends_at?: string } } | null;
 };
 
-type ServerStatus = { configured: boolean };
+type ServerStatus = {
+  configured: boolean;
+  configurationMessage?: string;
+  missingRequirements?: Array<"google_oauth" | "server_encryption" | "supabase_runtime">;
+};
 
 type Props = {
   client: SupabaseClient;
@@ -47,6 +51,7 @@ export function GoogleCalendarSync({ client, notify, onSynced, compact = false }
   const [connection, setConnection] = useState<Connection | null>(null);
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [configurationMessage, setConfigurationMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState("");
 
   const authFetch = useCallback(async (url: string, init: RequestInit = {}) => {
@@ -89,9 +94,18 @@ export function GoogleCalendarSync({ client, notify, onSynced, compact = false }
     try {
       const statusResponse = await authFetch("/api/google-calendar/status");
       const status = await responseJson(statusResponse) as ServerStatus & { error?: string } | null;
-      setConfigured(Boolean(statusResponse.ok && status?.configured));
+      const isConfigured = Boolean(statusResponse.ok && status?.configured);
+      setConfigured(isConfigured);
+      setConfigurationMessage(
+        typeof status?.configurationMessage === "string"
+          ? status.configurationMessage
+          : !statusResponse.ok && status?.error
+            ? status.error
+            : null,
+      );
     } catch {
       setConfigured(false);
+      setConfigurationMessage("No se pudo comprobar la preparación de Google Calendar en este momento.");
     }
   }, [authFetch, client, notify]);
 
@@ -202,7 +216,9 @@ export function GoogleCalendarSync({ client, notify, onSynced, compact = false }
       <span className={`badge ${connected ? "portal" : ""}`}>{connected ? (syncing ? "Sincronizando" : "Conectada") : configured === false ? "No configurada" : "Desconectada"}</span>
     </div>
     {!connected ? <>
-      <p>{configured === false ? "El servidor todavía no tiene disponible el cliente OAuth de Google Calendar." : "Conecta tu calendario para ver tus eventos externos en Agenda y reflejar las clases, misiones y eventos de CYA sin duplicarlos."}</p>
+      <p>{configured === false
+        ? configurationMessage || "Google Calendar todavía no está preparado en el servidor."
+        : "Conecta tu calendario para ver tus eventos externos en Agenda y reflejar las clases, misiones y eventos de CYA sin duplicarlos."}</p>
       <button className="btn" type="button" disabled={busy === "connect" || configured === false || configured === null} onClick={() => void connect()}><Link2 /> {busy === "connect" ? "Abriendo Google…" : "Conectar Google Calendar"}</button>
     </> : <>
       <div className="admin-read-list">

@@ -2,7 +2,7 @@ name: P26 Calendar Sync
 
 on:
   push:
-    branches: [feat/p26-agenda-google-calendar]
+    branches: [feat/p26-agenda-google-calendar, fix/aud-019-google-calendar-runtime]
     paths:
       - 'app/agenda-view.tsx'
       - 'app/admin-view.tsx'
@@ -14,6 +14,7 @@ on:
       - 'tests/**'
       - 'qa/tests/p26-agenda.spec.ts'
       - '.env.example'
+      - 'HOSTINGER_DEPLOY.md'
       - '.github/workflows/p26-calendar-sync.yml'
   workflow_dispatch:
 
@@ -31,7 +32,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: P26 Google Calendar contracts
-        run: node --test tests/p26-calendar-sync.test.mjs
+        run: node --test tests/p26-calendar-sync.test.mjs tests/aud-019-google-calendar-runtime.test.mjs
       - name: Preserve P17-P25 and compact UI contracts
         run: >-
           node --test
