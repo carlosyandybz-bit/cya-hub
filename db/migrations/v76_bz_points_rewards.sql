@@ -272,7 +272,7 @@ end;
 $$;
 
 drop trigger if exists bz_people_registration on public.people;
-create trigger bz_people_registration after insert or update of auth_user_id,active,updated_at on public.people
+create trigger bz_people_registration after insert or update of auth_user_id,active on public.people
 for each row execute function private.bz_registration_trigger();
 
 drop trigger if exists bz_student_profile_registration on public.student_profiles;
