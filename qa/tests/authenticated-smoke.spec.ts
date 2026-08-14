@@ -140,6 +140,53 @@ test("teacher student master detail groups seven views without horizontal naviga
   });
 });
 
+test("PR-F3 Administration groups fourteen destinations without horizontal main navigation", async ({ page }, testInfo) => {
+  await login(page, "admin", testInfo);
+  await selectExperience(page, "Administrador");
+  await expect(page.getByRole("heading", { name: "Estado de CYA Hub" })).toBeVisible({ timeout: 20_000 });
+
+  const groups = page.getByRole("navigation", { name: "Áreas de Administración" });
+  await expect(groups).toBeVisible();
+  for (const label of ["Sistema", "Enseñanza", "Negocio", "Datos", "Apariencia"]) {
+    await expect(groups.getByRole("button", { name: new RegExp(`^${label}`) })).toBeVisible();
+  }
+
+  await groups.getByRole("button", { name: /^Enseñanza/ }).click();
+  let local = page.getByRole("navigation", { name: "Opciones de Enseñanza" });
+  for (const label of ["Formularios", "Enseñanza", "Misiones", "Notificaciones"]) {
+    await expect(local.getByRole("button", { name: label, exact: true })).toBeVisible();
+  }
+
+  await groups.getByRole("button", { name: /^Negocio/ }).click();
+  local = page.getByRole("navigation", { name: "Opciones de Negocio" });
+  for (const label of ["Tarifas", "BZ Points", "Feedback Online", "Academia Online"]) {
+    await expect(local.getByRole("button", { name: label, exact: true })).toBeVisible();
+  }
+
+  await groups.getByRole("button", { name: /^Datos/ }).click();
+  local = page.getByRole("navigation", { name: "Opciones de Datos" });
+  for (const label of ["Datos", "Integraciones"]) {
+    await expect(local.getByRole("button", { name: label, exact: true })).toBeVisible();
+  }
+
+  await groups.getByRole("button", { name: /^Sistema/ }).click();
+  local = page.getByRole("navigation", { name: "Opciones de Sistema" });
+  for (const label of ["General", "Equipo y roles", "Seguridad"]) {
+    await expect(local.getByRole("button", { name: label, exact: true })).toBeVisible();
+  }
+
+  await groups.getByRole("button", { name: /^Apariencia/ }).click();
+  await expect(page.getByRole("navigation", { name: "Opciones de Apariencia" }).getByRole("button", { name: "Apariencia", exact: true })).toBeVisible();
+
+  const overflow = await page.locator(".admin-navigation").evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+  expect(overflow).toBe(false);
+
+  await testInfo.attach("prf3-administration-grouped", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+});
+
 test("student portal renders approved PR-F1 header and five-item navigation", async ({ page }, testInfo) => {
   await login(page, "student", testInfo);
 
