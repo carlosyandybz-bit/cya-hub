@@ -1,0 +1,39 @@
+name: Diagnose Feedback lint
+
+on:
+  push:
+    branches:
+      - feat/postrelease-feedback-online
+    paths:
+      - .github/workflows/diagnose-feedback-lint.yml
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/postrelease-feedback-online
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Capture lint output
+        run: |
+          set +e
+          npm run lint > lint-feedback-diagnostic.txt 2>&1
+          status=$?
+          echo "EXIT_STATUS=$status" >> lint-feedback-diagnostic.txt
+          set -e
+      - name: Commit diagnostic
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lint-feedback-diagnostic.txt
+          git commit -m "Capture Feedback lint diagnostic"
+          git push origin HEAD:feat/postrelease-feedback-online
