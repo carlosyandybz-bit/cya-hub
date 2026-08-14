@@ -1,7 +1,6 @@
 "use client";
 
 import { Check, ShieldCheck, UserRound, UsersRound } from "lucide-react";
-import { useMemo } from "react";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 import styles from "./experience-switcher.module.css";
 
@@ -39,10 +38,7 @@ function allowedContexts(identity: IdentityContext) {
 }
 
 export function ExperienceSwitcher({ identity, experience, busy = false, onSelect }: ExperienceSwitcherProps) {
-  const contexts = useMemo(
-    () => allowedContexts(identity),
-    [identity.can_admin, identity.can_study, identity.can_teach],
-  );
+  const contexts = allowedContexts(identity);
 
   if (contexts.length <= 1) return null;
 
