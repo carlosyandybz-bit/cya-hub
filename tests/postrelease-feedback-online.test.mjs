@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+// PR-C release contract: keep this file aligned with the final clean branch head.
 const v80=readFileSync("db/migrations/v80_feedback_online_core.sql","utf8");
 const v80b=readFileSync("db/migrations/v80b_feedback_upload_owner_scope.sql","utf8");
 const v80c=readFileSync("db/migrations/v80c_feedback_staff_context.sql","utf8");
