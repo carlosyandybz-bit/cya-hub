@@ -2,7 +2,7 @@ name: P31 Administration
 
 on:
   push:
-    branches: [feat/p31-admin-config, main]
+    branches: [feat/p31-admin-config]
     paths:
       - 'app/admin-view.tsx'
       - 'app/account-menu.tsx'
@@ -14,8 +14,7 @@ on:
       - 'tests/p31-admin-config.test.mjs'
       - 'tests/postrelease-teacher-invite.test.mjs'
       - '.github/workflows/p31-admin-config.yml'
-  pull_request:
-    branches: [feat/p30-statistics, main]
+  workflow_dispatch:
 
 permissions:
   contents: read
