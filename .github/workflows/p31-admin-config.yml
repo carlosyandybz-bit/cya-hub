@@ -12,6 +12,7 @@ on:
       - 'app/google-drive-server.ts'
       - 'db/migrations/v71*.sql'
       - 'tests/p31-admin-config.test.mjs'
+      - 'tests/postrelease-teacher-invite.test.mjs'
       - '.github/workflows/p31-admin-config.yml'
   pull_request:
     branches: [feat/p30-statistics, main]
@@ -30,7 +31,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: P31 administration contracts
-        run: node --test tests/p31-admin-config.test.mjs
+        run: node --test tests/p31-admin-config.test.mjs tests/postrelease-teacher-invite.test.mjs
       - name: Preserve P19-P30 contracts
         run: >-
           node --test
