@@ -60,8 +60,10 @@ const resolvedMissionStates = new Set(["completed", "completed_automatically", "
 const groupedRuleLabels: Record<string, string> = {
   "classes.pending_close": "Clases pendientes de cerrar",
   "classes.preparation": "Clases que necesitan preparación",
+  "classes.preparation_needed": "Clases que necesitan preparación",
   "credits.low_balance": "Bonos con saldo bajo",
   "credits.expiry": "Bonos que necesitan revisión",
+  "bonuses.low_or_expiring": "Bonos que necesitan revisión",
   "students.incomplete_profile": "Perfiles de alumnos por completar",
   "corrections.missing_explanation": "Correcciones por completar",
   "daily.add_correction": "Contenido diario por añadir",
@@ -79,6 +81,7 @@ function sourceLabel(item: EnrichedNotification) {
   if (source === "class") return "Clase";
   if (source === "person") return "Alumno";
   if (source === "teaching_content") return "Enseñanza";
+  if (source === "credit_grant") return "Bono";
   if (source === "daily") return "CYA";
   return "Aviso";
 }
@@ -101,13 +104,31 @@ function contextFor(item: EnrichedNotification): NotificationTargetContext {
   };
 }
 
+function entityKey(item: EnrichedNotification) {
+  const mission = item.mission;
+  if (mission?.source_domain && mission.source_id) return `${mission.source_domain}:${mission.source_id}`;
+  const origin = mission?.origin ?? {};
+  const originEntity = [
+    ["person", origin.person_id],
+    ["class", origin.class_id],
+    ["teaching_content", origin.content_id],
+    ["credit_grant", origin.grant_id],
+  ].find(([, value]) => value !== undefined && value !== null);
+  if (originEntity) return `${originEntity[0]}:${String(originEntity[1])}`;
+  if (item.source_type && item.source_id) return `${item.source_type}:${item.source_id}`;
+  return `event:${item.event_key || item.source_type || "notice"}`;
+}
+
 function semanticKey(item: EnrichedNotification) {
   const target = item.mission?.action_target ?? item.action_target ?? "none";
-  if (item.mission?.rule_key) return `mission:${item.mission.rule_key}:${target}`;
-  return `event:${item.event_key || item.source_type || "notice"}:${target}`;
+  const entity = entityKey(item);
+  if (item.mission?.rule_key) return `mission:${entity}:${item.mission.rule_key}:${target}`;
+  return `event:${entity}:${item.event_key || item.source_type || "notice"}:${target}`;
 }
 
 function groupLabel(cluster: NotificationCluster) {
+  const titles = new Set(cluster.items.map((item) => item.title));
+  if (titles.size === 1) return cluster.representative.title;
   const rule = cluster.representative.mission?.rule_key;
   if (rule && groupedRuleLabels[rule]) return groupedRuleLabels[rule];
   if (cluster.items.length === 1) return cluster.representative.title;
