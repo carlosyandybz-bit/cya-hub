@@ -2,7 +2,7 @@ name: P32 Release QA
 
 on:
   push:
-    branches: [feat/p32-release-qa, main]
+    branches: [feat/p32-release-qa]
     paths:
       - 'app/**'
       - 'db/migrations/v72*.sql'
@@ -11,7 +11,8 @@ on:
       - 'tests/p32-api-hardening.test.mjs'
       - '.github/workflows/p32-release-qa.yml'
   pull_request:
-    branches: [feat/p31-admin-config, main]
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -45,6 +46,7 @@ jobs:
           tests/p29-marketing.test.mjs
           tests/p30-statistics.test.mjs
           tests/p31-admin-config.test.mjs
+          tests/postrelease-teacher-invite.test.mjs
           tests/documentation-consistency.test.mjs
       - name: Lint
         run: npm run lint
