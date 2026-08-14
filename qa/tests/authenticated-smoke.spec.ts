@@ -104,8 +104,8 @@ test("teacher student master detail groups seven views without horizontal naviga
 
   const dialog = page.getByRole("dialog").filter({ hasText: "QA · Alumno" });
   await expect(dialog).toBeVisible({ timeout: 20_000 });
-  await expect(dialog.getByRole("button", { name: /Programar/ })).toBeVisible();
-  await expect(dialog.getByRole("button", { name: /Bono/ })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Programar", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Bono", exact: true })).toBeVisible();
 
   const groups = dialog.getByRole("navigation", { name: "Áreas de la ficha del alumno" });
   await expect(groups).toBeVisible();
