@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { FormEvent, useState } from "react";
 import { CheckCircle2, Plus, X } from "lucide-react";
+import { CountrySelect } from "./country-field";
 import { RuntimeForm } from "./runtime-form";
 
 export type EditablePersonIdentity = {
@@ -44,7 +45,7 @@ export function StudentIdentityEditor({ client, person, profile, close, saved }:
           unavailableFallback={<LegacyStudentIdentityForm client={client} person={person} profile={profile} saved={saved} close={close} />}
           onSaved={async () => { await saved(); close(); }}
         />
-        <p className="modal-intro">Los datos conocidos se editan en su fuente real. El envío conserva la versión utilizada, pero no duplica nombre, teléfono, objetivos ni otros hechos canónicos.</p>
+        <p className="modal-intro">Los datos que CYA ya conoce se reutilizan automáticamente para que no tengas que escribirlos dos veces.</p>
       </div>
     </section>
   </div>;
@@ -61,6 +62,7 @@ type LegacyStudentIdentityFormProps = {
 function LegacyStudentIdentityForm({ client, person, profile, saved, close }: LegacyStudentIdentityFormProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [country, setCountry] = useState(person.country_code ?? "");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,7 +77,7 @@ function LegacyStudentIdentityForm({ client, person, profile, saved, close }: Le
         p_last_name: String(form.get("last_name") ?? "").trim() || null,
         p_email: String(form.get("email") ?? "").trim() || null,
         p_phone: String(form.get("phone") ?? "").trim() || null,
-        p_country_code: String(form.get("country_code") ?? "").trim() || null,
+        p_country_code: country.trim() || null,
         p_goals: String(form.get("goals") ?? "").trim() || null,
         p_teacher_notes: String(form.get("teacher_notes") ?? "").trim() || null,
         p_health_notes: String(form.get("health_notes") ?? "").trim() || null,
@@ -91,13 +93,13 @@ function LegacyStudentIdentityForm({ client, person, profile, saved, close }: Le
   }
 
   return <form className="form" onSubmit={submit}>
-    <p className="modal-intro">La nueva versión de formularios está desplegándose. Mientras termina el cambio, esta ficha usa el guardado seguro anterior.</p>
+    <p className="modal-intro">Completa o corrige los datos principales del alumno.</p>
     <div className="fields-2">
       <label className="field"><span>Nombre *</span><input name="first_name" defaultValue={person.first_name ?? ""} required /></label>
       <label className="field"><span>Apellidos</span><input name="last_name" defaultValue={person.last_name ?? ""} /></label>
       <label className="field"><span>Teléfono</span><input name="phone" type="tel" defaultValue={person.phone ?? ""} /></label>
       <label className="field"><span>Email</span><input name="email" type="email" defaultValue={person.email ?? ""} /></label>
-      <label className="field"><span>País</span><input name="country_code" maxLength={2} defaultValue={person.country_code ?? ""} placeholder="ES" /></label>
+      <label className="field"><span>País</span><CountrySelect name="country_code" value={country} onChange={setCountry} /></label>
       <label className="field field-wide"><span>Objetivos</span><textarea name="goals" rows={3} defaultValue={profile?.goals ?? ""} /></label>
       <label className="field field-wide"><span>Salud / a tener en cuenta</span><textarea name="health_notes" rows={3} defaultValue={profile?.health_notes ?? ""} /></label>
       <label className="field field-wide"><span>Notas internas</span><textarea name="teacher_notes" rows={3} defaultValue={profile?.teacher_notes ?? ""} /></label>
@@ -116,6 +118,7 @@ type QuickProvisionalStudentModalProps = {
 export function QuickProvisionalStudentModal({ client, close, created }: QuickProvisionalStudentModalProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [country, setCountry] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -131,7 +134,7 @@ export function QuickProvisionalStudentModal({ client, close, created }: QuickPr
         p_last_name: last || null,
         p_email: String(form.get("email") ?? "").trim() || null,
         p_phone: String(form.get("phone") ?? "").trim() || null,
-        p_country_code: String(form.get("country_code") ?? "").trim() || null,
+        p_country_code: country.trim() || null,
       });
       if (result.error) throw result.error;
       const row = (Array.isArray(result.data) ? result.data[0] : result.data) as EditablePersonIdentity | null;
@@ -155,7 +158,7 @@ export function QuickProvisionalStudentModal({ client, close, created }: QuickPr
           <label className="field"><span>Apellidos</span><input name="last_name" /></label>
           <label className="field"><span>Teléfono</span><input name="phone" type="tel" /></label>
           <label className="field"><span>Email</span><input name="email" type="email" /></label>
-          <label className="field"><span>País</span><input name="country_code" maxLength={2} placeholder="ES" /></label>
+          <label className="field"><span>País</span><CountrySelect name="country_code" value={country} onChange={setCountry} /></label>
         </div>
         {error ? <p className="error">{error}</p> : null}
         <div className="actions"><button className="btn ghost" type="button" onClick={close}>Cancelar</button><button className="btn" disabled={busy}><Plus size={17} /> {busy ? "Creando…" : "Crear y seleccionar"}</button></div>

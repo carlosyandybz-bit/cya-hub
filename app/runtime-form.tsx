@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CheckCircle2, ChevronDown, ChevronUp, LoaderCircle } from "lucide-react";
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { CountrySelect } from "./country-field";
 import styles from "./runtime-form.module.css";
 
 export type RuntimeFormMode = "complete_missing" | "edit" | "review";
@@ -144,7 +145,7 @@ export function RuntimeForm({ client, formKey, personId = null, mode = "complete
   }
 
   if (loading) return <div className={styles.loading}><LoaderCircle className={styles.spin} size={19}/><span>Cargando datos…</span></div>;
-  if (unavailable) return <>{unavailableFallback ?? <p className="modal-intro">El nuevo motor de formularios todavía no está activo en el servidor.</p>}</>;
+  if (unavailable) return <>{unavailableFallback ?? <p className="modal-intro">El formulario no está disponible en este momento.</p>}</>;
   if (!runtime) return <p className="error">{error || "No se pudo abrir el formulario."}</p>;
 
   return <form className={`${styles.form} ${compact ? styles.compact : ""}`} onSubmit={submit}>
@@ -168,6 +169,7 @@ function RuntimeField({ field, value, change }: { field: RuntimeFormField; value
   const label = <><span>{field.label}{field.required ? " *" : ""}{field.known ? <em className={styles.known}>Conocido</em> : null}</span>{field.help_text ? <small>{field.help_text}</small> : null}</>;
   if (field.field_type === "textarea") return <label className="field field-wide">{label}<textarea {...common} rows={3} value={scalar(value)} onChange={(event) => change(event.target.value)} /></label>;
   if (field.field_type === "checkbox") return <label className={`${styles.checkbox} field-wide`}><input {...common} type="checkbox" checked={Boolean(value)} onChange={(event) => change(event.target.checked)} /><span><strong>{field.label}</strong>{field.help_text ? <small>{field.help_text}</small> : null}</span></label>;
+  if (field.canonical_path === "people.country_code") return <label className="field">{label}<CountrySelect name={field.field_key} disabled={!field.writable} required={field.required} value={scalar(value)} onChange={change} /></label>;
   if (field.field_type === "select") return <label className="field">{label}<select {...common} value={scalar(value)} onChange={(event) => change(event.target.value)}><option value="">Seleccionar</option>{field.options.map((option) => <option key={String(optionValue(option))} value={String(optionValue(option))}>{optionLabel(option)}</option>)}</select></label>;
   if (field.field_type === "multiselect") {
     const selected = Array.isArray(value) ? value.map(String) : [];

@@ -1,12 +1,13 @@
 "use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { Bell, BellRing, Check, CheckCheck, ChevronRight, Clock3, GraduationCap, LibraryBig, UserRound, UsersRound } from "lucide-react";
+import { Bell, BellRing, Check, CheckCheck, ChevronRight, Clock3, GraduationCap, LibraryBig, UserRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./notifications-view.module.css";
 
 type NotificationRow = {
   id: number;
+  event_key: string;
   title: string;
   body: string | null;
   action_target: string | null;
@@ -18,6 +19,7 @@ type NotificationRow = {
 
 type MissionMeta = {
   id: number;
+  rule_key: string | null;
   priority: string;
   priority_score: number;
   source_domain: string | null;
@@ -39,6 +41,12 @@ type EnrichedNotification = NotificationRow & {
   resolved: boolean;
 };
 
+type NotificationCluster = {
+  key: string;
+  items: EnrichedNotification[];
+  representative: EnrichedNotification;
+};
+
 type Props = {
   client: SupabaseClient;
   timezone: string;
@@ -49,6 +57,16 @@ type Props = {
 
 const validTargets = new Set(["home", "students", "classes", "credits", "agenda", "live", "teaching", "marketing", "admin"]);
 const resolvedMissionStates = new Set(["completed", "completed_automatically", "cancelled", "not_done", "not_applicable", "expired"]);
+const groupedRuleLabels: Record<string, string> = {
+  "classes.pending_close": "Clases pendientes de cerrar",
+  "classes.preparation": "Clases que necesitan preparación",
+  "credits.low_balance": "Bonos con saldo bajo",
+  "credits.expiry": "Bonos que necesitan revisión",
+  "students.incomplete_profile": "Perfiles de alumnos por completar",
+  "corrections.missing_explanation": "Correcciones por completar",
+  "daily.add_correction": "Contenido diario por añadir",
+  "daily.review_information": "Información pendiente de revisar",
+};
 
 function priorityLabel(value?: string) {
   if (value === "urgent") return "Urgente";
@@ -83,6 +101,28 @@ function contextFor(item: EnrichedNotification): NotificationTargetContext {
   };
 }
 
+function semanticKey(item: EnrichedNotification) {
+  const target = item.mission?.action_target ?? item.action_target ?? "none";
+  if (item.mission?.rule_key) return `mission:${item.mission.rule_key}:${target}`;
+  return `event:${item.event_key || item.source_type || "notice"}:${target}`;
+}
+
+function groupLabel(cluster: NotificationCluster) {
+  const rule = cluster.representative.mission?.rule_key;
+  if (rule && groupedRuleLabels[rule]) return groupedRuleLabels[rule];
+  if (cluster.items.length === 1) return cluster.representative.title;
+  return `${sourceLabel(cluster.representative)} · ${cluster.items.length} avisos`;
+}
+
+function clustersFor(source: EnrichedNotification[]) {
+  const map = new Map<string, EnrichedNotification[]>();
+  source.forEach((item) => {
+    const key = semanticKey(item);
+    map.set(key, [...(map.get(key) ?? []), item]);
+  });
+  return [...map.entries()].map(([key, items]) => ({ key, items, representative: items[0] })) as NotificationCluster[];
+}
+
 export function NotificationsView({ client, timezone, openTarget, onUnreadChange, notify }: Props) {
   const [items, setItems] = useState<EnrichedNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +131,7 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
   const load = useCallback(async () => {
     setLoading(true);
     const notificationResult = await client.from("internal_notifications")
-      .select("id,title,body,action_target,source_type,source_id,read_at,created_at")
+      .select("id,event_key,title,body,action_target,source_type,source_id,read_at,created_at")
       .order("created_at", { ascending: false })
       .limit(100);
     if (notificationResult.error) {
@@ -106,7 +146,7 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
     let missionMap = new Map<number, MissionMeta>();
     if (missionIds.length) {
       const missionResult = await client.from("missions")
-        .select("id,priority,priority_score,source_domain,source_id,action_target,origin,state,due_at")
+        .select("id,rule_key,priority,priority_score,source_domain,source_id,action_target,origin,state,due_at")
         .in("id", [...new Set(missionIds)]);
       if (!missionResult.error) missionMap = new Map(((missionResult.data ?? []) as MissionMeta[]).map((mission) => [mission.id, mission]));
     }
@@ -132,6 +172,8 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
 
   const pending = useMemo(() => items.filter((item) => !item.resolved), [items]);
   const history = useMemo(() => items.filter((item) => item.resolved), [items]);
+  const pendingClusters = useMemo(() => clustersFor(pending), [pending]);
+  const historyClusters = useMemo(() => clustersFor(history), [history]);
 
   async function markRead(item: EnrichedNotification) {
     if (item.read_at) return item;
@@ -183,21 +225,39 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
     </article>;
   }
 
+  function renderCluster(cluster: NotificationCluster) {
+    if (cluster.items.length === 1) return renderItem(cluster.items[0]);
+    const representative = cluster.representative;
+    return <details className={`${styles.cluster} ${representative.resolved ? styles.clusterResolved : ""}`} key={cluster.key}>
+      <summary>
+        <span className={styles.clusterIcon}><SourceIcon item={representative} /></span>
+        <span className={styles.clusterText}>
+          <span>{sourceLabel(representative)}</span>
+          <strong>{groupLabel(cluster)}</strong>
+          <small>{cluster.items.length} avisos individuales · toca para verlos</small>
+        </span>
+        <b className={styles.clusterCount}>{cluster.items.length}</b>
+        <ChevronRight className={styles.clusterChevron} />
+      </summary>
+      <div className={styles.clusterItems}>{cluster.items.map(renderItem)}</div>
+    </details>;
+  }
+
   return <section className={styles.root}>
     <header className={styles.hero}>
-      <div><p>NOTIFICACIONES</p><h1>Centro de avisos</h1><span>Tus avisos pendientes y el historial reciente.</span></div>
+      <div><p>NOTIFICACIONES</p><h1>Centro de avisos</h1><span>Tus avisos se agrupan por tipo para que veas primero lo importante.</span></div>
       <div className={styles.heroIcon}>{pending.length ? <BellRing /> : <CheckCheck />}</div>
     </header>
 
     <div className={styles.summary}>
       <div><span>Pendientes</span><strong>{pending.length}</strong></div>
-      <div><span>Leídas o resueltas</span><strong>{history.length}</strong></div>
+      <div><span>Grupos pendientes</span><strong>{pendingClusters.length}</strong></div>
       {pending.length ? <button type="button" onClick={() => void markAllRead()} disabled={busy}><CheckCheck /> {busy ? "Marcando…" : "Marcar todas como leídas"}</button> : null}
     </div>
 
     {loading ? <div className={styles.empty}><Bell /><span>Cargando notificaciones…</span></div> : <>
-      <section className={styles.group}><div className={styles.groupTitle}><h2>Pendientes</h2><span>{pending.length}</span></div>{pending.length ? <div className={styles.list}>{pending.map(renderItem)}</div> : <div className={styles.empty}><CheckCheck /><span>No tienes notificaciones pendientes.</span></div>}</section>
-      {history.length ? <section className={styles.group}><div className={styles.groupTitle}><h2>Historial</h2><span>{history.length}</span></div><div className={styles.list}>{history.map(renderItem)}</div></section> : null}
+      <section className={styles.group}><div className={styles.groupTitle}><h2>Pendientes</h2><span>{pending.length}</span></div>{pending.length ? <div className={styles.list}>{pendingClusters.map(renderCluster)}</div> : <div className={styles.empty}><CheckCheck /><span>No tienes notificaciones pendientes.</span></div>}</section>
+      {history.length ? <section className={styles.group}><div className={styles.groupTitle}><h2>Historial</h2><span>{history.length}</span></div><div className={styles.list}>{historyClusters.map(renderCluster)}</div></section> : null}
     </>}
   </section>;
 }
