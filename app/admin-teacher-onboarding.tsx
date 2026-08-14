@@ -38,7 +38,8 @@ export function AdminTeacherOnboarding({ client, refresh, notify }: Props) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     setBusy(true);
     setError("");
     setSuccess(null);
@@ -58,7 +59,7 @@ export function AdminTeacherOnboarding({ client, refresh, notify }: Props) {
       setSuccess(result);
       await refresh();
       notify(result.message || "Profesor añadido al equipo.");
-      event.currentTarget.reset();
+      formElement.reset();
       setCountry("");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo añadir el profesor.");
