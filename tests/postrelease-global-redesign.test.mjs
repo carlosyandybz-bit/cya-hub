@@ -61,6 +61,14 @@ test("student header is logo + notifications + avatar, while greeting lives in I
   const homeStart = portal.indexOf('screen === "home"');
   assert.ok(homeStart > headerEnd);
   assert.match(portal.slice(homeStart), /greetingForNow\(identity\.timezone\)/);
+  assert.match(portal.slice(homeStart), /Profesor · CARLOS Y ANDY/);
+});
+
+test("scheduled or active classes remain preparable until lifecycle closure", () => {
+  assert.match(portal, /item\.status !== "finished" && item\.status !== "cancelled"/);
+  assert.doesNotMatch(portal, /scheduled_start_at\)\.getTime\(\) > portalNow/);
+  assert.doesNotMatch(portal, /setPortalNow/);
+  assert.match(portal, /PreparationPanel/);
 });
 
 test("student bottom navigation keeps exactly the approved five product destinations", () => {
@@ -86,6 +94,22 @@ test("Mi Formación exposes the four approved submodules without adding a sixth 
   assert.match(portal, /Clases realizadas/);
   assert.match(portal, /Contenido/);
   assert.match(portal, /formationSheet/);
+});
+
+test("class history preserves summaries notes media videos and canonical teacher-facing parity", () => {
+  assert.match(portal, /class_summaries\?: ClassSummary\[\]/);
+  assert.match(portal, /class_media\?: ClassMediaSnapshot\[\]/);
+  assert.match(portal, /from\("class_notes"\)/);
+  assert.match(portal, /eq\("visibility_scope", "student"\)/);
+  assert.match(portal, /from\("class_video_resources"\)/);
+  assert.match(portal, /eq\("visibility_scope", "private_student"\)/);
+  assert.match(portal, /Resumen de mis clases/);
+  assert.match(portal, /Observaciones de mis clases/);
+  assert.match(portal, /Vídeos de mis clases/);
+  assert.match(portal, /Documentación de clase/);
+  assert.match(portal, /<h2>Mis clases<\/h2>/);
+  assert.match(portal, /return "Realizada"/);
+  assert.match(portal, /<h2>Mis bonos<\/h2>/);
 });
 
 test("Descubre is the canonical discovery home for Aprende Online and Eventos", () => {
