@@ -6,6 +6,7 @@ import CyaApp from "./cya-app";
 import { StudentPortalPrf } from "./student-portal-prf";
 import { setRuntimeSupabaseClient } from "./supabase-runtime";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
+import styles from "./app-entry-router.module.css";
 
 let routerClient: SupabaseClient | null = null;
 let routerClientPromise: Promise<SupabaseClient> | null = null;
@@ -116,7 +117,7 @@ export default function AppEntryRouter() {
     setStudentState((current) => current ? { ...current, identity: { ...current.identity, ...patch } } : current);
   }
 
-  if (checking) return <div className="app-loading" role="status"><strong>CYA</strong><span>Preparando tu espacio…</span></div>;
+  if (checking) return <div className={styles.loading} role="status"><strong>CYA</strong><span>Preparando tu espacio…</span></div>;
   if (!studentState) return <CyaApp />;
   return <StudentPortalPrf
     client={studentState.client}
