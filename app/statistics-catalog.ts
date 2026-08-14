@@ -1,5 +1,5 @@
 export type StatisticFormat = "number" | "currency" | "minutes" | "percentage";
-export type StatisticBlock = "classes" | "students" | "business" | "teaching" | "marketing" | "operations";
+export type StatisticBlock = "classes" | "students" | "business" | "teaching" | "bz" | "marketing" | "operations";
 export type StatisticFilterKey =
   | "teacher"
   | "student"
@@ -30,6 +30,7 @@ export const statisticBlockLabels: Record<StatisticBlock, string> = {
   students: "Alumnado",
   business: "Negocio",
   teaching: "Enseñanza",
+  bz: "BZ Points",
   marketing: "Marketing",
   operations: "Operación",
 };
@@ -50,6 +51,12 @@ export const statisticCatalog: StatisticMetric[] = [
   { key:"assignments_pending", block:"teaching", label:"Contenidos pendientes", format:"number", filters:["student","style","content_type"], description:"Asignaciones abiertas creadas durante el periodo." },
   { key:"evaluations_count", block:"teaching", label:"Evaluaciones", format:"number", filters:["teacher","student","style"], description:"Valoraciones realizadas durante el periodo." },
   { key:"evaluation_average", block:"teaching", label:"Media de evaluación", format:"number", filters:["teacher","student","style"], description:"Puntuación media de las evaluaciones del periodo." },
+
+  { key:"bz_points_earned", block:"bz", label:"BZ Points ganados", format:"number", filters:["student"], description:"Puntos concedidos por acciones premiadas durante el periodo." },
+  { key:"bz_points_redeemed", block:"bz", label:"BZ Points canjeados", format:"number", filters:["student"], description:"Puntos gastados en recompensas durante el periodo." },
+  { key:"bz_earn_events", block:"bz", label:"Acciones premiadas", format:"number", filters:["student"], description:"Número de acciones que generaron BZ Points." },
+  { key:"bz_active_people", block:"bz", label:"Personas que han ganado BZ", format:"number", filters:[], description:"Personas distintas que recibieron puntos durante el periodo." },
+  { key:"bz_redemptions", block:"bz", label:"Recompensas canjeadas", format:"number", filters:["student"], description:"Cupones o descuentos creados mediante canje durante el periodo." },
 
   { key:"marketing_spend", block:"marketing", label:"Inversión en campañas", format:"currency", filters:["campaign"], description:"Inversión registrada en campañas." },
   { key:"marketing_revenue", block:"marketing", label:"Ingresos atribuidos", format:"currency", filters:["campaign"], description:"Ingresos atribuidos a campañas." },
