@@ -28,6 +28,7 @@ const exportDomains = [
   ["marketing", "Marketing"],
   ["forms", "Formularios"],
   ["calendar", "Agenda y calendario"],
+  ["bz", "BZ Points y recompensas"],
   ["settings", "Configuración"],
   ["complete", "Copia completa"],
 ] as const;
@@ -42,6 +43,7 @@ const importDomains = [
   ["daily_quotes", "Frases diarias"],
   ["mission_rules", "Reglas de misión"],
   ["marketing_rates", "Tarifas"],
+  ["bz", "BZ Points y recompensas"],
   ["complete", "Copia CYA completa"],
 ] as const;
 

@@ -22,6 +22,7 @@ import type { IdentityContext } from "./v14-types";
 import { AdminDataTransfer } from "./admin-data-transfer";
 import { AdminFormLibrary } from "./admin-form-library";
 import { AdminTeacherOnboarding } from "./admin-teacher-onboarding";
+import { BZPointsAdmin } from "./bz-points-admin";
 import { P0fEvaluationAdmin } from "./p0f-evaluation-admin";
 import { AdminDailyQuotes } from "./admin-daily-quotes";
 import { P27NotificationsAdmin } from "./p27-notifications-admin";
@@ -30,7 +31,7 @@ import { P31CatalogAdmin } from "./p31-catalog-admin";
 import { P31IntegrationsAdmin } from "./p31-integrations-admin";
 import { P31RatesAdmin } from "./p31-rates-admin";
 
-type AdminSection = "general" | "team" | "forms" | "teaching" | "missions" | "notifications" | "data" | "rates" | "integrations" | "appearance" | "security";
+type AdminSection = "general" | "team" | "forms" | "teaching" | "missions" | "bz" | "notifications" | "data" | "rates" | "integrations" | "appearance" | "security";
 
 type Term = { id: number; label: string; term_key: string; taxonomy: string; active?: boolean; sort_order: number };
 type MemberRole = { user_id: string; role: string; active: boolean; created_at: string };
@@ -67,6 +68,7 @@ const sections: Array<[AdminSection, string, typeof Settings]> = [
   ["forms", "Formularios", FileText],
   ["teaching", "Enseñanza", GraduationCap],
   ["missions", "Misiones", Target],
+  ["bz", "BZ Points", WalletCards],
   ["notifications", "Notificaciones", Bell],
   ["data", "Datos", Database],
   ["rates", "Tarifas", WalletCards],
@@ -253,11 +255,15 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
     return <P31AppearanceAdmin client={client} notify={notify} />;
   }
 
+  function bzSection() {
+    return <BZPointsAdmin client={client} notify={notify} />;
+  }
+
   function securitySection() {
     return <section className="admin-stack"><article className="card pad security-summary"><ShieldCheck /><div><p className="eyebrow">Protección activa</p><h2>Permisos reales en servidor</h2><p>“Ver como” cambia la experiencia visual, pero cada operación vuelve a comprobar el permiso auténtico de la cuenta.</p></div></article><article className="card pad"><div className="card-head"><h2>Actividad reciente</h2><span>{data.audits.length}</span></div>{data.audits.length ? <div className="audit-list">{data.audits.map((event) => <div key={event.id}><span>{event.event_type}</span><strong>{event.summary}</strong><small>{new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(event.created_at))}</small></div>)}</div> : <div className="compact-empty"><ShieldCheck /><span>No hay operaciones sensibles recientes.</span></div>}</article></section>;
   }
 
-  const content = section === "general" ? generalSection() : section === "team" ? teamSection() : section === "forms" ? formsSection() : section === "teaching" ? teachingSection() : section === "missions" ? missionsSection() : section === "notifications" ? notificationsSection() : section === "data" ? dataSection() : section === "rates" ? ratesSection() : section === "integrations" ? integrationsSection() : section === "appearance" ? appearanceSection() : securitySection();
+  const content = section === "general" ? generalSection() : section === "team" ? teamSection() : section === "forms" ? formsSection() : section === "teaching" ? teachingSection() : section === "missions" ? missionsSection() : section === "bz" ? bzSection() : section === "notifications" ? notificationsSection() : section === "data" ? dataSection() : section === "rates" ? ratesSection() : section === "integrations" ? integrationsSection() : section === "appearance" ? appearanceSection() : securitySection();
 
   return <><header className="page-head admin-page-head"><div><p className="eyebrow">Inicio · Administración</p><h1>Administración</h1><p>Configuración organizada por finalidad, con autoridad real en CYA Hub.</p></div><button className="btn ghost" onClick={leave}>Volver a Inicio</button></header><div className="admin-layout"><nav className="admin-nav" aria-label="Secciones de Administración">{sections.map(([value, label, Icon]) => <button key={value} className={section === value ? "active" : ""} onClick={() => setSection(value)}><Icon /><span>{label}</span><ChevronRight /></button>)}</nav><main className="admin-panel">{loading ? <div className="admin-loading"><span className="spinner" /><p>Preparando Administración…</p></div> : content}</main></div>{busy ? <div className="saving-indicator"><Save /> Guardando</div> : null}</>;
 }

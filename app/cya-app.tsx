@@ -34,6 +34,7 @@ import { ClassSummaryContentEditor } from "./class-summary-content-editor";
 import { ContextEvaluationPanel } from "./context-evaluation-panel-p0f";
 import { QuickProvisionalStudentModal, type EditablePersonIdentity } from "./person-identity-editor";
 import { CountrySelect } from "./country-field";
+import { BZPointsPanel } from "./bz-points-panel";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 
 const TeachingGraph = lazy(() => import("./teaching-graph").then((module) => ({ default: module.TeachingGraph })));
@@ -1391,6 +1392,7 @@ function StudentPortal({ identity, experience, onExperience, client, email, onId
     <section className="portal-stats"><article><CalendarDays /><span>Próximas clases</span><strong>{upcoming.length}</strong></article><article><WalletCards /><span>Saldo neto</span><strong>{minutesLabel(balance)}</strong></article><article><BookOpen /><span>En formación</span><strong>{activeAssignments.length}</strong></article><article><TrendingUp /><span>Aptitudes evaluadas</span><strong>{latestScores.size}</strong></article></section>
     {pendingDebt > 0 ? <section className="card portal-next"><div><p className="eyebrow">Saldo pendiente</p><h2>{minutesLabel(pendingDebt)} por regularizar</h2><p>Una o más clases quedaron sin saldo suficiente. El profesor puede regularizarlas con un bono o dejar constancia de otra decisión.</p></div><AlertTriangle /></section> : null}
     {nextClass ? <section className="card portal-next"><div><p className="eyebrow">Próxima clase</p><h2>{nextClass.style || "Clase privada"}</h2><p>{dateLabel(nextClass.scheduled_start_at)} · {minutesLabel(nextClass.duration_minutes)}</p></div><div><span>{nextClass.role || "Rol por confirmar"}</span><span>{nextClass.level || "Nivel por confirmar"}</span></div></section> : null}
+    <BZPointsPanel client={client} assignments={snapshot.assignments} />
     <section className="portal-grid"><article className="card portal-card"><div className="card-head"><h2>Mi formación</h2><span>{snapshot.assignments.length}</span></div>{snapshot.assignments.length ? <div className="portal-learning-list">{snapshot.assignments.map((assignment) => <TeachingContentCard
         key={assignment.id}
         kindLabel={teachingKindLabels[assignment.content_type] ?? assignment.content_type}
@@ -1516,6 +1518,7 @@ function StaffApp({ session }: { session: Session }) {
       if (!alive) return;
       const nextIdentity = !contextResult.error && contextResult.data ? contextResult.data as IdentityContext : null;
       if (nextIdentity) setIdentity(nextIdentity);
+      if (nextIdentity?.can_study) void db.rpc("bz_record_daily_login");
       if (nextIdentity) {
         const preferred = preferenceResult.data?.preferred_context as ExperienceContext | null;
         const allowed = preferred === "teacher" ? nextIdentity.can_teach : preferred === "student" ? nextIdentity.can_study : preferred === "admin" ? nextIdentity.can_admin : false;

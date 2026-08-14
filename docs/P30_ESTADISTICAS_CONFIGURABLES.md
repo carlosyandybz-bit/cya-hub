@@ -29,6 +29,9 @@ Ejemplos válidos:
 - Nuevos alumnos este trimestre.
 - Evaluaciones realizadas esta semana.
 - Contenidos completados por estilo.
+- BZ Points ganados y canjeados.
+- Acciones BZ premiadas y personas que han ganado puntos.
+- Recompensas BZ canjeadas.
 - Reservas e ingresos atribuidos a campañas.
 - Misiones abiertas o completadas.
 - Notificaciones enviadas o fallidas.
@@ -39,11 +42,13 @@ Las tarjetas podrán usar: hoy, esta semana, este mes, este año, últimos N dí
 
 ## Catálogo de métricas
 
-El sistema debe exponer un catálogo declarativo de métricas agrupadas por bloques: Negocio, Clases, Alumnado, Enseñanza, Marketing, Operación y módulos futuros. No se permite SQL libre en una tarjeta. Cada métrica define sus filtros soportados, formato y fuente canónica.
+El sistema expone un catálogo declarativo de métricas agrupadas por bloques: Negocio, Clases, Alumnado, Enseñanza, BZ Points, Marketing, Operación y módulos futuros. No se permite SQL libre en una tarjeta. Cada métrica define sus filtros soportados, formato y fuente canónica.
+
+BZ Points utiliza como fuente `bz_point_ledger` y `bz_reward_redemptions`; los ajustes manuales no se presentan como puntos ganados ni como canjes. Las métricas BZ disponibles son puntos ganados, puntos canjeados, acciones premiadas, personas que han ganado puntos y recompensas canjeadas.
 
 ## Filtros
 
-Se habilitarán solo cuando exista un dato canónico fiable. Entre otros: profesor, alumno, ubicación/ciudad, dentro o fuera de una ubicación, país, estilo, estado de clase, estado de pago, tipo de contenido, campaña, prioridad/tipo de misión y canal/tipo de notificación.
+Se habilitarán solo cuando exista un dato canónico fiable. Entre otros: profesor, alumno, ubicación/ciudad, dentro o fuera de una ubicación, país, estilo, estado de clase, estado de pago, tipo de contenido, campaña, prioridad/tipo de misión y canal/tipo de notificación. Las métricas BZ que representan movimientos individuales admiten filtro por alumno.
 
 ## Paneles guardados y asignación
 
@@ -74,7 +79,8 @@ Debe existir una sección específica para Estadísticas desde la que un adminis
 - Los alumnos no pueden acceder a métricas globales; su futura vista mostrará solo estadísticas personales.
 - Solo administradores gestionan catálogo, paneles globales y asignaciones.
 - Los filtros nunca contienen expresiones SQL ejecutables.
+- Las métricas BZ respetan la RLS del ledger/canjes y no permiten alterar saldos desde Estadísticas.
 
 ## Extensibilidad
 
-BZ Points, recompensas, Feedback Online, Academia Online, agrupación de notificaciones y almacenamiento/compresión de vídeo deberán registrar sus métricas en el mismo catálogo cuando sus módulos existan. No se crearán dashboards paralelos incompatibles.
+BZ Points y recompensas ya están integrados en el catálogo P30. Feedback Online, Academia Online y almacenamiento/compresión de vídeo deberán registrar sus métricas en el mismo catálogo cuando sus módulos existan. No se crearán dashboards paralelos incompatibles.

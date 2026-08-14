@@ -249,6 +249,29 @@ async function notificationMetric(client:SupabaseClient,bounds:PeriodBounds,filt
   return rows.filter((row)=>inBounds(row.sent_at??row.last_attempt_at??row.queued_at,bounds)).length;
 }
 
+async function bzMetric(client:SupabaseClient,bounds:PeriodBounds,filters:StatisticFilters,key:string){
+  const student=numberFilter(filters,"student");
+  if(key==="bz_redemptions"){
+    let query=client.from("bz_reward_redemptions").select("id",{count:"exact",head:true}).gte("created_at",bounds.fromIso).lt("created_at",bounds.toIso);
+    if(student)query=query.eq("person_id",student);
+    return exactCount(query);
+  }
+  type Row={person_id:number;entry_type:string;points_delta:number;created_at:string};
+  const rows=await collectPages<Row>(async(from,to)=>{
+    let query=client.from("bz_point_ledger").select("person_id,entry_type,points_delta,created_at").gte("created_at",bounds.fromIso).lt("created_at",bounds.toIso);
+    if(student)query=query.eq("person_id",student);
+    if(key==="bz_points_redeemed")query=query.eq("entry_type","redeem");
+    else query=query.eq("entry_type","earn");
+    const result=await query.range(from,to);
+    return {data:(result.data??[]) as Row[],error:result.error};
+  });
+  if(key==="bz_points_earned")return rows.reduce((sum,row)=>sum+Math.max(0,row.points_delta),0);
+  if(key==="bz_points_redeemed")return rows.reduce((sum,row)=>sum+Math.abs(Math.min(0,row.points_delta)),0);
+  if(key==="bz_earn_events")return rows.length;
+  if(key==="bz_active_people")return new Set(rows.map((row)=>row.person_id)).size;
+  throw new Error("Métrica BZ no soportada.");
+}
+
 export async function calculateStatistic(client:SupabaseClient,metricKey:string,period:StatisticPeriod,filters:StatisticFilters={}):Promise<StatisticValue>{
   const metric=statisticCatalogByKey.get(metricKey);
   if(!metric)throw new Error(`Métrica no soportada: ${metricKey}`);
@@ -262,6 +285,7 @@ export async function calculateStatistic(client:SupabaseClient,metricKey:string,
   else if(metricKey==="credit_sales"||metricKey==="credit_grants")value=await grantMetric(client,bounds,filters,metricKey==="credit_sales");
   else if(metricKey==="assignments_created"||metricKey==="assignments_completed"||metricKey==="assignments_pending")value=await assignmentCount(client,bounds,filters,metricKey==="assignments_completed"?"completed":metricKey==="assignments_pending"?"pending":"created");
   else if(metricKey==="evaluations_count"||metricKey==="evaluation_average")value=await evaluationMetric(client,bounds,filters,metricKey==="evaluation_average");
+  else if(metric.block==="bz")value=await bzMetric(client,bounds,filters,metricKey);
   else if(metric.block==="marketing")value=marketingValue(metricKey,await marketingRows(client,bounds,filters));
   else if(metricKey.startsWith("missions_"))value=await missionMetric(client,bounds,filters,metricKey);
   else if(metricKey.startsWith("notification"))value=await notificationMetric(client,bounds,filters,metricKey);
