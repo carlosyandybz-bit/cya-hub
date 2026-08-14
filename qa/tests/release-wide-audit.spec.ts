@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { openAdminSection } from "./admin-navigation";
 
 type QaRole = "teacher" | "student" | "admin";
 
@@ -204,8 +205,7 @@ test.describe("CYA Hub release-wide audit", () => {
     await expect(page.getByRole("heading", { name: "Estado de CYA Hub" })).toBeVisible({ timeout: 20_000 });
     await auditSurface(page, testInfo, "admin-General", telemetry);
     for (const section of ["Equipo y roles", "Formularios", "Enseñanza", "Misiones", "Notificaciones", "Datos", "Integraciones", "Apariencia", "Seguridad"]) {
-      const button = page.getByRole("main").getByRole("button", { name: new RegExp(`^${section}$`, "i") }).first();
-      await expect(button).toBeVisible({ timeout: 15_000 }); await button.click(); await auditSurface(page, testInfo, `admin-${section}`, telemetry);
+      await openAdminSection(page, section); await auditSurface(page, testInfo, `admin-${section}`, telemetry);
     }
   });
 });

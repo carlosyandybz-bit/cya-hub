@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { openAdminSection } from "./admin-navigation";
 
 type QaRole = "teacher" | "admin";
 type TouchTarget = { tag: string; label: string; width: number; height: number };
@@ -98,9 +99,7 @@ test.describe("P0C mobile touch target gate", () => {
     await assertMobileSurface(page, "admin-General");
 
     for (const section of ["Equipo y roles", "Formularios", "Enseñanza", "Misiones", "Notificaciones", "Datos", "Integraciones", "Apariencia", "Seguridad"]) {
-      const button = page.getByRole("main").getByRole("button", { name: new RegExp(`^${section}$`, "i") }).first();
-      await expect(button).toBeVisible({ timeout: 15_000 });
-      await button.click();
+      await openAdminSection(page, section);
       await assertMobileSurface(page, `admin-${section}`);
     }
   });
