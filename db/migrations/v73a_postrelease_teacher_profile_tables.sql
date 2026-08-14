@@ -28,16 +28,18 @@ grant select on table public.teacher_profiles to authenticated;
 grant select on table public.teacher_profile_styles to authenticated;
 
 drop policy if exists teacher_profiles_staff_select on public.teacher_profiles;
-create policy teacher_profiles_staff_select
+drop policy if exists teacher_profiles_owner_admin_select on public.teacher_profiles;
+create policy teacher_profiles_owner_admin_select
 on public.teacher_profiles for select
 to authenticated
-using ((select private.is_staff()));
+using (person_id = (select private.current_person_id()) or (select private.is_admin()));
 
 drop policy if exists teacher_profile_styles_staff_select on public.teacher_profile_styles;
-create policy teacher_profile_styles_staff_select
+drop policy if exists teacher_profile_styles_owner_admin_select on public.teacher_profile_styles;
+create policy teacher_profile_styles_owner_admin_select
 on public.teacher_profile_styles for select
 to authenticated
-using ((select private.is_staff()));
+using (person_id = (select private.current_person_id()) or (select private.is_admin()));
 
 insert into public.teacher_profiles(person_id, professional_name, active)
 select distinct p.id, coalesce(nullif(btrim(up.display_name),''), nullif(btrim(p.display_name),'')), true
