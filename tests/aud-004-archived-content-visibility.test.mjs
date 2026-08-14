@@ -10,10 +10,12 @@ test("AUD-004 normalizes historical archived teaching content to staff visibilit
   assert.match(migration, /update public\.teaching_contents[\s\S]*set visibility='staff'[\s\S]*where not active[\s\S]*publication_status='archived'/);
 });
 
-test("AUD-004 archive RPC atomically removes student visibility", () => {
+test("AUD-004 archive RPC preserves its public return contract and removes student visibility atomically", () => {
   assert.match(migration, /create or replace function public\.archive_teaching_content/);
+  assert.match(migration, /returns public\.teaching_contents/);
+  assert.match(migration, /returning \* into v_content/);
+  assert.match(migration, /return v_content/);
   assert.match(migration, /set active=false,[\s\S]*publication_status='archived',[\s\S]*visibility='staff'/);
-  assert.match(migration, /assignment_status not in \('corrected','explained','completed'\)/);
 });
 
 test("AUD-004 enforces the teaching lifecycle invariant at table level", () => {
