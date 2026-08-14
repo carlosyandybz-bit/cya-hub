@@ -48,7 +48,7 @@ async function findUserByEmail(admin: ReturnType<typeof createClient>, email: st
     if (match) return match;
     if (data.users.length < 1000) return null;
   }
-  throw new Error("No se pudo comprobar la cuenta de acceso dentro del límite seguro.");
+  throw new Error("Auth user lookup exceeded the safe page limit");
 }
 
 type InviteBody = {
@@ -73,11 +73,11 @@ type Preflight = {
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (request.method !== "POST") return json({ error: "Método no permitido." }, 405);
+  if (request.method !== "POST") return json({ ok: false, error: "Método no permitido." }, 405);
 
   try {
     const authorization = request.headers.get("authorization") ?? "";
-    if (!authorization.startsWith("Bearer ")) return json({ error: "Inicia sesión para continuar." }, 401);
+    if (!authorization.startsWith("Bearer ")) return json({ ok: false, error: "Inicia sesión para continuar." }, 401);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     if (!supabaseUrl) throw new Error("Supabase URL is unavailable");
@@ -96,12 +96,9 @@ Deno.serve(async (request) => {
       global: { headers: { Authorization: authorization } },
     });
 
-    // La RPC valida permisos de administrador y resuelve P19 antes de tocar Auth.
+    // La sesión real del administrador valida permisos y P19 antes de tocar Auth.
     const preflightResult = await caller.rpc("admin_teacher_invite_preflight", payload);
-    if (preflightResult.error) {
-      const forbidden = preflightResult.error.code === "42501";
-      return json({ error: preflightResult.error.message }, forbidden ? 403 : 400);
-    }
+    if (preflightResult.error) return json({ ok: false, error: preflightResult.error.message });
     const preflight = preflightResult.data as Preflight;
 
     const admin = createClient(supabaseUrl, secretKeyFromEnvironment(), {
@@ -114,7 +111,7 @@ Deno.serve(async (request) => {
       if (existing.error) throw existing.error;
       user = existing.data.user;
       if (user.email?.trim().toLowerCase() !== preflight.email) {
-        return json({ error: "La ficha encontrada está vinculada a otra cuenta de acceso." }, 409);
+        return json({ ok: false, error: "La ficha encontrada está vinculada a otra cuenta de acceso." });
       }
     } else {
       user = await findUserByEmail(admin, preflight.email);
@@ -125,7 +122,7 @@ Deno.serve(async (request) => {
       const invited = await admin.auth.admin.inviteUserByEmail(preflight.email, {
         data: { full_name: preflight.display_name, cya_invited_role: "teacher" },
       });
-      if (invited.error || !invited.data.user) throw invited.error ?? new Error("No se pudo crear la invitación.");
+      if (invited.error || !invited.data.user) throw invited.error ?? new Error("Invite did not return a user");
       user = invited.data.user;
       invitationSent = true;
     }
@@ -138,7 +135,7 @@ Deno.serve(async (request) => {
       p_phone: preflight.phone,
       p_country_code: preflight.country_code,
     });
-    if (finalize.error) return json({ error: finalize.error.message, invitation_sent: invitationSent }, 409);
+    if (finalize.error) return json({ ok: false, error: finalize.error.message, invitation_sent: invitationSent });
 
     return json({
       ok: true,
@@ -151,7 +148,7 @@ Deno.serve(async (request) => {
         : "La cuenta ya existía y se ha activado como profesor.",
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "No se pudo añadir el profesor.";
-    return json({ error: message }, 500);
+    console.error("teacher-invite failed", error);
+    return json({ ok: false, error: "No se pudo añadir el profesor. Inténtalo de nuevo." }, 500);
   }
 });
