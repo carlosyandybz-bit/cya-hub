@@ -32,8 +32,8 @@ test("same-tab auth changes wake the entry router on the active Supabase client 
   assert.match(runtime, /event !== "SIGNED_IN" && event !== "SIGNED_OUT"/);
   assert.match(runtime, /CustomEvent\("cya:auth-change"/);
   assert.match(router, /getRuntimeSupabaseClient\(\) \?\? await connectRouterClient\(\)/);
-  assert.match(router, /addEventListener\("cya:auth-change", onContextChange\)/);
-  assert.match(router, /removeEventListener\("cya:auth-change", onContextChange\)/);
+  assert.match(router, /addEventListener\("cya:auth-change", onCanonicalContextChange\)/);
+  assert.match(router, /removeEventListener\("cya:auth-change", onCanonicalContextChange\)/);
   assert.doesNotMatch(router, /setInterval/);
 });
 
