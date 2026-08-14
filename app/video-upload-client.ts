@@ -11,7 +11,7 @@ export type VideoPreparationReason = "compressed" | "not-video" | "small-file" |
 export type PreparedUpload = { blob: Blob; name: string; mimeType: string; originalSize: number; finalSize: number; compressed: boolean; savingsPercent: number; reason: VideoPreparationReason };
 export type UploadProgress = { stage: "preparing" | "compressing" | "uploading" | "finalizing"; progress: number; message: string };
 type DirectUploadSession = { uploadUrl: string; ticket: string; error?: string };
-type UploadedDriveFile = { id: string; name?: string; mimeType?: string; webViewLink?: string };
+type UploadedDriveFile = { id: string; name?: string; mimeType?: string; webViewLink?: string; requestId?: number };
 
 function original(file: File, reason: VideoPreparationReason): PreparedUpload {
   return { blob: file, name: file.name, mimeType: file.type || "application/octet-stream", originalSize: file.size, finalSize: file.size, compressed: false, savingsPercent: 0, reason };
@@ -130,6 +130,36 @@ export async function uploadPreparedFeedback(requestId: number, prepared: Prepar
   }
 }
 
+export async function uploadPreparedClassPreparation(classId: number, prepared: PreparedUpload, onProgress?: (progress: UploadProgress) => void) {
+  const token = await getRuntimeAccessToken();
+  if (!token) throw new Error("Tu sesión ha caducado. Vuelve a entrar para enviarnos el vídeo.");
+  onProgress?.({ stage: "uploading", progress: 0, message: "Enviándonos tu vídeo…" });
+  let session: DirectUploadSession | null = null;
+  try {
+    const create = await fetch("/api/class-preparation/upload", {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ classId, name: prepared.name, mimeType: prepared.mimeType, size: prepared.finalSize }),
+    });
+    session = await create.json().catch(() => null) as DirectUploadSession | null;
+    if (!create.ok || !session?.uploadUrl || !session.ticket) throw new Error(session?.error || "No hemos podido preparar la subida del vídeo.");
+    const upload = await directPut(session.uploadUrl, prepared);
+    if (!upload.ok) throw new Error(`Drive respondió ${upload.status}.`);
+    onProgress?.({ stage: "finalizing", progress: 1, message: "Guardando el vídeo en tu próxima clase…" });
+    const complete = await fetch("/api/class-preparation/upload", {
+      method: "PATCH",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ ticket: session.ticket }),
+    });
+    const payload = await complete.json().catch(() => null) as (UploadedDriveFile & { error?: string }) | null;
+    if (!complete.ok || !payload?.id || !payload.requestId) throw new Error(payload?.error || "No hemos podido vincular el vídeo con tu próxima clase.");
+    return payload;
+  } catch {
+    if (session?.ticket) await cancelDirectUpload(token, "/api/class-preparation/upload", session.ticket);
+    return proxyClassPreparationUpload(token, classId, prepared);
+  }
+}
+
 async function proxyFeedbackUpload(token: string, requestId: number, prepared: PreparedUpload) {
   const response = await fetch("/api/feedback-online/upload", {
     method: "PUT",
@@ -144,6 +174,23 @@ async function proxyFeedbackUpload(token: string, requestId: number, prepared: P
   });
   const payload = await response.json().catch(() => null) as (UploadedDriveFile & { error?: string }) | null;
   if (!response.ok || !payload?.id) throw new Error(payload?.error || "No se pudo subir el vídeo de Feedback.");
+  return payload;
+}
+
+async function proxyClassPreparationUpload(token: string, classId: number, prepared: PreparedUpload) {
+  const response = await fetch("/api/class-preparation/upload", {
+    method: "PUT",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": prepared.mimeType,
+      "x-cya-class-id": String(classId),
+      "x-cya-file-name": encodeURIComponent(prepared.name),
+      "x-cya-file-size": String(prepared.finalSize),
+    },
+    body: prepared.blob,
+  });
+  const payload = await response.json().catch(() => null) as (UploadedDriveFile & { error?: string }) | null;
+  if (!response.ok || !payload?.id || !payload.requestId) throw new Error(payload?.error || "No hemos podido subir el vídeo esta vez. Puedes probar de nuevo o dejarnos un enlace.");
   return payload;
 }
 
