@@ -33,6 +33,7 @@ import { setRuntimeSupabaseClient } from "./supabase-runtime";
 import { ClassSummaryContentEditor } from "./class-summary-content-editor";
 import { ContextEvaluationPanel } from "./context-evaluation-panel-p0f";
 import { QuickProvisionalStudentModal, type EditablePersonIdentity } from "./person-identity-editor";
+import { CountrySelect } from "./country-field";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 
 const TeachingGraph = lazy(() => import("./teaching-graph").then((module) => ({ default: module.TeachingGraph })));
@@ -1312,7 +1313,7 @@ function AddCredit({ students, initialStudentId, close, saved }: { students: Per
 }
 
 function AddStudent({ close, created }: { close: () => void; created: () => Promise<void> }) {
-  const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const [busy, setBusy] = useState(false), [error, setError] = useState(""), [country, setCountry] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!db) return;
     const form = new FormData(event.currentTarget), first = String(form.get("first_name") ?? "").trim(), last = String(form.get("last_name") ?? "").trim();
@@ -1327,7 +1328,7 @@ function AddStudent({ close, created }: { close: () => void; created: () => Prom
     <form className="modal-body" onSubmit={submit}><div className="fields-2">
       <label className="field"><span>Nombre *</span><input name="first_name" autoFocus required /></label><label className="field"><span>Apellidos</span><input name="last_name" /></label>
       <label className="field"><span>Teléfono</span><input name="phone" type="tel" /></label><label className="field"><span>Email</span><input name="email" type="email" /></label>
-      <label className="field"><span>País</span><input name="country_code" maxLength={2} placeholder="ES" /></label>
+      <label className="field"><span>País</span><CountrySelect name="country_code" value={country} onChange={setCountry} /></label>
     </div>{error ? <p className="error">{error}</p> : null}<div className="actions"><button className="btn ghost" type="button" onClick={close}>Cancelar</button><button className="btn" disabled={busy}>{busy ? "Guardando…" : "Crear alumno"}</button></div></form>
   </section></div>;
 }

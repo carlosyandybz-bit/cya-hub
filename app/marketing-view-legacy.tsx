@@ -7,6 +7,7 @@ import {
   ShieldCheck, TrendingUp, UsersRound, Video, WalletCards, X,
 } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
+import { CountrySelect } from "./country-field";
 
 export type DriveMedia = {
   id: number; media_type: "image" | "video"; provider: string; external_file_id: string; title: string | null;
@@ -152,7 +153,7 @@ function Empty({ icon: Icon, title, text, action }: { icon: typeof UsersRound; t
 
 function ContactEditor({ db, contact, rates, close, saved }: { db: SupabaseClient; contact: CrmContact | null; rates: MarketingRate[]; close: () => void; saved: (message: string) => Promise<void> }) {
   const profile = contact?.crm_profiles?.[0];
-  const [busy,setBusy] = useState(false), [error,setError] = useState("");
+  const [busy,setBusy] = useState(false), [error,setError] = useState(""), [country,setCountry] = useState(contact?.country_code ?? "");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form = new FormData(event.currentTarget);
     const first = String(form.get("first_name") || "").trim();
@@ -177,7 +178,7 @@ function ContactEditor({ db, contact, rates, close, saved }: { db: SupabaseClien
         <label className="field"><span>Nombre *</span><input name="first_name" required autoFocus defaultValue={contact?.first_name ?? contact?.display_name ?? ""} /></label>
         <label className="field"><span>Apellidos</span><input name="last_name" defaultValue={contact?.last_name ?? ""} /></label>
         <label className="field"><span>Teléfono</span><input name="phone" type="tel" defaultValue={contact?.phone ?? ""} /></label>
-        <label className="field"><span>País</span><input name="country_code" maxLength={2} placeholder="ES" defaultValue={contact?.country_code ?? ""} /></label>
+        <label className="field"><span>País</span><CountrySelect name="country_code" value={country} onChange={setCountry} /></label>
         <label className="field field-wide"><span>Email</span><input name="email" type="email" defaultValue={contact?.email ?? ""} /></label>
       </div>
       <details className="progressive-fields" open={Boolean(contact)}><summary>Añadir información comercial</summary><div className="fields-2">
