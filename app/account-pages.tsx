@@ -1,7 +1,7 @@
 "use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { Camera, CircleUserRound, Clock3, Save, Settings2, Trash2, UserRound } from "lucide-react";
+import { Camera, CircleUserRound, Clock3, GraduationCap, Save, Settings2, Trash2, UserRound } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 import { RuntimeForm } from "./runtime-form";
@@ -173,7 +173,7 @@ export function ProfileSettingsView({ client, identity, onIdentityPatch, notify 
       <header className={styles.pageHeader}>
         <span className={styles.eyebrow}>Mi cuenta</span>
         <h1 id="profile-settings-title">Editar perfil</h1>
-        <p>Gestiona tu cuenta y, si eres alumno, tus datos personales canónicos.</p>
+        <p>Gestiona tu foto y la información que utilizas en CYA.</p>
       </header>
 
       <form className={styles.card} onSubmit={submit}>
@@ -191,14 +191,19 @@ export function ProfileSettingsView({ client, identity, onIdentityPatch, notify 
         </div>
 
         <label className={styles.field}>
-          <span>Nombre del perfil</span>
+          <span>Nombre de la cuenta</span>
           <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="name" required />
-          <small>Es el nombre que se muestra en la cabecera y en tu cuenta.</small>
+          <small>Se utiliza en la cabecera y en tu cuenta.</small>
         </label>
 
         {error ? <p className={styles.error}>{error}</p> : null}
         <div className={styles.actions}><button className={styles.primaryButton} disabled={busy}><Save /> {busy ? "Guardando…" : "Guardar cambios"}</button></div>
       </form>
+
+      {identity.can_teach && identity.person_id ? <section className={styles.card} aria-labelledby="teacher-profile-data-title">
+        <div className={styles.sectionTitle}><GraduationCap /><div><strong id="teacher-profile-data-title">Mi perfil de profesor</strong><span>Nombre profesional, estilos, biografía y especialidades en una única ficha.</span></div></div>
+        <RuntimeForm client={client} formKey="teacher_profile" personId={identity.person_id} mode="edit" submitLabel="Guardar perfil de profesor" compact onSaved={() => notify("Perfil de profesor actualizado.")} />
+      </section> : null}
 
       {identity.can_study ? <section className={styles.card} aria-labelledby="student-profile-data-title">
         <div className={styles.sectionTitle}><UserRound /><div><strong id="student-profile-data-title">Mis datos de alumno</strong><span>Información compartida con tu ficha CYA, sin volver a escribir lo que ya conocemos.</span></div></div>
@@ -209,29 +214,38 @@ export function ProfileSettingsView({ client, identity, onIdentityPatch, notify 
 }
 
 export function PreferencesSettingsView({ client, identity, experience, onIdentityPatch, notify }: PreferencesProps) {
+  const availableContexts = useMemo(() => [
+    identity.can_teach ? { value: "teacher" as const, label: "Profesor" } : null,
+    identity.can_study ? { value: "student" as const, label: "Alumno" } : null,
+    identity.can_admin ? { value: "admin" as const, label: "Administrador" } : null,
+  ].filter((item): item is { value: ExperienceContext; label: string } => Boolean(item)), [identity.can_admin, identity.can_study, identity.can_teach]);
   const [timezone, setTimezone] = useState(identity.timezone || "Europe/Madrid");
   const [morning, setMorning] = useState(identity.greeting_boundaries.morning_start || "05:00");
   const [afternoon, setAfternoon] = useState(identity.greeting_boundaries.afternoon_start || "12:00");
   const [night, setNight] = useState(identity.greeting_boundaries.night_start || "20:00");
+  const [preferredContext, setPreferredContext] = useState<ExperienceContext>(experience);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let alive = true;
-    client.from("user_preferences").select("timezone,greeting_boundaries").eq("user_id", identity.user_id).maybeSingle().then(({ data, error: loadError }) => {
+    client.from("user_preferences").select("timezone,greeting_boundaries,preferred_context").eq("user_id", identity.user_id).maybeSingle().then(({ data, error: loadError }) => {
       if (!alive || loadError || !data) return;
       const boundaries = data.greeting_boundaries as Record<string, string> | null;
+      const storedContext = data.preferred_context as ExperienceContext | null;
       setTimezone(data.timezone || identity.timezone || "Europe/Madrid");
       setMorning(boundaries?.morning_start || "05:00");
       setAfternoon(boundaries?.afternoon_start || "12:00");
       setNight(boundaries?.night_start || "20:00");
+      setPreferredContext(availableContexts.some((item) => item.value === storedContext) && storedContext ? storedContext : experience);
     });
     return () => { alive = false; };
-  }, [client, identity.timezone, identity.user_id]);
+  }, [availableContexts, client, experience, identity.timezone, identity.user_id]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!validTimezone(timezone.trim())) return setError("La zona horaria no es válida. Ejemplo: Europe/Madrid.");
+    if (!availableContexts.some((item) => item.value === preferredContext)) return setError("Elige un portal al que tengas acceso.");
     const greetingBoundaries = { morning_start: morning, afternoon_start: afternoon, night_start: night };
     setBusy(true);
     setError("");
@@ -239,7 +253,7 @@ export function PreferencesSettingsView({ client, identity, experience, onIdenti
       user_id: identity.user_id,
       timezone: timezone.trim(),
       greeting_boundaries: greetingBoundaries,
-      preferred_context: experience,
+      preferred_context: preferredContext,
     }, { onConflict: "user_id" });
     setBusy(false);
     if (result.error) return setError(result.error.message);
@@ -252,15 +266,22 @@ export function PreferencesSettingsView({ client, identity, experience, onIdenti
       <header className={styles.pageHeader}>
         <span className={styles.eyebrow}>Mi cuenta</span>
         <h1 id="preferences-settings-title">Preferencias</h1>
-        <p>Ajusta tu zona horaria y los saludos de Inicio.</p>
+        <p>Elige cómo quieres que CYA se adapte a tu día a día.</p>
       </header>
 
       <form className={styles.card} onSubmit={submit}>
-        <div className={styles.sectionTitle}><Settings2 /><div><strong>General</strong><span>Horario y comportamiento personal</span></div></div>
+        <div className={styles.sectionTitle}><Settings2 /><div><strong>General</strong><span>Horario y portal con el que prefieres entrar</span></div></div>
         <label className={styles.field}>
           <span>Zona horaria</span>
           <input value={timezone} onChange={(event) => setTimezone(event.target.value)} placeholder="Europe/Madrid" />
           <small>Se utiliza para agenda, clases, misiones y saludos.</small>
+        </label>
+        <label className={styles.field}>
+          <span>Entrar normalmente como</span>
+          <select value={preferredContext} onChange={(event) => setPreferredContext(event.target.value as ExperienceContext)}>
+            {availableContexts.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          </select>
+          <small>Puedes cambiar de vista cuando quieras desde «Ver como».</small>
         </label>
 
         <div className={styles.sectionTitle}><Clock3 /><div><strong>Saludos</strong><span>Cuándo cambia el saludo de Inicio</span></div></div>
@@ -270,7 +291,7 @@ export function PreferencesSettingsView({ client, identity, experience, onIdenti
           <label className={styles.field}><span>Buenas noches desde</span><input type="time" value={night} onChange={(event) => setNight(event.target.value)} /></label>
         </div>
 
-        <div className={styles.portalSummary}><UserRound /><div><strong>Portal preferido actual</strong><span>{experience === "admin" ? "Administrador" : experience === "student" ? "Alumno" : "Profesor"}</span></div></div>
+        <div className={styles.portalSummary}><UserRound /><div><strong>Vista actual</strong><span>{experience === "admin" ? "Administrador" : experience === "student" ? "Alumno" : "Profesor"}</span></div></div>
 
         {error ? <p className={styles.error}>{error}</p> : null}
         <div className={styles.actions}><button className={styles.primaryButton} disabled={busy}><Save /> {busy ? "Guardando…" : "Guardar preferencias"}</button></div>
