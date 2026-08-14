@@ -79,7 +79,8 @@ test("student video upload is owner-scoped, server-associated and HMAC protected
   assert.match(upload,/mimeType\.startsWith\("video\/"\)/);
   assert.match(upload,/1024 \* 1024 \* 1024/);
   assert.match(upload,/createDriveResumableUpload\(name, mimeType, size, "feedback"\)/);
-  assert.match(upload,/signFeedbackUploadProof\(requestId, personId, payload\.id\)/);
+  assert.ok(upload.includes("signFeedbackUploadProof(payload.requestId, payload.personId, file.id)"));
+  assert.ok(upload.includes("signFeedbackUploadProof(requestId, personId, file.id)"));
   assert.match(upload,/attachFeedbackVideo\(accessToken/);
   assert.match(upload,/deleteDriveFile\(uploadedFileId\)/);
   assert.match(upload,/deleteDriveFile\(previousFileId\)/);
@@ -110,7 +111,7 @@ test("P27 notifies staff on submit and the student on completion",()=>{
 
 test("student, teacher and Administration surfaces are wired into the real CYA navigation",()=>{
   for(const rpc of ["feedback_credit_balance","feedback_request_purchase","feedback_create_draft","feedback_submit_request","feedback_cancel_request"]) assert.match(student,new RegExp(rpc),rpc);
-  assert.match(student,/\/api\/feedback-online\/upload/);
+  assert.match(student,/uploadPreparedFeedback/);
   assert.match(student,/SecureDriveAsset/);
   for(const rpc of ["feedback_start_review","feedback_update_context","feedback_assign_content","feedback_start_evaluation","feedback_complete_request"]) assert.match(staff,new RegExp(rpc),rpc);
   for(const rpc of ["admin_feedback_save_product","admin_feedback_confirm_purchase","admin_feedback_create_paid_purchase","admin_feedback_adjust_credits"]) assert.match(admin,new RegExp(rpc),rpc);
