@@ -158,7 +158,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(page.getByText("Profesor · CARLOS Y ANDY", { exact: true })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText("QA · Profesor", { exact: true })).toHaveCount(0);
     const portalNav = page.getByRole("navigation", { name: "Portal CYA" });
-    await portalNav.getByRole("button", { name: /Mi formación/i }).click();
+    await portalNav.getByRole("button", { name: "Mi formación", exact: true }).click();
     await page.getByRole("button", { name: /Clases realizadas/i }).first().click();
     await expect(page.getByRole("heading", { name: "Resumen de mis clases" })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(studentSummary, { exact: true })).toBeVisible();
