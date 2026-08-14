@@ -33,7 +33,7 @@ import { AcademyOnlineStudentComingSoon } from "./academy-online-student";
 import { BZPointsPanel } from "./bz-points-panel";
 import { SecureDriveAsset } from "./drive-media";
 import { FeedbackOnlineStudentPanel } from "./feedback-online-student";
-import { NotificationsView, type NotificationTargetContext } from "./notifications-view";
+import { NotificationsView } from "./notifications-view";
 import { PreferencesSettingsView, ProfileSettingsView } from "./account-pages";
 import { getRuntimeAccessToken } from "./supabase-runtime";
 import { prepareVideoForUpload, uploadPreparedClassPreparation, type UploadProgress } from "./video-upload-client";
@@ -364,10 +364,11 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const [portalNow, setPortalNow] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
-    await client.rpc("refresh_missions").catch(() => undefined);
+    await client.rpc("refresh_missions");
     const [portalResult, homeResult, bzResult, unreadResult] = await Promise.all([
       client.rpc("get_my_student_portal_v2"),
       client.rpc("home_snapshot"),
@@ -383,9 +384,10 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
   }, [client]);
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
+  useEffect(() => { const timer = window.setTimeout(() => setPortalNow(Date.now()), 0); return () => clearTimeout(timer); }, []);
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 3500); return () => clearTimeout(timer); }, [toast]);
 
-  const upcoming = useMemo(() => (snapshot?.classes ?? []).filter((item) => item.status !== "finished" && item.status !== "cancelled" && new Date(item.scheduled_start_at).getTime() > Date.now()).sort((a, b) => new Date(a.scheduled_start_at).getTime() - new Date(b.scheduled_start_at).getTime()), [snapshot?.classes]);
+  const upcoming = useMemo(() => (snapshot?.classes ?? []).filter((item) => item.status !== "finished" && item.status !== "cancelled" && (!portalNow || new Date(item.scheduled_start_at).getTime() > portalNow)).sort((a, b) => new Date(a.scheduled_start_at).getTime() - new Date(b.scheduled_start_at).getTime()), [snapshot?.classes, portalNow]);
   const nextClass = upcoming[0] ?? null;
   const activeAssignments = useMemo(() => (snapshot?.assignments ?? []).filter((item) => !["corrected", "completed"].includes(item.assignment_status)), [snapshot?.assignments]);
   const latestAssignments = useMemo(() => [...(snapshot?.assignments ?? [])].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()).slice(0, 3), [snapshot?.assignments]);
@@ -403,7 +405,7 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
   function go(value: PortalScreen) { setFormationMenu(false); setScreen(value); window.scrollTo({ top: 0, behavior: "smooth" }); }
   function goFormation(tab: FormationTab) { setFormationTab(tab); setFormationMenu(false); setScreen("formation"); window.scrollTo({ top: 0, behavior: "smooth" }); }
 
-  function notificationTarget(target: string, _context: NotificationTargetContext) {
+  function notificationTarget(target: string) {
     const value = target.toLowerCase();
     if (value.includes("feedback")) go("feedback");
     else if (value.includes("mission")) go("missions");
