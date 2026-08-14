@@ -42,7 +42,8 @@ test("teaching media prepares video and prefers browser-to-Drive upload",()=>{
   assert.match(teaching,/prepareVideoForUpload/);
   assert.match(teaching,/uploadPreparedToDrive/);
   assert.match(teaching,/Vídeo optimizado/);
-  assert.match(client,/fetch\(session\.uploadUrl/);
+  assert.match(client,/directPut\(session\.uploadUrl, prepared\)/);
+  assert.match(client,/fetch\(uploadUrl,[\s\S]*method: "PUT"/);
   assert.match(client,/proxyTeachingUpload/);
   assert.match(client,/\/api\/google-drive\/upload-session/);
 });
