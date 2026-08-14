@@ -1,0 +1,41 @@
+name: Apply product copy cleanup
+
+on:
+  push:
+    branches: [feat/postrelease-product-copy]
+    paths:
+      - 'scripts/apply-product-copy.mjs'
+      - 'scripts/fix-product-copy-duplicate-targets.mjs'
+      - '.github/workflows/apply-product-copy.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/postrelease-product-copy
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Disambiguate repeated source labels
+        run: node scripts/fix-product-copy-duplicate-targets.mjs
+      - name: Apply exact visible-copy replacements
+        run: node scripts/apply-product-copy.mjs
+      - name: Verify product copy contract
+        run: node --test tests/product-copy.test.mjs
+      - name: Reject whitespace errors
+        run: git diff --check
+      - name: Commit functional result and remove one-shot tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm scripts/apply-product-copy.mjs scripts/fix-product-copy-duplicate-targets.mjs .github/workflows/apply-product-copy.yml
+          git add app/admin-data-reset.tsx app/admin-data-transfer.tsx app/admin-form-library.tsx app/admin-view.tsx app/p27-notifications-admin.tsx app/p31-appearance-admin.tsx app/p31-integrations-admin.tsx app/statistics-explorer.tsx app/google-calendar-server.ts app/google-drive-server.ts tests/product-copy.test.mjs
+          git commit -m "Replace technical UI copy with product language"
+          git push origin HEAD:feat/postrelease-product-copy
