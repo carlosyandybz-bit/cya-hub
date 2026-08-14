@@ -37,8 +37,8 @@ Las preferencias personales con efecto real son zona horaria, límites de saludo
 ## Copy de producto — COMPLETADO
 Las superficies finales dejan de exponer términos de migraciones, motores, arquitectura, despliegue, PostgreSQL/Supabase o desarrollo cuando no aportan una acción al usuario. Administración conserva la información funcional necesaria con lenguaje de producto y los errores de integraciones no filtran detalles internos del backend.
 
-## Agrupación de notificaciones — PENDIENTE
-`internal_notifications` ya tiene `event_key` canónico. Agrupar visualmente las notificaciones del mismo tipo por `event_key`, con contador, expansión y lectura/destino preservados.
+## Agrupación de notificaciones — COMPLETADO
+La bandeja agrupa avisos repetidos por entidad concreta + regla + destino, no solo por tipo general. Avisos de alumnos, clases, contenidos o bonos distintos permanecen separados; duplicados de la misma entidad se contraen con contador y expansión, conservando lectura, prioridad y navegación individual. Las reglas reales `classes.preparation_needed` y `bonuses.low_or_expiring` tienen etiquetas de producto explícitas.
 
 # PR-B — BZ Points y recompensas — FALTA
 
