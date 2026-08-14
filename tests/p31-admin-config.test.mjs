@@ -18,6 +18,10 @@ const appearanceMigration=readFileSync("db/migrations/v71b_p31_appearance_settin
 const defaultsMigration=readFileSync("db/migrations/v71c_p31_operational_defaults.sql","utf8");
 const scheduleMigration=readFileSync("db/migrations/v71d_p31_schedule_default_location.sql","utf8");
 const appearanceReadPolicyMigration=readFileSync("db/migrations/v71e_p31_appearance_read_policy.sql","utf8");
+const teacherOnboarding=readFileSync("app/admin-teacher-onboarding.tsx","utf8");
+const evaluationAdmin=readFileSync("app/p0f-evaluation-admin.tsx","utf8");
+const teacherMigration=readFileSync("db/migrations/v74_postrelease_teacher_onboarding.sql","utf8");
+const teacherInviteFunction=readFileSync("supabase/functions/teacher-invite/index.ts","utf8");
 
 test("Administration centralizes P31 on canonical models",()=>{
   for(const token of ["P31CatalogAdmin","P31RatesAdmin","P31IntegrationsAdmin","P31AppearanceAdmin","Tarifas","Integraciones","Apariencia"]) assert.ok(admin.includes(token),token);
@@ -95,4 +99,42 @@ test("manual communication channels never impersonate a verified API",()=>{
   assert.match(integrations,/cliente del usuario/);
   assert.match(integrations,/Meta/);
   assert.match(integrations,/No integrada/);
+});
+
+test("teacher onboarding is admin-only, canonical and multi-role",()=>{
+  assert.match(teacherMigration,/admin_teacher_invite_preflight/);
+  assert.match(teacherMigration,/admin_finalize_teacher_invite/);
+  assert.match(teacherMigration,/private\.is_admin\(\)/);
+  assert.match(teacherMigration,/private\.match_person_identity/);
+  assert.match(teacherMigration,/private\.lock_person_identity/);
+  assert.match(teacherMigration,/from auth\.users/);
+  assert.match(teacherMigration,/values\(p_auth_user_id,'student',true,v_actor\)/);
+  assert.match(teacherMigration,/values\(p_auth_user_id,'teacher',true,v_actor\)/);
+  assert.match(teacherMigration,/teacher_profiles/);
+  assert.match(teacherMigration,/student_profiles/);
+  assert.match(teacherMigration,/teacher_onboarded/);
+  assert.match(teacherMigration,/revoke all on function public\.admin_teacher_invite_preflight[\s\S]*from public, anon/);
+  assert.match(teacherMigration,/revoke all on function public\.admin_finalize_teacher_invite[\s\S]*from public, anon/);
+});
+
+test("teacher invite edge function verifies the caller before privileged Auth work",()=>{
+  assert.match(teacherInviteFunction,/authorization\.startsWith\("Bearer "\)/);
+  assert.match(teacherInviteFunction,/admin_teacher_invite_preflight/);
+  assert.match(teacherInviteFunction,/inviteUserByEmail/);
+  assert.match(teacherInviteFunction,/admin_finalize_teacher_invite/);
+  assert.match(teacherInviteFunction,/SUPABASE_SECRET_KEYS/);
+  assert.match(teacherInviteFunction,/SUPABASE_SERVICE_ROLE_KEY/);
+  assert.doesNotMatch(teacherOnboarding,/SUPABASE_SECRET|SERVICE_ROLE/);
+});
+
+test("Administration exposes teacher onboarding and retires automatic progress controls",()=>{
+  assert.match(admin,/AdminTeacherOnboarding/);
+  assert.match(admin,/Añade profesores y gestiona sus accesos sin duplicar personas/);
+  assert.match(teacherOnboarding,/Añadir profesor/);
+  assert.match(teacherOnboarding,/functions\.invoke\("teacher-invite"/);
+  assert.match(teacherOnboarding,/CountrySelect/);
+  assert.doesNotMatch(evaluationAdmin,/Progreso automático/);
+  assert.doesNotMatch(evaluationAdmin,/teaching_content_evaluation_points/);
+  assert.doesNotMatch(evaluationAdmin,/addPointRule|removePointRule/);
+  assert.match(evaluationAdmin,/Hitos de evaluación/);
 });
