@@ -1,0 +1,97 @@
+name: PR-F3 legacy QA navigation fix
+
+on:
+  push:
+    branches: [feat/prf3-admin-grouped-navigation]
+    paths:
+      - '.github/workflows/prf3-legacy-qa-navigation-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/prf3-admin-grouped-navigation
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Align legacy QA with PR-F3 navigation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          helper = '''import { expect, type Page } from "@playwright/test";\n\nconst SECTION_GROUP: Record<string, string> = {\n  "General": "Sistema",\n  "Equipo y roles": "Sistema",\n  "Seguridad": "Sistema",\n  "Formularios": "Enseñanza",\n  "Enseñanza": "Enseñanza",\n  "Misiones": "Enseñanza",\n  "Notificaciones": "Enseñanza",\n  "Tarifas": "Negocio",\n  "BZ Points": "Negocio",\n  "Feedback Online": "Negocio",\n  "Academia Online": "Negocio",\n  "Datos": "Datos",\n  "Integraciones": "Datos",\n  "Apariencia": "Apariencia",\n};\n\nexport async function openAdminSection(page: Page, section: string) {\n  const group = SECTION_GROUP[section];\n  if (!group) throw new Error(`Unknown Administration section: ${section}`);\n\n  const groupNav = page.getByRole("navigation", { name: "Áreas de Administración" });\n  const localNav = page.getByRole("navigation", { name: `Opciones de ${group}` });\n  const currentLocal = localNav.getByRole("button", { name: section, exact: true });\n\n  if (!(await currentLocal.isVisible().catch(() => false))) {\n    const groupButton = groupNav.getByRole("button", { name: new RegExp(`^${group}(?:\\s|$)`) });\n    await expect(groupButton).toBeVisible({ timeout: 15_000 });\n    await groupButton.click();\n  }\n\n  const button = page.getByRole("navigation", { name: `Opciones de ${group}` }).getByRole("button", { name: section, exact: true });\n  await expect(button).toBeVisible({ timeout: 15_000 });\n  await button.click();\n}\n'''
+          Path('qa/tests/admin-navigation.ts').write_text(helper)
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'Expected block not found in {path}: {old[:80]!r}')
+              p.write_text(text.replace(old, new))
+
+          # Functional flow: disambiguate through canonical helper.
+          replace('qa/tests/functional-class-flow.spec.ts',
+                  'import { expect, test, type Page, type TestInfo } from "@playwright/test";\n',
+                  'import { expect, test, type Page, type TestInfo } from "@playwright/test";\nimport { openAdminSection } from "./admin-navigation";\n')
+          replace('qa/tests/functional-class-flow.spec.ts',
+                  '    await page.getByRole("button", { name: /Equipo y roles/ }).click();\n',
+                  '    await openAdminSection(page, "Equipo y roles");\n')
+
+          # P25/P26/P27: old flat buttons now require a group then local option.
+          for path, section in [
+              ('qa/tests/p25-missions.spec.ts', 'Misiones'),
+              ('qa/tests/p26-agenda.spec.ts', 'Integraciones'),
+              ('qa/tests/p27-notifications.spec.ts', 'Notificaciones'),
+          ]:
+              replace(path, 'import { expect, test } from "@playwright/test";\n',
+                      'import { expect, test } from "@playwright/test";\nimport { openAdminSection } from "./admin-navigation";\n')
+              old = f'  await page.getByRole("button",{{name:/{section}/}}).click();\n'
+              new = f'  await openAdminSection(page, "{section}");\n'
+              text = Path(path).read_text()
+              if old not in text:
+                  raise SystemExit(f'Expected navigation call not found in {path}')
+              Path(path).write_text(text.replace(old, new))
+
+          # Mobile target gate: exercise all grouped destinations canonically.
+          replace('qa/tests/mobile-touch-targets.spec.ts',
+                  'import { expect, test, type Page } from "@playwright/test";\n',
+                  'import { expect, test, type Page } from "@playwright/test";\nimport { openAdminSection } from "./admin-navigation";\n')
+          replace('qa/tests/mobile-touch-targets.spec.ts',
+                  '      const button = page.getByRole("main").getByRole("button", { name: new RegExp(`^${section}$`, "i") }).first();\n      await expect(button).toBeVisible({ timeout: 15_000 });\n      await button.click();\n',
+                  '      await openAdminSection(page, section);\n')
+
+          # Release-wide audit: same canonical traversal.
+          replace('qa/tests/release-wide-audit.spec.ts',
+                  'import { expect, test, type Page, type TestInfo } from "@playwright/test";\n',
+                  'import { expect, test, type Page, type TestInfo } from "@playwright/test";\nimport { openAdminSection } from "./admin-navigation";\n')
+          replace('qa/tests/release-wide-audit.spec.ts',
+                  '      const button = page.getByRole("main").getByRole("button", { name: new RegExp(`^${section}$`, "i") }).first();\n      await expect(button).toBeVisible({ timeout: 15_000 }); await button.click(); await auditSurface(page, testInfo, `admin-${section}`, telemetry);\n',
+                  '      await openAdminSection(page, section); await auditSurface(page, testInfo, `admin-${section}`, telemetry);\n')
+          PY
+      - name: Verify patch scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git diff --name-only
+          test -f qa/tests/admin-navigation.ts
+          grep -q 'openAdminSection(page, "Misiones")' qa/tests/p25-missions.spec.ts
+          grep -q 'openAdminSection(page, "Integraciones")' qa/tests/p26-agenda.spec.ts
+          grep -q 'openAdminSection(page, "Notificaciones")' qa/tests/p27-notifications.spec.ts
+          grep -q 'openAdminSection(page, "Equipo y roles")' qa/tests/functional-class-flow.spec.ts
+      - name: Commit QA compatibility fix and remove bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/prf3-legacy-qa-navigation-fix.yml
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add qa/tests .github/workflows/prf3-legacy-qa-navigation-fix.yml
+          git commit -m "PR-F3: align legacy Browser QA with grouped navigation"
+          git push origin HEAD:feat/prf3-admin-grouped-navigation
