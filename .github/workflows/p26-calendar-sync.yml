@@ -2,7 +2,7 @@ name: P26 Calendar Sync
 
 on:
   push:
-    branches: [feat/p26-agenda-google-calendar, main]
+    branches: [feat/p26-agenda-google-calendar]
     paths:
       - 'app/agenda-view.tsx'
       - 'app/admin-view.tsx'
@@ -15,8 +15,7 @@ on:
       - 'qa/tests/p26-agenda.spec.ts'
       - '.env.example'
       - '.github/workflows/p26-calendar-sync.yml'
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
