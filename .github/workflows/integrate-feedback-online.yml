@@ -1,0 +1,98 @@
+name: Integrate Feedback Online
+
+on:
+  push:
+    branches:
+      - feat/postrelease-feedback-online
+    paths:
+      - .github/workflows/integrate-feedback-online.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/postrelease-feedback-online
+          fetch-depth: 0
+      - name: Patch exact integration anchors
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly 1 anchor, found {count}")
+              return text.replace(old, new, 1)
+
+          app = Path("app/cya-app.tsx")
+          text = app.read_text()
+          text = replace_once(
+              text,
+              'import { BZPointsPanel } from "./bz-points-panel";\n',
+              'import { BZPointsPanel } from "./bz-points-panel";\nimport { FeedbackOnlineStudentPanel } from "./feedback-online-student";\nimport { FeedbackOnlineStaffQueue } from "./feedback-online-staff";\n',
+              "cya imports",
+          )
+          text = replace_once(
+              text,
+              '    <BZPointsPanel client={client} assignments={snapshot.assignments} />\n',
+              '    <BZPointsPanel client={client} assignments={snapshot.assignments} />\n    <FeedbackOnlineStudentPanel client={client} />\n',
+              "student portal",
+          )
+          old_live = '        {view === "live" ? <LiveClassView classes={classes} students={students} credits={credits} terms={catalog} library={teachingContents} relations={teachingRelations} assignments={teachingAssignments} selectedClassId={liveClassId} selectClass={setLiveClassId} refresh={refreshLive} notify={setToast} exit={() => goBack("home")} /> : null}\n'
+          new_live = '        {view === "live" ? <><FeedbackOnlineStaffQueue client={db!} students={students} visible={liveClassId === null} notify={setToast} /><LiveClassView classes={classes} students={students} credits={credits} terms={catalog} library={teachingContents} relations={teachingRelations} assignments={teachingAssignments} selectedClassId={liveClassId} selectClass={setLiveClassId} refresh={refreshLive} notify={setToast} exit={() => goBack("home")} /></> : null}\n'
+          text = replace_once(text, old_live, new_live, "live center")
+          app.write_text(text)
+
+          admin = Path("app/admin-view.tsx")
+          text = admin.read_text()
+          text = replace_once(
+              text,
+              'import { BZPointsAdmin } from "./bz-points-admin";\n',
+              'import { BZPointsAdmin } from "./bz-points-admin";\nimport { FeedbackOnlineAdmin } from "./feedback-online-admin";\n',
+              "admin import",
+          )
+          text = replace_once(
+              text,
+              'type AdminSection = "general" | "team" | "forms" | "teaching" | "missions" | "bz" | "notifications" | "data" | "rates" | "integrations" | "appearance" | "security";\n',
+              'type AdminSection = "general" | "team" | "forms" | "teaching" | "missions" | "bz" | "feedback" | "notifications" | "data" | "rates" | "integrations" | "appearance" | "security";\n',
+              "admin section type",
+          )
+          text = replace_once(
+              text,
+              '  ["bz", "BZ Points", WalletCards],\n',
+              '  ["bz", "BZ Points", WalletCards],\n  ["feedback", "Feedback Online", GraduationCap],\n',
+              "admin navigation",
+          )
+          text = replace_once(
+              text,
+              '  function bzSection() {\n    return <BZPointsAdmin client={client} notify={notify} />;\n  }\n',
+              '  function bzSection() {\n    return <BZPointsAdmin client={client} notify={notify} />;\n  }\n\n  function feedbackSection() {\n    return <FeedbackOnlineAdmin client={client} notify={notify} />;\n  }\n',
+              "admin feedback section",
+          )
+          text = replace_once(
+              text,
+              'section === "missions" ? missionsSection() : section === "bz" ? bzSection() : section === "notifications" ? notificationsSection()',
+              'section === "missions" ? missionsSection() : section === "bz" ? bzSection() : section === "feedback" ? feedbackSection() : section === "notifications" ? notificationsSection()',
+              "admin content router",
+          )
+          admin.write_text(text)
+          PY
+      - name: Verify integration
+        run: |
+          grep -q 'FeedbackOnlineStudentPanel client={client}' app/cya-app.tsx
+          grep -q 'FeedbackOnlineStaffQueue client={db!}' app/cya-app.tsx
+          grep -q 'FeedbackOnlineAdmin client={client}' app/admin-view.tsx
+          npm run lint -- --file app/feedback-online-student.tsx --file app/feedback-online-staff.tsx --file app/feedback-online-admin.tsx || npm run lint
+      - name: Remove temporary workflow and commit
+        run: |
+          rm .github/workflows/integrate-feedback-online.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/cya-app.tsx app/admin-view.tsx .github/workflows/integrate-feedback-online.yml
+          git commit -m "Wire Feedback Online into CYA Hub"
+          git push origin HEAD:feat/postrelease-feedback-online
