@@ -27,10 +27,11 @@ test("PR-F1 routes only the authorized student experience to the modular portal"
   assert.match(menu, /cya:experience-change/);
 });
 
-test("same-tab auth changes wake the entry router without polling", () => {
+test("same-tab auth changes wake the entry router on the active Supabase client without polling", () => {
   assert.match(runtime, /onAuthStateChange/);
   assert.match(runtime, /event !== "SIGNED_IN" && event !== "SIGNED_OUT"/);
   assert.match(runtime, /CustomEvent\("cya:auth-change"/);
+  assert.match(router, /getRuntimeSupabaseClient\(\) \?\? await connectRouterClient\(\)/);
   assert.match(router, /addEventListener\("cya:auth-change", onContextChange\)/);
   assert.match(router, /removeEventListener\("cya:auth-change", onContextChange\)/);
   assert.doesNotMatch(router, /setInterval/);
