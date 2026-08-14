@@ -3,10 +3,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
-const [detail, navigation, css] = await Promise.all([
+const [detail, navigation, css, mobileCss, layout] = await Promise.all([
   read("app/student-detail.tsx"),
   read("app/student-detail-navigation.tsx"),
   read("app/student-detail-navigation.module.css"),
+  read("app/prf2-student-detail-mobile.css"),
+  read("app/layout.tsx"),
 ]);
 
 test("PR-F2 groups the seven existing student-detail destinations into four intentions", () => {
@@ -50,6 +52,14 @@ test("grouped navigation is touch-safe and never needs horizontal scrolling", ()
   assert.match(css, /min-height:52px/);
   assert.match(css, /min-height:44px/);
   assert.doesNotMatch(css, /overflow-x:\s*auto/);
+});
+
+test("mobile student header keeps identity and actions in separate layout rows", () => {
+  assert.match(layout, /prf2-student-detail-mobile\.css/);
+  assert.match(mobileCss, /aria-labelledby="student-master-title"/);
+  assert.match(mobileCss, /position:\s*static/);
+  assert.match(mobileCss, /grid-template-columns:\s*minmax\(0, 1fr\) minmax\(0, 1fr\) 44px/);
+  assert.match(mobileCss, /min-height:\s*44px/);
 });
 
 test("switching groups opens their first canonical view while same-group subviews stay selected", () => {
