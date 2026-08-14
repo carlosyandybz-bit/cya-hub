@@ -2,7 +2,7 @@ name: P27 Notifications
 
 on:
   push:
-    branches: [feat/p27-notificaciones-automaticas, main]
+    branches: [feat/p27-notificaciones-automaticas]
     paths:
       - 'app/notifications-view.tsx'
       - 'app/p27-notifications-admin.tsx'
@@ -12,8 +12,7 @@ on:
       - 'tests/**'
       - 'qa/tests/p27-notifications.spec.ts'
       - '.github/workflows/p27-notifications.yml'
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
