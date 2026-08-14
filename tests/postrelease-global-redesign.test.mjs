@@ -43,6 +43,12 @@ test("entry router uses the canonical identity_context RPC used by CyaApp", () =
   assert.doesNotMatch(router, /get_identity_context/);
 });
 
+test("PR-F1 portal reuses the canonical student_portal_snapshot RPC", () => {
+  assert.match(portal, /client\.rpc\("student_portal_snapshot"\)/);
+  assert.match(cyaApp, /db\.rpc\("student_portal_snapshot"\)/);
+  assert.doesNotMatch(portal, /get_my_student_portal_v2/);
+});
+
 test("student header is logo + notifications + avatar, while greeting lives in Inicio", () => {
   const headerStart = portal.indexOf("<header className={styles.topbar}");
   const headerEnd = portal.indexOf("</header>", headerStart);
