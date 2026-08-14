@@ -8,19 +8,18 @@ Este documento gobierna el trabajo posterior al cierre P32. No volver a tratar P
 
 ## Estado confirmado
 
-- `main` y Supabase producción alineados.
-- Browser QA final verde en profesor/alumno/admin e iPhone/escritorio.
-- Backup completo final: 79 tablas.
-- Reset completo conoce Estadísticas P30 y preserva configuración P31.
-- Hotfix de frases diarias y solape móvil de Notificaciones integrado.
-- Sin PRs funcionales abiertos al cierre.
+- `main` y Supabase producción alineados hasta el último bloque fusionado; BZ Points backend v76–v79 está desplegado y el frontend se integra mediante PR-B.
+- Browser QA final verde en profesor/alumno/admin e iPhone/escritorio en el último `main` cerrado.
+- Backup completo actual: 86 tablas, incluidas las 5 tablas canónicas de BZ Points.
+- Reset completo conoce Estadísticas P30 y BZ Points, y preserva configuración P31 + reglas/recompensas BZ.
+- Hotfix de frases diarias, copy de producto y agrupación por entidad de Notificaciones integrados.
 
 ## Gates externos
 
 - **Hostinger:** `carlosyandy.com` continúa sirviendo la web pública existente. No mover el dominio principal hasta demostrar CYA Hub en una URL de app independiente.
 - **Supabase Auth:** Leaked Password Protection continúa desactivado; requiere ajuste externo de Auth/plan compatible.
 
-# PR-A — Cierres transversales
+# PR-A — Cierres transversales — COMPLETADO
 
 ## Ficha profesional de profesor — COMPLETADO
 `teacher_profiles` es el modelo canónico activo y `Mi perfil` expone el formulario versionado `teacher_profile` para cualquier identidad con rol de profesor. Nombre profesional, biografía, estilos y especialidades se editan sobre la misma persona P19.
@@ -40,20 +39,32 @@ Las superficies finales dejan de exponer términos de migraciones, motores, arqu
 ## Agrupación de notificaciones — COMPLETADO
 La bandeja agrupa avisos repetidos por entidad concreta + regla + destino, no solo por tipo general. Avisos de alumnos, clases, contenidos o bonos distintos permanecen separados; duplicados de la misma entidad se contraen con contador y expansión, conservando lectura, prioridad y navegación individual. Las reglas reales `classes.preparation_needed` y `bonuses.low_or_expiring` tienen etiquetas de producto explícitas.
 
-# PR-B — BZ Points y recompensas — FALTA
+# PR-B — BZ Points y recompensas — COMPLETADO EN BACKEND / INTEGRACIÓN EN PR
 
-Crear ledger auditable de puntos y catálogo de recompensas administrable.
+BZ Points utiliza un ledger auditable independiente de los puntos pedagógicos. El saldo siempre es la suma de movimientos; el cliente nunca decide cuántos puntos conceder.
 
-Acciones iniciales solicitadas:
-- registrarse;
-- inicio de sesión diario;
-- comprar bono;
-- realizar clase;
-- realizar ejercicio indicado;
-- confirmar una vez al día antes de clase que se repasó la clase anterior;
-- elegir contenido de la siguiente clase.
+Acciones iniciales implementadas:
+- registrarse: premio único desde persona registrada + perfil de alumno;
+- inicio de sesión diario: una vez por día local, calculado en servidor con la zona horaria personal;
+- comprar bono: una vez por bono pagado con importe positivo y miembro;
+- realizar clase: una vez por clase finalizada con asistencia presente;
+- realizar ejercicio indicado: una vez por ejercicio distinto completado por alumno;
+- confirmar antes de clase que se repasó la clase anterior: una vez al día y solo para la próxima clase;
+- elegir contenido de la siguiente clase: una vez por próxima clase; cambiar la elección actualiza la petición sin volver a premiar.
 
-Administración debe editar puntos por regla y recompensas/costes. Primer tipo de recompensa: cupones/descuentos. Misiones y BZ Points siguen siendo motores distintos: una misión puede generar un movimiento en el ledger.
+Administración puede editar puntos/activación por regla, crear/editar recompensas de cupón/descuento, consultar saldos y registrar ajustes manuales auditados. El alumno ve saldo, formas de ganar, preparación de próxima clase, recompensas, cupones e historial.
+
+Garantías:
+- `active_from` impide backfill histórico al activar el sistema;
+- idempotencia por claves únicas para todas las acciones premiables;
+- RLS y DML directo cerrados; los cambios pasan por RPCs validadas;
+- reglas BZ y Misiones son sistemas independientes;
+- la elección de contenido alimenta `class_preparation_requests`, visible en Dar clase;
+- P28 exporta/restaura un dominio BZ propio;
+- P32 incluye BZ en copia completa y limpia historial BZ con el scope correspondiente, preservando reglas/recompensas de configuración;
+- P30 incorpora métricas de puntos ganados/canjeados, acciones premiadas, personas premiadas y recompensas canjeadas.
+
+Producción: migraciones v76, v77, v78 y v79 aplicadas. Smokes transaccionales de idempotencia, permisos, canje, preparación de clase y reset individual pasaron con `ROLLBACK`, sin datos de prueba persistentes.
 
 # PR-C — Feedback Online — FALTA
 
@@ -88,7 +99,7 @@ Reorganizar por próxima acción, progreso, formación, saldo/bonos, misiones/BZ
 Actualmente concentra Resumen, Formación, Evaluación, Clases, Bonos, Datos y CRM. Reorganizar por contexto/frecuencia sin eliminar capacidad.
 
 ## Administración — FUNCIONAL CON DEUDA VISUAL
-Auditar layouts, mensajes técnicos, jerarquía y acciones. Eliminar `progreso automático` de superficies vivas si todavía aparece.
+Auditar layouts, jerarquía y acciones. El copy técnico principal ya se retiró; mantener esa regla en cualquier superficie nueva.
 
 ## Ver como — REQUIERE REDISEÑO
 Reorganizar visualmente Profesor/Alumno/Administrador, mostrando relación entre experiencias sin alterar permisos.
