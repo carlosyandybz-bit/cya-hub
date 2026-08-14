@@ -32,6 +32,7 @@ import { P31AppearanceAdmin } from "./p31-appearance-admin";
 import { P31CatalogAdmin } from "./p31-catalog-admin";
 import { P31IntegrationsAdmin } from "./p31-integrations-admin";
 import { P31RatesAdmin } from "./p31-rates-admin";
+import { AdminGroupedNavigation } from "./admin-grouped-navigation";
 
 type AdminSection = "general" | "team" | "forms" | "teaching" | "missions" | "bz" | "feedback" | "academy" | "notifications" | "data" | "rates" | "integrations" | "appearance" | "security";
 
@@ -277,5 +278,5 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
 
   const content = section === "general" ? generalSection() : section === "team" ? teamSection() : section === "forms" ? formsSection() : section === "teaching" ? teachingSection() : section === "missions" ? missionsSection() : section === "bz" ? bzSection() : section === "feedback" ? feedbackSection() : section === "academy" ? academySection() : section === "notifications" ? notificationsSection() : section === "data" ? dataSection() : section === "rates" ? ratesSection() : section === "integrations" ? integrationsSection() : section === "appearance" ? appearanceSection() : securitySection();
 
-  return <><header className="page-head admin-page-head"><div><p className="eyebrow">Inicio · Administración</p><h1>Administración</h1><p>Configuración organizada por finalidad, con autoridad real en CYA Hub.</p></div><button className="btn ghost" onClick={leave}>Volver a Inicio</button></header><div className="admin-layout"><nav className="admin-nav" aria-label="Secciones de Administración">{sections.map(([value, label, Icon]) => <button key={value} className={section === value ? "active" : ""} onClick={() => setSection(value)}><Icon /><span>{label}</span><ChevronRight /></button>)}</nav><main className="admin-panel">{loading ? <div className="admin-loading"><span className="spinner" /><p>Preparando Administración…</p></div> : content}</main></div>{busy ? <div className="saving-indicator"><Save /> Guardando</div> : null}</>;
+  return <><header className="page-head admin-page-head"><div><p className="eyebrow">Inicio · Administración</p><h1>Administración</h1><p>Configuración organizada por finalidad, con autoridad real en CYA Hub.</p></div><button className="btn ghost" onClick={leave}>Volver a Inicio</button></header><div className="admin-layout"><AdminGroupedNavigation section={section} sections={sections} onSection={setSection} /><main className="admin-panel">{loading ? <div className="admin-loading"><span className="spinner" /><p>Preparando Administración…</p></div> : content}</main></div>{busy ? <div className="saving-indicator"><Save /> Guardando</div> : null}</>;
 }

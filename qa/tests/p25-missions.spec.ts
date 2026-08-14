@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openAdminSection } from "./admin-navigation";
 
 function credentials(){
   const email=process.env.QA_ADMIN_EMAIL, password=process.env.QA_ADMIN_PASSWORD;
@@ -18,7 +19,7 @@ async function login(page:import("@playwright/test").Page){
 test("P25 admin explains automatic mission expiry without technical-only labels",async({page})=>{
   await login(page);
   await page.getByRole("button",{name:/Administración/}).click();
-  await page.getByRole("button",{name:/Misiones/}).click();
+  await openAdminSection(page, "Misiones");
 
   await expect(page.getByRole("heading",{name:"Misiones automáticas"})).toBeVisible({timeout:20_000});
   await expect(page.getByText("Zona horaria",{exact:true})).toBeVisible();

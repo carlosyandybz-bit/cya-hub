@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { openAdminSection } from "./admin-navigation";
 
 type QaRole = "teacher" | "student" | "admin";
 type ProjectFixture = {
@@ -174,7 +175,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(adminEntry).toBeVisible({ timeout: 20_000 });
     await adminEntry.click();
     await expect(page.getByRole("heading", { name: "Estado de CYA Hub" })).toBeVisible({ timeout: 20_000 });
-    await page.getByRole("button", { name: /Equipo y roles/ }).click();
+    await openAdminSection(page, "Equipo y roles");
     const adminPanel = page.getByRole("main");
     await expect(adminPanel.getByText("QA · Profesor", { exact: true }).first()).toBeVisible();
     await expect(adminPanel.getByText("QA · Alumno", { exact: true }).first()).toBeVisible();

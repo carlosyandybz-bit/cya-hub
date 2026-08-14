@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openAdminSection } from "./admin-navigation";
 
 function credentials(){
   const email=process.env.QA_ADMIN_EMAIL, password=process.env.QA_ADMIN_PASSWORD;
@@ -32,7 +33,7 @@ test("P26 Agenda exposes Google Calendar safely without requiring OAuth secrets 
 test("P26 Administration uses one real Google Calendar integration card",async({page})=>{
   await login(page);
   await page.getByRole("button",{name:/Administración/}).click();
-  await page.getByRole("button",{name:/Integraciones/}).click();
+  await openAdminSection(page, "Integraciones");
   await expect(page.getByRole("heading",{name:"Integraciones"})).toBeVisible({timeout:20_000});
   await expect(page.getByText("Google Calendar",{exact:true})).toHaveCount(1);
   await expect(page.getByText("Sincronización de agenda",{exact:true})).toBeVisible();

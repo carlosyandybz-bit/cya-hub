@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openAdminSection } from "./admin-navigation";
 
 function credentials(){
   const email=process.env.QA_ADMIN_EMAIL, password=process.env.QA_ADMIN_PASSWORD;
@@ -18,7 +19,7 @@ async function login(page:import("@playwright/test").Page){
 test("P27 administration shows the real automatic notification engine",async({page})=>{
   await login(page);
   await page.getByRole("button",{name:/Administración/}).click();
-  await page.getByRole("button",{name:/Notificaciones/}).click();
+  await openAdminSection(page, "Notificaciones");
   await expect(page.getByRole("heading",{name:"Notificaciones"})).toBeVisible({timeout:20_000});
   await expect(page.getByRole("heading",{name:"Bandeja interna operativa"})).toBeVisible();
   await expect(page.getByRole("heading",{name:"Estado de entregas"})).toBeVisible();
@@ -31,7 +32,7 @@ test("P27 administration shows the real automatic notification engine",async({pa
 test("P27 notification rules expose quiet hours without claiming external delivery",async({page})=>{
   await login(page);
   await page.getByRole("button",{name:/Administración/}).click();
-  await page.getByRole("button",{name:/Notificaciones/}).click();
+  await openAdminSection(page, "Notificaciones");
   await expect(page.getByRole("heading",{name:"Reglas automáticas"})).toBeVisible({timeout:20_000});
   await expect(page.getByText("Silencio desde",{exact:true}).first()).toBeVisible();
   await expect(page.getByText("Silencio hasta",{exact:true}).first()).toBeVisible();
