@@ -30,7 +30,7 @@ begin
       raise exception 'Las notas internas solo puede editarlas el equipo.' using errcode='42501';
     end if;
     if v_key like 'teacher_profiles.%' and not p_staff then
-      raise exception 'El perfil profesional solo puede editlo el equipo.' using errcode='42501';
+      raise exception 'El perfil profesional solo puede editarlo el equipo.' using errcode='42501';
     end if;
   end loop;
 
