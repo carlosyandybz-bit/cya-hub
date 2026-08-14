@@ -25,6 +25,7 @@ import { EvaluationRadar } from "./evaluation-radar";
 import { ContextEvaluationPanel } from "./context-evaluation-panel-p0f";
 import { StudentIdentityEditor } from "./person-identity-editor";
 import { countryName } from "./country-field";
+import { StudentDetailNavigation, type StudentDetailTab } from "./student-detail-navigation";
 import styles from "./student-detail.module.css";
 
 type Student = {
@@ -167,17 +168,8 @@ type ClassFinancial = {
   uncovered_minutes: number;
   billing_status: string;
 };
-type Tab = "summary" | "learning" | "evaluation" | "classes" | "credits" | "data" | "crm";
+type Tab = StudentDetailTab;
 
-const tabItems: Array<[Tab, string]> = [
-  ["summary", "Resumen"],
-  ["learning", "Formación"],
-  ["evaluation", "Evaluación"],
-  ["classes", "Clases"],
-  ["credits", "Bonos"],
-  ["data", "Datos"],
-  ["crm", "CRM"],
-];
 const stageLabels: Record<string, string> = {
   new: "Nuevo",
   contacted: "Contactado",
@@ -598,7 +590,7 @@ export function StudentMasterDetail({
         <div className={styles.actions}><button onClick={schedule}><CalendarDays /> Programar</button><button onClick={addCredit}><WalletCards /> Bono</button><button className={styles.close} onClick={close} aria-label="Cerrar"><X /></button></div>
       </header>
 
-      <nav className={styles.tabs} aria-label="Ficha del alumno">{tabItems.map(([value, label]) => <button key={value} className={tab === value ? styles.activeTab : ""} onClick={() => setTab(value)}>{label}</button>)}</nav>
+      <StudentDetailNavigation tab={tab} onTab={setTab} />
       <div className={styles.body}>
         {error ? <p className={styles.error}>{error}</p> : null}
         {loading ? <div className={styles.loading}><span /><strong>Cargando ficha completa…</strong></div> : null}

@@ -90,6 +90,56 @@ test("teacher can open Academia Online workspace", async ({ page }, testInfo) =>
   await expect(page.locator("body")).toContainText("Matrículas activas");
 });
 
+test("teacher student master detail groups seven views without horizontal navigation", async ({ page }, testInfo) => {
+  await login(page, "teacher", testInfo);
+
+  const alumnado = page.locator("nav button:visible").filter({ hasText: /^Alumnado$/ }).first();
+  await expect(alumnado).toBeVisible();
+  await alumnado.click();
+  await expect(page.getByRole("heading", { name: "Personas, sin ruido" })).toBeVisible({ timeout: 20_000 });
+
+  const studentRow = page.locator(".student-row").filter({ hasText: "QA · Alumno" }).first();
+  await expect(studentRow).toBeVisible();
+  await studentRow.locator(".student-row-main").click();
+
+  const dialog = page.getByRole("dialog").filter({ hasText: "QA · Alumno" });
+  await expect(dialog).toBeVisible({ timeout: 20_000 });
+  await expect(dialog.getByRole("button", { name: /Programar/ })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: /Bono/ })).toBeVisible();
+
+  const groups = dialog.getByRole("navigation", { name: "Áreas de la ficha del alumno" });
+  await expect(groups).toBeVisible();
+  for (const label of ["Ahora", "Aprendizaje", "Historial", "Perfil"]) {
+    await expect(groups.getByRole("button", { name: new RegExp(`^${label}`) })).toBeVisible();
+  }
+
+  await groups.getByRole("button", { name: /^Aprendizaje/ }).click();
+  const learningViews = dialog.getByRole("navigation", { name: "Vistas de Aprendizaje" });
+  await expect(learningViews.getByRole("button", { name: "Formación", exact: true })).toHaveAttribute("aria-current", "page");
+  await learningViews.getByRole("button", { name: "Evaluación", exact: true }).click();
+  await expect(dialog.getByRole("heading", { name: "Evolución por aptitud" })).toBeVisible({ timeout: 20_000 });
+
+  await groups.getByRole("button", { name: /^Historial/ }).click();
+  const historyViews = dialog.getByRole("navigation", { name: "Vistas de Historial" });
+  await expect(historyViews.getByRole("button", { name: "Clases", exact: true })).toHaveAttribute("aria-current", "page");
+  await historyViews.getByRole("button", { name: "Bonos", exact: true }).click();
+  await expect(dialog.getByRole("heading", { name: "Saldo e historial" })).toBeVisible({ timeout: 20_000 });
+
+  await groups.getByRole("button", { name: /^Perfil/ }).click();
+  const profileViews = dialog.getByRole("navigation", { name: "Vistas de Perfil" });
+  await expect(profileViews.getByRole("button", { name: "Datos", exact: true })).toHaveAttribute("aria-current", "page");
+  await profileViews.getByRole("button", { name: "CRM", exact: true }).click();
+  await expect(dialog.getByRole("heading", { name: "Captación y situación comercial" })).toBeVisible({ timeout: 20_000 });
+
+  const overflow = await dialog.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+  expect(overflow).toBe(false);
+
+  await testInfo.attach("teacher-student-master-prf2", {
+    body: await dialog.screenshot(),
+    contentType: "image/png",
+  });
+});
+
 test("student portal renders approved PR-F1 header and five-item navigation", async ({ page }, testInfo) => {
   await login(page, "student", testInfo);
 
