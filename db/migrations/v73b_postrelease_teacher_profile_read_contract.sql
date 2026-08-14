@@ -25,6 +25,11 @@ declare
 begin
   if p_person_id is null or p_path is null then return null; end if;
   if not private.form_canonical_path_allowed(p_path) then return null; end if;
+  if p_path like 'teacher_profiles.%'
+     and p_person_id is distinct from (select private.current_person_id())
+     and not (select private.is_admin()) then
+    return null;
+  end if;
 
   if p_path='people.first_name' then
     select to_jsonb(first_name) into v_value from public.people where id=p_person_id and active;
