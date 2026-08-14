@@ -2,7 +2,7 @@
 
 import { BarChart3, GraduationCap, House, LibraryBig, Megaphone, UsersRound } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 
 type ModuleSetting = { module_key: string; label: string; sort_order: number };
 
@@ -53,10 +53,10 @@ export function DesktopPrimaryNavigation({
     {modules.map((module) => {
       const Icon = iconByModule[module.module_key as keyof typeof iconByModule];
       if (!Icon) return null;
-      return <span key={module.module_key}>
+      return <Fragment key={module.module_key}>
         <button className={isActive(module.module_key) ? "active" : ""} onClick={() => navigate(module.module_key)}><Icon />{module.label}</button>
         {module.module_key === "students" ? <button className={view === "live" ? "active" : ""} onClick={() => navigate("live")}><GraduationCap />Dar clase</button> : null}
-      </span>;
+      </Fragment>;
     })}
   </nav>;
 }
