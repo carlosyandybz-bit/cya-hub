@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import CyaApp from "./cya-app";
 import { StudentPortalPrf } from "./student-portal-prf";
-import { setRuntimeSupabaseClient } from "./supabase-runtime";
+import { getRuntimeSupabaseClient, setRuntimeSupabaseClient } from "./supabase-runtime";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 import styles from "./app-entry-router.module.css";
 
@@ -61,7 +61,7 @@ export default function AppEntryRouter() {
 
   const inspect = useCallback(async () => {
     try {
-      const client = await connectRouterClient();
+      const client = getRuntimeSupabaseClient() ?? await connectRouterClient();
       const sessionResult = await client.auth.getSession();
       const session = sessionResult.data.session;
       if (!session) {
