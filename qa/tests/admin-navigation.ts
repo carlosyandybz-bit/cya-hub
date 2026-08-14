@@ -27,7 +27,7 @@ export async function openAdminSection(page: Page, section: string) {
   const currentLocal = localNav.getByRole("button", { name: section, exact: true });
 
   if (!(await currentLocal.isVisible().catch(() => false))) {
-    const groupButton = groupNav.getByRole("button", { name: new RegExp(`^${group}(?:\s|$)`) });
+    const groupButton = groupNav.getByRole("button", { name: new RegExp(`^${group}(?:\\s|$)`) });
     await expect(groupButton).toBeVisible({ timeout: 15_000 });
     await groupButton.click();
   }
