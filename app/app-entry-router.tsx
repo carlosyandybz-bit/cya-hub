@@ -87,7 +87,7 @@ export default function AppEntryRouter() {
 
   useEffect(() => {
     aliveRef.current = true;
-    void inspect();
+    const initialInspection = window.setTimeout(() => void inspect(), 0);
     let authUnsubscribe: (() => void) | null = null;
     void connectRouterClient().then((client) => {
       const { data } = client.auth.onAuthStateChange(() => { window.setTimeout(() => void inspect(), 0); });
@@ -97,6 +97,7 @@ export default function AppEntryRouter() {
     window.addEventListener("cya:experience-change", onExperienceChange);
     return () => {
       aliveRef.current = false;
+      window.clearTimeout(initialInspection);
       authUnsubscribe?.();
       window.removeEventListener("cya:experience-change", onExperienceChange);
     };
