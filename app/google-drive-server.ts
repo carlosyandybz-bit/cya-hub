@@ -4,7 +4,8 @@ const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3";
 export const DEFAULT_TEACHING_FOLDER_NAME = "CYA Hub - Enseñanza";
-export type DriveUploadScope = "teaching" | "class_video";
+export const DEFAULT_FEEDBACK_FOLDER_NAME = "CYA Hub - Feedback Online";
+export type DriveUploadScope = "teaching" | "class_video" | "feedback";
 
 function required(name: string) {
   const value = process.env[name]?.trim();
@@ -41,6 +42,10 @@ export function teachingFolderName() {
   return process.env.GOOGLE_DRIVE_TEACHING_FOLDER_NAME?.trim() || DEFAULT_TEACHING_FOLDER_NAME;
 }
 
+export function feedbackFolderName() {
+  return process.env.GOOGLE_DRIVE_FEEDBACK_FOLDER_NAME?.trim() || DEFAULT_FEEDBACK_FOLDER_NAME;
+}
+
 export function signMediaTicket(fileId: string, ttlSeconds = 600) {
   const payload = b64url(JSON.stringify({ fileId, exp: Math.floor(Date.now() / 1000) + ttlSeconds }));
   const signature = createHmac("sha256", signingKey()).update(payload).digest("base64url");
@@ -59,6 +64,26 @@ export function verifyMediaTicket(ticket: string, expectedFileId: string) {
   } catch {
     return false;
   }
+}
+
+function feedbackProofPayload(requestId: number, personId: number, fileId: string) {
+  return `feedback-upload:${requestId}:${personId}:${fileId}`;
+}
+
+export function signFeedbackUploadProof(requestId: number, personId: number, fileId: string) {
+  return createHmac("sha256", signingKey()).update(feedbackProofPayload(requestId, personId, fileId)).digest("base64url");
+}
+
+export function verifyFeedbackUploadProof(requestId: number, personId: number, fileId: string, proof: string) {
+  if (!proof) return false;
+  const expected = createHmac("sha256", signingKey()).update(feedbackProofPayload(requestId, personId, fileId)).digest();
+  let received: Buffer;
+  try {
+    received = parseB64url(proof);
+  } catch {
+    return false;
+  }
+  return received.length === expected.length && timingSafeEqual(received, expected);
 }
 
 async function supabaseRpc<T>(name: string, body: Record<string, unknown>, accessToken: string) {
@@ -86,6 +111,39 @@ export async function userCanManageTeaching(accessToken: string) {
 
 export async function userCanAccessTeachingMedia(accessToken: string, fileId: string) {
   return Boolean(await supabaseRpc<boolean>("can_access_teaching_media", { p_external_file_id: fileId }, accessToken));
+}
+
+type FeedbackUploadContext = { request_id: number; person_id: number };
+type FeedbackMediaContext = FeedbackUploadContext & { upload_proof: string };
+
+export async function feedbackUploadContext(accessToken: string, requestId: number) {
+  const rows = await supabaseRpc<FeedbackUploadContext[]>("feedback_upload_context", { p_request_id: requestId }, accessToken);
+  return rows?.[0] ?? null;
+}
+
+export async function attachFeedbackVideo(accessToken: string, input: {
+  requestId: number;
+  fileId: string;
+  uploadProof: string;
+  title: string;
+  mimeType: string;
+  sizeBytes: number;
+}) {
+  return supabaseRpc<unknown>("feedback_attach_video", {
+    p_request_id: input.requestId,
+    p_external_file_id: input.fileId,
+    p_upload_proof: input.uploadProof,
+    p_video_title: input.title,
+    p_mime_type: input.mimeType,
+    p_size_bytes: input.sizeBytes,
+  }, accessToken);
+}
+
+export async function userCanAccessFeedbackMedia(accessToken: string, fileId: string) {
+  const rows = await supabaseRpc<FeedbackMediaContext[]>("feedback_media_access_context", { p_external_file_id: fileId }, accessToken);
+  const row = rows?.[0];
+  if (!row) return false;
+  return verifyFeedbackUploadProof(Number(row.request_id), Number(row.person_id), fileId, row.upload_proof);
 }
 
 export async function googleAccessToken() {
@@ -133,11 +191,7 @@ function driveQueryString(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
 
-async function ensureTeachingFolder(token: string) {
-  const explicit = process.env.GOOGLE_DRIVE_TEACHING_FOLDER_ID?.trim();
-  if (explicit) return explicit;
-
-  const name = teachingFolderName();
+async function findOrCreateFolder(token: string, name: string) {
   const params = new URLSearchParams({
     q: `mimeType='application/vnd.google-apps.folder' and name='${driveQueryString(name)}' and trashed=false`,
     spaces: "drive",
@@ -159,10 +213,7 @@ async function ensureTeachingFolder(token: string) {
       authorization: `Bearer ${token}`,
       "content-type": "application/json; charset=UTF-8",
     },
-    body: JSON.stringify({
-      name,
-      mimeType: "application/vnd.google-apps.folder",
-    }),
+    body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder" }),
     cache: "no-store",
   });
   const created = await createResponse.json().catch(() => null) as { id?: string; name?: string; error?: { message?: string } } | null;
@@ -170,7 +221,20 @@ async function ensureTeachingFolder(token: string) {
   return created.id;
 }
 
+async function ensureTeachingFolder(token: string) {
+  const explicit = process.env.GOOGLE_DRIVE_TEACHING_FOLDER_ID?.trim();
+  if (explicit) return explicit;
+  return findOrCreateFolder(token, teachingFolderName());
+}
+
+async function ensureFeedbackFolder(token: string) {
+  const explicit = process.env.GOOGLE_DRIVE_FEEDBACK_FOLDER_ID?.trim();
+  if (explicit) return explicit;
+  return findOrCreateFolder(token, feedbackFolderName());
+}
+
 async function uploadFolderId(token: string, scope: DriveUploadScope) {
+  if (scope === "feedback") return ensureFeedbackFolder(token);
   if (scope === "class_video") {
     const explicit = process.env.GOOGLE_DRIVE_CLASS_VIDEOS_FOLDER_ID?.trim();
     if (explicit) return explicit;
@@ -194,6 +258,16 @@ export async function createDriveResumableUpload(name: string, mimeType: string,
   const location = response.headers.get("location");
   if (!response.ok || !location) throw new Error(`No se pudo iniciar la subida a Drive (${response.status}).`);
   return location;
+}
+
+export async function deleteDriveFile(fileId: string) {
+  const token = await googleAccessToken();
+  const response = await fetch(`${DRIVE_API}/files/${encodeURIComponent(fileId)}?supportsAllDrives=true`, {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!response.ok && response.status !== 404) throw new Error(`No se pudo eliminar el archivo de Drive (${response.status}).`);
 }
 
 export async function proxyDriveMedia(fileId: string, range?: string | null) {
