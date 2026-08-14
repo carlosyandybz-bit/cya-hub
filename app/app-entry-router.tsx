@@ -88,22 +88,27 @@ export default function AppEntryRouter() {
   useEffect(() => {
     aliveRef.current = true;
     const initialInspection = window.setTimeout(() => void inspect(), 0);
-    const onContextChange = () => void inspect();
-    window.addEventListener("cya:experience-change", onContextChange);
-    window.addEventListener("cya:auth-change", onContextChange);
+    const onCanonicalContextChange = () => void inspect();
+    window.addEventListener("cya:experience-change", onCanonicalContextChange);
+    window.addEventListener("cya:auth-change", onCanonicalContextChange);
     return () => {
       aliveRef.current = false;
       window.clearTimeout(initialInspection);
-      window.removeEventListener("cya:experience-change", onContextChange);
-      window.removeEventListener("cya:auth-change", onContextChange);
+      window.removeEventListener("cya:experience-change", onCanonicalContextChange);
+      window.removeEventListener("cya:auth-change", onCanonicalContextChange);
     };
   }, [inspect]);
 
   async function changeExperience(value: ExperienceContext) {
     if (!studentState) return;
+    if (!allowed(studentState.identity, value)) throw new Error("No tienes acceso a esa vista.");
+
     const result = await studentState.client.rpc("set_experience_context", { p_context: value });
     if (result.error) throw new Error(result.error.message);
+
     const identity = (result.data ?? studentState.identity) as IdentityContext;
+    if (!allowed(identity, value)) throw new Error("No tienes acceso a esa vista.");
+
     window.localStorage.setItem("cya:experience", value);
     if (value === "student") setStudentState((current) => current ? { ...current, identity, experience: value } : current);
     else setStudentState(null);
