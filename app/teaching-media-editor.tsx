@@ -3,7 +3,8 @@
 import { ArrowDown, ArrowUp, Check, Crop, Image as ImageIcon, Link2, Plus, Star, Trash2, Upload, Video, X } from "lucide-react";
 import { ChangeEvent, useMemo, useRef, useState } from "react";
 import { SecureDriveAsset, useDriveMediaUrl } from "./drive-media";
-import { getRuntimeAccessToken, getRuntimeSupabaseClient } from "./supabase-runtime";
+import { getRuntimeSupabaseClient } from "./supabase-runtime";
+import { prepareVideoForUpload, uploadPreparedToDrive, type PreparedUpload } from "./video-upload-client";
 import type { TeachingCardMedia } from "./teaching-content-card";
 import styles from "./teaching-media-editor.module.css";
 
@@ -33,21 +34,8 @@ function driveId(value: string) {
 }
 
 async function uploadToDrive(file: Blob, name: string, mimeType: string) {
-  const token = await getRuntimeAccessToken();
-  if (!token) throw new Error("Tu sesión ha caducado.");
-  const response = await fetch("/api/google-drive/upload", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${token}`,
-      "content-type": mimeType || "application/octet-stream",
-      "x-cya-file-name": encodeURIComponent(name),
-      "x-cya-file-size": String(file.size),
-    },
-    body: file,
-  });
-  const payload = await response.json().catch(() => null) as { id?: string; name?: string; mimeType?: string; error?: string } | null;
-  if (!response.ok || !payload?.id) throw new Error(payload?.error || "No se pudo subir el archivo a Drive.");
-  return payload;
+  const prepared: PreparedUpload = { blob: file, name, mimeType: mimeType || "application/octet-stream", originalSize: file.size, finalSize: file.size, compressed: false, savingsPercent: 0, reason: "not-video" };
+  return uploadPreparedToDrive(prepared);
 }
 
 function LocalOrDriveAsset({ item, controls = false }: { item: TeachingMediaDraft; controls?: boolean }) {
@@ -110,7 +98,7 @@ function FramePicker({ item, close, saved }: { item: TeachingMediaDraft; close: 
 }
 
 export function TeachingMediaEditor({ value, onChange, onUploadingChange, allowClassVideos = false }: { value: TeachingMediaDraft[]; onChange: (items: TeachingMediaDraft[]) => void; onUploadingChange?: (busy: boolean) => void; allowClassVideos?: boolean }) {
-  const [uploading, setUploading] = useState(0), [error, setError] = useState(""), [manualOpen, setManualOpen] = useState(false), [frameIndex, setFrameIndex] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(0), [uploadMessage, setUploadMessage] = useState(""), [error, setError] = useState(""), [manualOpen, setManualOpen] = useState(false), [frameIndex, setFrameIndex] = useState<number | null>(null);
   const [manualType, setManualType] = useState<"image" | "video">("video"), [manualTitle, setManualTitle] = useState(""), [manualReference, setManualReference] = useState("");
   const [classVideoOpen, setClassVideoOpen] = useState(false), [classVideoLoading, setClassVideoLoading] = useState(false), [classVideos, setClassVideos] = useState<ReusableClassVideo[]>([]);
   const cover = value.find((item) => item.is_cover) ?? value[0] ?? null;
@@ -169,7 +157,11 @@ export function TeachingMediaEditor({ value, onChange, onUploadingChange, allowC
       busyCount += 1;
       const localUrl = URL.createObjectURL(file);
       try {
-        const uploaded = await uploadToDrive(file, file.name, file.type);
+        const prepared = file.type.startsWith("video/")
+          ? await prepareVideoForUpload(file, (progress) => setUploadMessage(progress.message))
+          : { blob: file, name: file.name, mimeType: file.type, originalSize: file.size, finalSize: file.size, compressed: false, savingsPercent: 0, reason: "not-video" as const };
+        const uploaded = await uploadPreparedToDrive(prepared, "teaching", (progress) => setUploadMessage(progress.message));
+        if (prepared.compressed) setUploadMessage(`Vídeo optimizado · ${prepared.savingsPercent}% menos`);
         const hasCover = working.some((item) => item.is_cover);
         const nextItem: TeachingMediaDraft = {
           _key: `${uploaded.id}-${Date.now()}-${busyCount}`,
@@ -259,7 +251,7 @@ export function TeachingMediaEditor({ value, onChange, onUploadingChange, allowC
       <button type="button" className={styles.secondaryButton} onClick={() => setManualOpen((current) => !current)}><Link2 /> Desde Drive</button>
       {allowClassVideos ? <button type="button" className={styles.secondaryButton} onClick={() => void toggleClassVideos()}><Video /> Vídeos de clase</button> : null}
     </div>
-    {uploading ? <div className={styles.uploading}><span /><strong>Subiendo {uploading === 1 ? "archivo" : `${uploading} archivos`} a Drive…</strong></div> : null}
+    {uploading ? <div className={styles.uploading}><span /><strong>{uploadMessage || `Subiendo ${uploading === 1 ? "archivo" : `${uploading} archivos`} a Drive…`}</strong></div> : uploadMessage ? <div className={styles.uploading}><strong>{uploadMessage}</strong></div> : null}
     {error ? <p className={styles.error}>{error}</p> : null}
 
     {manualOpen ? <div className={styles.manualRow}><select value={manualType} onChange={(event) => setManualType(event.target.value as "image" | "video")}><option value="video">Vídeo</option><option value="image">Foto</option></select><input value={manualTitle} onChange={(event) => setManualTitle(event.target.value)} placeholder="Título" /><input value={manualReference} onChange={(event) => setManualReference(event.target.value)} placeholder="Enlace o ID de Drive" /><button type="button" onClick={addManual}><Plus /> Añadir</button></div> : null}

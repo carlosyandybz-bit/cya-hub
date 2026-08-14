@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { CheckCircle2, Clock3, Play, Send, Upload, Video, WalletCards, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SecureDriveAsset } from "./drive-media";
+import { prepareVideoForUpload, uploadPreparedFeedback } from "./video-upload-client";
 import styles from "./feedback-online.module.css";
 
 type Product = {
@@ -87,6 +88,7 @@ export function FeedbackOnlineStudentPanel({ client, notify }: Props) {
   const [terms, setTerms] = useState<Term[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
+  const [uploadMessage, setUploadMessage] = useState("");
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const [styleId, setStyleId] = useState("");
@@ -151,24 +153,17 @@ export function FeedbackOnlineStudentPanel({ client, notify }: Props) {
   async function uploadVideo(requestId: number, file: File) {
     if (!file.type.startsWith("video/")) return setError("Selecciona un archivo de vídeo.");
     if (file.size <= 0 || file.size > 1024 * 1024 * 1024) return setError("El vídeo debe ser menor de 1 GB.");
-    setBusy(`upload-${requestId}`); setError("");
-    const session = await client.auth.getSession();
-    const token = session.data.session?.access_token;
-    if (!token) { setError("Tu sesión ha caducado. Vuelve a entrar."); setBusy(""); return; }
-    const response = await fetch("/api/feedback-online/upload", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${token}`,
-        "content-type": file.type || "video/mp4",
-        "x-cya-file-name": encodeURIComponent(file.name),
-        "x-cya-file-size": String(file.size),
-        "x-cya-feedback-request-id": String(requestId),
-      },
-      body: file,
-    });
-    const payload = await response.json().catch(() => null) as { error?: string } | null;
-    if (!response.ok) setError(payload?.error || "No se pudo subir el vídeo.");
-    else { notify?.("Vídeo guardado. Revísalo y envíalo cuando quieras."); await load(); }
+    setBusy(`upload-${requestId}`); setError(""); setUploadMessage("Preparando vídeo…");
+    try {
+      const prepared = await prepareVideoForUpload(file, (progress) => setUploadMessage(progress.message));
+      await uploadPreparedFeedback(requestId, prepared, (progress) => setUploadMessage(progress.message));
+      setUploadMessage(prepared.compressed ? `Vídeo optimizado · ${prepared.savingsPercent}% menos` : "Vídeo guardado");
+      notify?.(prepared.compressed ? `Vídeo guardado · ${prepared.savingsPercent}% menos de tamaño.` : "Vídeo guardado. Revísalo y envíalo cuando quieras.");
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "No se pudo subir el vídeo.");
+      setUploadMessage("");
+    }
     setBusy("");
   }
 
@@ -218,7 +213,7 @@ export function FeedbackOnlineStudentPanel({ client, notify }: Props) {
       {openRequest.student_note ? <p>{openRequest.student_note}</p> : null}
       {openRequest.external_file_id ? <SecureDriveAsset fileId={openRequest.external_file_id} mediaType="video" title={openRequest.video_title || "Vídeo de Feedback"} controls className={styles.video} /> : null}
       {openRequest.status === "draft" ? <div className={styles.actions}>
-        <label className="btn ghost"><Upload /> {busy === `upload-${openRequest.id}` ? "Subiendo…" : openRequest.external_file_id ? "Cambiar vídeo" : "Subir vídeo"}<input className={styles.fileInput} type="file" accept="video/*" disabled={Boolean(busy)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadVideo(openRequest.id, file); event.currentTarget.value = ""; }} /></label>
+        <label className="btn ghost"><Upload /> {busy === `upload-${openRequest.id}` ? (uploadMessage || "Subiendo…") : openRequest.external_file_id ? "Cambiar vídeo" : "Subir vídeo"}<input className={styles.fileInput} type="file" accept="video/*" disabled={Boolean(busy)} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadVideo(openRequest.id, file); event.currentTarget.value = ""; }} /></label>
         <button className="btn" type="button" disabled={!openRequest.external_file_id || Boolean(busy)} onClick={() => void submitRequest(openRequest.id)}><Send /> {busy === `submit-${openRequest.id}` ? "Enviando…" : "Enviar para revisión"}</button>
         <button className="btn ghost" type="button" disabled={Boolean(busy)} onClick={() => void cancelRequest(openRequest.id)}><X /> Cancelar</button>
       </div> : null}
