@@ -3,18 +3,7 @@ name: Validate P20 form runtime
 on:
   push:
     branches: [p20/formularios-versionados]
-  pull_request:
-    branches: [main]
-    paths:
-      - 'app/runtime-form.tsx'
-      - 'app/runtime-form.module.css'
-      - 'app/admin-form-library.tsx'
-      - 'app/person-identity-editor.tsx'
-      - 'app/admin-view.tsx'
-      - 'app/api/build-info/route.ts'
-      - 'supabase/v48_p20_form_engine.sql'
-      - 'tests/p20-form-engine.test.mjs'
-      - '.github/workflows/integrate-p20-form-runtime.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
