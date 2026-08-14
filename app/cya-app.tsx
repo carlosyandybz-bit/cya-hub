@@ -35,6 +35,8 @@ import { ContextEvaluationPanel } from "./context-evaluation-panel-p0f";
 import { QuickProvisionalStudentModal, type EditablePersonIdentity } from "./person-identity-editor";
 import { CountrySelect } from "./country-field";
 import { BZPointsPanel } from "./bz-points-panel";
+import { FeedbackOnlineStudentPanel } from "./feedback-online-student";
+import { FeedbackOnlineStaffQueue } from "./feedback-online-staff";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 
 const TeachingGraph = lazy(() => import("./teaching-graph").then((module) => ({ default: module.TeachingGraph })));
@@ -1393,6 +1395,7 @@ function StudentPortal({ identity, experience, onExperience, client, email, onId
     {pendingDebt > 0 ? <section className="card portal-next"><div><p className="eyebrow">Saldo pendiente</p><h2>{minutesLabel(pendingDebt)} por regularizar</h2><p>Una o más clases quedaron sin saldo suficiente. El profesor puede regularizarlas con un bono o dejar constancia de otra decisión.</p></div><AlertTriangle /></section> : null}
     {nextClass ? <section className="card portal-next"><div><p className="eyebrow">Próxima clase</p><h2>{nextClass.style || "Clase privada"}</h2><p>{dateLabel(nextClass.scheduled_start_at)} · {minutesLabel(nextClass.duration_minutes)}</p></div><div><span>{nextClass.role || "Rol por confirmar"}</span><span>{nextClass.level || "Nivel por confirmar"}</span></div></section> : null}
     <BZPointsPanel client={client} assignments={snapshot.assignments} />
+    <FeedbackOnlineStudentPanel client={client} />
     <section className="portal-grid"><article className="card portal-card"><div className="card-head"><h2>Mi formación</h2><span>{snapshot.assignments.length}</span></div>{snapshot.assignments.length ? <div className="portal-learning-list">{snapshot.assignments.map((assignment) => <TeachingContentCard
         key={assignment.id}
         kindLabel={teachingKindLabels[assignment.content_type] ?? assignment.content_type}
@@ -1706,7 +1709,7 @@ function StaffApp({ session }: { session: Session }) {
         {view === "classes" ? <ClassesView classes={classes} students={students} schedule={() => openSchedule(null)} goLive={goLive} reopen={(id) => void reopenClass(id)} /> : null}
         {view === "credits" ? <CreditsView credits={credits} students={students} add={() => openCredit(null)} /> : null}
         {view === "agenda" && db ? <AgendaView client={db} timezone={identity.timezone} schedule={() => openSchedule(null)} openClass={goLive} notify={setToast} /> : null}
-        {view === "live" ? <LiveClassView classes={classes} students={students} credits={credits} terms={catalog} library={teachingContents} relations={teachingRelations} assignments={teachingAssignments} selectedClassId={liveClassId} selectClass={setLiveClassId} refresh={refreshLive} notify={setToast} exit={() => goBack("home")} /> : null}
+        {view === "live" ? <><FeedbackOnlineStaffQueue client={db!} students={students} visible={liveClassId === null} notify={setToast} /><LiveClassView classes={classes} students={students} credits={credits} terms={catalog} library={teachingContents} relations={teachingRelations} assignments={teachingAssignments} selectedClassId={liveClassId} selectClass={setLiveClassId} refresh={refreshLive} notify={setToast} exit={() => goBack("home")} /></> : null}
         {view === "teaching" ? <TeachingView contents={teachingContents} relations={teachingRelations} assignments={teachingAssignments} students={students} terms={catalog} refresh={loadTeaching} notify={setToast} /> : null}
         {view === "admin" && db && identity.can_admin ? <AdminView client={db} identity={identity} terms={catalog} notify={setToast} leave={() => { setExperienceState("teacher"); setView("home"); }} /> : null}
         {view === "marketing" && db ? <MarketingView db={db} contacts={crmContacts} rates={marketingRates} content={marketingContent} events={marketingEvents} campaigns={marketingCampaigns} metrics={campaignMetrics} recipients={communicationRecipients} refresh={refreshMarketing} notify={setToast} /> : null}
