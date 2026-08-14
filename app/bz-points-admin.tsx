@@ -28,7 +28,6 @@ function rewardPayload(draft: RewardDraft) {
 
 function RewardEditor({ reward, busy, save }: { reward: Reward; busy: boolean; save: (reward: Reward, draft: RewardDraft) => Promise<void> }) {
   const [draft, setDraft] = useState(() => rewardDraft(reward));
-  useEffect(() => setDraft(rewardDraft(reward)), [reward]);
   return <article className={styles.rewardRow}>
     <div className={styles.rewardFields}>
       <label>Nombre<input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label>
