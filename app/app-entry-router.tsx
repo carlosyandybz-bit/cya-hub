@@ -63,10 +63,24 @@ function StaffExperienceBridge({ experience }: { experience: Exclude<ExperienceC
   useEffect(() => {
     const state = staffHistoryState(experience);
     window.history.replaceState(state, "", window.location.href);
-    const handoff = window.setTimeout(() => {
+
+    const deliver = () => {
+      window.history.replaceState(state, "", window.location.href);
       window.dispatchEvent(new PopStateEvent("popstate", { state }));
-    }, 0);
-    return () => window.clearTimeout(handoff);
+    };
+
+    if (document.querySelector(".shell")) {
+      deliver();
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      if (!document.querySelector(".shell")) return;
+      observer.disconnect();
+      deliver();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, [experience]);
 
   return <CyaApp />;
