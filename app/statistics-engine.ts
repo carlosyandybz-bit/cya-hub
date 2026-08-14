@@ -272,6 +272,58 @@ async function bzMetric(client:SupabaseClient,bounds:PeriodBounds,filters:Statis
   throw new Error("Métrica BZ no soportada.");
 }
 
+async function feedbackMetric(client:SupabaseClient,bounds:PeriodBounds,filters:StatisticFilters,key:string){
+  const student=numberFilter(filters,"student"),style=numberFilter(filters,"style");
+  if(key==="feedback_credits_purchased"||key==="feedback_credits_consumed"){
+    type Row={delta_credits:number};
+    const movement=key==="feedback_credits_purchased"?"purchase":"consumption";
+    const rows=await collectPages<Row>(async(from,to)=>{
+      let query=client.from("feedback_credit_ledger").select("delta_credits").eq("movement_type",movement).gte("created_at",bounds.fromIso).lt("created_at",bounds.toIso);
+      if(student)query=query.eq("person_id",student);
+      const result=await query.range(from,to);
+      return {data:(result.data??[]) as Row[],error:result.error};
+    });
+    return rows.reduce((sum,row)=>sum+(movement==="purchase"?Math.max(0,row.delta_credits):Math.abs(Math.min(0,row.delta_credits))),0);
+  }
+  if(key==="feedback_submitted"||key==="feedback_completed"){
+    const column=key==="feedback_submitted"?"submitted_at":"completed_at";
+    let query=client.from("feedback_requests").select("id",{count:"exact",head:true}).not(column,"is",null).gte(column,bounds.fromIso).lt(column,bounds.toIso);
+    if(student)query=query.eq("person_id",student);
+    if(style)query=query.eq("style_term_id",style);
+    return exactCount(query);
+  }
+  if(key==="feedback_pending"){
+    type Row={submitted_at:string|null;completed_at:string|null;cancelled_at:string|null};
+    const rows=await collectPages<Row>(async(from,to)=>{
+      let query=client.from("feedback_requests").select("submitted_at,completed_at,cancelled_at").not("submitted_at","is",null).lt("submitted_at",bounds.toIso);
+      if(student)query=query.eq("person_id",student);
+      if(style)query=query.eq("style_term_id",style);
+      const result=await query.range(from,to);
+      return {data:(result.data??[]) as Row[],error:result.error};
+    });
+    const end=bounds.to.getTime();
+    return rows.filter((row)=>{
+      const submitted=row.submitted_at?new Date(row.submitted_at).getTime():NaN;
+      const completed=row.completed_at?new Date(row.completed_at).getTime():null;
+      const cancelled=row.cancelled_at?new Date(row.cancelled_at).getTime():null;
+      return Number.isFinite(submitted)&&submitted<end&&(completed==null||completed>=end)&&(cancelled==null||cancelled>=end);
+    }).length;
+  }
+  if(key==="feedback_response_hours"){
+    type Row={submitted_at:string|null;completed_at:string|null};
+    const rows=await collectPages<Row>(async(from,to)=>{
+      let query=client.from("feedback_requests").select("submitted_at,completed_at").not("submitted_at","is",null).not("completed_at","is",null).gte("completed_at",bounds.fromIso).lt("completed_at",bounds.toIso);
+      if(student)query=query.eq("person_id",student);
+      if(style)query=query.eq("style_term_id",style);
+      const result=await query.range(from,to);
+      return {data:(result.data??[]) as Row[],error:result.error};
+    });
+    const hours=rows.map((row)=>row.submitted_at&&row.completed_at?(new Date(row.completed_at).getTime()-new Date(row.submitted_at).getTime())/3_600_000:NaN).filter((value)=>Number.isFinite(value)&&value>=0);
+    return hours.length?Math.round(hours.reduce((sum,value)=>sum+value,0)*10/hours.length)/10:null;
+  }
+  throw new Error("Métrica de Feedback Online no soportada.");
+}
+
 export async function calculateStatistic(client:SupabaseClient,metricKey:string,period:StatisticPeriod,filters:StatisticFilters={}):Promise<StatisticValue>{
   const metric=statisticCatalogByKey.get(metricKey);
   if(!metric)throw new Error(`Métrica no soportada: ${metricKey}`);
@@ -286,6 +338,7 @@ export async function calculateStatistic(client:SupabaseClient,metricKey:string,
   else if(metricKey==="assignments_created"||metricKey==="assignments_completed"||metricKey==="assignments_pending")value=await assignmentCount(client,bounds,filters,metricKey==="assignments_completed"?"completed":metricKey==="assignments_pending"?"pending":"created");
   else if(metricKey==="evaluations_count"||metricKey==="evaluation_average")value=await evaluationMetric(client,bounds,filters,metricKey==="evaluation_average");
   else if(metric.block==="bz")value=await bzMetric(client,bounds,filters,metricKey);
+  else if(metric.block==="feedback")value=await feedbackMetric(client,bounds,filters,metricKey);
   else if(metric.block==="marketing")value=marketingValue(metricKey,await marketingRows(client,bounds,filters));
   else if(metricKey.startsWith("missions_"))value=await missionMetric(client,bounds,filters,metricKey);
   else if(metricKey.startsWith("notification"))value=await notificationMetric(client,bounds,filters,metricKey);

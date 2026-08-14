@@ -1,0 +1,194 @@
+.panel {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.head h2,
+.history h3 { margin: 0; }
+.head p { margin: 6px 0 0; }
+
+.balance {
+  min-width: 96px;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 13px 15px;
+  border-radius: 16px;
+  background: rgba(109, 74, 255, .08);
+  color: #4e36b8;
+}
+
+.balance svg { width: 20px; height: 20px; }
+.balance span { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.balance strong { font-size: 26px; line-height: 1; }
+
+.product,
+.requestHead,
+.actions,
+.history article > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.product {
+  padding: 14px 16px;
+  border: 1px solid #e8e5ee;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.product > div,
+.requestHead > div,
+.history article > div:first-child > div {
+  display: grid;
+  gap: 3px;
+}
+
+.product span,
+.requestHead small,
+.history article span,
+.wait,
+.due { color: #777287; font-size: 12.5px; }
+
+.newRequest,
+.current,
+.history {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #e8e5ee;
+  border-radius: 16px;
+  background: #faf9fc;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.requestHead { align-items: flex-start; }
+.requestHead > div { justify-items: start; }
+.requestHead strong { font-size: 17px; }
+.due,
+.wait { display: inline-flex; align-items: center; gap: 6px; }
+.due svg,
+.wait svg { width: 15px; height: 15px; flex: none; }
+
+.video,
+.historyVideo {
+  width: 100%;
+  max-height: 440px;
+  border-radius: 14px;
+  background: #111;
+}
+
+.actions { justify-content: flex-start; flex-wrap: wrap; }
+.fileInput { display: none; }
+
+.history article {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #e8e5ee;
+}
+.history article:first-of-type { padding-top: 0; border-top: 0; }
+.history article > div:first-child { justify-content: flex-start; }
+.history article svg { width: 20px; height: 20px; color: #6d4aff; flex: none; }
+.history article p { margin: 0; white-space: pre-wrap; }
+.historyVideo { max-height: 300px; }
+
+.staffQueue {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.staffQueueHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.staffQueueHead h2 { margin: 0; }
+.staffLayout { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(0, 1.6fr); gap: 14px; align-items: start; }
+.queueList { display: grid; gap: 7px; max-height: 70vh; overflow: auto; }
+.queueList > button {
+  width: 100%;
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 9px;
+  align-items: center;
+  padding: 10px 11px;
+  border: 1px solid #e8e5ee;
+  border-radius: 12px;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+}
+.queueList > button:hover,
+.queueActive { border-color: #8d72ff !important; background: rgba(109,74,255,.06) !important; }
+.queueList > button > svg { width: 18px; height: 18px; color: #6d4aff; }
+.queueList > button > span { min-width: 0; display: grid; gap: 2px; }
+.queueList strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queueList small { color: #777287; }
+.review { display: grid; gap: 14px; min-width: 0; }
+.studentNote { padding: 12px 14px; border-radius: 12px; background: rgba(109,74,255,.06); }
+.studentNote p { margin: 5px 0 0; white-space: pre-wrap; }
+.teachingBox,
+.evaluationBox { display: grid; gap: 12px; padding: 14px; border: 1px solid #e8e5ee; border-radius: 14px; background: #fff; }
+.teachingBox h3,
+.evaluationBox h3 { margin: 0; }
+.linkedList { display: grid; gap: 7px; }
+.linkedList > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border-radius: 10px; background: #faf9fc; }
+.linkedList > div > span { min-width: 0; display: grid; gap: 2px; }
+.linkedList small { color: #777287; }
+.linkedList select { min-height: 40px; max-width: 180px; }
+.searchResults { display: grid; gap: 6px; max-height: 260px; overflow: auto; }
+.searchResults > button { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 46px; padding: 9px 11px; border: 1px solid #e8e5ee; border-radius: 10px; background: #fff; color: inherit; text-align: left; }
+.searchResults > button > span:first-child { display: grid; gap: 2px; }
+.searchResults small { color: #777287; }
+
+.adminStack { display: grid; gap: 16px; }
+.adminFields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 10px 12px; border: 1px solid #e8e5ee; border-radius: 12px; }
+.check input { width: 20px; height: 20px; }
+.check span { display: grid; gap: 2px; }
+.check small { color: #777287; }
+.adminRows { display: grid; gap: 8px; margin-top: 12px; }
+.adminRows > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; border: 1px solid #e8e5ee; border-radius: 12px; background: #fff; }
+.adminRows > div > span { display: grid; gap: 2px; min-width: 0; }
+.adminRows small { color: #777287; }
+.adminAction { display: grid; align-content: end; gap: 4px; }
+.adminAction small { color: #777287; }
+
+@media (max-width: 720px) {
+  .panel { padding: 16px; gap: 15px; }
+  .head { align-items: stretch; }
+  .head > div:first-child { min-width: 0; }
+  .balance { min-width: 82px; padding: 11px; }
+  .fields { grid-template-columns: 1fr; }
+  .product,
+  .requestHead { align-items: stretch; flex-direction: column; }
+  .product .btn,
+  .actions .btn,
+  .actions label.btn { width: 100%; min-height: 44px; justify-content: center; }
+  .due { align-self: flex-start; }
+  .staffQueue { padding: 14px; }
+  .staffLayout { grid-template-columns: 1fr; }
+  .queueList { display: flex; overflow-x: auto; overflow-y: hidden; max-height: none; padding-bottom: 3px; }
+  .queueList > button { flex: 0 0 220px; }
+  .linkedList > div { align-items: stretch; flex-direction: column; }
+  .linkedList select { width: 100%; max-width: none; min-height: 44px; }
+  .evaluationBox .btn { min-height: 44px; }
+  .adminFields { grid-template-columns: 1fr; }
+  .adminRows > div { align-items: stretch; flex-direction: column; }
+  .adminRows .btn { width: 100%; min-height: 44px; justify-content: center; }
+}

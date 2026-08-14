@@ -10,7 +10,7 @@ Este documento gobierna el trabajo posterior al cierre P32. No volver a tratar P
 
 - `main` y Supabase producción alineados hasta el último bloque fusionado; BZ Points backend v76–v79 está desplegado y el frontend se integra mediante PR-B.
 - Browser QA final verde en profesor/alumno/admin e iPhone/escritorio en el último `main` cerrado.
-- Backup completo actual: 86 tablas, incluidas las 5 tablas canónicas de BZ Points.
+- Backup completo actual: 92 tablas, incluidas las 5 tablas canónicas de BZ Points.
 - Reset completo conoce Estadísticas P30 y BZ Points, y preserva configuración P31 + reglas/recompensas BZ.
 - Hotfix de frases diarias, copy de producto y agrupación por entidad de Notificaciones integrados.
 
@@ -119,3 +119,8 @@ Estética moderna, urbana, elegante y lúdica; microinteracciones y animaciones 
 8. No mostrar copy técnico de desarrollo en la UI.
 9. No mover `carlosyandy.com` hasta demostrar runtime CYA Hub separado.
 10. Mantener ISO `country_code`; traducirlo solo en presentación/selector.
+
+
+## Estado PR-C · Feedback Online
+
+**Completado y desplegado en producción el 2026-08-14.** Backend, portal alumno, cola docente, Administración, Drive seguro, P27, P28/P32 y P30 integrados. La copia completa CYA cubre 92 tablas. Ver `docs/PR_C_FEEDBACK_ONLINE.md`.

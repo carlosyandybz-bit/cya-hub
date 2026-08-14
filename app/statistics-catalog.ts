@@ -1,5 +1,5 @@
 export type StatisticFormat = "number" | "currency" | "minutes" | "percentage";
-export type StatisticBlock = "classes" | "students" | "business" | "teaching" | "bz" | "marketing" | "operations";
+export type StatisticBlock = "classes" | "students" | "business" | "teaching" | "bz" | "feedback" | "marketing" | "operations";
 export type StatisticFilterKey =
   | "teacher"
   | "student"
@@ -31,6 +31,7 @@ export const statisticBlockLabels: Record<StatisticBlock, string> = {
   business: "Negocio",
   teaching: "Enseñanza",
   bz: "BZ Points",
+  feedback: "Feedback Online",
   marketing: "Marketing",
   operations: "Operación",
 };
@@ -57,6 +58,13 @@ export const statisticCatalog: StatisticMetric[] = [
   { key:"bz_earn_events", block:"bz", label:"Acciones premiadas", format:"number", filters:["student"], description:"Número de acciones que generaron BZ Points." },
   { key:"bz_active_people", block:"bz", label:"Personas que han ganado BZ", format:"number", filters:[], description:"Personas distintas que recibieron puntos durante el periodo." },
   { key:"bz_redemptions", block:"bz", label:"Recompensas canjeadas", format:"number", filters:["student"], description:"Cupones o descuentos creados mediante canje durante el periodo." },
+
+  { key:"feedback_submitted", block:"feedback", label:"Feedback enviados", format:"number", filters:["student","style"], description:"Solicitudes de Feedback Online enviadas durante el periodo." },
+  { key:"feedback_completed", block:"feedback", label:"Feedback completados", format:"number", filters:["student","style"], description:"Revisiones de Feedback Online terminadas durante el periodo." },
+  { key:"feedback_pending", block:"feedback", label:"Feedback pendientes", format:"number", filters:["student","style"], description:"Solicitudes que seguían pendientes o en revisión al cierre del periodo." },
+  { key:"feedback_response_hours", block:"feedback", label:"Tiempo medio de respuesta", format:"number", filters:["student","style"], description:"Horas medias entre el envío del vídeo y la finalización del Feedback." },
+  { key:"feedback_credits_purchased", block:"feedback", label:"Créditos de Feedback comprados", format:"number", filters:["student"], description:"Créditos añadidos por compras confirmadas; excluye ajustes manuales." },
+  { key:"feedback_credits_consumed", block:"feedback", label:"Créditos de Feedback consumidos", format:"number", filters:["student"], description:"Créditos consumidos al enviar solicitudes; excluye ajustes y reembolsos." },
 
   { key:"marketing_spend", block:"marketing", label:"Inversión en campañas", format:"currency", filters:["campaign"], description:"Inversión registrada en campañas." },
   { key:"marketing_revenue", block:"marketing", label:"Ingresos atribuidos", format:"currency", filters:["campaign"], description:"Ingresos atribuidos a campañas." },
