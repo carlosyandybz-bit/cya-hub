@@ -88,18 +88,14 @@ export default function AppEntryRouter() {
   useEffect(() => {
     aliveRef.current = true;
     const initialInspection = window.setTimeout(() => void inspect(), 0);
-    let authUnsubscribe: (() => void) | null = null;
-    void connectRouterClient().then((client) => {
-      const { data } = client.auth.onAuthStateChange(() => { window.setTimeout(() => void inspect(), 0); });
-      authUnsubscribe = () => data.subscription.unsubscribe();
-    }).catch(() => undefined);
-    const onExperienceChange = () => void inspect();
-    window.addEventListener("cya:experience-change", onExperienceChange);
+    const onContextChange = () => void inspect();
+    window.addEventListener("cya:experience-change", onContextChange);
+    window.addEventListener("cya:auth-change", onContextChange);
     return () => {
       aliveRef.current = false;
       window.clearTimeout(initialInspection);
-      authUnsubscribe?.();
-      window.removeEventListener("cya:experience-change", onExperienceChange);
+      window.removeEventListener("cya:experience-change", onContextChange);
+      window.removeEventListener("cya:auth-change", onContextChange);
     };
   }, [inspect]);
 
