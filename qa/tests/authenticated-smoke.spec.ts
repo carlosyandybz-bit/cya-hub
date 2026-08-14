@@ -51,6 +51,23 @@ async function login(page: Page, role: QaRole, testInfo: TestInfo) {
   });
 }
 
+async function openAccountMenu(page: Page) {
+  const headerTrigger = page.getByRole("button", { name: "Abrir cuenta y preferencias" });
+  if (await headerTrigger.isVisible().catch(() => false)) {
+    await headerTrigger.click();
+    return;
+  }
+  const sidebarTrigger = page.locator('button[aria-haspopup="menu"]:visible').last();
+  await expect(sidebarTrigger).toBeVisible();
+  await sidebarTrigger.click();
+}
+
+async function selectExperience(page: Page, label: "Profesor" | "Alumno" | "Administrador") {
+  await openAccountMenu(page);
+  await expect(page.getByText("Ver como", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: new RegExp(`^${label}(?:,|\\.)`) }).click();
+}
+
 for (const role of ["teacher", "student", "admin"] as const) {
   test(`${role} account can authenticate and render its shell`, async ({ page }, testInfo) => {
     await login(page, role, testInfo);
@@ -110,4 +127,42 @@ test("student discovers Academia Online from Descubre instead of a competing hom
   await expect(page.locator("body")).toContainText("EVENTOS");
   await expect(page.locator("body")).toContainText("Academia Online");
   await expect(page.getByRole("heading", { name: "Próximamente" })).toBeVisible();
+});
+
+test("PR-F2 authorized multi-role account switches Profesor → Alumno → Administrador → Profesor in the same tab", async ({ page }, testInfo) => {
+  await login(page, "admin", testInfo);
+
+  await selectExperience(page, "Profesor");
+  await expect(page.locator("body")).toContainText("Dar clase");
+
+  await selectExperience(page, "Alumno");
+  await expect(page.getByRole("navigation", { name: "Portal CYA" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "Abrir cuenta y preferencias" })).toBeVisible();
+
+  await selectExperience(page, "Administrador");
+  await expect(page.getByRole("heading", { name: "Estado de CYA Hub" })).toBeVisible({ timeout: 20_000 });
+
+  await selectExperience(page, "Profesor");
+  await expect(page.locator("body")).toContainText("Dar clase");
+
+  await testInfo.attach("prf2-authorized-experience-cycle", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+});
+
+test("PR-F2 pure student cannot manufacture Administrador by local storage or a UI event", async ({ page }, testInfo) => {
+  await login(page, "student", testInfo);
+  await expect(page.getByRole("navigation", { name: "Portal CYA" })).toBeVisible();
+
+  await page.evaluate(() => {
+    window.localStorage.setItem("cya:experience", "admin");
+    window.dispatchEvent(new CustomEvent("cya:experience-change", { detail: "admin" }));
+  });
+
+  await expect(page.getByRole("navigation", { name: "Portal CYA" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("heading", { name: "Estado de CYA Hub" })).toHaveCount(0);
+
+  await openAccountMenu(page);
+  await expect(page.getByText("Ver como", { exact: true })).toHaveCount(0);
 });
