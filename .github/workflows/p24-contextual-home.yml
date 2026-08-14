@@ -1,9 +1,8 @@
 name: P24 Contextual Home
 on:
   push:
-    branches: [feat/p24-contextual-home, main]
-  pull_request:
-    branches: [main]
+    branches: [feat/p24-contextual-home]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
