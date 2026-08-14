@@ -1,0 +1,90 @@
+name: PR-F3 Browser QA bootstrap
+
+on:
+  push:
+    branches: [feat/prf3-admin-grouped-navigation]
+    paths:
+      - '.github/workflows/prf3-qa-bootstrap.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/prf3-admin-grouped-navigation
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Add PR-F3 Browser QA without rewriting existing scenarios
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('qa/tests/authenticated-smoke.spec.ts')
+          text = path.read_text()
+          anchor = 'test("student portal renders approved PR-F1 header and five-item navigation", async ({ page }, testInfo) => {'
+          assert text.count(anchor) == 1, 'student portal anchor must occur exactly once'
+          assert 'PR-F3 Administration groups fourteen destinations' not in text, 'PR-F3 Browser QA already present'
+          block = r'''test("PR-F3 Administration groups fourteen destinations without horizontal main navigation", async ({ page }, testInfo) => {
+            await login(page, "admin", testInfo);
+            await selectExperience(page, "Administrador");
+            await expect(page.getByRole("heading", { name: "Estado de CYA Hub" })).toBeVisible({ timeout: 20_000 });
+
+            const groups = page.getByRole("navigation", { name: "Áreas de Administración" });
+            await expect(groups).toBeVisible();
+            for (const label of ["Sistema", "Enseñanza", "Negocio", "Datos", "Apariencia"]) {
+              await expect(groups.getByRole("button", { name: new RegExp(`^${label}`) })).toBeVisible();
+            }
+
+            await groups.getByRole("button", { name: /^Enseñanza/ }).click();
+            let local = page.getByRole("navigation", { name: "Opciones de Enseñanza" });
+            for (const label of ["Formularios", "Enseñanza", "Misiones", "Notificaciones"]) {
+              await expect(local.getByRole("button", { name: label, exact: true })).toBeVisible();
+            }
+
+            await groups.getByRole("button", { name: /^Negocio/ }).click();
+            local = page.getByRole("navigation", { name: "Opciones de Negocio" });
+            for (const label of ["Tarifas", "BZ Points", "Feedback Online", "Academia Online"]) {
+              await expect(local.getByRole("button", { name: label, exact: true })).toBeVisible();
+            }
+
+            await groups.getByRole("button", { name: /^Datos/ }).click();
+            local = page.getByRole("navigation", { name: "Opciones de Datos" });
+            for (const label of ["Datos", "Integraciones"]) {
+              await expect(local.getByRole("button", { name: label, exact: true })).toBeVisible();
+            }
+
+            await groups.getByRole("button", { name: /^Sistema/ }).click();
+            local = page.getByRole("navigation", { name: "Opciones de Sistema" });
+            for (const label of ["General", "Equipo y roles", "Seguridad"]) {
+              await expect(local.getByRole("button", { name: label, exact: true })).toBeVisible();
+            }
+
+            await groups.getByRole("button", { name: /^Apariencia/ }).click();
+            await expect(page.getByRole("navigation", { name: "Opciones de Apariencia" }).getByRole("button", { name: "Apariencia", exact: true })).toBeVisible();
+
+            const overflow = await page.locator(".admin-navigation").evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+            expect(overflow).toBe(false);
+
+            await testInfo.attach("prf3-administration-grouped", {
+              body: await page.screenshot({ fullPage: true }),
+              contentType: "image/png",
+            });
+          });
+
+          '''
+          path.write_text(text.replace(anchor, block + anchor, 1))
+          Path('.github/workflows/prf3-qa-bootstrap.yml').unlink()
+          PY
+      - name: Commit Browser QA patch and remove bootstrap workflow
+        run: |
+          git config user.name 'carlosyandybz-bit'
+          git config user.email 'carlosyandybz@gmail.com'
+          git add qa/tests/authenticated-smoke.spec.ts .github/workflows/prf3-qa-bootstrap.yml
+          git diff --cached --check
+          git commit -m 'PR-F3: cover grouped Administration in Browser QA'
+          git push origin HEAD:feat/prf3-admin-grouped-navigation
