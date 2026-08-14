@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { IdentityContext } from "./v14-types";
 import { AdminDataTransfer } from "./admin-data-transfer";
 import { AdminFormLibrary } from "./admin-form-library";
+import { AdminTeacherOnboarding } from "./admin-teacher-onboarding";
 import { P0fEvaluationAdmin } from "./p0f-evaluation-admin";
 import { AdminDailyQuotes } from "./admin-daily-quotes";
 import { P27NotificationsAdmin } from "./p27-notifications-admin";
@@ -190,7 +191,10 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
     const grouped = new Map<string, MemberRole[]>();
     data.members.forEach((member) => grouped.set(member.user_id, [...(grouped.get(member.user_id) ?? []), member]));
     const userIds = [...new Set([...data.profiles.map((profile) => profile.id), ...data.members.map((member) => member.user_id)])];
-    return <section className="admin-stack"><header className="admin-section-head"><div><h2>Equipo y roles</h2><p>Una persona puede enseñar, aprender y administrar sin duplicar su identidad.</p></div></header>{userIds.map((userId) => { const roles = grouped.get(userId) ?? []; const options = [...new Set(["admin", "teacher", "student", ...roles.map((role) => role.role)])]; return <article className="card admin-team-row" key={userId}><span className="admin-avatar"><UsersRound /></span><div><strong>{data.profiles.find((profile) => profile.id === userId)?.display_name ?? "Miembro del equipo"}</strong><small>{userId === identity.user_id ? "Tu identidad" : "Miembro"}</small></div><div className="role-chip-list">{options.map((role) => { const memberRole = roles.find((item) => item.role === role); return <label key={role} className={memberRole?.active ? "active" : ""}><span>{roleLabels[role] ?? role}</span><Switch checked={Boolean(memberRole?.active)} label={`Activar ${role}`} onChange={(checked) => updateMemberRole(userId, role, checked)} /></label>; })}</div></article>; })}</section>;
+    return <section className="admin-stack">
+      <header className="admin-section-head"><div><h2>Equipo y roles</h2><p>Añade profesores y gestiona sus accesos sin duplicar personas.</p></div><AdminTeacherOnboarding client={client} refresh={load} notify={notify} /></header>
+      {userIds.map((userId) => { const roles = grouped.get(userId) ?? []; const options = [...new Set(["admin", "teacher", "student", ...roles.map((role) => role.role)])]; return <article className="card admin-team-row" key={userId}><span className="admin-avatar"><UsersRound /></span><div><strong>{data.profiles.find((profile) => profile.id === userId)?.display_name ?? "Miembro del equipo"}</strong><small>{userId === identity.user_id ? "Tu identidad" : "Miembro"}</small></div><div className="role-chip-list">{options.map((role) => { const memberRole = roles.find((item) => item.role === role); return <label key={role} className={memberRole?.active ? "active" : ""}><span>{roleLabels[role] ?? role}</span><Switch checked={Boolean(memberRole?.active)} label={`Activar ${role}`} onChange={(checked) => updateMemberRole(userId, role, checked)} /></label>; })}</div></article>; })}
+    </section>;
   }
 
   function formsSection() {
