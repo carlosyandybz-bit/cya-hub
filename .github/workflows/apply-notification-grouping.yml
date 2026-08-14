@@ -1,0 +1,38 @@
+name: Apply notification grouping
+
+on:
+  push:
+    branches: [feat/postrelease-notification-grouping]
+    paths:
+      - 'scripts/apply-notification-grouping.mjs'
+      - '.github/workflows/apply-notification-grouping.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/postrelease-notification-grouping
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Apply exact notification grouping replacements
+        run: node scripts/apply-notification-grouping.mjs
+      - name: Verify grouping contract
+        run: node --test tests/notification-grouping.test.mjs tests/notifications-view.test.mjs
+      - name: Reject whitespace errors
+        run: git diff --check
+      - name: Commit functional result and remove one-shot tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm scripts/apply-notification-grouping.mjs .github/workflows/apply-notification-grouping.yml
+          git add app/notifications-view.tsx tests/notification-grouping.test.mjs
+          git commit -m "Group notifications by source entity and rule"
+          git push origin HEAD:feat/postrelease-notification-grouping
