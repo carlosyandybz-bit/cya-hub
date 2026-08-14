@@ -61,7 +61,10 @@ export function FeedbackOnlineAdmin({ client, notify }: Props) {
     setPersonId((current) => current || String((peopleResult.data?.[0] as Person | undefined)?.id ?? ""));
   }, [client]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const pendingOrders = orders.filter((row) => row.payment_status === "pending");
   const balanceByPerson = useMemo(() => ledger.reduce<Map<number, number>>((map, row) => map.set(row.person_id, (map.get(row.person_id) || 0) + Number(row.delta_credits || 0)), new Map()), [ledger]);

@@ -27,9 +27,7 @@ export async function POST(request: NextRequest) {
     if (!Number.isSafeInteger(requestId) || requestId <= 0) return NextResponse.json({ error: "Solicitud de Feedback no válida." }, { status: 400 });
     const context = await feedbackUploadContext(accessToken, requestId);
     if (!context || Number(context.request_id) !== requestId) return NextResponse.json({ error: "No tienes permiso para subir un vídeo a esta solicitud." }, { status: 403 });
-    const previousFileId = typeof (context as { external_file_id?: unknown }).external_file_id === "string"
-      ? String((context as { external_file_id: string }).external_file_id).trim()
-      : "";
+    const previousFileId = context.external_file_id?.trim() || "";
 
     const name = decodeURIComponent(request.headers.get("x-cya-file-name") || "feedback.mp4").trim().slice(0, 180) || "feedback.mp4";
     const mimeType = (request.headers.get("content-type") || "application/octet-stream").split(";")[0].trim();

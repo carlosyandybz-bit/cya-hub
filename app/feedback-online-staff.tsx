@@ -2,7 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Search, Video } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ContextEvaluationPanel } from "./context-evaluation-panel-p0f";
 import { SecureDriveAsset } from "./drive-media";
 import styles from "./feedback-online.module.css";
@@ -78,7 +78,11 @@ export function FeedbackOnlineStaffQueue({ client, students, visible = true, not
     setRequests(nextRequests);
     setTerms((termResult.data ?? []) as Term[]);
     setLibrary((libraryResult.data ?? []) as unknown as TeachingRow[]);
-    if (!selectedId || !nextRequests.some((row) => row.id === selectedId)) setSelectedId(nextRequests[0]?.id ?? null);
+    if (!selectedId || !nextRequests.some((row) => row.id === selectedId)) {
+      const nextSelected = nextRequests[0] ?? null;
+      setSelectedId(nextSelected?.id ?? null);
+      setSummary(nextSelected?.teacher_summary || "");
+    }
     if (!nextRequests.length) { setLinks([]); setAssignments([]); return; }
     const ids = nextRequests.map((row) => row.id);
     const linkResult = await client.from("feedback_request_contents").select("request_id,content_id,assignment_id").in("request_id", ids);
@@ -93,10 +97,13 @@ export function FeedbackOnlineStaffQueue({ client, students, visible = true, not
     } else setAssignments([]);
   }, [client, selectedId]);
 
-  useEffect(() => { if (!visible) return; void load(); }, [load, visible]);
+  useEffect(() => {
+    if (!visible) return;
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load, visible]);
 
   const selected = requests.find((row) => row.id === selectedId) ?? requests[0] ?? null;
-  useEffect(() => { setSummary(selected?.teacher_summary || ""); }, [selected?.id, selected?.teacher_summary]);
 
   const stylesTerms = terms.filter((term) => term.taxonomy === "dance_style");
   const roleTerms = terms.filter((term) => term.taxonomy === "dance_role");
@@ -105,17 +112,14 @@ export function FeedbackOnlineStaffQueue({ client, students, visible = true, not
   const requestLinks = selected ? links.filter((row) => row.request_id === selected.id) : [];
   const linkedContentIds = new Set(requestLinks.map((row) => row.content_id));
   const contextReady = Boolean(selected?.style_term_id && selected?.role_term_id && selected?.level_term_id);
-  const compatible = useMemo(() => {
-    if (!selected || !contextReady) return [];
-    const q = search.trim().toLocaleLowerCase("es");
-    return library.filter((content) =>
-      !linkedContentIds.has(content.id)
-      && content.teaching_content_styles.some((row) => row.style_term_id === selected.style_term_id)
-      && content.teaching_content_roles.some((row) => row.role_term_id === selected.role_term_id)
-      && content.teaching_content_levels.some((row) => row.level_term_id === selected.level_term_id)
-      && (!q || content.title.toLocaleLowerCase("es").includes(q))
-    ).slice(0, 20);
-  }, [contextReady, library, linkedContentIds, search, selected]);
+  const query = search.trim().toLocaleLowerCase("es");
+  const compatible = !selected || !contextReady ? [] : library.filter((content) =>
+    !linkedContentIds.has(content.id)
+    && content.teaching_content_styles.some((row) => row.style_term_id === selected.style_term_id)
+    && content.teaching_content_roles.some((row) => row.role_term_id === selected.role_term_id)
+    && content.teaching_content_levels.some((row) => row.level_term_id === selected.level_term_id)
+    && (!query || content.title.toLocaleLowerCase("es").includes(query))
+  ).slice(0, 20);
 
   async function updateContext(field: "style" | "role" | "level", value: string) {
     if (!selected) return;
@@ -178,7 +182,7 @@ export function FeedbackOnlineStaffQueue({ client, students, visible = true, not
   return <section className={`card ${styles.staffQueue}`} aria-label="Feedback Online pendientes">
     <div className={styles.staffQueueHead}><div><p className="eyebrow">Feedback Online</p><h2>Pendientes de revisar</h2></div><span className="badge">{requests.length}</span></div>
     {!requests.length ? <div className="compact-empty"><CheckCircle2 /><span>No hay vídeos pendientes.</span></div> : <div className={styles.staffLayout}>
-      <div className={styles.queueList}>{requests.map((row) => <button type="button" key={row.id} className={row.id === selected?.id ? styles.queueActive : ""} onClick={() => setSelectedId(row.id)}><Video /><span><strong>{personName(row.person_id)}</strong><small>{row.status === "submitted" ? "Pendiente" : "En revisión"}{row.due_at ? ` · objetivo ${dateTime(row.due_at)}` : ""}</small></span><ChevronRight /></button>)}</div>
+      <div className={styles.queueList}>{requests.map((row) => <button type="button" key={row.id} className={row.id === selected?.id ? styles.queueActive : ""} onClick={() => { setSelectedId(row.id); setSummary(row.teacher_summary || ""); }}><Video /><span><strong>{personName(row.person_id)}</strong><small>{row.status === "submitted" ? "Pendiente" : "En revisión"}{row.due_at ? ` · objetivo ${dateTime(row.due_at)}` : ""}</small></span><ChevronRight /></button>)}</div>
       {selected ? <div className={styles.review}>
         <div className={styles.requestHead}><div><span className="badge">{selected.status === "submitted" ? "Pendiente" : "En revisión"}</span><strong>{personName(selected.person_id)} · Feedback #{selected.id}</strong><small>Enviado {dateTime(selected.submitted_at)}</small></div>{selected.due_at ? <span className={styles.due}><Clock3 /> {dateTime(selected.due_at)}</span> : null}</div>
         {selected.student_note ? <div className={styles.studentNote}><strong>Quiere revisar</strong><p>{selected.student_note}</p></div> : null}

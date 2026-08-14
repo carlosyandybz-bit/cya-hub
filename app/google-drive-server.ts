@@ -113,8 +113,8 @@ export async function userCanAccessTeachingMedia(accessToken: string, fileId: st
   return Boolean(await supabaseRpc<boolean>("can_access_teaching_media", { p_external_file_id: fileId }, accessToken));
 }
 
-type FeedbackUploadContext = { request_id: number; person_id: number };
-type FeedbackMediaContext = FeedbackUploadContext & { upload_proof: string };
+type FeedbackUploadContext = { request_id: number; person_id: number; external_file_id: string | null };
+type FeedbackMediaContext = { request_id: number; person_id: number; upload_proof: string };
 
 export async function feedbackUploadContext(accessToken: string, requestId: number) {
   const rows = await supabaseRpc<FeedbackUploadContext[]>("feedback_upload_context", { p_request_id: requestId }, accessToken);

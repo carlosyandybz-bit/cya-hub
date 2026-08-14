@@ -112,7 +112,10 @@ export function FeedbackOnlineStudentPanel({ client, notify }: Props) {
     setLoading(false);
   }, [client]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const pendingOrder = orders.find((row) => row.payment_status === "pending") ?? null;
   const openRequest = requests.find((row) => ["draft", "submitted", "in_review"].includes(row.status)) ?? null;
