@@ -167,6 +167,7 @@ export function HomeView({ client, identity, studentCount, classes, students, go
       {focusClass ? <button className="quick" onClick={() => goLive(focusClass.id)}><GraduationCap /><strong>{focusClass.status === "active" ? "Volver a clase" : "Abrir clase"}</strong></button> : <button className="quick" onClick={scheduleClass}><CalendarDays /><strong>Programar clase</strong></button>}
       <button className="quick" onClick={() => go("students")}><UsersRound /><strong>Abrir alumno</strong></button>
       <button className="quick" onClick={() => go("teaching")}><BookOpen /><strong>Enseñanza</strong></button>
+      <button className="quick" onClick={() => go("academy")}><GraduationCap /><strong>Academia Online</strong></button>
       <button className="quick quick-wide" onClick={() => go("agenda")}><span><CalendarDays /><strong>Agenda completa</strong></span><ChevronRight /></button>
     </section>
 

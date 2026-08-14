@@ -37,11 +37,15 @@ import { CountrySelect } from "./country-field";
 import { BZPointsPanel } from "./bz-points-panel";
 import { FeedbackOnlineStudentPanel } from "./feedback-online-student";
 import { FeedbackOnlineStaffQueue } from "./feedback-online-staff";
+import { AcademyOnlineTeacherView } from "./academy-online-teacher";
+import { AcademyOnlineStudentComingSoon } from "./academy-online-student";
+import { DesktopPrimaryNavigation } from "./primary-navigation";
+import { StatisticsView } from "./statistics-view";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 
 const TeachingGraph = lazy(() => import("./teaching-graph").then((module) => ({ default: module.TeachingGraph })));
 
-type View = "home" | "students" | "classes" | "credits" | "agenda" | "live" | "teaching" | "marketing" | "admin" | "profile" | "preferences" | "notifications";
+type View = "home" | "students" | "classes" | "credits" | "agenda" | "live" | "teaching" | "marketing" | "statistics" | "academy" | "admin" | "profile" | "preferences" | "notifications";
 type CyaOverlay = "new-student" | "schedule" | "credit" | null;
 type CyaHistoryState = {
   cyaHub: true;
@@ -1396,6 +1400,7 @@ function StudentPortal({ identity, experience, onExperience, client, email, onId
     {nextClass ? <section className="card portal-next"><div><p className="eyebrow">Próxima clase</p><h2>{nextClass.style || "Clase privada"}</h2><p>{dateLabel(nextClass.scheduled_start_at)} · {minutesLabel(nextClass.duration_minutes)}</p></div><div><span>{nextClass.role || "Rol por confirmar"}</span><span>{nextClass.level || "Nivel por confirmar"}</span></div></section> : null}
     <BZPointsPanel client={client} assignments={snapshot.assignments} />
     <FeedbackOnlineStudentPanel client={client} />
+    <AcademyOnlineStudentComingSoon />
     <section className="portal-grid"><article className="card portal-card"><div className="card-head"><h2>Mi formación</h2><span>{snapshot.assignments.length}</span></div>{snapshot.assignments.length ? <div className="portal-learning-list">{snapshot.assignments.map((assignment) => <TeachingContentCard
         key={assignment.id}
         kindLabel={teachingKindLabels[assignment.content_type] ?? assignment.content_type}
@@ -1676,7 +1681,7 @@ function StaffApp({ session }: { session: Session }) {
   function goTarget(target: string) {
     if (target === "admin") { if (activeIdentity.can_admin) navigateView("admin", { experience: "admin" }); return; }
     if (target === "live") { goLive(); return; }
-    if (["home", "students", "classes", "credits", "agenda", "teaching", "marketing", "notifications"].includes(target)) navigateView(target as View);
+    if (["home", "students", "classes", "credits", "agenda", "teaching", "marketing", "statistics", "academy", "notifications"].includes(target)) navigateView(target as View);
   }
   function openNotificationTarget(target: string, context: NotificationTargetContext) {
     if (context.classId) { navigateView("live", { liveClassId: context.classId }); return; }
@@ -1697,7 +1702,7 @@ function StaffApp({ session }: { session: Session }) {
   const studentArea = ["students", "classes", "credits", "agenda"].includes(view);
   const activeNav = (id: string) => id === "students" ? studentArea : view === id;
   return <div className="shell">
-    <aside className="sidebar"><Brand /><nav>{nav.map(([id, label, Icon]) => <button key={id} className={activeNav(id) ? "active" : ""} onClick={() => navigateView(id)}><Icon />{label}</button>)}</nav>
+    <aside className="sidebar"><Brand /><DesktopPrimaryNavigation client={db!} view={view} studentArea={studentArea} navigate={(target) => navigateView(target as View)} />
       <AccountMenu client={db!} identity={identity} experience={experience} email={accountEmail} variant="sidebar" onExperience={setExperience} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} notify={setToast} />
     </aside>
     <div><header className="mobile-head"><div className="mobile-head-back">{view !== "home" ? <button className="mobile-back" type="button" onClick={() => goBack("home")} aria-label="Volver">‹</button> : null}</div><div className="mobile-head-brand"><Brand /></div><div className="mobile-head-actions"><button className={`icon-btn notification-trigger ${unreadNotificationCount ? "has-notifications" : ""}`} onClick={() => navigateView("notifications")} aria-label={unreadNotificationCount ? `${unreadNotificationCount} notificaciones pendientes` : "Notificaciones"}>{unreadNotificationCount ? <BellRing /> : <Bell />}{unreadNotificationCount ? <span className="notification-dot" aria-hidden="true" /> : null}</button><AccountMenu client={db!} identity={identity} experience={experience} email={accountEmail} variant="header" onExperience={setExperience} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} notify={setToast} /></div></header>
@@ -1711,6 +1716,8 @@ function StaffApp({ session }: { session: Session }) {
         {view === "agenda" && db ? <AgendaView client={db} timezone={identity.timezone} schedule={() => openSchedule(null)} openClass={goLive} notify={setToast} /> : null}
         {view === "live" ? <><FeedbackOnlineStaffQueue client={db!} students={students} visible={liveClassId === null} notify={setToast} /><LiveClassView classes={classes} students={students} credits={credits} terms={catalog} library={teachingContents} relations={teachingRelations} assignments={teachingAssignments} selectedClassId={liveClassId} selectClass={setLiveClassId} refresh={refreshLive} notify={setToast} exit={() => goBack("home")} /></> : null}
         {view === "teaching" ? <TeachingView contents={teachingContents} relations={teachingRelations} assignments={teachingAssignments} students={students} terms={catalog} refresh={loadTeaching} notify={setToast} /> : null}
+        {view === "statistics" && db ? <StatisticsView client={db} leave={() => goBack("home")} notify={setToast} /> : null}
+        {view === "academy" && db ? <AcademyOnlineTeacherView client={db} identity={identity} notify={setToast} /> : null}
         {view === "admin" && db && identity.can_admin ? <AdminView client={db} identity={identity} terms={catalog} notify={setToast} leave={() => { setExperienceState("teacher"); setView("home"); }} /> : null}
         {view === "marketing" && db ? <MarketingView db={db} contacts={crmContacts} rates={marketingRates} content={marketingContent} events={marketingEvents} campaigns={marketingCampaigns} metrics={campaignMetrics} recipients={communicationRecipients} refresh={refreshMarketing} notify={setToast} /> : null}
       </div></main>
