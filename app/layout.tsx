@@ -11,6 +11,7 @@ import "./p0c-touch-targets.css";
 import "./p0f-live-class.css";
 import "./p0g-compact-ui.css";
 import "./marketing-p29.css";
+import "./prf2-student-detail-mobile.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

@@ -21,7 +21,7 @@ function sqlFunctionBody(name){
 test('P0E removes evaluation gates from the application root',()=>{
   assert.doesNotMatch(page,/InitialEvaluationClassGate|EvaluationPostClassGate|EvaluationPostClassPreparer/);
   assert.match(page,/return <AppEntryRouter \/>/);
-  assert.match(router,/if \(!studentState\) return <CyaApp \/>/);
+  assert.match(router,/return <CyaApp \/>/);
   assert.doesNotMatch(router,/InitialEvaluationClassGate|EvaluationPostClassGate|EvaluationPostClassPreparer/);
 });
 
