@@ -18,6 +18,7 @@ import "./aud020-student-experience.css";
 import "./cya-game-ux-system.css";
 import "./p36-professor-home.css";
 import "./p36-students.css";
+import "./p36-agenda.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
