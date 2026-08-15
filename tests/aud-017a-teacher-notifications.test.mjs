@@ -47,8 +47,9 @@ test("AUD-017 persists a distinct audience for staff and student deliveries", ()
   assert.match(audienceMigration, /p_event_key,v_channel,p_target_user_id::text,v_audience/);
 });
 
-test("AUD-017 filters the shared inbox by the active experience", () => {
-  assert.match(notifications, /preferred_context/);
+test("AUD-017 filters the shared inbox by the authenticated active experience", () => {
+  assert.match(notifications, /user_id\?: string/);
+  assert.match(notifications, /\.eq\("user_id", capabilities\.user_id\)\.maybeSingle\(\)/);
   assert.match(notifications, /NotificationAudience = "staff" \| "student"/);
   assert.match(notifications, /\.eq\("audience", nextAudience\)/);
   assert.match(notifications, /\.eq\("audience", audience\)\.is\("read_at", null\)/);
