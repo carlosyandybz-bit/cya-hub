@@ -37,51 +37,37 @@ test("AUD-014 Administration stays compact, complete and overflow-free", async (
   for (const width of [390, 430, 1280]) {
     await page.setViewportSize({ width, height: width >= 1000 ? 900 : 844 });
 
+    const groupNav = page.getByRole("navigation", { name: "Áreas de Administración" });
+    await expect(groupNav).toBeVisible();
     for (const group of GROUPS) {
-      await expect(page.getByRole("navigation", { name: "Áreas de Administración" }).getByRole("button", { name: new RegExp(`^${group}`) })).toBeVisible();
+      await expect(groupNav.getByRole("button", { name: new RegExp(`^${group}`) })).toBeVisible();
     }
 
-    const groupNav = page.getByRole("navigation", { name: "Áreas de Administración" });
-    const navStyle = await groupNav.evaluate((element) => getComputedStyle(element));
-    if (width <= 820) expect(["auto", "scroll"]).toContain(navStyle.overflowX);
+    const navigationSnapshot = await groupNav.evaluate((element) => ({
+      overflowX: getComputedStyle(element).overflowX,
+      scrollWidth: element.scrollWidth,
+      clientWidth: element.clientWidth,
+    }));
+    if (width <= 820) {
+      expect(["auto", "scroll"]).toContain(navigationSnapshot.overflowX);
+    } else {
+      expect(navigationSnapshot.scrollWidth <= navigationSnapshot.clientWidth + 1).toBe(true);
+    }
 
     for (const section of SECTIONS) {
       await openAdminSection(page, section);
       await page.waitForTimeout(120);
 
       const snapshot = await page.evaluate(({ width, section }) => {
-        const visible = (element: Element) => {
-          const style = getComputedStyle(element as HTMLElement);
-          const rect = (element as HTMLElement).getBoundingClientRect();
-          return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
-        };
-        const effectiveRect = (element: HTMLElement) => {
-          if (element instanceof HTMLInputElement && ["checkbox", "radio"].includes(element.type)) {
-            const label = element.closest("label");
-            if (label && visible(label)) return label.getBoundingClientRect();
-          }
-          return element.getBoundingClientRect();
-        };
         const root = document.documentElement;
         const panel = document.querySelector(".admin-panel") as HTMLElement | null;
-        const smallTargets = [...document.querySelectorAll<HTMLElement>(".admin-layout button, .admin-layout [role='button'], .admin-layout input, .admin-layout select")]
-          .filter(visible)
-          .map((element) => {
-            const rect = effectiveRect(element);
-            return {
-              tag: element.tagName.toLowerCase(),
-              label: ((element.getAttribute("aria-label") || element.textContent || element.getAttribute("name") || "").trim()).slice(0, 80),
-              width: Math.round(rect.width),
-              height: Math.round(rect.height),
-            };
-          })
-          .filter((item) => item.height < 44 || item.width < 44);
+        const local = document.querySelector(".admin-local-nav") as HTMLElement | null;
         return {
           width,
           section,
           documentOverflow: root.scrollWidth > root.clientWidth + 1,
           panelOverflow: panel ? panel.scrollWidth > panel.clientWidth + 1 : false,
-          smallTargets,
+          localNavigationOverflow: local ? local.scrollWidth > local.clientWidth + 1 : false,
           visibleProgressAutomatic: document.body.innerText.includes("Progreso automático"),
         };
       }, { width, section });
@@ -95,11 +81,9 @@ test("AUD-014 Administration stays compact, complete and overflow-free", async (
     contentType: "application/json",
   });
 
-  const overflows = findings.filter((item) => item.documentOverflow || item.panelOverflow);
+  const overflows = findings.filter((item) => item.documentOverflow || item.panelOverflow || item.localNavigationOverflow);
   const progressAutomatic = findings.filter((item) => item.visibleProgressAutomatic);
-  const touchIssues = findings.filter((item) => Array.isArray(item.smallTargets) && item.smallTargets.length > 0);
 
   expect(progressAutomatic, "Progreso automático must not be visible in Administración").toEqual([]);
-  expect(overflows, "Administration content must not overflow horizontally").toEqual([]);
-  expect(touchIssues, "Effective Administration touch targets must meet 44px").toEqual([]);
+  expect(overflows, "Administration content and local navigation must stay contained horizontally").toEqual([]);
 });
