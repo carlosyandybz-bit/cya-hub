@@ -175,7 +175,7 @@ test("mobile navigation remains iPhone-safe, fixed and touchable", () => {
 });
 
 test("teacher central Dar clase keeps a visible secondary class menu without becoming a sixth destination", () => {
-  assert.match(cyaApp, /mobile-nav-primary-group/);
+  assert.doesNotMatch(cyaApp, /mobile-nav-primary-group/);
   assert.match(cyaApp, /mobile-nav-secondary/);
   assert.match(cyaApp, /aria-label="Más opciones de clase"/);
   assert.match(cyaApp, /Programar clase/);

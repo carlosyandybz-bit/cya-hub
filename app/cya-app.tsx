@@ -1723,10 +1723,10 @@ function StaffApp({ session }: { session: Session }) {
         {view === "marketing" && db ? <MarketingView db={db} contacts={crmContacts} rates={marketingRates} content={marketingContent} events={marketingEvents} campaigns={marketingCampaigns} metrics={campaignMetrics} recipients={communicationRecipients} refresh={refreshMarketing} notify={setToast} /> : null}
       </div></main>
       {!isLiveClassSessionActive ? <>
-        <nav className="mobile-nav">{nav.map(([id, label, Icon]) => id === "live" ? <div className="mobile-nav-primary-group" key={id}>
-          <button className={`${activeNav(id) ? "active" : ""} primary`} onClick={() => { setClassQuickMenuOpen(false); navigateView(id); }}><Icon /><span>{label}</span></button>
+        <nav className="mobile-nav">
+          {nav.map(([id, label, Icon]) => <button key={id} className={`${activeNav(id) ? "active" : ""} ${id === "live" ? "primary" : ""}`} onClick={() => { setClassQuickMenuOpen(false); navigateView(id); }}><Icon /><span>{label}</span></button>)}
           <button type="button" className={`mobile-nav-secondary ${classQuickMenuOpen ? "open" : ""}`} aria-label="Más opciones de clase" aria-expanded={classQuickMenuOpen} onClick={() => setClassQuickMenuOpen((value) => !value)}><ChevronDown /></button>
-        </div> : <button key={id} className={activeNav(id) ? "active" : ""} onClick={() => { setClassQuickMenuOpen(false); navigateView(id); }}><Icon /><span>{label}</span></button>)}</nav>
+        </nav>
         {classQuickMenuOpen ? <div className="mobile-class-sheet" role="menu" aria-label="Opciones de clase">
           <button type="button" role="menuitem" onClick={() => { setClassQuickMenuOpen(false); openSchedule(); }}><Plus /><span><strong>Programar clase</strong><small>Crear una nueva clase</small></span><ChevronRight /></button>
           <button type="button" role="menuitem" onClick={() => { setClassQuickMenuOpen(false); navigateView("classes"); }}><GraduationCap /><span><strong>Clases</strong><small>Ver próximas y anteriores</small></span><ChevronRight /></button>
