@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { externalRequestOrigin } from "../../../server-request-origin";
 import { bearerToken, buildGoogleCalendarAuthUrl, calendarServerConfigured, requireStaff, sealOAuthCookie } from "../../../google-calendar-server";
 
 export const dynamic = "force-dynamic";
@@ -15,11 +16,12 @@ export async function POST(request: NextRequest) {
     const state = randomBytes(24).toString("base64url");
     const expiresAt = Date.now() + 10 * 60 * 1000;
     const cookieValue = sealOAuthCookie({ state, accessToken, userId: identity.id, expiresAt });
-    const url = buildGoogleCalendarAuthUrl(request.nextUrl.origin, state);
+    const origin = externalRequestOrigin(request);
+    const url = buildGoogleCalendarAuthUrl(origin, state);
     const response = NextResponse.json({ url }, { headers: { "cache-control": "no-store" } });
     response.cookies.set(COOKIE_NAME, cookieValue, {
       httpOnly: true,
-      secure: request.nextUrl.protocol === "https:",
+      secure: origin.startsWith("https://"),
       sameSite: "lax",
       path: "/api/google-calendar",
       maxAge: 600,
