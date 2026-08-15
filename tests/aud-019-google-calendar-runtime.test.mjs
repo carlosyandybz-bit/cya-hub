@@ -4,6 +4,9 @@ import test from "node:test";
 
 const read = (path) => fs.readFileSync(path, "utf8");
 const status = read("app/api/google-calendar/status/route.ts");
+const connect = read("app/api/google-calendar/connect/route.ts");
+const callback = read("app/api/google-calendar/callback/route.ts");
+const origin = read("app/server-request-origin.ts");
 const ui = read("app/google-calendar-sync.tsx");
 const deploy = read("HOSTINGER_DEPLOY.md");
 
@@ -22,6 +25,17 @@ test("AUD-019 shows an actionable readiness message instead of a generic OAuth f
   assert.match(ui, /configurationMessage/);
   assert.match(ui, /Google Calendar todavía no está preparado en el servidor/);
   assert.match(ui, /disabled=\{busy === "connect" \|\| configured === false \|\| configured === null\}/);
+});
+
+test("AUD-019 derives the public OAuth origin behind Hostinger reverse proxy", () => {
+  assert.match(origin, /x-forwarded-host/);
+  assert.match(origin, /x-forwarded-proto/);
+  assert.match(origin, /request\.headers\.get\("host"\)/);
+  assert.match(connect, /externalRequestOrigin\(request\)/);
+  assert.doesNotMatch(connect, /buildGoogleCalendarAuthUrl\(request\.nextUrl\.origin/);
+  assert.match(connect, /secure:\s*origin\.startsWith\("https:\/\/"\)/);
+  assert.match(callback, /exchangeGoogleCalendarCode\(externalRequestOrigin\(request\), code\)/);
+  assert.doesNotMatch(callback, /exchangeGoogleCalendarCode\(request\.nextUrl\.origin/);
 });
 
 test("AUD-019 deployment contract requires real OAuth certification", () => {
