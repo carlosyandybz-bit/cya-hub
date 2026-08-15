@@ -1,6 +1,6 @@
 /* CYA Hub · P36 Game UX system
    Canonical visual tokens and interaction behavior shared by professor, student and admin.
-   This file is intentionally semantic: it does not own feature layout or permissions. */
+   Feature layouts consume these tokens; permissions and business rules stay elsewhere. */
 
 :root {
   --cya-accent: #6d4aff;
@@ -9,11 +9,22 @@
   --cya-canvas: #f7f6fa;
   --cya-surface: #ffffff;
   --cya-surface-subtle: #faf9fc;
+  --cya-surface-strong: #f1eef5;
   --cya-text: #1d1a29;
   --cya-text-muted: #777287;
+  --cya-text-soft: #918b9d;
   --cya-line: #e8e5ee;
+
   --cya-success: #19865a;
+  --cya-success-soft: #eaf8f1;
+  --cya-warning: #a96514;
+  --cya-warning-soft: #fff4df;
   --cya-danger: #a72d3a;
+  --cya-danger-soft: #fff0f2;
+  --cya-info: #3566b8;
+  --cya-info-soft: #edf4ff;
+  --cya-locked: #716b7d;
+  --cya-locked-soft: #f0eef3;
   --cya-focus-ring: #6d4aff52;
 
   --cya-radius-control: 14px;
@@ -22,11 +33,29 @@
   --cya-shadow-soft: 0 7px 24px #2d23490b;
   --cya-shadow-raised: 0 14px 40px #362a5b12;
 
+  --cya-space-1: 4px;
+  --cya-space-2: 8px;
+  --cya-space-3: 12px;
+  --cya-space-4: 16px;
+  --cya-space-5: 20px;
+  --cya-space-6: 24px;
+  --cya-space-8: 32px;
+  --cya-space-10: 40px;
+
+  --cya-type-caption: 12px;
+  --cya-type-label: 13px;
+  --cya-type-body: 15px;
+  --cya-type-title: 20px;
+  --cya-type-page: clamp(30px, 5vw, 44px);
+  --cya-leading-tight: 1.08;
+  --cya-leading-body: 1.52;
+
   --cya-motion-fast: 120ms;
   --cya-motion-base: 160ms;
+  --cya-motion-slow: 220ms;
   --cya-ease-standard: cubic-bezier(.2, .8, .2, 1);
 
-  /* Compatibility aliases while feature CSS is progressively consolidated. */
+  /* Compatibility aliases while historical feature CSS is progressively consolidated. */
   --purple: var(--cya-accent);
   --purple2: var(--cya-accent-strong);
   --soft: var(--cya-accent-soft);
@@ -37,14 +66,11 @@
   --green: var(--cya-success);
 }
 
-html {
-  color-scheme: light;
-}
+html { color-scheme: light; }
+body { background: var(--cya-canvas); color: var(--cya-text); }
 
-body {
-  background: var(--cya-canvas);
-  color: var(--cya-text);
-}
+:where(.page-head h1, .student-detail-title) { letter-spacing: -.035em; line-height: var(--cya-leading-tight); }
+:where(p, .card, .admin-stack) { text-wrap: pretty; }
 
 :where(
   .btn,
@@ -87,54 +113,29 @@ body {
   outline-offset: 2px;
 }
 
-:where(.card, .student-row, .agenda-row) {
-  border-color: var(--cya-line);
-  box-shadow: var(--cya-shadow-soft);
-}
+:where(.card, .student-row, .agenda-row) { border-color: var(--cya-line); box-shadow: var(--cya-shadow-soft); }
+.focus { box-shadow: var(--cya-shadow-raised); }
+.mobile-nav button.active, .sidebar nav button.active, .side-bottom button.active { color: var(--cya-accent-strong); }
 
-.focus {
-  box-shadow: var(--cya-shadow-raised);
-}
+[data-tone="success"] { color: var(--cya-success); background: var(--cya-success-soft); }
+[data-tone="warning"] { color: var(--cya-warning); background: var(--cya-warning-soft); }
+[data-tone="danger"] { color: var(--cya-danger); background: var(--cya-danger-soft); }
+[data-tone="info"] { color: var(--cya-info); background: var(--cya-info-soft); }
+[data-tone="locked"] { color: var(--cya-locked); background: var(--cya-locked-soft); }
 
-.mobile-nav button.active,
-.sidebar nav button.active,
-.side-bottom button.active {
-  color: var(--cya-accent-strong);
-}
+[data-cya-icon] { flex: 0 0 auto; object-fit: contain; }
 
 @media (hover: hover) and (pointer: fine) {
-  :where(.btn:not(:disabled), .quick, .student-row-main):hover {
-    transform: translateY(-1px);
-  }
-
-  :where(.icon-btn, .side-user button, .mobile-nav button):hover {
-    color: var(--cya-accent-strong);
-  }
+  :where(.btn:not(:disabled), .quick, .student-row-main):hover { transform: translateY(-1px); }
+  :where(.icon-btn, .side-user button, .mobile-nav button):hover { color: var(--cya-accent-strong); }
 }
 
 @media (pointer: coarse) {
-  .icon-btn,
-  .side-user button {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-  }
+  .icon-btn, .side-user button { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :where(
-    .btn,
-    .quick,
-    .icon-btn,
-    .side-user button,
-    .sidebar nav button,
-    .side-bottom button,
-    .mobile-nav button,
-    .teaching-switch button,
-    .teaching-kind-grid button,
-    .student-row-main
-  ) {
+  :where(.btn, .quick, .icon-btn, .side-user button, .sidebar nav button, .side-bottom button, .mobile-nav button, .teaching-switch button, .teaching-kind-grid button, .student-row-main) {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
