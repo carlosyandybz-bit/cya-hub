@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  AlertTriangle, Archive, ArrowRight, Bell, BellRing, BookOpen, CalendarDays, CheckCircle2, ChevronRight, CircleUserRound, ClipboardCheck,
+  AlertTriangle, Archive, ArrowRight, Bell, BellRing, BookOpen, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, CircleUserRound, ClipboardCheck,
   Dumbbell, Eye, EyeOff, GitBranch, GraduationCap, House,
   LibraryBig, Link2, LockKeyhole, Megaphone, NotebookPen,
   Pencil, Play, Plus, Search, Sparkles, TrendingUp, UserRound, UsersRound,
@@ -1435,7 +1435,7 @@ function StaffApp({ session }: { session: Session }) {
   const [crmContacts,setCrmContacts] = useState<CrmContact[]>([]), [marketingRates,setMarketingRates] = useState<MarketingRate[]>([]), [marketingContent,setMarketingContent] = useState<MarketingContent[]>([]);
   const [marketingEvents,setMarketingEvents] = useState<MarketingEvent[]>([]), [marketingCampaigns,setMarketingCampaigns] = useState<MarketingCampaign[]>([]), [campaignMetrics,setCampaignMetrics] = useState<CampaignMetric[]>([]);
   const [communicationRecipients,setCommunicationRecipients] = useState<CommunicationRecipient[]>([]);
-  const [scheduleOpen, setScheduleOpen] = useState(false), [creditOpen, setCreditOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false), [creditOpen, setCreditOpen] = useState(false), [classQuickMenuOpen, setClassQuickMenuOpen] = useState(false);
   const [scheduleStudentId,setScheduleStudentId] = useState<number | null>(null), [creditStudentId,setCreditStudentId] = useState<number | null>(null);
   const [toast, setToast] = useState<string>(""), [liveClassId, setLiveClassId] = useState<number | null>(null);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
@@ -1580,6 +1580,7 @@ function StaffApp({ session }: { session: Session }) {
     setNewOpen(false);
     setScheduleOpen(false);
     setCreditOpen(false);
+    setClassQuickMenuOpen(false);
     setScheduleStudentId(null);
     setCreditStudentId(null);
   }
@@ -1721,7 +1722,17 @@ function StaffApp({ session }: { session: Session }) {
         {view === "admin" && db && identity.can_admin ? <AdminView client={db} identity={identity} terms={catalog} notify={setToast} leave={() => { setExperienceState("teacher"); setView("home"); }} /> : null}
         {view === "marketing" && db ? <MarketingView db={db} contacts={crmContacts} rates={marketingRates} content={marketingContent} events={marketingEvents} campaigns={marketingCampaigns} metrics={campaignMetrics} recipients={communicationRecipients} refresh={refreshMarketing} notify={setToast} /> : null}
       </div></main>
-      {!isLiveClassSessionActive ? <nav className="mobile-nav">{nav.map(([id, label, Icon]) => <button key={id} className={`${activeNav(id) ? "active" : ""} ${id === "live" ? "primary" : ""}`} onClick={() => navigateView(id)}><Icon /><span>{label}</span></button>)}</nav> : null}
+      {!isLiveClassSessionActive ? <>
+        <nav className="mobile-nav">
+          {nav.map(([id, label, Icon]) => <button key={id} className={`${activeNav(id) ? "active" : ""} ${id === "live" ? "primary" : ""}`} onClick={() => { setClassQuickMenuOpen(false); navigateView(id); }}><Icon /><span>{label}</span></button>)}
+          <button type="button" className={`mobile-nav-secondary ${classQuickMenuOpen ? "open" : ""}`} aria-label="Más opciones de clase" aria-expanded={classQuickMenuOpen} onClick={() => setClassQuickMenuOpen((value) => !value)}><ChevronDown /></button>
+        </nav>
+        {classQuickMenuOpen ? <div className="mobile-class-sheet" role="menu" aria-label="Opciones de clase">
+          <button type="button" role="menuitem" onClick={() => { setClassQuickMenuOpen(false); openSchedule(); }}><Plus /><span><strong>Programar clase</strong><small>Crear una nueva clase</small></span><ChevronRight /></button>
+          <button type="button" role="menuitem" onClick={() => { setClassQuickMenuOpen(false); navigateView("classes"); }}><GraduationCap /><span><strong>Clases</strong><small>Ver próximas y anteriores</small></span><ChevronRight /></button>
+          <button type="button" role="menuitem" onClick={() => { setClassQuickMenuOpen(false); navigateView("agenda"); }}><CalendarDays /><span><strong>Agenda</strong><small>Ver calendario y planificación</small></span><ChevronRight /></button>
+        </div> : null}
+      </> : null}
     </div>
     {newOpen ? <AddStudent close={() => goBack(view)} created={created} /> : null}
     {scheduleOpen ? <ScheduleClass students={students} styles={styles} initialStudentId={scheduleStudentId} close={() => goBack(view)} saved={classSaved} /> : null}

@@ -760,3 +760,68 @@ body:has([role="dialog"]){overflow:hidden}
 /* v33 · remate visual/funcional de Dar clase */
 .live-work-tabs{grid-template-columns:repeat(4,minmax(0,1fr));overflow-x:auto}.live-student-avatar{background:#f0edfa;color:#675e82}.live-student-avatar svg{width:27px;height:27px;stroke-width:1.8}.unified-results{gap:7px;padding-top:8px}.unified-result{min-height:66px;grid-template-columns:minmax(0,1fr) auto;gap:7px 12px;padding:11px 12px;border:1px solid #ebe7f0;border-radius:13px;background:#fff}.unified-result:last-child{border-bottom:1px solid #ebe7f0}.unified-result>.content-kind{grid-column:1;width:max-content;padding:4px 7px;border-radius:999px;background:#f0ecff}.unified-result>div:not(.unified-result-actions){grid-column:1}.unified-result-actions{grid-column:2;grid-row:1/3;align-self:center}.unified-result[data-kind='correction']{border-left:4px solid #ce4a5c;background:#fffafb}.unified-result[data-kind='correction']>.content-kind{background:#fdecef;color:#b53b4b}.unified-result[data-kind='explanation']{border-left:4px solid #557fe1;background:#fafcff}.unified-result[data-kind='explanation']>.content-kind{background:#eaf0ff;color:#3e66c5}.unified-result[data-kind='exercise']{border-left:4px solid #269368;background:#fafffc}.unified-result[data-kind='exercise']>.content-kind{background:#e8f8f0;color:#197651}.unified-result[data-kind='sequence']{border-left:4px solid #8a5ddd;background:#fdfaff}.unified-result[data-kind='sequence']>.content-kind{background:#f0eaff;color:#7044c7}.live-content-card.live-priority-high{box-shadow:inset 4px 0 #d04b59,0 6px 20px rgba(36,28,54,.05)}.live-content-card.live-priority-medium{box-shadow:inset 4px 0 #d78a32,0 6px 20px rgba(36,28,54,.05)}.live-content-card.live-priority-low{box-shadow:inset 4px 0 #4a9c75,0 6px 20px rgba(36,28,54,.05)}.live-card-quick{width:100%}.live-context-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.live-context-card{align-self:start}.context-suggestions{grid-column:1/-1}.context-strip{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;padding:10px 11px;border-radius:11px;background:#f5f2fb}.context-strip span{color:var(--muted);font-size:11px}.context-strip strong{font-size:11.5px;text-align:right}.context-mini-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:12px}.context-mini-grid>div{padding:11px;border:1px solid #ebe7f0;border-radius:12px;background:#faf9fc;text-align:center}.context-mini-grid strong,.context-mini-grid span{display:block}.context-mini-grid strong{color:var(--purple2);font-size:20px}.context-mini-grid span{margin-top:3px;color:var(--muted);font-size:10.5px}.live-request-list .context-add{width:max-content;margin-top:7px;min-height:38px;padding:0 11px;font-size:11.5px}.context-suggestion-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.context-suggestion-list article{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;padding:11px;border:1px solid #e8e4ed;border-radius:13px;background:#fff}.context-suggestion-list article>div{min-width:0}.context-suggestion-list span,.context-suggestion-list strong,.context-suggestion-list small{display:block}.context-suggestion-list span{color:var(--purple2);font-size:10px;font-weight:800;text-transform:uppercase}.context-suggestion-list strong{overflow:hidden;margin-top:3px;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.context-suggestion-list small{margin-top:3px;color:var(--muted);font-size:10.5px}.context-suggestion-list .btn{min-height:38px;padding:0 10px;font-size:11px}.context-suggestion-list article[data-kind='correction']{border-left:4px solid #ce4a5c}.context-suggestion-list article[data-kind='explanation']{border-left:4px solid #557fe1}.context-suggestion-list article[data-kind='exercise']{border-left:4px solid #269368}.context-suggestion-list article[data-kind='sequence']{border-left:4px solid #8a5ddd}
 @media(max-width:620px){.live-work-tabs{grid-template-columns:repeat(4,minmax(82px,1fr))}.live-work-tabs button{padding:0 5px;font-size:10.5px}.unified-result{grid-template-columns:1fr}.unified-result>.content-kind,.unified-result>div:not(.unified-result-actions),.unified-result-actions{grid-column:1}.unified-result-actions{grid-row:auto;justify-content:flex-start}.live-context-grid,.context-suggestion-list{grid-template-columns:1fr}.context-suggestions{grid-column:1}.context-suggestion-list article{grid-template-columns:minmax(0,1fr) auto}.context-suggestion-list .btn{min-height:42px}}
+
+
+/* CYA secondary navigation actions */
+@media (max-width:720px) {
+  .mobile-nav .mobile-nav-secondary {
+    position:absolute;
+    z-index:4;
+    top:-14px;
+    left:calc(50% + 18px);
+    width:44px;
+    height:44px;
+    min-height:44px;
+    padding:0;
+    border:3px solid white;
+    border-radius:999px;
+    display:grid;
+    place-items:center;
+    background:#2b2149;
+    color:white;
+    box-shadow:0 8px 20px #211a3240;
+    transition:transform .16s ease, background .16s ease;
+  }
+  .mobile-nav .mobile-nav-secondary svg { width:16px; height:16px; padding:0; border-radius:0; background:transparent; box-shadow:none; color:currentColor; }
+  .mobile-nav .mobile-nav-secondary.open { background:var(--purple2); }
+  .mobile-nav .mobile-nav-secondary.open svg { transform:rotate(180deg); }
+  .mobile-class-sheet {
+    position:fixed;
+    z-index:29;
+    right:14px;
+    bottom:calc(88px + env(safe-area-inset-bottom));
+    left:14px;
+    display:grid;
+    gap:4px;
+    padding:10px;
+    border:1px solid #e1dde8;
+    border-radius:20px;
+    background:#fffffff8;
+    box-shadow:0 18px 50px #211a3230;
+    backdrop-filter:blur(18px);
+  }
+  .mobile-class-sheet > button {
+    min-height:58px;
+    display:grid;
+    grid-template-columns:34px minmax(0,1fr) 20px;
+    align-items:center;
+    gap:10px;
+    padding:8px 10px;
+    border:0;
+    border-radius:14px;
+    background:transparent;
+    color:var(--ink);
+    text-align:left;
+    cursor:pointer;
+  }
+  .mobile-class-sheet > button:active { background:var(--soft); }
+  .mobile-class-sheet > button > svg:first-child { width:22px; color:var(--purple); }
+  .mobile-class-sheet > button > svg:last-child { width:17px; color:#aaa4b6; }
+  .mobile-class-sheet span { min-width:0; display:grid; gap:2px; }
+  .mobile-class-sheet strong { font-size:13px; }
+  .mobile-class-sheet small { color:var(--muted); font-size:11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-nav .mobile-nav-secondary { transition:none; }
+}
