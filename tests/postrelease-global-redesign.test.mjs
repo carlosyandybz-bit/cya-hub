@@ -188,3 +188,18 @@ test("student-facing preparation copy stays close and confidence-building", () =
   assert.match(portal, /No hemos podido subir el vídeo esta vez/);
   assert.doesNotMatch(portal, /Supabase RPC|PostgreSQL|migration|backend/i);
 });
+
+test("Progreso final derives improvements evolution milestones and videos from real portal data", () => {
+  assert.match(portal, /<h2>Qué ha mejorado<\/h2>/);
+  assert.match(portal, /latest\.score - previous\.score/);
+  assert.match(portal, /latest\.score <= previous\.score/);
+  assert.match(portal, /<h2>Cómo ha ido cambiando<\/h2>/);
+  assert.match(portal, /evaluationTimeline\.slice\(0, 10\)/);
+  assert.match(portal, /<h2>Pasos que ya forman parte de tu camino<\/h2>/);
+  assert.match(portal, /finishedClasses >= 5/);
+  assert.match(portal, /<h2>Mis vídeos<\/h2>/);
+  assert.match(portal, /progressVideos\.slice\(0, 12\)/);
+  assert.match(portal, /media\.media_type === "video"/);
+  assert.match(portal, /privateVideos\.map/);
+  assert.doesNotMatch(portal, /has mejorado muchísimo|increíble progreso|vas genial/i);
+});
