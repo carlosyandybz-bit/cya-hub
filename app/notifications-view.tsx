@@ -87,6 +87,7 @@ function priorityLabel(value?: string) {
 function targetBase(target: string | null | undefined) {
   if (!target) return null;
   const [base] = target.split(":", 1);
+  if (base === "student") return target;
   return validTargets.has(base) ? base : null;
 }
 
