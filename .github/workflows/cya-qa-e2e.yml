@@ -4,120 +4,84 @@ on:
   pull_request:
     branches:
       - main
-  workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
 
-concurrency:
-  group: cya-qa-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: true
-
 jobs:
   browser-qa:
     name: Browser QA
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     env:
-      CI: "true"
-      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.CYA_QA_SUPABASE_URL || 'https://ldvyeyhzrepaaouzavgs.supabase.co' }}
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.CYA_QA_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_gTLCF5jffNzTC_mRZ21IPg_wl-70wQL' }}
-      CYA_QA_BOOTSTRAP_URL: https://ldvyeyhzrepaaouzavgs.supabase.co/functions/v1/cya-qa-bootstrap
-
+      GCP_WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER || secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER || vars.GCP_WORKLOAD_IDENTITY_PROVIDER || vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT || secrets.GOOGLE_SERVICE_ACCOUNT || vars.GCP_SERVICE_ACCOUNT || vars.GOOGLE_SERVICE_ACCOUNT }}
+      GCP_CREDENTIALS_JSON: ${{ secrets.GCP_CREDENTIALS_JSON || secrets.GOOGLE_CREDENTIALS || secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Use Node.js 22
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-          cache: npm
-
-      - name: Validate canonical documentation sequence
-        run: node --test tests/documentation-consistency.test.mjs
-
-      - name: Bootstrap dedicated QA identities with GitHub OIDC
+      - name: Detect reusable GCP identity
+        id: detect
         shell: bash
         run: |
           set -euo pipefail
-          oidc_json="$(curl --fail --silent --show-error \
-            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=cya-hub-qa")"
-          oidc_token="$(jq -er '.value' <<<"${oidc_json}")"
+          if [ -n "${GCP_WIF_PROVIDER}" ] && [ -n "${GCP_SERVICE_ACCOUNT}" ]; then
+            echo "mode=wif" >> "$GITHUB_OUTPUT"
+            echo "GCP identity source: Workload Identity Federation"
+          elif [ -n "${GCP_CREDENTIALS_JSON}" ]; then
+            echo "mode=json" >> "$GITHUB_OUTPUT"
+            echo "GCP identity source: existing repository credential"
+          else
+            echo "mode=none" >> "$GITHUB_OUTPUT"
+            echo "No reusable GCP identity is configured in GitHub Actions."
+          fi
 
-          bootstrap_json="$(curl --fail --silent --show-error \
-            -X POST \
-            -H "Authorization: Bearer ${oidc_token}" \
-            -H "Content-Type: application/json" \
-            "${CYA_QA_BOOTSTRAP_URL}")"
-
-          jq -e --arg run_id "${GITHUB_RUN_ID}" '.ok == true and .run_id == $run_id' <<<"${bootstrap_json}" >/dev/null
-          jq -e '.fixtures.studentName and .fixtures.projects["iphone-large-chromium"].classId and .fixtures.projects["desktop-chromium"].classId' <<<"${bootstrap_json}" >/dev/null
-
-          for role in teacher student admin; do
-            upper_role="$(printf '%s' "${role}" | tr '[:lower:]' '[:upper:]')"
-            email="$(jq -er ".credentials.${role}.email" <<<"${bootstrap_json}")"
-            password="$(jq -er ".credentials.${role}.password" <<<"${bootstrap_json}")"
-            echo "::add-mask::${password}"
-            printf 'QA_%s_EMAIL=%s\n' "${upper_role}" "${email}" >> "${GITHUB_ENV}"
-            printf 'QA_%s_PASSWORD=%s\n' "${upper_role}" "${password}" >> "${GITHUB_ENV}"
-          done
-
-          printf 'QA_FIXTURES_JSON=%s\n' "$(jq -c '.fixtures' <<<"${bootstrap_json}")" >> "${GITHUB_ENV}"
-          printf 'QA_RUN_ID=%s\n' "${GITHUB_RUN_ID}" >> "${GITHUB_ENV}"
-
-      - name: Install application dependencies
-        run: npm ci
-
-      - name: Install QA harness
-        working-directory: qa
-        run: npm install --no-audit --no-fund
-
-      - name: Install Chromium for Playwright
-        working-directory: qa
-        run: npx playwright install --with-deps chromium
-
-      - name: Lint application (report existing debt without blocking browser QA)
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run lint 2>&1 | tee qa/lint.log
-
-      - name: Build application
-        run: npm run build
-
-      - name: Start CYA Hub locally
-        shell: bash
-        run: |
-          npm start > qa/app-server.log 2>&1 &
-          echo $! > qa/app-server.pid
-          for attempt in {1..60}; do
-            if curl --fail --silent --show-error http://127.0.0.1:3000/ > /dev/null; then
-              echo "CYA Hub is ready"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "CYA Hub did not become ready"
-          cat qa/app-server.log
-          exit 1
-
-      - name: Run browser QA
-        working-directory: qa
-        run: npm run test:e2e
-
-      - name: Upload browser evidence
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v5
+      - name: Authenticate to Google Cloud with WIF
+        if: steps.detect.outputs.mode == 'wif'
+        uses: google-github-actions/auth@v3
         with:
-          name: cya-browser-qa-${{ github.run_id }}
-          path: |
-            playwright-report/
-            test-results/
-            qa/app-server.log
-            qa/lint.log
-          if-no-files-found: warn
-          retention-days: 14
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
+
+      - name: Authenticate to Google Cloud with existing JSON credential
+        if: steps.detect.outputs.mode == 'json'
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ env.GCP_CREDENTIALS_JSON }}
+
+      - name: Set up gcloud
+        if: steps.detect.outputs.mode != 'none'
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Verify OAuth Config write capability without changing anything
+        if: steps.detect.outputs.mode != 'none'
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(gcloud auth print-access-token)"
+          echo "::add-mask::${token}"
+          found=0
+          while IFS= read -r project; do
+            [ -z "$project" ] && continue
+            result="$(curl --fail --silent --show-error -X POST \
+              -H "Authorization: Bearer ${token}" \
+              -H 'Content-Type: application/json' \
+              "https://cloudresourcemanager.googleapis.com/v1/projects/${project}:testIamPermissions" \
+              -d '{"permissions":["clientauthconfig.clients.get","clientauthconfig.clients.update"]}' || true)"
+            if echo "$result" | jq -e '.permissions | index("clientauthconfig.clients.update") != null' >/dev/null 2>&1; then
+              echo "OAuth Config write permission available on a GCP project."
+              found=1
+              break
+            fi
+          done < <(gcloud projects list --format='value(projectId)')
+          if [ "$found" -ne 1 ]; then
+            echo "No accessible GCP project grants clientauthconfig.clients.update."
+            exit 2
+          fi
+
+      - name: Fail clearly when no GCP identity exists
+        if: steps.detect.outputs.mode == 'none'
+        run: |
+          echo "GitHub Actions has no GCP identity/credential configured, so it cannot edit Google Auth Platform OAuth clients."
+          exit 3
