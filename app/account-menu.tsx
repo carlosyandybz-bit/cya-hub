@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   ChevronRight,
   CircleUserRound,
+  GraduationCap,
   LogOut,
   Pencil,
   Settings,
@@ -29,6 +30,17 @@ type AccountMenuProps = {
   notify: (message: string) => void;
 };
 
+type StudentTeacherProfile = {
+  person_id: number;
+  professional_name: string;
+  bio: string | null;
+  specialties: string | null;
+  first_class_at: string | null;
+  last_class_at: string | null;
+  next_class_at: string | null;
+  class_count: number;
+};
+
 const roleLabels: Record<string, string> = {
   admin: "Administrador",
   teacher_admin: "Profesor administrador",
@@ -41,6 +53,16 @@ const contextLabels: Record<ExperienceContext, string> = {
   student: "Alumno",
   admin: "Administrador",
 };
+
+function teacherRelationLabel(teacher: StudentTeacherProfile) {
+  if (teacher.next_class_at) {
+    return `Próxima clase · ${new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(teacher.next_class_at))}`;
+  }
+  if (teacher.last_class_at) {
+    return `Última clase · ${new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric" }).format(new Date(teacher.last_class_at))}`;
+  }
+  return teacher.class_count === 1 ? "1 clase vinculada" : `${teacher.class_count} clases vinculadas`;
+}
 
 export function AccountMenu({
   client,
@@ -55,6 +77,10 @@ export function AccountMenu({
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [teachersOpen, setTeachersOpen] = useState(false);
+  const [teachersBusy, setTeachersBusy] = useState(false);
+  const [teachersError, setTeachersError] = useState("");
+  const [teachers, setTeachers] = useState<StudentTeacherProfile[]>([]);
   const [busy, setBusy] = useState(false);
   const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null);
 
@@ -64,7 +90,8 @@ export function AccountMenu({
     }
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
-      if (accountOpen) setAccountOpen(false);
+      if (teachersOpen) setTeachersOpen(false);
+      else if (accountOpen) setAccountOpen(false);
       else setOpen(false);
     }
     document.addEventListener("pointerdown", onPointerDown);
@@ -73,14 +100,14 @@ export function AccountMenu({
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [accountOpen]);
+  }, [accountOpen, teachersOpen]);
 
   useEffect(() => {
-    if (!accountOpen) return;
+    if (!accountOpen && !teachersOpen) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = previous; };
-  }, [accountOpen]);
+  }, [accountOpen, teachersOpen]);
 
   const displayName = identity.profile_name || identity.display_name;
   const showAvatarImage = Boolean(identity.avatar_url && identity.avatar_url !== failedAvatarUrl);
@@ -96,6 +123,21 @@ export function AccountMenu({
   function openPage(callback: () => void) {
     setOpen(false);
     callback();
+  }
+
+  async function openTeachers() {
+    setOpen(false);
+    setTeachersOpen(true);
+    setTeachersBusy(true);
+    setTeachersError("");
+    const result = await client.rpc("student_teacher_profiles");
+    setTeachersBusy(false);
+    if (result.error) {
+      setTeachers([]);
+      setTeachersError("No hemos podido cargar tus profesores ahora mismo.");
+      return;
+    }
+    setTeachers((result.data ?? []) as StudentTeacherProfile[]);
   }
 
   async function changeExperience(value: ExperienceContext) {
@@ -155,6 +197,11 @@ export function AccountMenu({
               <span className={styles.rowText}><strong>Preferencias</strong><small>Configuración personal de CYA Hub</small></span>
               <ChevronRight />
             </button>
+            {identity.can_study ? <button type="button" className={styles.menuRow} onClick={() => void openTeachers()}>
+              <span className={styles.rowIcon}><GraduationCap /></span>
+              <span className={styles.rowText}><strong>Mis profesores</strong><small>El equipo con el que has dado o tienes clase</small></span>
+              <ChevronRight />
+            </button> : null}
             <button type="button" className={styles.menuRow} onClick={() => { setOpen(false); setAccountOpen(true); }}>
               <span className={styles.rowIcon}><CircleUserRound /></span>
               <span className={styles.rowText}><strong>Cuenta y sesión</strong><small>{identity.roles.map((role) => roleLabels[role] ?? role).join(" · ")}</small></span>
@@ -165,6 +212,33 @@ export function AccountMenu({
               <span className={styles.rowText}><strong>Cerrar sesión</strong><small>Salir de este dispositivo</small></span>
             </button>
           </div>
+        ) : null}
+
+        {teachersOpen && typeof document !== "undefined" ? createPortal(
+          <div className={styles.backdrop} onMouseDown={(event) => event.target === event.currentTarget && setTeachersOpen(false)}>
+            <section className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="my-teachers-title">
+              <header className={styles.dialogHeader}>
+                <div><span>Mi cuenta</span><h2 id="my-teachers-title">Mis profesores</h2></div>
+                <button type="button" className={styles.closeButton} onClick={() => setTeachersOpen(false)} aria-label="Cerrar"><X /></button>
+              </header>
+              <div className={styles.dialogBody}>
+                {teachersBusy ? <p className={styles.accountNote}>Buscando el equipo con el que has trabajado…</p> : null}
+                {teachersError ? <p className={styles.accountNote}>{teachersError}</p> : null}
+                {!teachersBusy && !teachersError && teachers.length === 0 ? <p className={styles.accountNote}>Cuando tengas una clase vinculada a un profesor, aparecerá aquí.</p> : null}
+                {!teachersBusy && !teachersError && teachers.length ? <div className={styles.accountRows}>
+                  {teachers.map((teacher) => <div key={teacher.person_id}>
+                    <span>{teacherRelationLabel(teacher)}</span>
+                    <strong>{teacher.professional_name}</strong>
+                    {teacher.specialties ? <span>{teacher.specialties}</span> : null}
+                    {teacher.bio ? <span>{teacher.bio}</span> : null}
+                  </div>)}
+                </div> : null}
+                <p className={styles.accountNote}>Solo mostramos profesores vinculados a tus clases. No exponemos el directorio interno del equipo.</p>
+                <div className={styles.dialogActions}><button type="button" className={styles.secondaryButton} onClick={() => setTeachersOpen(false)}>Cerrar</button></div>
+              </div>
+            </section>
+          </div>,
+          document.body,
         ) : null}
 
         {accountOpen && typeof document !== "undefined" ? createPortal(
