@@ -36,7 +36,7 @@ test("AUD-017A accepts scoped action targets without leaking subroutes into navi
   assert.match(notifications, /personId: base === "live" \? undefined/);
 });
 
-test("AUD-017A presents a teacher-oriented work inbox", () => {
-  assert.match(notifications, /Avisos de trabajo/);
-  assert.match(notifications, /Clases, alumnos, bonos, enseñanza, misiones/);
+test("AUD-017A does not impose teacher copy on the shared student surface", () => {
+  assert.match(notifications, /Centro de avisos/);
+  assert.doesNotMatch(notifications, /Avisos de trabajo/);
 });
