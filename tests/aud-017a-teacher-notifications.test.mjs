@@ -34,6 +34,7 @@ test("AUD-017A includes direct staff-only Feedback Online notices", () => {
 test("AUD-017 accepts scoped action targets without leaking subroutes into navigation", () => {
   assert.match(notifications, /function targetBase/);
   assert.match(notifications, /target\.split\(":"/);
+  assert.match(notifications, /if \(base === "student"\) return target/);
   assert.match(notifications, /openTarget\(base, contextFor\(updated, target\)\)/);
   assert.match(notifications, /personId: base === "live" \? undefined/);
 });
