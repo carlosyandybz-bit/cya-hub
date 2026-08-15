@@ -1,12 +1,5 @@
 export type CyaIconCategory = "Navegación" | "Enseñanza" | "Alumno" | "Gestión" | "Marketing" | "Administración" | "Acciones" | "Estados";
-
-export type CyaIconDefinition = {
-  key: string;
-  label: string;
-  category: CyaIconCategory;
-  usage: string;
-};
-
+export type CyaIconDefinition = { key: string; label: string; category: CyaIconCategory; usage: string };
 export const CYA_ICON_CATALOG: CyaIconDefinition[] = [
   { key: "navigation.home", label: "Inicio", category: "Navegación", usage: "Navegación principal" },
   { key: "navigation.students", label: "Alumnado", category: "Navegación", usage: "Navegación principal y accesos a personas" },
@@ -30,10 +23,12 @@ export const CYA_ICON_CATALOG: CyaIconDefinition[] = [
   { key: "student.bonus", label: "Bonos y saldo", category: "Alumno", usage: "Bonos, saldo y compras" },
   { key: "management.classes", label: "Clases", category: "Gestión", usage: "Clases programadas e historial" },
   { key: "management.people", label: "Personas", category: "Gestión", usage: "Personas y alumnado" },
+  { key: "management.missions", label: "Misiones operativas", category: "Gestión", usage: "Misiones del equipo y agenda" },
   { key: "management.crm", label: "CRM", category: "Gestión", usage: "Contactos y oportunidades" },
   { key: "management.rates", label: "Tarifas", category: "Gestión", usage: "Tarifas e importes" },
   { key: "marketing.campaigns", label: "Campañas", category: "Marketing", usage: "Campañas y comunicaciones" },
   { key: "marketing.content", label: "Contenido", category: "Marketing", usage: "Creación y planificación de contenido" },
+  { key: "marketing.events", label: "Eventos", category: "Marketing", usage: "Eventos en Agenda y planificación" },
   { key: "marketing.statistics", label: "Estadísticas", category: "Marketing", usage: "Métricas y resultados" },
   { key: "admin.general", label: "General", category: "Administración", usage: "Configuración general" },
   { key: "admin.team", label: "Equipo y roles", category: "Administración", usage: "Equipo, roles y profesores" },
@@ -51,10 +46,10 @@ export const CYA_ICON_CATALOG: CyaIconDefinition[] = [
   { key: "action.save", label: "Guardar", category: "Acciones", usage: "Guardar cambios" },
   { key: "action.upload", label: "Subir archivo", category: "Acciones", usage: "Subidas de multimedia" },
   { key: "action.back", label: "Volver", category: "Acciones", usage: "Navegación hacia atrás" },
+  { key: "action.forward", label: "Avanzar", category: "Acciones", usage: "Navegación hacia delante" },
   { key: "state.success", label: "Correcto", category: "Estados", usage: "Éxito y completado" },
   { key: "state.warning", label: "Atención", category: "Estados", usage: "Avisos no críticos" },
   { key: "state.error", label: "Error", category: "Estados", usage: "Errores e incidencias" },
   { key: "state.locked", label: "Bloqueado", category: "Estados", usage: "Contenido o acción bloqueada" },
 ];
-
 export const CYA_ICON_KEYS = new Set(CYA_ICON_CATALOG.map((item) => item.key));
