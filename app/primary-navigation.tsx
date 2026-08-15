@@ -3,16 +3,17 @@
 import { BarChart3, GraduationCap, House, LibraryBig, Megaphone, UsersRound } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Fragment, useCallback, useEffect, useState } from "react";
+import { CyaIcon } from "./cya-icon";
 
 type ModuleSetting = { module_key: string; label: string; sort_order: number };
 
 const iconByModule = {
-  home: House,
-  students: UsersRound,
-  teaching: LibraryBig,
-  marketing: Megaphone,
-  statistics: BarChart3,
-  academy: GraduationCap,
+  home: { fallback: House, key: "navigation.home" },
+  students: { fallback: UsersRound, key: "navigation.students" },
+  teaching: { fallback: LibraryBig, key: "navigation.teaching" },
+  marketing: { fallback: Megaphone, key: "navigation.marketing" },
+  statistics: { fallback: BarChart3, key: "marketing.statistics" },
+  academy: { fallback: GraduationCap, key: "student.academy" },
 } as const;
 
 const fallbackModules: ModuleSetting[] = [
@@ -51,11 +52,11 @@ export function DesktopPrimaryNavigation({
 
   return <nav aria-label="Módulos principales">
     {modules.map((module) => {
-      const Icon = iconByModule[module.module_key as keyof typeof iconByModule];
-      if (!Icon) return null;
+      const icon = iconByModule[module.module_key as keyof typeof iconByModule];
+      if (!icon) return null;
       return <Fragment key={module.module_key}>
-        <button className={isActive(module.module_key) ? "active" : ""} onClick={() => navigate(module.module_key)}><Icon />{module.label}</button>
-        {module.module_key === "students" ? <button className={view === "live" ? "active" : ""} onClick={() => navigate("live")}><GraduationCap />Dar clase</button> : null}
+        <button className={isActive(module.module_key) ? "active" : ""} onClick={() => navigate(module.module_key)}><CyaIcon iconKey={icon.key} fallback={icon.fallback} />{module.label}</button>
+        {module.module_key === "students" ? <button className={view === "live" ? "active" : ""} onClick={() => navigate("live")}><CyaIcon iconKey="navigation.live" fallback={GraduationCap} />Dar clase</button> : null}
       </Fragment>;
     })}
   </nav>;

@@ -4,6 +4,7 @@ import { Palette, Save } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { applyAppearanceSettings, type AppearanceSettings } from "./p31-appearance-runtime";
+import { P36IconAdmin } from "./p36-icon-admin";
 
 type Props = { client: SupabaseClient; notify: (message: string) => void };
 
@@ -86,5 +87,6 @@ export function P31AppearanceAdmin({ client, notify }: Props) {
         <button className="btn ghost" type="button" onClick={() => { applyAppearanceSettings(settings); notify("Previsualización aplicada sin guardar."); }}>Previsualizar</button>
       </div>
     </form>
+    <P36IconAdmin client={client} notify={notify} />
   </section>;
 }

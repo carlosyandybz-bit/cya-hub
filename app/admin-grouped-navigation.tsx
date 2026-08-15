@@ -1,6 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
+import { CyaIcon } from "./cya-icon";
 
 type AdminNavigationSection<T extends string> = readonly [T, string, LucideIcon];
 
@@ -17,6 +18,23 @@ const GROUP_DEFINITIONS = [
   { id: "data", label: "Datos", sectionIds: ["data", "integrations"] },
   { id: "appearance", label: "Apariencia", sectionIds: ["appearance"] },
 ] as const;
+
+const iconKeyBySection: Record<string, string> = {
+  general: "admin.general",
+  team: "admin.team",
+  forms: "admin.forms",
+  teaching: "admin.teaching",
+  missions: "student.missions",
+  bz: "student.bz",
+  feedback: "student.feedback",
+  academy: "student.academy",
+  notifications: "navigation.notifications",
+  data: "admin.data",
+  rates: "management.rates",
+  integrations: "admin.integrations",
+  appearance: "admin.appearance",
+  security: "admin.security",
+};
 
 export function AdminGroupedNavigation<T extends string>({
   section,
@@ -39,15 +57,8 @@ export function AdminGroupedNavigation<T extends string>({
       {groups.map((group) => {
         const active = activeGroup?.id === group.id;
         const labels = group.sectionIds.map((id) => sectionMap.get(id)?.[1]).filter(Boolean).join(" · ");
-        return <button
-          key={group.id}
-          type="button"
-          className={active ? "active" : ""}
-          aria-pressed={active}
-          onClick={() => onSection(group.sectionIds[0])}
-        >
-          <strong>{group.label}</strong>
-          <span>{labels}</span>
+        return <button key={group.id} type="button" className={active ? "active" : ""} aria-pressed={active} onClick={() => onSection(group.sectionIds[0])}>
+          <strong>{group.label}</strong><span>{labels}</span>
         </button>;
       })}
     </nav>
@@ -57,14 +68,8 @@ export function AdminGroupedNavigation<T extends string>({
         const item = sectionMap.get(id);
         if (!item) return null;
         const [, label, Icon] = item;
-        return <button
-          key={id}
-          type="button"
-          className={section === id ? "active" : ""}
-          aria-current={section === id ? "page" : undefined}
-          onClick={() => onSection(id)}
-        >
-          <Icon />
+        return <button key={id} type="button" className={section === id ? "active" : ""} aria-current={section === id ? "page" : undefined} onClick={() => onSection(id)}>
+          <CyaIcon iconKey={iconKeyBySection[id] ?? `admin.${id}`} fallback={Icon} />
           <span>{label}</span>
         </button>;
       })}
