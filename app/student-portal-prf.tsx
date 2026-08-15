@@ -460,7 +460,18 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
   const latestAssignments = useMemo(() => [...(snapshot?.assignments ?? [])].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()).slice(0, 3), [snapshot?.assignments]);
   const missions = homeSnapshot?.missions ?? [];
   const currentMissions = missions.filter((item) => !["completed", "completed_automatically", "cancelled", "not_applicable"].includes(item.state));
-  const priorityMission = currentMissions.find((item) => item.priority === "urgent") ?? currentMissions.find((item) => item.priority === "priority") ?? currentMissions[0] ?? null;
+  const missionRank = (mission: Mission) => mission.priority === "urgent" ? 3 : mission.priority === "priority" ? 2 : 1;
+  const sortMissions = (items: Mission[]) => [...items].sort((a, b) => missionRank(b) - missionRank(a) || b.priority_score - a.priority_score || (a.due_at ? new Date(a.due_at).getTime() : Number.MAX_SAFE_INTEGER) - (b.due_at ? new Date(b.due_at).getTime() : Number.MAX_SAFE_INTEGER));
+  const missionGroups = (() => {
+    const visible = missions.filter((item) => !["cancelled", "not_applicable"].includes(item.state));
+    const completed = sortMissions(visible.filter((item) => ["completed", "completed_automatically"].includes(item.state)));
+    const inProgress = sortMissions(visible.filter((item) => item.state === "in_progress"));
+    const now = sortMissions(visible.filter((item) => !["completed", "completed_automatically", "in_progress"].includes(item.state) && ["urgent", "priority"].includes(item.priority)));
+    const nowIds = new Set(now.map((item) => item.id));
+    const available = sortMissions(visible.filter((item) => !["completed", "completed_automatically", "in_progress"].includes(item.state) && !nowIds.has(item.id)));
+    return { now, available, inProgress, completed };
+  })();
+  const priorityMission = missionGroups.now[0] ?? missionGroups.inProgress[0] ?? missionGroups.available[0] ?? null;
   const pendingDebt = snapshot?.financial?.pending_debt_minutes ?? 0;
   const firstName = snapshot?.profile.first_name || identity.display_name.trim().split(/\s+/)[0] || "";
   const latestScores = useMemo(() => {
@@ -612,7 +623,23 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
 
       {screen === "discover" ? <section className={styles.pageSection}><header className={styles.pageHeading}><span>DESCUBRE</span><h1>Más formas de aprender y vivir CYA</h1><p>Aquí reunimos lo que puedes descubrir aunque no tengas una clase programada.</p></header><div className={styles.discoverGrid}><article className={styles.discoverCard}><GraduationCap /><div><span>APRENDE ONLINE</span><h2>Aprende a tu ritmo</h2><p>Programas, rutas y contenido guiado estarán aquí cuando abramos Academia Online.</p></div></article><article className={styles.discoverCard}><CalendarDays /><div><span>EVENTOS</span><h2>Nos vemos también fuera de clase</h2><p>Talleres, intensivos y eventos tendrán aquí su hogar. Si te apuntas a uno, también aparecerá entre tus próximos compromisos.</p></div></article></div><AcademyOnlineStudentComingSoon /></section> : null}
 
-      {screen === "missions" ? <section className={styles.pageSection}><header className={styles.pageHeading}><span>MISIONES</span><h1>Pequeños pasos que sí cuentan</h1><p>Completa lo que te propongamos y construye tu progreso sin presión.</p></header><div className={styles.missionList}>{missions.length ? missions.map((mission) => <article key={mission.id}><div><span>{mission.priority === "urgent" ? "Prioritaria" : mission.mission_type === "daily" ? "Misión diaria" : "Misión"}</span><h3>{mission.title}</h3><p>{mission.description || "Una acción para seguir avanzando."}</p><small>{missionStateLabel(mission)}</small></div><div>{mission.state !== "in_progress" && !["completed", "completed_automatically"].includes(mission.state) ? <button type="button" onClick={() => void actOnMission(mission, "start")}>Empezar</button> : null}{!["completed", "completed_automatically"].includes(mission.state) ? <button type="button" onClick={() => void actOnMission(mission, "complete")}><Check /> Completar</button> : <CircleCheck />}</div></article>) : <p className={styles.emptyText}>No tienes misiones pendientes. Cuando aparezca una que tenga sentido para ti, la verás aquí.</p>}</div></section> : null}
+      {screen === "missions" ? <section className={styles.pageSection}>
+        <header className={styles.pageHeading}><span>MISIONES</span><h1>Pequeños pasos que sí cuentan</h1><p>Primero lo que merece atención; después, lo que puedes hacer cuando te venga bien.</p></header>
+        {[
+          { key: "now", label: "AHORA", title: "Prioritarias", items: missionGroups.now, empty: "No hay ninguna misión prioritaria ahora mismo." },
+          { key: "available", label: "DISPONIBLES", title: "Para cuando te venga bien", items: missionGroups.available, empty: "No tienes más misiones disponibles ahora mismo." },
+          { key: "progress", label: "EN PROGRESO", title: "Lo que ya has empezado", items: missionGroups.inProgress, empty: "No tienes ninguna misión en marcha." },
+          { key: "completed", label: "COMPLETADAS", title: "Lo que ya has hecho", items: missionGroups.completed, empty: "Tus misiones completadas aparecerán aquí." },
+        ].map((group) => <article className={styles.openSection} key={group.key}>
+          <div className={styles.sectionHeading}><div><span>{group.label}</span><h2>{group.title}</h2></div><strong>{group.items.length}</strong></div>
+          {group.items.length ? <div className={styles.missionList}>{group.items.map((mission) => {
+            const canStart = ["available", "not_done", "postponed"].includes(mission.state);
+            const canComplete = ["available", "not_done", "postponed", "in_progress"].includes(mission.state);
+            const isCompleted = ["completed", "completed_automatically"].includes(mission.state);
+            return <article key={mission.id}><div><span>{mission.priority === "urgent" ? "Urgente" : mission.priority === "priority" ? "Prioritaria" : mission.mission_type === "daily" ? "Misión diaria" : "Misión"}</span><h3>{mission.title}</h3><p>{mission.description || "Una acción para seguir avanzando."}</p><small>{missionStateLabel(mission)}{mission.due_at ? ` · ${dateLabel(mission.due_at)}` : ""}</small></div><div>{canStart ? <button type="button" onClick={() => void actOnMission(mission, "start")}>Empezar</button> : null}{canComplete ? <button type="button" onClick={() => void actOnMission(mission, "complete")}><Check /> Completar</button> : null}{isCompleted ? <CircleCheck aria-label="Completada" /> : null}</div></article>;
+          })}</div> : <p className={styles.emptyText}>{group.empty}</p>}
+        </article>)}
+      </section> : null}
 
       {screen === "feedback" ? <section className={styles.pageSection}><button className={styles.backButton} type="button" onClick={() => go("home")}><ChevronRight /> Volver a Inicio</button><FeedbackOnlineStudentPanel client={client} /></section> : null}
       {screen === "bz" ? <section className={styles.pageSection}><button className={styles.backButton} type="button" onClick={() => go("home")}><ChevronRight /> Volver a Inicio</button><BZPointsPanel client={client} assignments={snapshot?.assignments ?? []} /></section> : null}

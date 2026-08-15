@@ -203,3 +203,15 @@ test("Progreso final derives improvements evolution milestones and videos from r
   assert.match(portal, /privateVideos\.map/);
   assert.doesNotMatch(portal, /has mejorado muchísimo|increíble progreso|vas genial/i);
 });
+
+
+test("Misiones final groups the canonical engine without exposing invalid actions", () => {
+  assert.match(portal, /title: "Prioritarias"/);
+  assert.match(portal, /title: "Para cuando te venga bien"/);
+  assert.match(portal, /title: "Lo que ya has empezado"/);
+  assert.match(portal, /title: "Lo que ya has hecho"/);
+  assert.match(portal, /\["cancelled", "not_applicable"\]/);
+  assert.match(portal, /const canStart = \["available", "not_done", "postponed"\]/);
+  assert.match(portal, /const canComplete = \["available", "not_done", "postponed", "in_progress"\]/);
+  assert.doesNotMatch(portal, /mission\.state !== "in_progress" && !\["completed"/);
+});
