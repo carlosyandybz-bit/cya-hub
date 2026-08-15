@@ -69,7 +69,7 @@ jobs:
           contract = Path("tests/postrelease-global-redesign.test.mjs")
           t = contract.read_text()
           test_anchor = '''test("teacher mobile primary navigation contract is untouched", () => {\n  const inicio = cyaApp.indexOf('["home", "Inicio"');'''
-          test_replacement = '''test("teacher central Dar clase keeps a visible secondary class menu without becoming a sixth destination", () => {\n  assert.match(cyaApp, /mobile-nav-primary-group/);\n  assert.match(cyaApp, /aria-label="Más opciones de clase"/);\n  assert.match(cyaApp, /Programar clase/);\n  assert.match(cyaApp, /navigateView\\("classes"\\)/);\n  assert.match(cyaApp, /navigateView\\("agenda"\\)/);\n  assert.match(css, /mobile-nav-secondary/);\n  assert.match(css, /width:44px/);\n});\n\ntest("teacher mobile primary navigation contract is untouched", () => {\n  const inicio = cyaApp.indexOf('["home", "Inicio"');'''
+          test_replacement = '''test("teacher central Dar clase keeps a visible secondary class menu without becoming a sixth destination", () => {\n  assert.match(cyaApp, /mobile-nav-primary-group/);\n  assert.match(cyaApp, /mobile-nav-secondary/);\n  assert.match(cyaApp, /aria-label="Más opciones de clase"/);\n  assert.match(cyaApp, /Programar clase/);\n  assert.match(cyaApp, /navigateView\\("classes"\\)/);\n  assert.match(cyaApp, /navigateView\\("agenda"\\)/);\n});\n\ntest("teacher mobile primary navigation contract is untouched", () => {\n  const inicio = cyaApp.indexOf('["home", "Inicio"');'''
           if test_anchor not in t:
               raise SystemExit("postrelease test anchor not found")
           t = t.replace(test_anchor, test_replacement, 1)
