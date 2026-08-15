@@ -51,10 +51,13 @@ test("group selection opens the first canonical destination and local navigation
   assert.match(navigation, /aria-current=\{section === id \? "page" : undefined\}/);
 });
 
-test("mobile Administration has touch-safe grouped navigation with no horizontal main scroller", () => {
-  assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(css, /min-height:52px/);
+test("mobile Administration uses the P36 compact horizontal category selector", () => {
+  assert.match(css, /\.admin-group-nav\{display:flex/);
+  assert.match(css, /overflow-x:auto/);
+  assert.match(css, /scroll-snap-type:x proximity/);
+  assert.match(css, /\.admin-group-nav button\{flex:0 0 auto/);
   assert.match(css, /min-height:44px/);
+  assert.match(css, /\.admin-group-nav button span\{display:none\}/);
+  assert.match(css, /\.admin-local-nav\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css, /\.admin-nav\{display:none!important;overflow-x:visible!important\}/);
-  assert.doesNotMatch(css, /overflow-x:\s*auto/);
 });
