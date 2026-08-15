@@ -30,6 +30,14 @@ type MissionMeta = {
   due_at: string | null;
 };
 
+type IdentityCapabilities = {
+  can_admin?: boolean;
+  can_teach?: boolean;
+  can_study?: boolean;
+};
+
+type NotificationAudience = "staff" | "student";
+
 export type NotificationTargetContext = {
   personId?: number;
   classId?: number;
@@ -159,13 +167,24 @@ function clustersFor(source: EnrichedNotification[]) {
 
 export function NotificationsView({ client, timezone, openTarget, onUnreadChange, notify }: Props) {
   const [items, setItems] = useState<EnrichedNotification[]>([]);
+  const [audience, setAudience] = useState<NotificationAudience>("staff");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    const [preferenceResult, identityResult] = await Promise.all([
+      client.from("user_preferences").select("preferred_context").maybeSingle(),
+      client.rpc("identity_context"),
+    ]);
+    const preferredContext = preferenceResult.data?.preferred_context as string | null | undefined;
+    const capabilities = (identityResult.data ?? {}) as IdentityCapabilities;
+    const nextAudience: NotificationAudience = preferredContext === "student" || (!capabilities.can_teach && !capabilities.can_admin && capabilities.can_study) ? "student" : "staff";
+    setAudience(nextAudience);
+
     const notificationResult = await client.from("internal_notifications")
       .select("id,event_key,title,body,action_target,source_type,source_id,read_at,created_at")
+      .eq("audience", nextAudience)
       .order("created_at", { ascending: false })
       .limit(100);
     if (notificationResult.error) {
@@ -212,7 +231,7 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
   async function markRead(item: EnrichedNotification) {
     if (item.read_at) return item;
     const readAt = new Date().toISOString();
-    const result = await client.from("internal_notifications").update({ read_at: readAt }).eq("id", item.id);
+    const result = await client.from("internal_notifications").update({ read_at: readAt }).eq("id", item.id).eq("audience", audience);
     if (result.error) { notify(result.error.message); return null; }
     const next = { ...item, read_at: readAt, resolved: true };
     setItems((current) => current.map((entry) => entry.id === item.id ? next : entry));
@@ -232,7 +251,7 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
     if (!pending.length || busy) return;
     setBusy(true);
     const readAt = new Date().toISOString();
-    const result = await client.from("internal_notifications").update({ read_at: readAt }).is("read_at", null);
+    const result = await client.from("internal_notifications").update({ read_at: readAt }).eq("audience", audience).is("read_at", null);
     if (result.error) notify(result.error.message);
     else {
       setItems((current) => current.map((item) => ({ ...item, read_at: item.read_at ?? readAt, resolved: true })));
@@ -280,7 +299,7 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
 
   return <section className={styles.root}>
     <header className={styles.hero}>
-      <div><p>NOTIFICACIONES</p><h1>Centro de avisos</h1><span>Los avisos repetidos se agrupan por alumno, clase, contenido o bono sin mezclar asuntos distintos.</span></div>
+      <div><p>NOTIFICACIONES</p><h1>{audience === "student" ? "Tus avisos" : "Avisos de trabajo"}</h1><span>{audience === "student" ? "Aquí encontrarás únicamente novedades y acciones relacionadas con tu propia experiencia en CYA." : "Clases, alumnos, bonos, enseñanza, misiones y otras tareas que requieren tu atención se organizan aquí sin mezclar asuntos distintos."}</span></div>
       <div className={styles.heroIcon}>{pending.length ? <BellRing /> : <CheckCheck />}</div>
     </header>
 
