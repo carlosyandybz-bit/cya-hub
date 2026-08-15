@@ -76,6 +76,12 @@ function priorityLabel(value?: string) {
   return "Normal";
 }
 
+function targetBase(target: string | null | undefined) {
+  if (!target) return null;
+  const [base] = target.split(":", 1);
+  return validTargets.has(base) ? base : null;
+}
+
 function sourceLabel(item: EnrichedNotification) {
   const source = item.mission?.source_domain;
   if (source === "class") return "Clase";
@@ -83,22 +89,29 @@ function sourceLabel(item: EnrichedNotification) {
   if (source === "teaching_content") return "Enseñanza";
   if (source === "credit_grant") return "Bono";
   if (source === "daily") return "CYA";
+  if (item.source_type === "feedback_online") return "Feedback Online";
+  if (item.source_type === "class") return "Clase";
+  if (item.source_type === "person") return "Alumno";
+  if (item.source_type === "teaching_content") return "Enseñanza";
+  if (item.source_type === "credit_grant") return "Bono";
+  if (item.source_type === "communication") return "Comunicación";
   return "Aviso";
 }
 
 function SourceIcon({ item }: { item: EnrichedNotification }) {
-  const source = item.mission?.source_domain;
-  if (source === "class") return <GraduationCap />;
+  const source = item.mission?.source_domain ?? item.source_type;
+  if (source === "class" || source === "feedback_online") return <GraduationCap />;
   if (source === "person") return <UserRound />;
   if (source === "teaching_content") return <LibraryBig />;
   return item.resolved ? <Check /> : <Bell />;
 }
 
-function contextFor(item: EnrichedNotification): NotificationTargetContext {
+function contextFor(item: EnrichedNotification, target?: string | null): NotificationTargetContext {
   const origin = item.mission?.origin ?? {};
   const numberValue = (value: unknown) => typeof value === "number" ? value : typeof value === "string" && /^\d+$/.test(value) ? Number(value) : undefined;
+  const base = targetBase(target);
   return {
-    personId: numberValue(origin.person_id),
+    personId: base === "live" ? undefined : numberValue(origin.person_id),
     classId: numberValue(origin.class_id),
     contentId: numberValue(origin.content_id),
   };
@@ -210,8 +223,9 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
   async function open(item: EnrichedNotification) {
     const updated = await markRead(item) ?? item;
     const target = updated.mission?.action_target ?? updated.action_target;
-    if (!target || !validTargets.has(target)) return;
-    openTarget(target, contextFor(updated));
+    const base = targetBase(target);
+    if (!base) return;
+    openTarget(base, contextFor(updated, target));
   }
 
   async function markAllRead() {
@@ -229,7 +243,7 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
 
   function renderItem(item: EnrichedNotification) {
     const target = item.mission?.action_target ?? item.action_target;
-    const actionable = Boolean(target && validTargets.has(target));
+    const actionable = Boolean(targetBase(target));
     return <article className={`${styles.item} ${item.resolved ? styles.resolved : styles.pending}`} key={item.id}>
       <div className={styles.icon}><SourceIcon item={item} /></div>
       <button className={styles.main} type="button" onClick={() => void open(item)} disabled={!actionable && Boolean(item.read_at)}>
@@ -266,7 +280,7 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
 
   return <section className={styles.root}>
     <header className={styles.hero}>
-      <div><p>NOTIFICACIONES</p><h1>Centro de avisos</h1><span>Los avisos repetidos se agrupan por alumno, clase, contenido o bono sin mezclar asuntos distintos.</span></div>
+      <div><p>NOTIFICACIONES</p><h1>Avisos de trabajo</h1><span>Clases, alumnos, bonos, enseñanza, misiones y otras tareas que requieren tu atención se organizan aquí sin mezclar asuntos distintos.</span></div>
       <div className={styles.heroIcon}>{pending.length ? <BellRing /> : <CheckCheck />}</div>
     </header>
 
