@@ -569,3 +569,25 @@ button:disabled { cursor: default; opacity: .52; }
 @media (prefers-reduced-motion: reduce) {
   .shell * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
 }
+
+
+/* Visible split action for Mi formación */
+.formationToggle {
+  z-index:5;
+  top:-12px;
+  right:-8px;
+  width:44px;
+  height:44px;
+  min-height:44px;
+  padding:0;
+  justify-content:center;
+  border:3px solid white;
+  border-radius:999px;
+  background:#2b2149;
+  color:white;
+  box-shadow:0 8px 20px rgba(31,25,55,.22);
+  transition:transform .16s ease, background .16s ease;
+}
+.formationToggle[aria-expanded="true"] { background:var(--prf-purple-dark); }
+.formationToggle[aria-expanded="true"] svg { transform:rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .formationToggle { transition:none; } }

@@ -84,6 +84,8 @@ test("student bottom navigation keeps exactly the approved five product destinat
   }
   assert.match(nav, /formationMain/);
   assert.match(nav, /formationToggle/);
+  assert.match(portal, /aria-expanded={formationMenu}/);
+  assert.match(css, /Visible split action for Mi formación/);
   assert.doesNotMatch(nav, />Aprende</);
   assert.doesNotMatch(nav, />Eventos</);
 });
@@ -170,6 +172,15 @@ test("mobile navigation remains iPhone-safe, fixed and touchable", () => {
   assert.match(css, /grid-template-columns: 1fr 1fr 1\.18fr 1fr 1fr/);
   assert.match(css, /min-height: 44px/);
   assert.doesNotMatch(css, /overflow-x:\s*auto/);
+});
+
+test("teacher central Dar clase keeps a visible secondary class menu without becoming a sixth destination", () => {
+  assert.match(cyaApp, /mobile-nav-primary-group/);
+  assert.match(cyaApp, /mobile-nav-secondary/);
+  assert.match(cyaApp, /aria-label="Más opciones de clase"/);
+  assert.match(cyaApp, /Programar clase/);
+  assert.match(cyaApp, /navigateView\("classes"\)/);
+  assert.match(cyaApp, /navigateView\("agenda"\)/);
 });
 
 test("teacher mobile primary navigation contract is untouched", () => {
