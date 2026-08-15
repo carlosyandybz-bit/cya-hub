@@ -10,9 +10,12 @@ permissions:
   contents: read
   id-token: write
 
+# The bootstrap rotates passwords for three shared QA identities. The entire browser
+# workflow must therefore be mutually exclusive across PRs; otherwise another run
+# can invalidate credentials while Playwright is still executing.
 concurrency:
-  group: cya-qa-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: true
+  group: cya-qa-shared-identities
+  cancel-in-progress: false
 
 jobs:
   browser-qa:
