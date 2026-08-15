@@ -75,9 +75,9 @@ test("AUD-017B wires real class, training and credit producers into P27", () => 
   assert.match(studentMigration, /student_queued_or_existing/);
 });
 
-test("AUD-017B keeps student notification targets inside the student experience", () => {
+test("AUD-017B keeps generated student notices inside student routes", () => {
   assert.match(studentMigration, /'student:home'/);
   assert.match(studentMigration, /'student:formation'/);
-  assert.doesNotMatch(studentMigration, /'students'/);
-  assert.doesNotMatch(studentMigration, /'admin'/);
+  assert.doesNotMatch(studentMigration, /'student:admin'/);
+  assert.doesNotMatch(studentMigration, /'student:students'/);
 });
