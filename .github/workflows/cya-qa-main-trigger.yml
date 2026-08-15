@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '.github/workflows/**'
+      - 'docs/**'
+      - '*.md'
 
 permissions:
   actions: write
@@ -32,7 +36,7 @@ jobs:
             echo "Main commit is associated with a PR; its PR E2E is the canonical browser gate."
           else
             echo "dispatch=true" >> "${GITHUB_OUTPUT}"
-            echo "Direct main push detected; full browser QA will run."
+            echo "Direct product-code push detected; full browser QA will run."
           fi
 
       - name: Run CYA QA E2E on direct main push
