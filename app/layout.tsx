@@ -15,6 +15,7 @@ import "./prf2-student-detail-mobile.css";
 import "./prf3-admin-navigation.css";
 import "./aud017-regression-fixes.css";
 import "./aud020-student-experience.css";
+import "./cya-game-ux-system.css";
 import "./p36-professor-home.css";
 import "./p36-students.css";
 import "./p36-agenda.css";
@@ -22,7 +23,6 @@ import "./p36-live-class.css";
 import "./p36-teaching.css";
 import "./p36-marketing.css";
 import "./p36-admin-teaching.css";
-import "./cya-game-ux-system.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
