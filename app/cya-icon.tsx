@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentType, ImgHTMLAttributes, SVGProps } from "react";
+import type { ComponentType, SVGProps } from "react";
 import { useEffect, useState } from "react";
 
 export type CyaFallbackIcon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -69,17 +69,17 @@ export function CyaIcon({
   const custom = iconMap[iconKey];
   if (custom) {
     const dimension = size ?? 24;
-    const imageProps: ImgHTMLAttributes<HTMLImageElement> = {
-      src: custom,
-      alt: ariaHidden ? "" : alt,
-      className,
-      width: typeof dimension === "number" ? dimension : undefined,
-      height: typeof dimension === "number" ? dimension : undefined,
-      "aria-hidden": ariaHidden || undefined,
-      draggable: false,
-      decoding: "async",
-    };
-    return <img {...imageProps} data-cya-icon={iconKey} />;
+    return <img
+      src={custom}
+      alt={ariaHidden ? "" : alt}
+      className={className}
+      width={typeof dimension === "number" ? dimension : undefined}
+      height={typeof dimension === "number" ? dimension : undefined}
+      aria-hidden={ariaHidden || undefined}
+      draggable={false}
+      decoding="async"
+      data-cya-icon={iconKey}
+    />;
   }
 
   return <Fallback className={className} width={size} height={size} strokeWidth={strokeWidth} aria-hidden={ariaHidden || undefined} data-cya-icon={iconKey} />;
