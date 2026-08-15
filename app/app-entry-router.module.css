@@ -6,18 +6,18 @@
   justify-content: center;
   gap: 8px;
   padding: 24px;
-  background: #f7f7fb;
-  color: #17151f;
+  background: var(--cya-canvas);
+  color: var(--cya-text);
   text-align: center;
 }
 
 .loading strong {
-  color: #6d4aff;
+  color: var(--cya-accent);
   font-size: 28px;
   letter-spacing: -.06em;
 }
 
 .loading span {
-  color: #706d7b;
+  color: var(--cya-text-muted);
   font-size: 14px;
 }

@@ -5,12 +5,12 @@
 /* Administración conserva identidad/cuenta, pero no la navegación funcional del Profesor. */
 .shell:has(.admin-page-head) {
   grid-template-columns: 220px minmax(0, 1fr);
-  background: #f7f5f8;
+  background:var(--cya-surface-subtle);
 }
 
 .shell:has(.admin-page-head) .sidebar {
-  border-right-color: #e3dbe7;
-  background: #f3eff5;
+  border-right-color: var(--cya-line);
+  background:var(--cya-surface-subtle);
 }
 
 .shell:has(.admin-page-head) .sidebar nav {

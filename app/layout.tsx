@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "./visual-audit-v21.css";
@@ -15,7 +15,6 @@ import "./prf2-student-detail-mobile.css";
 import "./prf3-admin-navigation.css";
 import "./aud017-regression-fixes.css";
 import "./aud020-student-experience.css";
-import "./cya-game-ux-system.css";
 import "./p36-professor-home.css";
 import "./p36-students.css";
 import "./p36-agenda.css";
@@ -23,6 +22,7 @@ import "./p36-live-class.css";
 import "./p36-teaching.css";
 import "./p36-marketing.css";
 import "./p36-admin-teaching.css";
+import "./cya-game-ux-system.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "CYA Hub",
   },
   formatDetection: {
@@ -55,6 +55,14 @@ export const metadata: Metadata = {
     shortcut: "/favicon.svg",
     apple: "/icon-192.png",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  colorScheme: "dark",
+  themeColor: "#08090d",
 };
 
 export default function RootLayout({

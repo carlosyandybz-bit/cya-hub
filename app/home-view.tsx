@@ -148,7 +148,7 @@ export function HomeView({ client, identity, studentCount, classes, students, go
   const calendarIcon = (item: CalendarItem) => item.type === "class" ? <GraduationCap /> : item.type === "mission" ? <Target /> : item.type === "event" ? <Megaphone /> : <CalendarDays />;
 
   return <>
-    <header className="home-hero"><div><p className="eyebrow">{dateForTimezone(now, timezone)}</p><h1>{greeting}, {firstName}</h1><p className="daily-quote">{snapshot?.quote?.text ?? (loading ? "Preparando tu día…" : "Hoy también cuenta lo que construyes poco a poco.")}</p></div><Sparkles /></header>
+    <header className="home-hero"><div><p className="eyebrow">{dateForTimezone(now, timezone)}</p><h1><span>{greeting},</span> <strong>{firstName}</strong></h1><p className="daily-quote">{snapshot?.quote?.text ?? (loading ? "Preparando tu día…" : "Hoy también cuenta lo que construyes poco a poco.")}</p></div><Sparkles /></header>
 
     <section className={`focus ${focusClass ? "class-focus" : focusMission ? "mission-focus" : ""}`}>
       <div>
