@@ -21,6 +21,8 @@ jobs:
     timeout-minutes: 25
     env:
       CI: "true"
+      PROD_ORIGIN: https://app.carlosyandy.com
+      EXPECTED_PROD_COMMIT: 92b2424848a3
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.CYA_QA_SUPABASE_URL || 'https://ldvyeyhzrepaaouzavgs.supabase.co' }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.CYA_QA_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_gTLCF5jffNzTC_mRZ21IPg_wl-70wQL' }}
       CYA_QA_BOOTSTRAP_URL: https://ldvyeyhzrepaaouzavgs.supabase.co/functions/v1/cya-qa-bootstrap
@@ -68,6 +70,69 @@ jobs:
           printf 'QA_FIXTURES_JSON=%s\n' "$(jq -c '.fixtures' <<<"${bootstrap_json}")" >> "${GITHUB_ENV}"
           printf 'QA_RUN_ID=%s\n' "${GITHUB_RUN_ID}" >> "${GITHUB_ENV}"
 
+      - name: AUD-019 wait for exact production deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..60}; do
+            build_json="$(curl --silent --show-error --fail "${PROD_ORIGIN}/api/build-info" || true)"
+            deployed="$(jq -r '.commit // ""' <<<"${build_json:-{}}" 2>/dev/null || true)"
+            echo "Production build: ${deployed:-unavailable}"
+            if [ "${deployed}" = "${EXPECTED_PROD_COMMIT}" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Production did not reach ${EXPECTED_PROD_COMMIT}"
+          exit 1
+
+      - name: AUD-019 authenticate admin and verify runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(jq -cn --arg email "${QA_ADMIN_EMAIL}" --arg password "${QA_ADMIN_PASSWORD}" '{email:$email,password:$password}')"
+          auth_json="$(curl --fail --silent --show-error \
+            -X POST \
+            -H "apikey: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
+            -H 'Content-Type: application/json' \
+            --data "${payload}" \
+            "${NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password")"
+          access_token="$(jq -er '.access_token' <<<"${auth_json}")"
+          echo "::add-mask::${access_token}"
+          printf 'QA_ACCESS_TOKEN=%s\n' "${access_token}" >> "${GITHUB_ENV}"
+
+          status_json="$(curl --fail --silent --show-error \
+            -H "Authorization: Bearer ${access_token}" \
+            "${PROD_ORIGIN}/api/google-calendar/status")"
+          test "$(jq -r '.configured' <<<"${status_json}")" = "true"
+          test "$(jq -c '.missingRequirements // []' <<<"${status_json}")" = "[]"
+
+      - name: AUD-019 verify production OAuth redirect
+        shell: bash
+        run: |
+          set -euo pipefail
+          cookie_jar="${RUNNER_TEMP}/aud019-cookies.txt"
+          connect_json="$(curl --fail --silent --show-error \
+            -c "${cookie_jar}" \
+            -X POST \
+            -H "Authorization: Bearer ${QA_ACCESS_TOKEN}" \
+            -H 'Content-Type: application/json' \
+            "${PROD_ORIGIN}/api/google-calendar/connect")"
+          oauth_url="$(jq -er '.url' <<<"${connect_json}")"
+          echo "::add-mask::${oauth_url}"
+          printf 'OAUTH_URL=%s\n' "${oauth_url}" >> "${GITHUB_ENV}"
+          OAUTH_URL="${oauth_url}" node -e '
+            const u = new URL(process.env.OAUTH_URL);
+            if (u.origin !== "https://accounts.google.com") throw new Error(`Unexpected OAuth origin: ${u.origin}`);
+            const redirect = u.searchParams.get("redirect_uri");
+            if (redirect !== "https://app.carlosyandy.com/api/google-calendar/callback") throw new Error(`Unexpected redirect_uri: ${redirect}`);
+            if (!u.searchParams.get("client_id")) throw new Error("Missing Google client_id");
+            const scope = u.searchParams.get("scope") || "";
+            if (!scope.includes("calendar.events") || !scope.includes("calendar.calendarlist.readonly")) throw new Error("Missing Calendar scopes");
+          '
+          grep -q 'cya_google_calendar_oauth' "${cookie_jar}"
+          grep -q 'TRUE' "${cookie_jar}"
+
       - name: Install application dependencies
         run: npm ci
 
@@ -78,6 +143,26 @@ jobs:
       - name: Install Chromium for Playwright
         working-directory: qa
         run: npx playwright install --with-deps chromium
+
+      - name: AUD-019 verify Google accepts production OAuth request
+        working-directory: qa
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/aud019-google.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage();
+          const response = await page.goto(process.env.OAUTH_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+          const url = page.url();
+          const body = (await page.locator('body').innerText()).slice(0, 12000);
+          if (!response || response.status() >= 500) throw new Error(`Google OAuth returned ${response?.status()}`);
+          if (/redirect_uri_mismatch/i.test(body) || (/Error 400/i.test(body) && /redirect/i.test(body))) throw new Error('Google rejected the production redirect URI');
+          if (!url.startsWith('https://accounts.google.com/')) throw new Error(`Unexpected Google OAuth landing URL: ${url}`);
+          console.log('Google accepted the production OAuth request up to account selection/consent.');
+          await browser.close();
+          EOF
+          node /tmp/aud019-google.mjs
 
       - name: Lint application (report existing debt without blocking browser QA)
         continue-on-error: true
