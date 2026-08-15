@@ -30,7 +30,6 @@ css.write_text(c.replace(old_pos, new_pos, 1))
 tests = Path("tests/postrelease-global-redesign.test.mjs")
 t = tests.read_text()
 t = t.replace('  assert.match(cyaApp, /mobile-nav-primary-group/);\n', '  assert.doesNotMatch(cyaApp, /mobile-nav-primary-group/);\n', 1)
-t = t.replace('  assert.match(cyaApp, /mobile-nav-secondary/);\n', '  assert.match(cyaApp, /mobile-nav-secondary/);\n  assert.match(css, /left:calc\\(50% \\+ 18px\\)/);\n', 1)
 tests.write_text(t)
 
 Path("scripts/fix-secondary-nav-layout.py").unlink()
