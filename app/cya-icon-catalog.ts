@@ -1,5 +1,12 @@
 export type CyaIconCategory = "Navegación" | "Enseñanza" | "Alumno" | "Gestión" | "Marketing" | "Administración" | "Acciones" | "Estados";
-export type CyaIconDefinition = { key: string; label: string; category: CyaIconCategory; usage: string };
+
+export type CyaIconDefinition = {
+  key: string;
+  label: string;
+  category: CyaIconCategory;
+  usage: string;
+};
+
 export const CYA_ICON_CATALOG: CyaIconDefinition[] = [
   { key: "navigation.home", label: "Inicio", category: "Navegación", usage: "Navegación principal" },
   { key: "navigation.students", label: "Alumnado", category: "Navegación", usage: "Navegación principal y accesos a personas" },
@@ -52,4 +59,5 @@ export const CYA_ICON_CATALOG: CyaIconDefinition[] = [
   { key: "state.error", label: "Error", category: "Estados", usage: "Errores e incidencias" },
   { key: "state.locked", label: "Bloqueado", category: "Estados", usage: "Contenido o acción bloqueada" },
 ];
+
 export const CYA_ICON_KEYS = new Set(CYA_ICON_CATALOG.map((item) => item.key));
