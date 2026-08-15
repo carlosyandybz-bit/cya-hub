@@ -1,0 +1,56 @@
+/* P36-6 · Enseñanza
+   Three distinct work modes: library, student assignment and relational map. */
+
+.teaching-switch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0 0 16px;padding:5px;border:1px solid var(--cya-line);border-radius:16px;background:var(--cya-surface-subtle)}
+.teaching-switch button{min-width:0;min-height:52px;display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;background:transparent;color:var(--cya-text-muted);font-weight:800}
+.teaching-switch button svg{width:18px;height:18px}
+.teaching-switch button.active{background:var(--cya-surface);color:var(--cya-accent-strong);box-shadow:var(--cya-shadow-subtle)}
+
+.teaching-kind-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.teaching-kind-grid button{min-width:0;min-height:72px;display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--cya-line);border-radius:15px;background:var(--cya-surface);color:var(--cya-text);text-align:left}
+.teaching-kind-grid button>svg{flex:0 0 auto;width:22px;height:22px;color:var(--cya-text-muted)}
+.teaching-kind-grid button span{min-width:0;display:grid;gap:2px}
+.teaching-kind-grid button strong{font-size:13px;line-height:1.2}
+.teaching-kind-grid button small{font-size:10.5px;color:var(--cya-text-muted)}
+.teaching-kind-grid button.active{border-color:color-mix(in srgb,var(--cya-accent) 34%,var(--cya-line));background:var(--cya-accent-soft);color:var(--cya-accent-strong)}
+.teaching-kind-grid button.active>svg{color:var(--cya-accent)}
+
+.teaching-group{margin-top:14px;border:1px solid var(--cya-line);border-radius:var(--cya-radius-card);background:var(--cya-surface);padding:12px}
+.teaching-group.incomplete-group{border-color:color-mix(in srgb,var(--cya-warning) 24%,var(--cya-line));background:color-mix(in srgb,var(--cya-warning-soft) 52%,var(--cya-surface))}
+.teaching-group .card-head{margin-bottom:8px}
+.teaching-group .card-head h2{font-size:14px;color:var(--cya-text)}
+.teaching-group .card-head span{min-width:28px;min-height:28px;display:grid;place-items:center;border-radius:999px;background:var(--cya-surface-subtle);color:var(--cya-text-muted);font-size:11px;font-weight:850}
+.teaching-list{display:grid;gap:8px}
+
+.teaching-graph-shell{border:1px solid var(--cya-line);border-radius:var(--cya-radius-card);background:var(--cya-surface);overflow:hidden}
+.graph-tree-presets{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px!important;overflow:visible!important;padding:8px!important}
+.graph-tree-presets button{min-width:0!important;width:100%;min-height:54px!important;border-color:var(--cya-line)!important;background:var(--cya-surface)!important}
+.graph-tree-presets button.active{border-color:var(--cya-accent)!important;background:var(--cya-accent-soft)!important;box-shadow:none!important}
+.graph-filterbar{gap:7px;padding:8px;border-block:1px solid var(--cya-line);background:var(--cya-surface-subtle)}
+.graph-actions{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px!important;max-width:none!important;overflow:visible!important;padding:8px}
+.graph-actions button{min-width:0;min-height:44px!important;white-space:normal!important}
+
+.partner-badge,.graph-partner-badge{background:var(--cya-info-soft)!important;color:var(--cya-info)!important}
+.sequence-order,.p0f-current-hito{border-color:var(--cya-line)!important;background:var(--cya-surface-subtle)!important}
+.sequence-order-row{border-color:var(--cya-line)!important;background:var(--cya-surface)!important}
+.sequence-order-row>span{background:var(--cya-accent-soft)!important;color:var(--cya-accent-strong)}
+
+@media(max-width:760px){
+  .teaching-switch{grid-template-columns:1fr;gap:5px;padding:4px}
+  .teaching-switch button{justify-content:flex-start;min-height:46px;padding-inline:12px}
+  .teaching-kind-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .teaching-kind-grid button{min-height:64px;padding:9px 10px}
+  .teaching-group{padding:9px}
+  .graph-tree-presets{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .graph-filterbar{display:grid!important;grid-template-columns:1fr 1fr!important}
+  .graph-filterbar .graph-search{grid-column:1/-1!important}
+  .graph-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+
+@media(max-width:420px){
+  .teaching-kind-grid{grid-template-columns:1fr 1fr}
+  .teaching-kind-grid button{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px}
+  .graph-tree-presets{grid-template-columns:1fr 1fr!important}
+}
+
+@media(prefers-reduced-motion:reduce){.teaching-switch button,.teaching-kind-grid button,.graph-actions button{transition:none!important}}
