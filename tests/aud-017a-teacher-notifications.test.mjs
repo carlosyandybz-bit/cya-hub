@@ -5,6 +5,8 @@ import test from "node:test";
 const migration = readFileSync("db/migrations/v64_p27_notification_engine.sql", "utf8");
 const audienceMigration = readFileSync("db/migrations/v90_aud017_notification_audience.sql", "utf8");
 const studentMigration = readFileSync("db/migrations/v91_aud017b_student_notification_producers.sql", "utf8");
+const audienceRlsMigration = readFileSync("db/migrations/v92_aud017_active_audience_rls.sql", "utf8");
+const audienceExecuteMigration = readFileSync("db/migrations/v93_aud017_active_audience_rls_execute.sql", "utf8");
 const notifications = readFileSync("app/notifications-view.tsx", "utf8");
 const feedback = readFileSync("db/migrations/v80_feedback_online_core.sql", "utf8");
 
@@ -54,6 +56,14 @@ test("AUD-017 filters the shared inbox by the authenticated active experience", 
   assert.match(notifications, /\.eq\("audience", nextAudience\)/);
   assert.match(notifications, /\.eq\("audience", audience\)\.is\("read_at", null\)/);
   assert.match(notifications, /audience === "student" \? "Tus avisos" : "Avisos de trabajo"/);
+});
+
+test("AUD-017 enforces active audience in RLS so badges and future queries cannot mix roles", () => {
+  assert.match(audienceRlsMigration, /create or replace function private\.current_notification_audience/);
+  assert.match(audienceRlsMigration, /preferred_context='student'/);
+  assert.match(audienceRlsMigration, /audience=\(select private\.current_notification_audience\(\)\)/);
+  assert.match(audienceRlsMigration, /target_user_id=\(select auth\.uid\(\)\)/);
+  assert.match(audienceExecuteMigration, /grant execute on function private\.current_notification_audience\(\) to authenticated/);
 });
 
 test("AUD-017B declares student-only product events", () => {
