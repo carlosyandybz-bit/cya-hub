@@ -20,7 +20,7 @@ test("My teachers SECURITY DEFINER cannot be called anonymously or for another s
   assert.match(migration, /set search_path\s*=\s*''/i);
   assert.match(migration, /revoke all on function public\.student_teacher_profiles\(\) from public, anon, authenticated;/i);
   assert.match(migration, /grant execute on function public\.student_teacher_profiles\(\) to authenticated;/i);
-  assert.doesNotMatch(migration, /grant execute[^;]*\b(?:anon|public)\b/i);
+  assert.doesNotMatch(migration, /grant execute[^;]*\bto\s+(?:anon|public)\b/i);
 });
 
 test("Account exposes My teachers only to study-capable identities and calls the scoped RPC", () => {
