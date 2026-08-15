@@ -1,0 +1,18 @@
+/* P36 final · Administración > Enseñanza
+   Keep catalog and evaluation controls inside the admin panel at phone widths. */
+.admin-panel,.admin-panel>.admin-stack,.admin-panel .admin-stack,.admin-panel .card,.admin-panel .fields-2,.admin-panel .fields-3,.admin-panel .admin-taxonomy-grid,.admin-panel .term-list,.admin-panel .p0f-evaluation-admin,.admin-panel .p0f-admin-list{min-width:0;max-width:100%}
+.admin-panel .term-list>div,.admin-panel .p0f-admin-list>div,.admin-panel .admin-read-list>div{min-width:0}
+.admin-panel .term-list>div>span,.admin-panel .p0f-admin-list>div>span,.admin-panel .admin-read-list>div>span{min-width:0}
+.admin-panel .term-list input,.admin-panel .admin-read-list input,.admin-panel .p0f-evaluation-admin input,.admin-panel .p0f-evaluation-admin select{min-width:0;max-width:100%}
+@media(max-width:760px){
+  .admin-panel .term-list>div,.admin-panel .p0f-admin-list>div,.admin-panel .admin-read-list>div{flex-wrap:wrap;align-items:center}
+  .admin-panel .term-list>div>span:first-child,.admin-panel .p0f-admin-list>div>span:first-child,.admin-panel .admin-read-list>div>span:first-child{flex:1 1 180px}
+  .admin-panel .term-list>div>span:last-child,.admin-panel .p0f-admin-list>div>span:last-child,.admin-panel .admin-read-list>div>span:last-child{flex:0 1 auto;max-width:100%}
+  .admin-panel .admin-read-list>div>span:last-child:has(input){display:grid!important;grid-template-columns:minmax(0,1fr) auto;width:100%}
+  .admin-panel .p0f-admin-row-actions{display:flex!important;flex-wrap:wrap;justify-content:flex-end}
+  .admin-panel .p0f-create-row{grid-template-columns:1fr!important}
+}
+@media(max-width:430px){
+  .admin-panel .term-list>div>span:first-child,.admin-panel .p0f-admin-list>div>span:first-child,.admin-panel .admin-read-list>div>span:first-child{flex-basis:100%}
+  .admin-panel .term-list>div>span:last-child,.admin-panel .p0f-admin-list>div>span:last-child{width:100%;justify-content:flex-end}
+}

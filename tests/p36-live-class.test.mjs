@@ -1,0 +1,7 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import test from "node:test";
+const shell=fs.readFileSync("app/cya-app.tsx","utf8");const css=fs.readFileSync("app/p36-live-class.css","utf8");const layout=fs.readFileSync("app/layout.tsx","utf8");const functionalQa=fs.readFileSync("qa/tests/functional-class-flow.spec.ts","utf8");
+test("P36 live class preserves the complete workflow",()=>{for(const label of ["Trabajo","Contexto","Observaciones","Evaluación","Correcciones","Contenido","Ejercicios","Secuencias"])assert.match(shell,new RegExp(label));assert.match(shell,/Buscar correcciones, contenido, ejercicios o secuencias/);assert.match(shell,/Crear nuevo/);assert.match(shell,/Terminar clase/);assert.match(functionalQa,/teacher closes a QA class, student receives it, and admin remains healthy/);});
+test("P36 live class removes hidden horizontal choices",()=>{assert.match(layout,/import "\.\/p36-live-class\.css"/);assert.match(css,/\.p0f-primary-tabs,\.p0f-content-tabs\{display:grid!important;overflow:visible!important/);assert.match(css,/\.p0f-sticky-search\{top:0;z-index:24/);assert.doesNotMatch(css,/overflow-x:\s*auto/i);});
+test("P36 live class uses semantic state colors and touch-safe closure",()=>{for(const token of ["--cya-success-soft","--cya-warning-soft","--cya-info-soft","--cya-danger-soft","--cya-accent-soft"])assert.match(css,new RegExp(token));assert.match(css,/\.workflow-footer \.btn\{min-height:48px\}/);assert.doesNotMatch(css,/#ffff00|yellow/i);});
