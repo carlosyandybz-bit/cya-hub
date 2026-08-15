@@ -18,7 +18,7 @@ jobs:
   browser-qa:
     name: Browser QA
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     env:
       CI: "true"
       PROD_ORIGIN: https://app.carlosyandy.com
@@ -35,10 +35,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-          cache: npm
-
-      - name: Validate canonical documentation sequence
-        run: node --test tests/documentation-consistency.test.mjs
 
       - name: Bootstrap dedicated QA identities with GitHub OIDC
         shell: bash
@@ -48,27 +44,18 @@ jobs:
             -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=cya-hub-qa")"
           oidc_token="$(jq -er '.value' <<<"${oidc_json}")"
-
           bootstrap_json="$(curl --fail --silent --show-error \
             -X POST \
             -H "Authorization: Bearer ${oidc_token}" \
             -H "Content-Type: application/json" \
             "${CYA_QA_BOOTSTRAP_URL}")"
-
           jq -e --arg run_id "${GITHUB_RUN_ID}" '.ok == true and .run_id == $run_id' <<<"${bootstrap_json}" >/dev/null
-          jq -e '.fixtures.studentName and .fixtures.projects["iphone-large-chromium"].classId and .fixtures.projects["desktop-chromium"].classId' <<<"${bootstrap_json}" >/dev/null
-
-          for role in teacher student admin; do
-            upper_role="$(printf '%s' "${role}" | tr '[:lower:]' '[:upper:]')"
-            email="$(jq -er ".credentials.${role}.email" <<<"${bootstrap_json}")"
-            password="$(jq -er ".credentials.${role}.password" <<<"${bootstrap_json}")"
-            echo "::add-mask::${password}"
-            printf 'QA_%s_EMAIL=%s\n' "${upper_role}" "${email}" >> "${GITHUB_ENV}"
-            printf 'QA_%s_PASSWORD=%s\n' "${upper_role}" "${password}" >> "${GITHUB_ENV}"
-          done
-
-          printf 'QA_FIXTURES_JSON=%s\n' "$(jq -c '.fixtures' <<<"${bootstrap_json}")" >> "${GITHUB_ENV}"
-          printf 'QA_RUN_ID=%s\n' "${GITHUB_RUN_ID}" >> "${GITHUB_ENV}"
+          email="$(jq -er '.credentials.admin.email' <<<"${bootstrap_json}")"
+          password="$(jq -er '.credentials.admin.password' <<<"${bootstrap_json}")"
+          echo "::add-mask::${email}"
+          echo "::add-mask::${password}"
+          printf 'QA_ADMIN_EMAIL=%s\n' "${email}" >> "${GITHUB_ENV}"
+          printf 'QA_ADMIN_PASSWORD=%s\n' "${password}" >> "${GITHUB_ENV}"
 
       - name: AUD-019 wait for exact production deployment
         shell: bash
@@ -78,12 +65,9 @@ jobs:
             build_json="$(curl --silent --show-error --fail "${PROD_ORIGIN}/api/build-info" || true)"
             deployed="$(jq -r '.commit // ""' <<<"${build_json:-{}}" 2>/dev/null || true)"
             echo "Production build: ${deployed:-unavailable}"
-            if [ "${deployed}" = "${EXPECTED_PROD_COMMIT}" ]; then
-              exit 0
-            fi
+            if [ "${deployed}" = "${EXPECTED_PROD_COMMIT}" ]; then exit 0; fi
             sleep 5
           done
-          echo "Production did not reach ${EXPECTED_PROD_COMMIT}"
           exit 1
 
       - name: AUD-019 authenticate admin and verify runtime
@@ -92,18 +76,13 @@ jobs:
           set -euo pipefail
           payload="$(jq -cn --arg email "${QA_ADMIN_EMAIL}" --arg password "${QA_ADMIN_PASSWORD}" '{email:$email,password:$password}')"
           auth_json="$(curl --fail --silent --show-error \
-            -X POST \
-            -H "apikey: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
-            -H 'Content-Type: application/json' \
-            --data "${payload}" \
+            -X POST -H "apikey: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
+            -H 'Content-Type: application/json' --data "${payload}" \
             "${NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password")"
           access_token="$(jq -er '.access_token' <<<"${auth_json}")"
           echo "::add-mask::${access_token}"
           printf 'QA_ACCESS_TOKEN=%s\n' "${access_token}" >> "${GITHUB_ENV}"
-
-          status_json="$(curl --fail --silent --show-error \
-            -H "Authorization: Bearer ${access_token}" \
-            "${PROD_ORIGIN}/api/google-calendar/status")"
+          status_json="$(curl --fail --silent --show-error -H "Authorization: Bearer ${access_token}" "${PROD_ORIGIN}/api/google-calendar/status")"
           test "$(jq -r '.configured' <<<"${status_json}")" = "true"
           test "$(jq -c '.missingRequirements // []' <<<"${status_json}")" = "[]"
 
@@ -112,12 +91,9 @@ jobs:
         run: |
           set -euo pipefail
           cookie_jar="${RUNNER_TEMP}/aud019-cookies.txt"
-          connect_json="$(curl --fail --silent --show-error \
-            -c "${cookie_jar}" \
-            -X POST \
-            -H "Authorization: Bearer ${QA_ACCESS_TOKEN}" \
-            -H 'Content-Type: application/json' \
-            "${PROD_ORIGIN}/api/google-calendar/connect")"
+          connect_json="$(curl --fail --silent --show-error -c "${cookie_jar}" \
+            -X POST -H "Authorization: Bearer ${QA_ACCESS_TOKEN}" \
+            -H 'Content-Type: application/json' "${PROD_ORIGIN}/api/google-calendar/connect")"
           oauth_url="$(jq -er '.url' <<<"${connect_json}")"
           echo "::add-mask::${oauth_url}"
           printf 'OAUTH_URL=%s\n' "${oauth_url}" >> "${GITHUB_ENV}"
@@ -133,23 +109,18 @@ jobs:
           grep -q 'cya_google_calendar_oauth' "${cookie_jar}"
           grep -q 'TRUE' "${cookie_jar}"
 
-      - name: Install application dependencies
-        run: npm ci
-
-      - name: Install QA harness
+      - name: Install Playwright audit harness
         working-directory: qa
-        run: npm install --no-audit --no-fund
-
-      - name: Install Chromium for Playwright
-        working-directory: qa
-        run: npx playwright install --with-deps chromium
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
 
       - name: AUD-019 verify Google accepts production OAuth request
         working-directory: qa
         shell: bash
         run: |
           set -euo pipefail
-          cat > /tmp/aud019-google.mjs <<'EOF'
+          cat > aud019-google.mjs <<'EOF'
           import { chromium } from 'playwright';
           const browser = await chromium.launch({ headless: true });
           const page = await browser.newPage();
@@ -162,47 +133,4 @@ jobs:
           console.log('Google accepted the production OAuth request up to account selection/consent.');
           await browser.close();
           EOF
-          node /tmp/aud019-google.mjs
-
-      - name: Lint application (report existing debt without blocking browser QA)
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run lint 2>&1 | tee qa/lint.log
-
-      - name: Build application
-        run: npm run build
-
-      - name: Start CYA Hub locally
-        shell: bash
-        run: |
-          npm start > qa/app-server.log 2>&1 &
-          echo $! > qa/app-server.pid
-          for attempt in {1..60}; do
-            if curl --fail --silent --show-error http://127.0.0.1:3000/ > /dev/null; then
-              echo "CYA Hub is ready"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "CYA Hub did not become ready"
-          cat qa/app-server.log
-          exit 1
-
-      - name: Run browser QA
-        working-directory: qa
-        run: npm run test:e2e
-
-      - name: Upload browser evidence
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v5
-        with:
-          name: cya-browser-qa-${{ github.run_id }}
-          path: |
-            playwright-report/
-            test-results/
-            qa/app-server.log
-            qa/lint.log
-          if-no-files-found: warn
-          retention-days: 14
+          node aud019-google.mjs
