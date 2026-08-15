@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { externalRequestOrigin } from "../../../server-request-origin";
 import {
   exchangeGoogleCalendarCode,
   openOAuthCookie,
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     const identity = await requireStaff(context.accessToken);
     if (identity.id !== context.userId) throw new Error("La identidad de CYA Hub cambió durante la autorización.");
 
-    const tokens = await exchangeGoogleCalendarCode(request.nextUrl.origin, code);
+    const tokens = await exchangeGoogleCalendarCode(externalRequestOrigin(request), code);
     if (!tokens.refresh_token) throw new Error("Google no devolvió acceso offline. Desconecta CYA Hub en Google y vuelve a autorizarlo.");
     const calendar = await primaryGoogleCalendar(tokens.access_token!);
     const now = new Date().toISOString();
