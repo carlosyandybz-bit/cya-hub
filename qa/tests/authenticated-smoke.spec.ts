@@ -140,7 +140,7 @@ test("teacher student master detail groups seven views without horizontal naviga
   });
 });
 
-test("PR-F3 Administration groups fourteen destinations without horizontal main navigation", async ({ page }, testInfo) => {
+test("PR-F3 Administration groups fourteen destinations with a contained P36 mobile category scroller", async ({ page }, testInfo) => {
   await login(page, "admin", testInfo);
   await selectExperience(page, "Administrador");
   await expect(page.getByRole("heading", { name: "Estado de CYA Hub" })).toBeVisible({ timeout: 20_000 });
@@ -176,10 +176,31 @@ test("PR-F3 Administration groups fourteen destinations without horizontal main 
   }
 
   await groups.getByRole("button", { name: /^Apariencia/ }).click();
-  await expect(page.getByRole("navigation", { name: "Opciones de Apariencia" }).getByRole("button", { name: "Apariencia", exact: true })).toBeVisible();
+  local = page.getByRole("navigation", { name: "Opciones de Apariencia" });
+  await expect(local.getByRole("button", { name: "Apariencia", exact: true })).toBeVisible();
 
-  const overflow = await page.locator(".admin-navigation").evaluate((element) => element.scrollWidth > element.clientWidth + 1);
-  expect(overflow).toBe(false);
+  const containment = await page.evaluate(() => {
+    const doc = document.documentElement;
+    const panel = document.querySelector(".admin-panel") as HTMLElement | null;
+    const groupNav = document.querySelector(".admin-group-nav") as HTMLElement | null;
+    const localNav = document.querySelector(".admin-local-nav") as HTMLElement | null;
+    const navigation = document.querySelector(".admin-navigation") as HTMLElement | null;
+    return {
+      pageOverflow: doc.scrollWidth > doc.clientWidth + 1,
+      panelOverflow: panel ? panel.scrollWidth > panel.clientWidth + 1 : false,
+      localOverflow: localNav ? localNav.scrollWidth > localNav.clientWidth + 1 : false,
+      groupOverflowX: groupNav ? getComputedStyle(groupNav).overflowX : "",
+      navigationOverflow: navigation ? navigation.scrollWidth > navigation.clientWidth + 1 : false,
+    };
+  });
+  expect(containment.pageOverflow).toBe(false);
+  expect(containment.panelOverflow).toBe(false);
+  expect(containment.localOverflow).toBe(false);
+  if ((page.viewportSize()?.width ?? 9999) <= 820) {
+    expect(["auto", "scroll"]).toContain(containment.groupOverflowX);
+  } else {
+    expect(containment.navigationOverflow).toBe(false);
+  }
 
   await testInfo.attach("prf3-administration-grouped", {
     body: await page.screenshot({ fullPage: true }),
