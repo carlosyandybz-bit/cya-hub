@@ -1,0 +1,39 @@
+/* P36-3 · Alumnado
+   Decision-oriented directory: identity -> state -> contact -> actions. */
+
+.student-list{display:grid;gap:9px}
+.student-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 13px;border:1px solid var(--cya-line);border-radius:var(--cya-radius-card);background:var(--cya-surface);box-shadow:none;transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+.student-row:hover{border-color:color-mix(in srgb,var(--cya-accent) 24%,var(--cya-line));box-shadow:var(--cya-shadow-subtle)}
+.student-row:focus-within{border-color:var(--cya-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--cya-accent) 14%,transparent)}
+.student-row-main{min-width:0;display:grid;grid-template-columns:46px minmax(0,1fr) auto;align-items:center;gap:12px;padding:2px;border:0;background:transparent;color:var(--cya-text);text-align:left;cursor:pointer}
+.student-row-main .avatar{width:46px;height:46px;border-radius:15px;background:var(--cya-surface-subtle);color:var(--cya-text-muted);border:1px solid var(--cya-line)}
+.student-row-main .avatar svg{width:24px;height:24px}
+.student-main strong{font-size:14.5px;line-height:1.25;color:var(--cya-text)}
+.student-main span{margin-top:3px;font-size:11.5px;color:var(--cya-text-muted)}
+.student-row .badge{min-height:27px;padding:0 9px;border:1px solid color-mix(in srgb,var(--cya-warning) 20%,transparent);background:var(--cya-warning-soft);color:var(--cya-warning);font-size:10.5px;font-weight:800;letter-spacing:.01em}
+.student-row .badge.portal{border-color:color-mix(in srgb,var(--cya-success) 20%,transparent);background:var(--cya-success-soft);color:var(--cya-success)}
+.student-row-actions{display:flex;align-items:center;gap:6px}
+.student-row-actions .btn{min-height:44px;padding:0 12px;border-radius:12px;font-size:11.5px;font-weight:740}
+.student-row-actions .btn.ghost{border-color:var(--cya-line);background:var(--cya-surface);color:var(--cya-text-muted)}
+.student-row-actions .btn.ghost:hover{border-color:color-mix(in srgb,var(--cya-accent) 25%,var(--cya-line));color:var(--cya-accent-strong);background:var(--cya-accent-soft)}
+
+.page-head+.search{margin-top:-4px}
+.search{margin-bottom:14px}
+.search input{min-height:50px;border-color:var(--cya-line);border-radius:15px;background:var(--cya-surface);color:var(--cya-text)}
+.search>svg{color:var(--cya-text-muted)}
+
+@media(max-width:760px){
+  .student-list{gap:8px}
+  .student-row{grid-template-columns:1fr;gap:8px;padding:11px}
+  .student-row-main{grid-template-columns:42px minmax(0,1fr) auto;gap:10px;width:100%}
+  .student-row-main .avatar{width:42px;height:42px;border-radius:13px}
+  .student-row-actions{display:grid;grid-template-columns:1fr 1fr;width:100%;padding-left:52px}
+  .student-row-actions .btn{width:100%;min-height:44px}
+}
+@media(max-width:420px){
+  .student-row-main{grid-template-columns:40px minmax(0,1fr)}
+  .student-row-main .badge{grid-column:2;justify-self:start;margin-top:2px}
+  .student-row-main .avatar{grid-row:1/3}
+  .student-row-actions{padding-left:50px}
+}
+@media(prefers-reduced-motion:reduce){.student-row{transition:none}}
