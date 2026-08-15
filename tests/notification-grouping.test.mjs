@@ -22,6 +22,8 @@ test("current production rule aliases have product labels",()=>{
   assert.match(notifications,/source === "credit_grant"\) return "Bono"/);
 });
 
-test("notification copy explains entity-aware grouping",()=>{
-  assert.match(notifications,/Los avisos repetidos se agrupan por alumno, clase, contenido o bono sin mezclar asuntos distintos/);
+test("notification copy remains entity-aware and audience-specific",()=>{
+  assert.match(notifications,/audience === "student" \? "Tus avisos" : "Avisos de trabajo"/);
+  assert.match(notifications,/sin mezclar asuntos distintos/);
+  assert.match(notifications,/únicamente novedades y acciones relacionadas con tu propia experiencia/);
 });

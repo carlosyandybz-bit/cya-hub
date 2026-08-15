@@ -1,0 +1,57 @@
+/* AUD-017 closure also preserves the responsive Administration baseline (AUD-014).
+   Pedagogical legacy rows must reflow on narrow panels instead of forcing the panel wider. */
+.admin-taxonomy-grid,
+.admin-taxonomy-grid > *,
+.admin-taxonomy-card,
+.term-list,
+.term-list > div,
+.p0f-evaluation-admin,
+.p0f-evaluation-admin > *,
+.p0f-admin-list,
+.p0f-admin-list > div,
+.p0f-context-grid,
+.p0f-create-row {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.term-list > div > span:first-child {
+  min-width: 0 !important;
+  flex: 1 1 180px;
+  max-width: 100%;
+}
+
+.term-list > div > span:first-child input {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.p0f-admin-list > div > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 620px) {
+  .term-list > div {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .term-list > div > span:first-child {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .term-list > div > :not(span:first-child) {
+    flex: 0 0 auto;
+  }
+
+  .p0f-admin-list > div {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .p0f-admin-row-actions {
+    flex-wrap: wrap;
+  }
+}
