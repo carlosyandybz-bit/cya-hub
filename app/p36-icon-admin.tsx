@@ -29,7 +29,10 @@ export function P36IconAdmin({ client, notify }: Props) {
     else setRows((result.data ?? []) as OverrideRow[]);
   }, [client, notify]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const byKey = useMemo(() => new Map(rows.map((row) => [row.icon_key, row])), [rows]);
   const categories = useMemo(() => ["Todos", ...new Set(CYA_ICON_CATALOG.map((item) => item.category))], []);
@@ -48,7 +51,7 @@ export function P36IconAdmin({ client, notify }: Props) {
 
     const extension = file.type === "image/webp" ? "webp" : "png";
     const safeKey = iconKey.replace(/[^a-z0-9._-]/g, "-");
-    const nextPath = `p36/${safeKey}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+    const nextPath = `p36/${safeKey}/${crypto.randomUUID()}.${extension}`;
     const previous = byKey.get(iconKey)?.storage_path ?? null;
     setBusy(iconKey);
 
