@@ -1,7 +1,7 @@
 # CYA HUB — BACKLOG POST-RELEASE
 
-**Corte:** 14/08/2026  
-**Base técnica:** `main` tras PR #73  
+**Corte:** 15/08/2026  
+**Base técnica:** `main` tras PR #73 + decisiones post-release  
 **Orden operativo:** Auditoría Viva de Google Drive.
 
 Este documento resume el estado técnico post-release. No sustituye el orden ni las decisiones funcionales de la Auditoría Viva en Drive.
@@ -22,6 +22,22 @@ Este documento resume el estado técnico post-release. No sustituye el orden ni 
 
 - **Hostinger:** `carlosyandy.com` continúa sirviendo la web pública existente. No mover el dominio principal hasta demostrar CYA Hub en una URL de app independiente.
 - **Supabase Auth:** Leaked Password Protection continúa siendo un ajuste externo.
+
+## Integraciones preparadas con activación aplazada
+
+### Google Calendar — PREPARADO / DESCONECTADO POR DECISIÓN DEL ADMINISTRADOR
+
+Google Calendar **no es un gate de release actual**. La integración permanece preparada en código y su punto de activación es `Administración → Integraciones → Google Calendar`.
+
+Contrato vigente:
+
+- CYA Hub debe funcionar con normalidad aunque Google Calendar no se conecte nunca.
+- No se realizará ahora autorización OAuth, intercambio de tokens ni sincronización real.
+- El panel de Administración conserva el estado de preparación y el botón `Conectar Google Calendar`.
+- Si faltan requisitos externos, la interfaz debe mostrar que la integración no está configurada y bloquear el inicio de OAuth de forma segura.
+- Una vez conectada, la misma superficie administra dirección de sincronización, sincronización manual, última sincronización, errores, conflictos y desconexión.
+- La configuración OAuth externa y la certificación real de sincronización/idempotencia se realizarán únicamente cuando el administrador decida activar la integración.
+- La falta de certificación OAuth real mientras la integración permanezca voluntariamente desconectada no se contabiliza como defecto funcional ni bloqueo del producto.
 
 # PR-A — Cierres transversales — COMPLETADO
 
@@ -152,3 +168,4 @@ Reorganizar las 14 áreas por propósito y eliminar el scroller horizontal princ
 9. No mover `carlosyandy.com` hasta demostrar runtime CYA Hub separado.
 10. Mantener ISO `country_code`; traducir solo en presentación/selector.
 11. Google Drive es memoria operativa y define orden mediante la Auditoría Viva; GitHub conserva la implementación técnica.
+12. Google Calendar permanece opcional y desconectado hasta activación explícita desde Administración; su OAuth real no es requisito del release mientras esa decisión siga vigente.
