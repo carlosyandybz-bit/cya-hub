@@ -1,0 +1,8 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import test from "node:test";
+const agenda=fs.readFileSync("app/agenda-view.tsx","utf8"),css=fs.readFileSync("app/p36-agenda.css","utf8"),layout=fs.readFileSync("app/layout.tsx","utf8"),catalog=fs.readFileSync("app/cya-icon-catalog.ts","utf8");
+test("P36-4 preserves agenda modes and sources",()=>{for(const v of ["day","week","month","list"])assert.ok(agenda.includes(`"${v}"`));assert.match(agenda,/GoogleCalendarSync/);assert.match(agenda,/calendar_snapshot/);assert.match(agenda,/Programar clase/);});
+test("P36-4 makes month genuinely responsive",()=>{assert.match(layout,/p36-agenda\.css/);assert.match(css,/\.month-weekdays,.month-days\{min-width:0;width:100%;grid-template-columns:repeat\(7,minmax\(0,1fr\)\)\}/);assert.match(css,/@media\(max-width:760px\)/);assert.doesNotMatch(css,/overflow-x:\s*auto/i);});
+test("P36-4 uses semantic tokens and 44px controls",()=>{for(const token of ["--cya-accent-soft","--cya-success-soft","--cya-danger-soft","--cya-info-soft"])assert.match(css,new RegExp(token));assert.match(css,/min-height:44px/);});
+test("P36-4 routes Agenda icons through registry",()=>{assert.match(agenda,/CyaIcon/);for(const key of ["management.classes","management.missions","marketing.events","navigation.calendar","action.add","action.back","action.forward","state.success"])assert.match(agenda,new RegExp(key.replace(".","\\.")));for(const key of ["management.missions","marketing.events","action.forward"])assert.match(catalog,new RegExp(key.replace(".","\\.")));});
