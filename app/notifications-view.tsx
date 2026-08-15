@@ -280,7 +280,7 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
 
   return <section className={styles.root}>
     <header className={styles.hero}>
-      <div><p>NOTIFICACIONES</p><h1>Avisos de trabajo</h1><span>Clases, alumnos, bonos, enseñanza, misiones y otras tareas que requieren tu atención se organizan aquí sin mezclar asuntos distintos.</span></div>
+      <div><p>NOTIFICACIONES</p><h1>Centro de avisos</h1><span>Los avisos repetidos se agrupan por alumno, clase, contenido o bono sin mezclar asuntos distintos.</span></div>
       <div className={styles.heroIcon}>{pending.length ? <BellRing /> : <CheckCheck />}</div>
     </header>
 
