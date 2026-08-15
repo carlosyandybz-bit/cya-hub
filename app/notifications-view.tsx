@@ -31,6 +31,7 @@ type MissionMeta = {
 };
 
 type IdentityCapabilities = {
+  user_id?: string;
   can_admin?: boolean;
   can_teach?: boolean;
   can_study?: boolean;
@@ -174,12 +175,12 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [preferenceResult, identityResult] = await Promise.all([
-      client.from("user_preferences").select("preferred_context").maybeSingle(),
-      client.rpc("identity_context"),
-    ]);
-    const preferredContext = preferenceResult.data?.preferred_context as string | null | undefined;
+    const identityResult = await client.rpc("identity_context");
     const capabilities = (identityResult.data ?? {}) as IdentityCapabilities;
+    const preferenceResult = capabilities.user_id
+      ? await client.from("user_preferences").select("preferred_context").eq("user_id", capabilities.user_id).maybeSingle()
+      : { data: null };
+    const preferredContext = preferenceResult.data?.preferred_context as string | null | undefined;
     const nextAudience: NotificationAudience = preferredContext === "student" || (!capabilities.can_teach && !capabilities.can_admin && capabilities.can_study) ? "student" : "staff";
     setAudience(nextAudience);
 
