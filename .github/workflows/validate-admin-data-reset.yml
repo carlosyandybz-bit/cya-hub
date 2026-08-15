@@ -10,13 +10,16 @@ on:
       - 'supabase/v44b_admin_data_reset_backup_guard.sql'
       - 'supabase/v44c_admin_reset_backup_coverage.sql'
       - 'supabase/v44d_admin_reset_student_people.sql'
+      - 'supabase/v44e_admin_reset_backup_status.sql'
       - 'db/migrations/v67b_reset_daily_quote_assignments_fk.sql'
       - 'db/migrations/v72b_p32_full_reset_statistics.sql'
       - 'db/migrations/v79_bz_backup_reset_integration.sql'
       - 'db/migrations/v81_feedback_backup_reset_integration.sql'
       - 'db/migrations/v83_academia_backup_reset_integration.sql'
+      - 'db/migrations/v89a_aud018_complete_backup_transfer_history.sql'
       - 'tests/admin-data-reset.test.mjs'
       - 'tests/aud-018-reset-certification.test.mjs'
+      - 'tests/aud-018-closure.test.mjs'
       - '.github/workflows/validate-admin-data-reset.yml'
 
 jobs:
@@ -30,7 +33,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Admin reset regression tests
-        run: node --test tests/admin-data-reset.test.mjs tests/aud-018-reset-certification.test.mjs
+        run: node --test tests/admin-data-reset.test.mjs tests/aud-018-reset-certification.test.mjs tests/aud-018-closure.test.mjs
       - name: Lint admin reset surfaces
         run: npx eslint app/admin-data-reset.tsx app/admin-data-transfer.tsx
       - name: Build Next.js application
