@@ -13,7 +13,7 @@
 .student-row .badge{min-height:27px;padding:0 9px;border:1px solid color-mix(in srgb,var(--cya-warning) 20%,transparent);background:var(--cya-warning-soft);color:var(--cya-warning);font-size:10.5px;font-weight:800;letter-spacing:.01em}
 .student-row .badge.portal{border-color:color-mix(in srgb,var(--cya-success) 20%,transparent);background:var(--cya-success-soft);color:var(--cya-success)}
 .student-row-actions{display:flex;align-items:center;gap:6px}
-.student-row-actions .btn{min-height:42px;padding:0 12px;border-radius:12px;font-size:11.5px;font-weight:740}
+.student-row-actions .btn{min-height:44px;padding:0 12px;border-radius:12px;font-size:11.5px;font-weight:740}
 .student-row-actions .btn.ghost{border-color:var(--cya-line);background:var(--cya-surface);color:var(--cya-text-muted)}
 .student-row-actions .btn.ghost:hover{border-color:color-mix(in srgb,var(--cya-accent) 25%,var(--cya-line));color:var(--cya-accent-strong);background:var(--cya-accent-soft)}
 
