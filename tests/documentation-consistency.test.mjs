@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import './reset-daily-quotes-fk.test.mjs';
+import './aud-020-student-experience.test.mjs';
 
 const read = (path) => fs.readFileSync(path, 'utf8');
 const plan = read('docs/CYA_HUB_PLAN_MAESTRO_CIERRE.md');

@@ -7,14 +7,15 @@ export type StudentDetailTab = "summary" | "learning" | "evaluation" | "classes"
 type StudentDetailGroup = {
   id: "now" | "learning" | "history" | "profile";
   label: string;
+  description: string;
   tabs: Array<{ id: StudentDetailTab; label: string }>;
 };
 
 export const STUDENT_DETAIL_GROUPS: StudentDetailGroup[] = [
-  { id: "now", label: "Ahora", tabs: [{ id: "summary", label: "Resumen" }] },
-  { id: "learning", label: "Aprendizaje", tabs: [{ id: "learning", label: "Formación" }, { id: "evaluation", label: "Evaluación" }] },
-  { id: "history", label: "Historial", tabs: [{ id: "classes", label: "Clases" }, { id: "credits", label: "Bonos" }] },
-  { id: "profile", label: "Perfil", tabs: [{ id: "data", label: "Datos" }, { id: "crm", label: "CRM" }] },
+  { id: "now", label: "Ahora", description: "Prioridad y contexto", tabs: [{ id: "summary", label: "Resumen" }] },
+  { id: "learning", label: "Aprendizaje", description: "Formación y progreso", tabs: [{ id: "learning", label: "Formación" }, { id: "evaluation", label: "Evaluación" }] },
+  { id: "history", label: "Historial", description: "Clases y saldo", tabs: [{ id: "classes", label: "Clases" }, { id: "credits", label: "Bonos" }] },
+  { id: "profile", label: "Perfil", description: "Datos y gestión", tabs: [{ id: "data", label: "Datos" }, { id: "crm", label: "CRM" }] },
 ];
 
 export function StudentDetailNavigation({ tab, onTab }: {
@@ -39,7 +40,7 @@ export function StudentDetailNavigation({ tab, onTab }: {
           onClick={() => selectGroup(group)}
         >
           <strong>{group.label}</strong>
-          <span>{group.tabs.map((item) => item.label).join(" · ")}</span>
+          <span>{group.description}</span>
         </button>;
       })}
     </nav>
