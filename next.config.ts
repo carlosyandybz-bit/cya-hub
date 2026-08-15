@@ -1,8 +1,31 @@
+import { execFileSync } from "node:child_process";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
+function resolveBuildSha() {
+  const explicit = process.env.CYA_BUILD_SHA?.trim()
+    || process.env.GIT_COMMIT_SHA?.trim()
+    || process.env.VERCEL_GIT_COMMIT_SHA?.trim()
+    || process.env.CF_PAGES_COMMIT_SHA?.trim();
+
+  if (explicit) {
+    return explicit;
+  }
+
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "";
+  }
+}
+
+const buildSha = resolveBuildSha();
+
 const nextConfig: NextConfig = {
-  /* config options here */
+  env: buildSha ? { CYA_BUILD_SHA: buildSha } : undefined,
 };
 
 const sentryBuildEnabled = Boolean(process.env.SENTRY_AUTH_TOKEN);
