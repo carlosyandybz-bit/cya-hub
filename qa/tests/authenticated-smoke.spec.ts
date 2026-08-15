@@ -212,7 +212,7 @@ test("student portal renders approved PR-F1 header and five-item navigation", as
   await login(page, "student", testInfo);
 
   await expect(page.getByRole("button", { name: "Ir a Inicio" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Notificaciones/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /notificaciones/i })).toBeVisible();
   await expect(page.getByRole("button", { name: "Abrir cuenta y preferencias" })).toBeVisible();
 
   const nav = page.getByRole("navigation", { name: "Portal CYA" });
