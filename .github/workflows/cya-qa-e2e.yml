@@ -10,12 +10,11 @@ permissions:
   contents: read
   id-token: write
 
-# The bootstrap rotates passwords for three shared QA identities. The entire browser
-# workflow must therefore be mutually exclusive across PRs; otherwise another run
-# can invalidate credentials while Playwright is still executing.
+# Shared QA identities are rotated by the bootstrap, so browser QA remains mutually
+# exclusive. The newest run is authoritative: stale runs must never starve the queue.
 concurrency:
   group: cya-qa-shared-identities
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   browser-qa:
@@ -78,9 +77,21 @@ jobs:
         working-directory: qa
         run: npm install --no-audit --no-fund
 
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-1.62.0-chromium
+
+      - name: Install Chromium system dependencies
+        working-directory: qa
+        shell: bash
+        run: timeout --signal=TERM --kill-after=30s 5m npx playwright install-deps chromium
+
       - name: Install Chromium for Playwright
         working-directory: qa
-        run: npx playwright install --with-deps chromium
+        shell: bash
+        run: timeout --signal=TERM --kill-after=30s 5m npx playwright install chromium
 
       - name: Lint application (report existing debt without blocking browser QA)
         continue-on-error: true
