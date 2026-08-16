@@ -23,9 +23,9 @@ jobs:
     timeout-minutes: 25
     env:
       CI: "true"
-      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.CYA_QA_SUPABASE_URL || 'https://ldvyeyhzrepaaouzavgs.supabase.co' }}
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.CYA_QA_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_gTLCF5jffNzTC_mRZ21IPg_wl-70wQL' }}
-      CYA_QA_BOOTSTRAP_URL: https://ldvyeyhzrepaaouzavgs.supabase.co/functions/v1/cya-qa-bootstrap
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.CYA_QA_SUPABASE_URL || 'https://qlngfkzmncihtdzktcmd.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.CYA_QA_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW' }}
+      CYA_QA_BOOTSTRAP_URL: https://qlngfkzmncihtdzktcmd.supabase.co/functions/v1/cya-qa-bootstrap
 
     steps:
       - name: Checkout repository
@@ -36,6 +36,19 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+
+      - name: Refuse production Supabase in QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${NEXT_PUBLIC_SUPABASE_URL}" == "https://ldvyeyhzrepaaouzavgs.supabase.co" ]]; then
+            echo "QA must never target production Supabase" >&2
+            exit 1
+          fi
+          if [[ "${CYA_QA_BOOTSTRAP_URL}" == *"ldvyeyhzrepaaouzavgs"* ]]; then
+            echo "QA bootstrap must never target production Supabase" >&2
+            exit 1
+          fi
 
       - name: Validate canonical documentation sequence
         run: node --test tests/documentation-consistency.test.mjs
