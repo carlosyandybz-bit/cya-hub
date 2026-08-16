@@ -61,7 +61,7 @@
   /* Every interactive header action owns at least the canonical 44px hit box. */
   .shell .mobile-head-actions > button,
   .shell .mobile-head-actions .icon-btn,
-  .shell .mobile-head-actions [data-account-trigger="true"] {
+  .shell .mobile-head-actions [data-cya-account-menu] > button {
     min-width: var(--cya-touch, 44px) !important;
     min-height: var(--cya-touch, 44px) !important;
   }
@@ -131,12 +131,12 @@
 @media (max-width: 350px) {
   .shell .mobile-head {
     --cya-header-rail: 88px;
-    --cya-header-clearance: 8px;
+    --cya-header-clearance: 10px;
   }
   .shell .mobile-head-brand .brand-logo {
-    width: 32px !important;
+    width: 28px !important;
     height: 28px !important;
-    flex-basis: 32px !important;
+    flex-basis: 28px !important;
   }
   .shell .mobile-owner-name {
     font-size: 12px !important;
