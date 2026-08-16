@@ -25,6 +25,7 @@ async function login(page: Page, role: QaRole) {
   await page.getByRole("button", { name: /^Entrar$/ }).click();
   await expect(page.locator('input[name="email"]')).toBeHidden({ timeout: 20_000 });
   await expect(page.locator("body")).not.toContainText("CYA Hub no ha podido conectar con sus datos.");
+  await expect(page.locator('img[src*="cya-logo"]:visible').first()).toBeVisible({ timeout: 20_000 });
 }
 
 async function clickPrimaryNav(page: Page, label: string) {

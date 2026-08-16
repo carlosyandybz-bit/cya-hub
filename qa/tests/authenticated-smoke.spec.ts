@@ -52,14 +52,11 @@ async function login(page: Page, role: QaRole, testInfo: TestInfo) {
 }
 
 async function openAccountMenu(page: Page) {
-  const headerTrigger = page.getByRole("button", { name: "Abrir cuenta y preferencias" });
-  if (await headerTrigger.isVisible().catch(() => false)) {
-    await headerTrigger.click();
-    return;
-  }
-  const sidebarTrigger = page.locator('button[aria-haspopup="menu"]:visible').last();
-  await expect(sidebarTrigger).toBeVisible();
-  await sidebarTrigger.click();
+  const trigger = page.locator(
+    'button[aria-label="Abrir cuenta y preferencias"]:visible, .sidebar button[aria-haspopup="menu"]:visible',
+  ).first();
+  await expect(trigger).toBeVisible({ timeout: 20_000 });
+  await trigger.click();
 }
 
 async function selectExperience(page: Page, label: "Profesor" | "Alumno" | "Administrador") {

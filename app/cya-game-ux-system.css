@@ -511,36 +511,48 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--cya-accent); }
   .mobile-nav .mobile-nav-secondary {
     position: absolute;
     z-index: 4;
-    top: -18px;
-    left: calc(50% + 13px);
-    width: 38px;
-    height: 29px;
-    min-height: 29px;
+    top: -24px;
+    left: calc(50% + 10px);
+    width: 46px;
+    height: 46px;
+    min-height: 46px;
+    box-sizing: border-box;
     padding: 0;
-    border: 1px solid rgba(235, 200, 255, .38);
-    border-radius: 65% 48% 62% 42%;
+    border: 0;
+    border-radius: 50%;
     display: grid;
     place-items: center;
-    background: var(--cya-metal-control);
+    background: transparent;
     color: var(--cya-on-accent);
-    box-shadow: 0 8px 22px rgba(105, 22, 176, .38), inset 0 1px 0 rgba(255,255,255,.34);
+    box-shadow: none;
     transform: rotate(-8deg);
   }
   .mobile-nav .mobile-nav-secondary::before {
     content: "";
     position: absolute;
-    width: 22px;
-    height: 10px;
-    right: 24px;
-    bottom: -4px;
+    inset: 6px 2px;
+    border: 1px solid rgba(235, 200, 255, .38);
+    border-radius: 65% 48% 62% 42%;
+    background: var(--cya-metal-control);
+    box-shadow: 0 8px 22px rgba(105, 22, 176, .38), inset 0 1px 0 rgba(255,255,255,.34);
+    pointer-events: none;
+  }
+  .mobile-nav .mobile-nav-secondary::after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 9px;
+    right: 40px;
+    bottom: 3px;
     border-bottom: 3px solid rgba(173, 73, 245, .72);
     border-radius: 0 0 0 100%;
     transform: rotate(7deg);
     pointer-events: none;
   }
-  .mobile-nav .mobile-nav-secondary svg { width: 15px; height: 15px; transition: transform var(--cya-motion-base) var(--cya-ease-standard); }
-  .mobile-nav .mobile-nav-secondary.open { background: linear-gradient(120deg, #6d17bb, #bd54ff 55%, #6217ae); }
+  .mobile-nav .mobile-nav-secondary svg { position: relative; z-index: 2; width: 15px; height: 15px; transition: transform var(--cya-motion-base) var(--cya-ease-standard); }
+  .mobile-nav .mobile-nav-secondary.open::before { background: linear-gradient(120deg, #6d17bb, #bd54ff 55%, #6217ae); }
   .mobile-nav .mobile-nav-secondary.open svg { transform: rotate(180deg); }
+  .module-tabs button { min-height: 46px; }
   .mobile-class-sheet {
     right: 10px;
     bottom: calc(98px + env(safe-area-inset-bottom));
