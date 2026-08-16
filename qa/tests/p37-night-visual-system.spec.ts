@@ -238,7 +238,7 @@ test.describe("P37 CYA night visual system", () => {
       for (const route of routes) {
         await page.goto(route.path, { waitUntil: "domcontentloaded" });
         await expect(page.getByRole("heading", { name: route.heading, exact: true })).toBeVisible({ timeout: 20_000 });
-        await expect(page.getByText(/Comprobando permisos|Cargando evolución/i)).toBeHidden({ timeout: 20_000 });
+        await expect(page.getByText(/Comprobando permisos|Cargando evolución|Calculando progreso/i)).toBeHidden({ timeout: 20_000 });
         await assertDarkAndContained(page, route.heading + " " + viewport.name, false);
         await attachScreen(page, testInfo, "p37-" + viewport.name + "-" + route.name);
       }
