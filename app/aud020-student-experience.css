@@ -183,7 +183,7 @@ body:has(nav[aria-label="Portal CYA"]) nav[aria-label="Portal CYA"] button:activ
   gap: 8px !important;
   padding: 10px 14px !important;
   overflow: visible !important;
-  background: rgba(247,246,250,.96) !important;
+  background: rgba(14,16,22,.97) !important;
   backdrop-filter: blur(14px);
 }
 
@@ -207,7 +207,7 @@ body:has(nav[aria-label="Portal CYA"]) nav[aria-label="Portal CYA"] button:activ
   top: 156px;
   z-index: 10;
   padding: 0 14px 10px !important;
-  background: rgba(247,246,250,.96) !important;
+  background: rgba(14,16,22,.97) !important;
   backdrop-filter: blur(14px);
 }
 

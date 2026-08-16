@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
 
 type QaRole = "teacher" | "student" | "admin";
 
@@ -65,6 +65,19 @@ async function assertDarkAndContained(page: Page, surface: string, requireLogo =
   expect(audit.overflow, surface + ": horizontal overflow").toBeLessThanOrEqual(2);
   expect(audit.bodyLuminance, surface + ": canvas must stay dark (" + audit.bodyColor + ")").toBeLessThan(.08);
   if (requireLogo) expect(audit.logoLoaded, surface + ": CYA logo must be loaded").toBe(true);
+}
+
+async function assertDarkSurface(locator: Locator, surface: string) {
+  const audit = await locator.evaluate((element) => {
+    const rgb = getComputedStyle(element).backgroundColor.match(/\d+(?:\.\d+)?/g)?.slice(0, 3).map(Number) ?? [255, 255, 255];
+    const [r, g, b] = rgb.map((value) => value / 255);
+    const convert = (value: number) => value <= .03928 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+    return {
+      color: getComputedStyle(element).backgroundColor,
+      luminance: .2126 * convert(r) + .7152 * convert(g) + .0722 * convert(b),
+    };
+  });
+  expect(audit.luminance, surface + ": component surface must stay dark (" + audit.color + ")").toBeLessThan(.08);
 }
 
 test.describe("P37 CYA night visual system", () => {
@@ -156,6 +169,7 @@ test.describe("P37 CYA night visual system", () => {
         const detail = page.getByRole("dialog").filter({ hasText: "QA · Alumno" });
         await expect(detail).toBeVisible();
         await expect(detail.getByText("Cargando ficha completa…", { exact: true })).toBeHidden({ timeout: 20_000 });
+        await assertDarkSurface(detail.getByRole("navigation", { name: "Áreas de la ficha del alumno" }), "Navegación del perfil " + viewport.name);
         await assertDarkAndContained(page, "Perfil alumno " + viewport.name);
         await attachScreen(page, testInfo, "p37-" + viewport.name + "-perfil-alumno");
         const close = detail.getByRole("button", { name: /Cerrar|Volver/i }).first();
