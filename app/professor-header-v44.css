@@ -1,0 +1,172 @@
+/* UX-01 · Professor mobile header, collision-safe.
+   Loaded after historical alignment layers so this file is the single owner of
+   professor header geometry on mobile. Student Portal is intentionally untouched.
+
+   Canonical variants are inferred from the shell view:
+   - root:       home
+   - detail:     any non-home/non-live staff surface
+   - immersive: live class workspace
+*/
+
+@media (max-width: 900px) {
+  .shell .mobile-head {
+    --cya-header-actions-width: 90px;
+    --cya-header-edge: 10px;
+    --cya-header-clearance: 12px;
+    position: sticky !important;
+    top: 0 !important;
+    display: block !important;
+    min-height: calc(62px + env(safe-area-inset-top)) !important;
+    padding: env(safe-area-inset-top) var(--cya-header-edge) 0 !important;
+    isolation: isolate;
+  }
+
+  .shell[data-view="home"] .mobile-head { --cya-header-variant: root; }
+  .shell:not([data-view="home"]):not([data-view="live"]) .mobile-head { --cya-header-variant: detail; }
+  .shell[data-view="live"] .mobile-head {
+    --cya-header-variant: immersive;
+    background: rgba(8, 9, 13, .94);
+  }
+
+  /* Physical edge rails. They do not participate in the brand layout, so
+     historical grid sizing can no longer pull the visible controls inward. */
+  .shell .mobile-head-back,
+  .shell .mobile-head-actions {
+    position: absolute !important;
+    z-index: 3 !important;
+    top: calc(env(safe-area-inset-top) + 31px) !important;
+    margin: 0 !important;
+    transform: translateY(-50%) !important;
+  }
+
+  .shell .mobile-head-back {
+    left: var(--cya-header-edge) !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+  }
+
+  .shell .mobile-head-actions {
+    right: var(--cya-header-edge) !important;
+    left: auto !important;
+    width: var(--cya-header-actions-width) !important;
+    min-width: var(--cya-header-actions-width) !important;
+    max-width: var(--cya-header-actions-width) !important;
+    height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 2px !important;
+  }
+
+  .shell .mobile-head-actions > .notification-trigger,
+  .shell .mobile-head-actions > [data-cya-account-menu],
+  .shell .mobile-head-actions > [data-cya-account-menu] > button {
+    position: relative !important;
+    inset: auto !important;
+    margin: 0 !important;
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    transform: none !important;
+  }
+
+  .shell .mobile-head-brand {
+    position: absolute !important;
+    z-index: 2 !important;
+    top: calc(env(safe-area-inset-top) + 31px) !important;
+    left: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    width: max-content !important;
+    max-width: calc(
+      100% - (2 * (var(--cya-header-actions-width) + var(--cya-header-edge) + var(--cya-header-clearance)))
+    ) !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    transform: translate(-50%, -50%) !important;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .shell .mobile-head-brand .brand {
+    flex: 0 0 auto;
+    gap: 0 !important;
+  }
+  .shell .mobile-head-brand .brand-wordmark {
+    display: none !important;
+  }
+  .shell .mobile-head-brand .brand-logo {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    flex: 0 0 34px !important;
+  }
+  .shell .mobile-head-brand .brand-logo img {
+    top: -16px !important;
+    left: -15px !important;
+    width: 64px !important;
+    height: 64px !important;
+  }
+  .shell .mobile-owner-name {
+    display: block !important;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--cya-text) !important;
+    font-size: 13px !important;
+    font-weight: 760 !important;
+    letter-spacing: -.025em;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  .shell .mobile-back {
+    position: relative !important;
+    inset: auto !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+}
+
+@media (max-width: 350px) {
+  .shell .mobile-head {
+    --cya-header-edge: 8px;
+    --cya-header-clearance: 10px;
+  }
+  .shell .mobile-head-brand {
+    gap: 3px !important;
+  }
+  .shell .mobile-head-brand .brand-logo {
+    width: 23px !important;
+    min-width: 23px !important;
+    height: 24px !important;
+    min-height: 24px !important;
+    flex-basis: 23px !important;
+  }
+  .shell .mobile-head-brand .brand-logo img {
+    top: -18px !important;
+    left: -20px !important;
+    width: 64px !important;
+    height: 64px !important;
+  }
+  .shell .mobile-owner-name {
+    font-size: 10.5px !important;
+    font-weight: 780 !important;
+    letter-spacing: -.045em;
+  }
+}
