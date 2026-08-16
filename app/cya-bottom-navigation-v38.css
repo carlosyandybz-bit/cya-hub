@@ -1,5 +1,5 @@
-/* v40 · Integrated dual-flush navigation control.
-   Concentric dual push-button language with corrected grid positioning. */
+/* v41 · Integrated dual-flush navigation control.
+   Concentric dual push-button language with corrected student bar anchoring. */
 
 @media (max-width: 900px) {
   .mobile-nav,
@@ -38,18 +38,18 @@
   .mobile-nav button.primary.active { border-color:rgba(203,126,255,.66) !important;box-shadow:0 0 0 3px rgba(8,8,13,.94),0 0 0 4px rgba(187,83,255,.35),0 0 18px rgba(157,47,235,.24),0 9px 22px rgba(0,0,0,.46),inset 0 1px 0 rgba(255,255,255,.18) !important; }
   .mobile-nav button.primary:active { transform:translateY(-8px) scale(.97) !important; }
 
-  /* Professor: reveal segment must be anchored to the central grid cell, not the whole nav. */
   .mobile-nav .mobile-nav-secondary {
-    position: absolute !important;
-    z-index: 6 !important;
-    top: -17px !important;
-    left: 50% !important;
-    width: 42px !important;
-    height: 22px !important;
-    min-height: 22px !important;
-    padding: 0 !important;
-    transform: translateX(-50%) !important;
-    display:grid !important;place-items:center !important;
+    position:absolute !important;
+    z-index:6 !important;
+    top:-17px !important;
+    left:50% !important;
+    width:42px !important;
+    height:22px !important;
+    min-height:22px !important;
+    padding:0 !important;
+    transform:translateX(-50%) !important;
+    display:grid !important;
+    place-items:center !important;
     border:1px solid rgba(212,181,235,.48) !important;
     border-radius:22px 22px 11px 11px !important;
     background:linear-gradient(180deg,rgba(62,48,76,.99),rgba(29,25,37,.99)) !important;
@@ -61,15 +61,22 @@
   .mobile-nav .mobile-nav-secondary.open { background:linear-gradient(180deg,rgba(105,55,139,.99),rgba(45,29,58,.99)) !important;border-color:rgba(207,135,255,.65) !important; }
   .mobile-class-sheet { bottom:calc(92px + env(safe-area-inset-bottom)) !important; }
 
-  /* Student: ensure the formation control occupies the actual third grid column. */
+  /* Student bar: preserve its fixed centered layout. */
+  nav[aria-label="Portal CYA"] {
+    left:50% !important;
+    right:auto !important;
+    width:min(calc(100% - 14px),760px) !important;
+    transform:translateX(-50%) !important;
+  }
+
   nav[aria-label="Portal CYA"] > div:nth-child(3) {
-    position: relative !important;
-    z-index: 4;
-    grid-column: 3 !important;
-    width: 100% !important;
-    height: 64px !important;
-    justify-self: stretch !important;
-    overflow: visible !important;
+    position:relative !important;
+    z-index:4;
+    grid-column:3 !important;
+    width:100% !important;
+    height:64px !important;
+    justify-self:stretch !important;
+    overflow:visible !important;
   }
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:first-child {
     position:absolute !important;
@@ -104,7 +111,8 @@
     min-height:22px !important;
     padding:0 !important;
     transform:translateX(-50%) !important;
-    display:grid !important;place-items:center !important;
+    display:grid !important;
+    place-items:center !important;
     border:1px solid rgba(212,181,235,.48) !important;
     border-radius:22px 22px 11px 11px !important;
     background:linear-gradient(180deg,rgba(62,48,76,.99),rgba(29,25,37,.99)) !important;
@@ -117,7 +125,8 @@
 }
 
 @media (max-width:560px) {
-  .mobile-nav,nav[aria-label="Portal CYA"] { right:7px !important;left:7px !important; }
+  .mobile-nav { right:7px !important;left:7px !important; }
+  nav[aria-label="Portal CYA"] { left:50% !important;right:auto !important;width:calc(100% - 14px) !important;transform:translateX(-50%) !important; }
 }
 
 @media (prefers-reduced-motion:reduce) {
