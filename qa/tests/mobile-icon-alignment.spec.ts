@@ -17,11 +17,6 @@ async function loginTeacher(page: Page, testInfo: TestInfo) {
   });
 }
 
-const center = (rect: DOMRect) => ({
-  x: rect.left + rect.width / 2,
-  y: rect.top + rect.height / 2,
-});
-
 test("mobile header and professor navigation icons are geometrically centered", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 430, height: 932 });
   await loginTeacher(page, testInfo);
@@ -38,13 +33,20 @@ test("mobile header and professor navigation icons are geometrically centered", 
       return { dx: c.x - p.x, dy: c.y - p.y };
     };
 
+    const isVisible = (element: HTMLElement) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    };
+
     const header = document.querySelector<HTMLElement>(".mobile-head");
     const headerBrand = document.querySelector<HTMLElement>(".mobile-head-brand");
     const nav = document.querySelector<HTMLElement>(".mobile-nav");
     const primary = document.querySelector<HTMLElement>(".mobile-nav button.primary");
     const secondary = document.querySelector<HTMLElement>(".mobile-nav .mobile-nav-secondary");
 
-    const iconOffsets = Array.from(document.querySelectorAll<HTMLElement>(".mobile-head button:visible, .mobile-nav button:visible"))
+    const iconOffsets = Array.from(document.querySelectorAll<HTMLElement>(".mobile-head button, .mobile-nav button"))
+      .filter(isVisible)
       .map((button) => {
         const icon = button.querySelector("svg");
         if (!icon) return null;
@@ -54,9 +56,9 @@ test("mobile header and professor navigation icons are geometrically centered", 
           ...relativeCenter(icon, button),
         };
       })
-      .filter(Boolean);
+      .filter((value): value is NonNullable<typeof value> => Boolean(value));
 
-    const result = {
+    return {
       headerBrandVsHeader: header && headerBrand ? relativeCenter(headerBrand, header) : null,
       primaryVsNav: nav && primary ? { dx: centerOf(primary).x - centerOf(nav).x } : null,
       secondaryVsPrimary: primary && secondary ? {
@@ -66,8 +68,6 @@ test("mobile header and professor navigation icons are geometrically centered", 
       secondaryIconVsButton: secondary?.querySelector("svg") ? relativeCenter(secondary.querySelector("svg")!, secondary) : null,
       iconOffsets,
     };
-
-    return result;
   });
 
   console.log("CYA_MOBILE_ICON_ALIGNMENT", JSON.stringify(geometry));
@@ -89,7 +89,7 @@ test("mobile header and professor navigation icons are geometrically centered", 
     expect(Math.abs(geometry.secondaryIconVsButton.dy), "secondary arrow/logo must be vertically centered").toBeLessThanOrEqual(2);
   }
 
-  for (const offset of geometry.iconOffsets as Array<{ dx: number; dy: number; className: string }>) {
+  for (const offset of geometry.iconOffsets) {
     expect(Math.abs(offset.dx), `icon must be horizontally centered in ${offset.className}`).toBeLessThanOrEqual(2);
     expect(Math.abs(offset.dy), `icon must be vertically centered in ${offset.className}`).toBeLessThanOrEqual(2);
   }
