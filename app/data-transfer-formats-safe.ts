@@ -60,10 +60,70 @@ function withTeachingSpreadsheetSemantics(domain: string, mapped: Record<string,
   return result;
 }
 
+function integerish(value: unknown): number | null | undefined {
+  if (value === null || value === undefined || value === "") return undefined;
+  const numeric = Number(String(value).replace(",", "."));
+  return Number.isFinite(numeric) ? Math.round(numeric) : null;
+}
+
+function withPeopleSpreadsheetSemantics(mapped: Record<string, unknown>, raw: Record<string, unknown>) {
+  const result = { ...mapped };
+  const headers = Object.fromEntries(Object.entries(raw).map(([key, value]) => [normalizedHeader(key), value]));
+  const copy = (target: string, aliases: string[]) => {
+    const value = aliases.map((alias) => headers[alias]).find((candidate) => candidate !== undefined && candidate !== "");
+    if (value !== undefined && (result[target] === undefined || result[target] === "")) result[target] = value;
+  };
+
+  copy("city", ["ciudad", "localidad"]);
+  copy("referred_by", ["referido por", "recomendada por", "recomendado por", "quien lo recomendo", "quien la recomendo"]);
+  copy("dance_start_label", ["inicio", "inicio baile", "empezo a bailar", "ano inicio", "año inicio"]);
+  copy("dance_end_label", ["fin", "fin baile", "dejo de bailar", "ano fin", "año fin"]);
+
+  const booleans: Array<[string, string[]]> = [
+    ["has_partner", ["pareja", "tiene pareja", "con pareja"]],
+    ["continues_dancing", ["sigue bailando", "continua bailando", "continúa bailando"]],
+    ["bought_bonus", ["compro bono", "compró bono", "ha comprado bono", "bono comprado"]],
+    ["wedding", ["boda", "es boda"]],
+    ["tourist", ["turista", "es turista"]],
+  ];
+  for (const [target, aliases] of booleans) {
+    const rawValue = aliases.map((alias) => headers[alias]).find((candidate) => candidate !== undefined && candidate !== "");
+    if (rawValue !== undefined) {
+      const parsed = boolish(rawValue);
+      result[target] = parsed === null ? String(rawValue) : parsed;
+    }
+  }
+
+  const numericFields: Array<[string, string[]]> = [
+    ["historical_classes", ["clases", "clases historicas", "clases históricas", "numero clases", "n clases"]],
+    ["historical_consumed_classes", ["clases consumidas", "consumidas", "clases gastadas"]],
+  ];
+  for (const [target, aliases] of numericFields) {
+    const rawValue = aliases.map((alias) => headers[alias]).find((candidate) => candidate !== undefined && candidate !== "");
+    if (rawValue !== undefined) {
+      const parsed = integerish(rawValue);
+      result[target] = parsed === null ? String(rawValue) : parsed;
+    }
+  }
+
+  const paidRaw = ["total pagado", "importe total", "pagado", "total abonado"].map((alias) => headers[alias]).find((candidate) => candidate !== undefined && candidate !== "");
+  if (paidRaw !== undefined) {
+    const amount = Number(String(paidRaw).replace(/[^0-9,.-]/g, "").replace(",", "."));
+    result.historical_total_paid_cents = Number.isFinite(amount) ? Math.round(amount * 100) : String(paidRaw);
+  }
+
+  return result;
+}
+
 export function normalizeImportRows(domain: string, rows: Array<Record<string, unknown>>) {
   const normalized = normalizeBaseImportRows(domain, rows);
-  if (!["correction", "explanation", "exercise", "sequence", "teaching"].includes(domain)) return normalized;
-  return normalized.map((mapped, index) => withTeachingSpreadsheetSemantics(domain, mapped, rows[index] ?? {}));
+  if (["people", "person", "student", "students"].includes(domain)) {
+    return normalized.map((mapped, index) => withPeopleSpreadsheetSemantics(mapped, rows[index] ?? {}));
+  }
+  if (["correction", "explanation", "exercise", "sequence", "teaching"].includes(domain)) {
+    return normalized.map((mapped, index) => withTeachingSpreadsheetSemantics(domain, mapped, rows[index] ?? {}));
+  }
+  return normalized;
 }
 
 function withExactExcelRows(bundle: CyaDataBundle): CyaDataBundle {
