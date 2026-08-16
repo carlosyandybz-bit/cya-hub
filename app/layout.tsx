@@ -26,6 +26,7 @@ import "./p36-admin-teaching.css";
 import "./cya-detail-system-v2.css";
 import "./cya-bottom-navigation-v38.css";
 import "./mobile-alignment-fix-v43.css";
+import "./professor-header-v44.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
