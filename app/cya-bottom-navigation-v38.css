@@ -76,8 +76,22 @@
     box-shadow:0 0 0 2px rgba(9,9,14,.97),0 3px 7px rgba(0,0,0,.27),inset 0 1px 0 rgba(255,255,255,.15) !important;
   }
   .mobile-nav .mobile-nav-secondary > span { position:absolute !important;width:1px !important;height:1px !important;margin:-1px !important;overflow:hidden !important;clip:rect(0,0,0,0) !important; }
-  .mobile-nav .mobile-nav-secondary svg { width:13px !important;height:13px !important;padding:0 !important;background:transparent !important;box-shadow:none !important;transition:transform .16s ease; }
+  .mobile-nav .mobile-nav-secondary svg {
+    position:absolute !important;
+    top:50% !important;
+    left:50% !important;
+    width:13px !important;
+    height:13px !important;
+    margin:0 !important;
+    padding:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    transform:translate(-50%,-50%) !important;
+    transform-origin:center !important;
+    transition:transform .16s ease;
+  }
   .mobile-nav .mobile-nav-secondary.open { background:linear-gradient(180deg,rgba(94,57,119,.99),rgba(42,30,52,.99)) !important;border-color:rgba(207,135,255,.58) !important; }
+  .mobile-nav .mobile-nav-secondary.open svg { transform:translate(-50%,-50%) rotate(180deg) !important; }
   .mobile-class-sheet { bottom:calc(90px + env(safe-area-inset-bottom)) !important; }
 
   /* STUDENT · fixed centered bar */
@@ -128,7 +142,17 @@
     box-shadow:0 0 0 2px rgba(9,9,14,.97),0 3px 7px rgba(0,0,0,.27),inset 0 1px 0 rgba(255,255,255,.15) !important;
   }
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2)[aria-expanded="true"] { background:linear-gradient(180deg,rgba(94,57,119,.99),rgba(42,30,52,.99)) !important;border-color:rgba(207,135,255,.58) !important; }
-  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2) svg { width:13px !important;height:13px !important; }
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2) svg {
+    position:absolute !important;
+    top:50% !important;
+    left:50% !important;
+    width:13px !important;
+    height:13px !important;
+    margin:0 !important;
+    transform:translate(-50%,-50%) !important;
+    transform-origin:center !important;
+  }
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2)[aria-expanded="true"] svg { transform:translate(-50%,-50%) rotate(180deg) !important; }
   div[role="menu"][aria-label="Apartados de Mi formación"] { bottom:calc(90px + env(safe-area-inset-bottom)) !important; }
 }
 
