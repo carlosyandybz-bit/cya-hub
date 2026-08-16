@@ -115,6 +115,18 @@ type StudentProfile = {
   goals: string | null;
   teacher_notes: string | null;
   health_notes?: string | null;
+  city?: string | null;
+  has_partner?: boolean | null;
+  continues_dancing?: boolean | null;
+  bought_bonus?: boolean | null;
+  wedding?: boolean | null;
+  tourist?: boolean | null;
+  referred_by?: string | null;
+  dance_start_label?: string | null;
+  dance_end_label?: string | null;
+  historical_classes?: number | null;
+  historical_consumed_classes?: number | null;
+  historical_total_paid_cents?: number | null;
   active: boolean;
 };
 type DanceProfile = {
@@ -275,6 +287,7 @@ export function StudentMasterDetail({
   const [resolutionNotes, setResolutionNotes] = useState<Record<number, string>>({});
   const [financialBusy, setFinancialBusy] = useState("");
   const [financialNotice, setFinancialNotice] = useState("");
+  const [consumedDrafts, setConsumedDrafts] = useState<Record<number, string>>({});
   const [financialRefresh, setFinancialRefresh] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -286,7 +299,7 @@ export function StudentMasterDetail({
       setLoading(true);
       setError("");
       const [profileResult, danceResult, evaluationResult, activityResult] = await Promise.all([
-        client.from("student_profiles").select("person_id,student_since,goals,teacher_notes,health_notes,active").eq("person_id", student.id).maybeSingle(),
+        client.from("student_profiles").select("person_id,student_since,goals,teacher_notes,health_notes,city,has_partner,continues_dancing,bought_bonus,wedding,tourist,referred_by,dance_start_label,dance_end_label,historical_classes,historical_consumed_classes,historical_total_paid_cents,active").eq("person_id", student.id).maybeSingle(),
         client.from("student_dance_profiles").select("id,style_term_id,role_term_id,level_term_id,is_primary,active").eq("person_id", student.id).eq("active", true).order("is_primary", { ascending: false }),
         client.from("student_evaluations").select("id,session_id,person_id,class_id,style_term_id,role_term_id,level_term_id,aptitude_term_id,score,evaluation_kind,note,created_at").eq("person_id", student.id).order("created_at", { ascending: false }),
         client.from("crm_activities").select("id,activity_type,summary,from_stage,to_stage,occurred_at").eq("person_id", student.id).order("occurred_at", { ascending: false }).limit(30),
@@ -429,6 +442,30 @@ export function StudentMasterDetail({
     setFinancialBusy("");
   }
 
+  async function adjustGrantConsumption(grant: CreditItem, consumedMinutes: number) {
+    if (!Number.isInteger(consumedMinutes) || consumedMinutes < 0 || consumedMinutes > grant.total_minutes) {
+      setError(`El consumo debe estar entre 0 y ${grant.total_minutes} minutos.`);
+      return;
+    }
+    setFinancialBusy(`adjust-${grant.id}`);
+    setFinancialNotice("");
+    setError("");
+    const result = await client.rpc("set_credit_grant_consumed_minutes", {
+      p_grant_id: grant.id,
+      p_consumed_minutes: consumedMinutes,
+      p_note: `Ajuste desde la ficha de ${student.display_name}.`,
+    });
+    if (result.error) setError(result.error.message);
+    else {
+      const remaining = Number((result.data as { remaining_minutes?: number } | null)?.remaining_minutes ?? (grant.total_minutes - consumedMinutes));
+      setConsumedDrafts((current) => ({ ...current, [grant.id]: String(consumedMinutes) }));
+      setFinancialNotice(`Consumo actualizado: ${minutesLabel(consumedMinutes)} consumidos · ${minutesLabel(remaining)} disponibles.`);
+      setFinancialRefresh((value) => value + 1);
+      await refresh();
+    }
+    setFinancialBusy("");
+  }
+
   const evaluationScale=terms.filter((term) => term.taxonomy==='evaluation_scale').map((term) => ({term,score:Number(term.metadata?.score)})).filter(({score}) => [0,25,50,75,100].includes(score)).sort((a,b)=>a.score-b.score);
 
   function renderSummary() {
@@ -527,7 +564,22 @@ export function StudentMasterDetail({
 
       <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Bonos</span><h3>Saldo e historial</h3></div><button onClick={addCredit}>Añadir bono</button></div>
         <div className={styles.metrics}><article><WalletCards /><span>Saldo en bonos</span><strong>{minutesLabel(availableBalance)}</strong></article><article><AlertTriangle /><span>Pendiente</span><strong>{minutesLabel(pendingDebt)}</strong></article><article><WalletCards /><span>Saldo neto</span><strong>{minutesLabel(balance)}</strong></article></div>
-        {ownCredits.length ? <div className={styles.creditGrid}>{ownCredits.map((item) => { const itemBalance = balanceFor(item); return <article key={item.id} className={item.payment_status === "pending" ? styles.pendingCredit : ""}><div><span>{dateLabel(item.purchased_at, false)}</span><strong>{item.label || (item.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong></div><b>{minutesLabel(itemBalance)}</b><small>de {minutesLabel(item.total_minutes)} · {euros(item.price_cents)} · {item.payment_status === "paid" ? "Pagado" : item.payment_status === "pending" ? "Pago pendiente" : "Reembolsado"}</small></article>; })}</div> : <div className={styles.empty}><WalletCards /><span>No hay bonos registrados.</span></div>}
+        {ownCredits.length ? <div className={styles.creditGrid}>{ownCredits.map((item) => {
+          const itemBalance = balanceFor(item);
+          const consumed = Math.max(0, item.total_minutes - itemBalance);
+          const draft = consumedDrafts[item.id] ?? String(consumed);
+          const quick = [60, 120, 180].filter((minutes) => minutes <= item.total_minutes);
+          return <article key={item.id} className={item.payment_status === "pending" ? styles.pendingCredit : ""}>
+            <div><span>{dateLabel(item.purchased_at, false)}</span><strong>{item.label || (item.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong></div>
+            <b>{minutesLabel(itemBalance)} disponibles</b>
+            <small>{minutesLabel(consumed)} consumidos de {minutesLabel(item.total_minutes)} · {euros(item.price_cents)} · {item.payment_status === "paid" ? "Pagado" : item.payment_status === "pending" ? "Pago pendiente" : "Reembolsado"}</small>
+            <div className="fields-2">
+              <label className="field"><span>Minutos consumidos</span><input type="number" min={0} max={item.total_minutes} step={15} value={draft} onChange={(event) => setConsumedDrafts((current) => ({ ...current, [item.id]: event.target.value }))} /></label>
+              <div className="field"><span>Acciones rápidas</span><div className="actions">{quick.map((minutes) => <button key={minutes} type="button" className="btn ghost" disabled={financialBusy === `adjust-${item.id}`} onClick={() => void adjustGrantConsumption(item, minutes)}>{minutes / 60} h</button>)}<button type="button" className="btn ghost" disabled={financialBusy === `adjust-${item.id}`} onClick={() => void adjustGrantConsumption(item, item.total_minutes)}>Todo consumido</button></div></div>
+            </div>
+            <button type="button" className="btn" disabled={financialBusy === `adjust-${item.id}`} onClick={() => void adjustGrantConsumption(item, Number(draft))}>{financialBusy === `adjust-${item.id}` ? "Guardando…" : "Guardar consumo"}</button>
+          </article>;
+        })}</div> : <div className={styles.empty}><WalletCards /><span>No hay bonos registrados.</span></div>}
       </section>
     </div>;
   }
@@ -536,6 +588,7 @@ export function StudentMasterDetail({
     return <div className={styles.dataGrid}>
       <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Identidad</span><h3>Datos principales</h3></div><button onClick={() => setIdentityEditorOpen(true)}><Pencil size={15}/> Editar</button></div><div className={styles.readGrid}><div><Phone /><span>Teléfono</span><strong>{student.phone || "Sin indicar"}</strong></div><div><Mail /><span>Email</span><strong>{student.email || "Sin indicar"}</strong></div><div><MapPin /><span>País</span><strong>{countryName(student.country_code)}</strong></div><div><CircleUserRound /><span>Portal</span><strong>{student.auth_user_id ? "Registrado" : "Provisional"}</strong></div><div><CalendarDays /><span>Alumno desde</span><strong>{dateLabel(profile?.student_since ?? null, false)}</strong></div><div><CheckCircle2 /><span>Estado</span><strong>{student.active && profile?.active !== false ? "Activo" : "Inactivo"}</strong></div></div></section>
       <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Baile</span><h3>Contextos guardados</h3></div></div>{danceProfiles.length ? <div className={styles.danceGrid}>{danceProfiles.map((item) => <div key={item.id} className={item.is_primary ? styles.primaryDance : ""}><strong>{termLabel(item.style_term_id, terms)}</strong><span>{termLabel(item.role_term_id, terms)} · {termLabel(item.level_term_id, terms)}</span>{item.is_primary ? <small>Principal</small> : null}</div>)}</div> : <div className={styles.empty}><GraduationCap /><span>Sin contexto de baile.</span></div>}</section>
+      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Ficha del alumno</span><h3>Datos personales e históricos</h3></div></div><div className={styles.readGrid}><div><MapPin /><span>Ciudad</span><strong>{profile?.city || "Sin indicar"}</strong></div><div><CircleUserRound /><span>Tiene pareja</span><strong>{profile?.has_partner === null || profile?.has_partner === undefined ? "Sin indicar" : profile.has_partner ? "Sí" : "No"}</strong></div><div><TrendingUp /><span>Sigue bailando</span><strong>{profile?.continues_dancing === null || profile?.continues_dancing === undefined ? "Sin indicar" : profile.continues_dancing ? "Sí" : "No"}</strong></div><div><WalletCards /><span>Compró bono</span><strong>{profile?.bought_bonus === null || profile?.bought_bonus === undefined ? "Sin indicar" : profile.bought_bonus ? "Sí" : "No"}</strong></div><div><CalendarDays /><span>Inicio</span><strong>{profile?.dance_start_label || (profile?.student_since ? dateLabel(profile.student_since, false) : "Sin indicar")}</strong></div><div><CalendarDays /><span>Fin</span><strong>{profile?.dance_end_label || "Sin indicar"}</strong></div><div><CalendarDays /><span>Clases históricas</span><strong>{profile?.historical_classes ?? 0}</strong></div><div><CheckCircle2 /><span>Clases consumidas</span><strong>{profile?.historical_consumed_classes ?? 0}</strong></div><div><WalletCards /><span>Total histórico pagado</span><strong>{euros(profile?.historical_total_paid_cents)}</strong></div><div><CheckCircle2 /><span>Boda</span><strong>{profile?.wedding === null || profile?.wedding === undefined ? "Sin indicar" : profile.wedding ? "Sí" : "No"}</strong></div><div><CheckCircle2 /><span>Turista</span><strong>{profile?.tourist === null || profile?.tourist === undefined ? "Sin indicar" : profile.tourist ? "Sí" : "No"}</strong></div><div><Target /><span>Recomendado por</span><strong>{profile?.referred_by || "Sin indicar"}</strong></div></div></section>
       <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Objetivos</span><h3>Información pedagógica</h3></div></div><div className={styles.longText}><strong>Objetivos</strong><p>{profile?.goals || "Sin objetivos guardados."}</p><strong>Notas internas</strong><p>{profile?.teacher_notes || "Sin notas internas."}</p><strong>Salud / a tener en cuenta</strong><p>{profile?.health_notes || "Sin indicaciones."}</p></div></section>
     </div>;
   }

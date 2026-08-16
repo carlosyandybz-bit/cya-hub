@@ -2,7 +2,7 @@
 
 import { CheckCircle2, ClipboardList, DatabaseBackup, Download, FileInput, ShieldCheck, Upload } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { AdminDataReset } from "./admin-data-reset";
 import { downloadBundle, normalizeImportRows, parseTransferFile, type CyaDataBundle, type TransferFormat } from "./data-transfer-formats-safe";
 
@@ -78,6 +78,12 @@ export function AdminDataTransfer({
   const [importPreview, setImportPreview] = useState<TransferJob | null>(null);
   const [restoreConfirmation, setRestoreConfirmation] = useState("");
   const [busy, setBusy] = useState("");
+
+  useEffect(() => {
+    if (importPreview) return;
+    const pending = transfers.find((job) => job.direction === "import" && job.status === "validated");
+    if (pending) setImportPreview(pending);
+  }, [transfers, importPreview]);
 
   async function exportDomain(domain: string) {
     setBusy(`export-${domain}`);
@@ -200,7 +206,7 @@ export function AdminDataTransfer({
       </article>
     </div>
 
-    {transfers.length ? <article className="card pad"><div className="card-head"><h2>Historial de transferencias</h2><span>{transfers.length}</span></div><div className="transfer-list">{transfers.map((job) => <div key={job.id}><span className={`badge ${job.status === "completed" ? "portal" : ""}`}>{job.status === "validated" ? "Validada" : job.status === "completed" ? "Completada" : job.status}</span><strong>{job.file_name || job.domain}</strong><small>{job.format.toUpperCase()} · {new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(job.created_at))}</small></div>)}</div></article> : null}
+    {transfers.length ? <article className="card pad"><div className="card-head"><h2>Historial de transferencias</h2><span>{transfers.length}</span></div><div className="transfer-list">{transfers.map((job) => <div key={job.id}><span className={`badge ${job.status === "completed" ? "portal" : ""}`}>{job.status === "validated" ? "Validada" : job.status === "completed" ? "Completada" : job.status}</span><strong>{job.file_name || job.domain}</strong><small>{job.format.toUpperCase()} · {new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(job.created_at))}</small>{job.status === "validated" ? <button type="button" className="btn ghost" disabled={Boolean(busy)} onClick={() => { setImportPreview(job); setRestoreConfirmation(""); }}>Continuar importación</button> : null}</div>)}</div></article> : null}
 
     <AdminDataReset client={client} refresh={refresh} notify={notify} />
   </section>;
