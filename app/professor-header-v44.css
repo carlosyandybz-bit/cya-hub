@@ -66,8 +66,8 @@
     min-height: var(--cya-touch, 44px) !important;
   }
 
-  /* Physical-axis brand. The max width is derived from two symmetric rails,
-     therefore the brand can never trespass into either control zone. */
+  /* Physical-axis brand. The width budget subtracts the two rails, physical
+     edge padding and the mandatory visual clearance on both sides. */
   .shell .mobile-head-brand {
     position: absolute !important;
     z-index: 2 !important;
@@ -78,7 +78,7 @@
     justify-content: center !important;
     gap: 5px !important;
     width: max-content !important;
-    max-width: calc(100% - (2 * var(--cya-header-rail)) - (2 * var(--cya-header-clearance))) !important;
+    max-width: calc(100% - (2 * (var(--cya-header-rail) + var(--cya-header-edge) + var(--cya-header-clearance)))) !important;
     margin: 0 !important;
     overflow: hidden !important;
     transform: translate(-50%, -50%) !important;
