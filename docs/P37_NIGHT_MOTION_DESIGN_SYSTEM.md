@@ -170,7 +170,7 @@ Inicio | Alumnado | DAR CLASE | Enseñanza | Marketing
 
 ### Formularios
 
-- Altura mínima 46px; en móvil 44px y texto 16px para evitar zoom de Safari.
+- Altura mínima 46px también en móvil; texto 16px para evitar zoom de Safari.
 - Fondo --cya-surface-interactive.
 - Borde --cya-line-strong.
 - Focus --cya-focus más halo de cuatro píxeles.
