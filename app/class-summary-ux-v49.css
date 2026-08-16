@@ -27,6 +27,25 @@
   line-height: 1.35;
 }
 
+.summary-draft-status-fixed {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  z-index: 120;
+  width: min(calc(100vw - 32px), 460px);
+  min-height: 36px;
+  margin: 0;
+  justify-content: center;
+  text-align: center;
+  transform: translateX(-50%);
+  background: rgba(24, 18, 29, .94);
+  border-color: rgba(205, 146, 243, .3);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .28);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  pointer-events: none;
+}
+
 .final-summary textarea[placeholder="Resumen, recomendaciones o recordatorio visible"] {
   min-height: 126px;
   border-color: rgba(208, 154, 242, .34);
@@ -68,6 +87,11 @@
 }
 
 @media (max-width: 720px) {
+  .summary-draft-status-fixed {
+    top: max(58px, calc(env(safe-area-inset-top) + 48px));
+    width: min(calc(100vw - 24px), 430px);
+  }
+
   .final-summary .workflow-card:has(textarea[placeholder="Resumen, recomendaciones o recordatorio visible"]) .fields-2 {
     grid-template-columns: 1fr !important;
   }
