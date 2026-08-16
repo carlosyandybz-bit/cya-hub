@@ -34,6 +34,7 @@ test("mobile header and professor class controls are geometrically centered", as
     const primary = document.querySelector<HTMLElement>(".mobile-nav button.primary");
     const secondary = document.querySelector<HTMLElement>(".mobile-nav .mobile-nav-secondary");
     const secondaryIcon = secondary?.querySelector("svg") ?? null;
+    const secondaryLabel = secondary?.querySelector("span") ?? null;
     const headerActionIcons = Array.from(document.querySelectorAll<HTMLElement>(".mobile-head button"))
       .map((button) => {
         const icon = button.querySelector("svg");
@@ -41,6 +42,20 @@ test("mobile header and professor class controls are geometrically centered", as
         return { className: button.className, ariaLabel: button.getAttribute("aria-label"), ...relativeCenter(icon, button) };
       })
       .filter((value): value is NonNullable<typeof value> => Boolean(value));
+
+    let secondaryContentVsButton = null as null | { dx: number; labelWidth: number; iconWidth: number };
+    if (secondary && secondaryIcon && secondaryLabel) {
+      const buttonRect = secondary.getBoundingClientRect();
+      const labelRect = secondaryLabel.getBoundingClientRect();
+      const iconRect = secondaryIcon.getBoundingClientRect();
+      const contentLeft = Math.min(labelRect.left, iconRect.left);
+      const contentRight = Math.max(labelRect.right, iconRect.right);
+      secondaryContentVsButton = {
+        dx: (contentLeft + contentRight) / 2 - (buttonRect.left + buttonRect.width / 2),
+        labelWidth: labelRect.width,
+        iconWidth: iconRect.width,
+      };
+    }
 
     return {
       headerBrandVsHeader: header && headerBrand ? relativeCenter(headerBrand, header) : null,
@@ -51,7 +66,7 @@ test("mobile header and professor class controls are geometrically centered", as
         width: centerOf(secondary).width,
         height: centerOf(secondary).height,
       } : null,
-      secondaryIconVsButton: secondary && secondaryIcon ? relativeCenter(secondaryIcon, secondary) : null,
+      secondaryContentVsButton,
       headerActionIcons,
     };
   });
@@ -66,12 +81,13 @@ test("mobile header and professor class controls are geometrically centered", as
 
   expect(geometry.secondaryVsPrimary).not.toBeNull();
   expect(Math.abs(geometry.secondaryVsPrimary!.dx), "professor disclosure must share Dar clase's X axis").toBeLessThanOrEqual(2);
-  expect(geometry.secondaryVsPrimary!.width).toBeGreaterThanOrEqual(44);
-  expect(geometry.secondaryVsPrimary!.height).toBeGreaterThanOrEqual(44);
+  expect(geometry.secondaryVsPrimary!.width).toBeGreaterThanOrEqual(58);
+  expect(geometry.secondaryVsPrimary!.height).toBeGreaterThanOrEqual(48);
 
-  expect(geometry.secondaryIconVsButton).not.toBeNull();
-  expect(Math.abs(geometry.secondaryIconVsButton!.dx), "professor disclosure arrow must be horizontally centered").toBeLessThanOrEqual(2);
-  expect(Math.abs(geometry.secondaryIconVsButton!.dy), "professor disclosure arrow must be vertically centered in its touch target").toBeLessThanOrEqual(2);
+  expect(geometry.secondaryContentVsButton).not.toBeNull();
+  expect(geometry.secondaryContentVsButton!.labelWidth, "Más must be visibly rendered").toBeGreaterThan(0);
+  expect(geometry.secondaryContentVsButton!.iconWidth, "class disclosure chevron must be visibly rendered").toBeGreaterThan(0);
+  expect(Math.abs(geometry.secondaryContentVsButton!.dx), "Más + chevron group must be horizontally centered").toBeLessThanOrEqual(2);
 
   for (const offset of geometry.headerActionIcons) {
     expect(Math.abs(offset.dx), `header icon must be horizontally centered in ${offset.ariaLabel ?? offset.className}`).toBeLessThanOrEqual(2);
