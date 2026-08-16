@@ -12,7 +12,7 @@ export type ViewportGeometry = {
   documentWidth: number;
   clientWidth: number;
   horizontalOverflowPx: number;
-  clippedInteractives: Array<{ label: string; left: number; right: number; top: number; bottom: number }>;
+  horizontallyClippedInteractives: Array<{ label: string; left: number; right: number; top: number; bottom: number }>;
 };
 
 export async function collectUndersizedTouchTargets(root: Locator, selector = "button,a,input,select,textarea,summary,[role='button']") {
@@ -68,12 +68,11 @@ export async function collectViewportGeometry(page: Page): Promise<ViewportGeome
         .replace(/\s+/g, " ").trim().slice(0, 120);
     };
     const vw = root.clientWidth;
-    const vh = root.clientHeight;
-    const clippedInteractives = Array.from(document.querySelectorAll("button,a,input,select,textarea,summary,[role='button']"))
+    const horizontallyClippedInteractives = Array.from(document.querySelectorAll("button,a,input,select,textarea,summary,[role='button']"))
       .filter(visible)
       .flatMap((element) => {
         const rect = (element as HTMLElement).getBoundingClientRect();
-        const clipped = rect.left < -1 || rect.right > vw + 1 || rect.top < -1 || rect.bottom > vh + 1;
+        const clipped = rect.left < -1 || rect.right > vw + 1;
         if (!clipped) return [];
         return [{ label: labelFor(element), left: Math.round(rect.left), right: Math.round(rect.right), top: Math.round(rect.top), bottom: Math.round(rect.bottom) }];
       })
@@ -81,7 +80,7 @@ export async function collectViewportGeometry(page: Page): Promise<ViewportGeome
     return {
       documentWidth: root.scrollWidth,
       clientWidth: root.clientWidth,
-      clippedInteractives,
+      horizontallyClippedInteractives,
     };
   });
 
@@ -90,7 +89,7 @@ export async function collectViewportGeometry(page: Page): Promise<ViewportGeome
     documentWidth: metrics.documentWidth,
     clientWidth: metrics.clientWidth,
     horizontalOverflowPx: Math.max(0, metrics.documentWidth - metrics.clientWidth),
-    clippedInteractives: metrics.clippedInteractives,
+    horizontallyClippedInteractives: metrics.horizontallyClippedInteractives,
   };
 }
 
