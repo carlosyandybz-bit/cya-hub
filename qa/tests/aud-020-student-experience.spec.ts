@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { collectUndersizedTouchTargets } from "./ux-audit-utils";
 
 type QaRole = "teacher" | "student";
 
@@ -56,11 +57,12 @@ for (const width of [390, 430] as const) {
     expect(metrics.overflow).toBeLessThanOrEqual(1);
     expect(metrics.nowOrder).toBeLessThan(metrics.summaryOrder);
 
-    const undersized = await portalNav.locator("button:visible").evaluateAll((buttons) => buttons.filter((button) => {
-      const rect = button.getBoundingClientRect();
-      return rect.width < 44 || rect.height < 44;
-    }).length);
-    expect(undersized).toBe(0);
+    const undersized = await collectUndersizedTouchTargets(portalNav, "button");
+    await testInfo.attach(`aud020-touch-targets-${width}`, {
+      body: Buffer.from(JSON.stringify(undersized, null, 2)),
+      contentType: "application/json",
+    });
+    expect(undersized, `Portal CYA must have no visible touch target below 44×44 at ${width}px`).toEqual([]);
   });
 }
 
