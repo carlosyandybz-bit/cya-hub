@@ -23,14 +23,8 @@
     isolation: isolate;
   }
 
-  /* Root / detail / immersive keep one geometric contract. Visual differences
-     stay subtle so navigation does not jump between staff surfaces. */
-  .shell[data-view="home"] .mobile-head {
-    --cya-header-variant: root;
-  }
-  .shell:not([data-view="home"]):not([data-view="live"]) .mobile-head {
-    --cya-header-variant: detail;
-  }
+  .shell[data-view="home"] .mobile-head { --cya-header-variant: root; }
+  .shell:not([data-view="home"]):not([data-view="live"]) .mobile-head { --cya-header-variant: detail; }
   .shell[data-view="live"] .mobile-head {
     --cya-header-variant: immersive;
     background: rgba(8, 9, 13, .94);
@@ -58,7 +52,6 @@
     gap: 2px !important;
   }
 
-  /* Every interactive header action owns at least the canonical 44px hit box. */
   .shell .mobile-head-actions > button,
   .shell .mobile-head-actions .icon-btn,
   .shell .mobile-head-actions [data-cya-account-menu] > button {
@@ -66,8 +59,6 @@
     min-height: var(--cya-touch, 44px) !important;
   }
 
-  /* Physical-axis brand. The width budget subtracts the two rails, physical
-     edge padding and the mandatory visual clearance on both sides. */
   .shell .mobile-head-brand {
     position: absolute !important;
     z-index: 2 !important;
@@ -86,8 +77,6 @@
     pointer-events: none;
   }
 
-  /* Mobile uses the artistic signature. The product wordmark remains available
-     in desktop/sidebar contexts, avoiding three competing text labels in 62px. */
   .shell .mobile-head-brand .brand {
     flex: 0 0 auto;
     gap: 0 !important;
@@ -118,8 +107,6 @@
     white-space: nowrap;
   }
 
-  /* The back action occupies the same physical rail even when absent, which
-     preserves the brand axis on root screens. */
   .shell .mobile-back {
     width: 44px !important;
     min-width: 44px !important;
@@ -131,7 +118,7 @@
 @media (max-width: 350px) {
   .shell .mobile-head {
     --cya-header-rail: 88px;
-    --cya-header-clearance: 10px;
+    --cya-header-clearance: 12px;
   }
   .shell .mobile-head-brand .brand-logo {
     width: 28px !important;
