@@ -181,9 +181,11 @@
 
   /* Student legacy neutralization. v38 targets the centre disclosure by DOM
      position and forces 44×44 plus the old 40×20 visual shell. Match that
-     specificity here so the canonical v48 control remains the source of truth. */
+     specificity here so the canonical v48 control remains the source of truth.
+     Student's centre wrapper sits 7px lower than the professor grid, so move the
+     secondary control up by the same amount to preserve the canonical 16px overlap. */
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button[aria-label="Abrir apartados de Mi formación"] {
-    top: -37px !important;
+    top: -44px !important;
     right: auto !important;
     left: 50% !important;
     width: 60px !important;
