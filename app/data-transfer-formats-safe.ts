@@ -11,6 +11,8 @@ import {
 
 export type { CyaDataBundle, ParsedTransferFile, TransferFormat };
 
+const decoder = new TextDecoder("utf-8");
+
 function normalizedHeader(value: string) {
   return value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().replace(/[¿?¡!]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 }
@@ -96,6 +98,160 @@ function recoverExactExcelRows(bundle: CyaDataBundle): CyaDataBundle {
   return { ...bundle, tables, columns, row_counts };
 }
 
+function xmlDocument(bytes: Uint8Array) {
+  const document = new DOMParser().parseFromString(decoder.decode(bytes), "application/xml");
+  if (document.getElementsByTagName("parsererror").length) throw new Error("El archivo Excel contiene XML inválido.");
+  return document;
+}
+
+async function inflateRaw(bytes: Uint8Array) {
+  if (typeof DecompressionStream === "undefined") throw new Error("Este navegador no puede abrir archivos Excel comprimidos.");
+  const input = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  const stream = new Blob([input]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function unzipExcel(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  let endOffset = -1;
+  for (let offset = Math.max(0, bytes.length - 65557); offset <= bytes.length - 22; offset += 1) {
+    if (view.getUint32(offset, true) === 0x06054b50) endOffset = offset;
+  }
+  if (endOffset < 0) throw new Error("El archivo Excel no contiene una estructura ZIP válida.");
+
+  const count = view.getUint16(endOffset + 10, true);
+  let cursor = view.getUint32(endOffset + 16, true);
+  const files = new Map<string, Uint8Array>();
+
+  for (let index = 0; index < count; index += 1) {
+    if (view.getUint32(cursor, true) !== 0x02014b50) throw new Error("El archivo Excel está dañado.");
+    const method = view.getUint16(cursor + 10, true);
+    const compressedSize = view.getUint32(cursor + 20, true);
+    const nameLength = view.getUint16(cursor + 28, true);
+    const extraLength = view.getUint16(cursor + 30, true);
+    const commentLength = view.getUint16(cursor + 32, true);
+    const localOffset = view.getUint32(cursor + 42, true);
+    const rawName = decoder.decode(bytes.slice(cursor + 46, cursor + 46 + nameLength));
+    const name = rawName.replaceAll("\\", "/").replace(/^\/+/, "");
+    if (view.getUint32(localOffset, true) !== 0x04034b50) throw new Error("El archivo Excel contiene una entrada inválida.");
+    const localNameLength = view.getUint16(localOffset + 26, true);
+    const localExtraLength = view.getUint16(localOffset + 28, true);
+    const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+    const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+    const data = method === 0 ? compressed : method === 8 ? await inflateRaw(compressed) : null;
+    if (!data) throw new Error("El archivo Excel usa una compresión no compatible.");
+    files.set(name, data);
+    cursor += 46 + nameLength + extraLength + commentLength;
+  }
+  return files;
+}
+
+function normalizeWorkbookTarget(target: string) {
+  const cleaned = decodeURIComponent(target).replaceAll("\\", "/").replace(/^\/+/, "");
+  const pieces = (cleaned.startsWith("xl/") ? cleaned : `xl/${cleaned}`).split("/");
+  const normalized: string[] = [];
+  for (const piece of pieces) {
+    if (!piece || piece === ".") continue;
+    if (piece === "..") normalized.pop();
+    else normalized.push(piece);
+  }
+  return normalized.join("/");
+}
+
+function sharedStrings(files: Map<string, Uint8Array>) {
+  const bytes = files.get("xl/sharedStrings.xml");
+  if (!bytes) return [] as string[];
+  const document = xmlDocument(bytes);
+  return Array.from(document.getElementsByTagName("si")).map((item) =>
+    Array.from(item.getElementsByTagName("t")).map((node) => node.textContent ?? "").join("")
+  );
+}
+
+function excelColumn(reference: string) {
+  const letters = reference.replace(/\d+/g, "").toUpperCase();
+  let value = 0;
+  for (const letter of letters) value = value * 26 + letter.charCodeAt(0) - 64;
+  return Math.max(0, value - 1);
+}
+
+function worksheetRows(bytes: Uint8Array, shared: string[]) {
+  const document = xmlDocument(bytes);
+  const matrix: unknown[][] = [];
+  Array.from(document.getElementsByTagName("row")).forEach((rowNode) => {
+    const values: unknown[] = [];
+    Array.from(rowNode.getElementsByTagName("c")).forEach((cell) => {
+      const column = excelColumn(cell.getAttribute("r") ?? "");
+      const type = cell.getAttribute("t") ?? "";
+      const valueNode = cell.getElementsByTagName("v")[0];
+      let value: unknown = "";
+      if (type === "inlineStr") value = Array.from(cell.getElementsByTagName("t")).map((node) => node.textContent ?? "").join("");
+      else if (type === "s") value = shared[Number(valueNode?.textContent ?? 0)] ?? "";
+      else if (type === "b") value = valueNode?.textContent === "1";
+      else if (type === "str") value = valueNode?.textContent ?? "";
+      else if (valueNode?.textContent !== null && valueNode?.textContent !== undefined) {
+        const number = Number(valueNode.textContent);
+        value = Number.isFinite(number) ? number : valueNode.textContent;
+      }
+      values[column] = value;
+    });
+    matrix.push(values);
+  });
+
+  if (!matrix.length) return [] as Array<Record<string, unknown>>;
+  const headers = matrix[0].map((value, index) => String(value ?? "").trim() || `column_${index + 1}`);
+  return matrix.slice(1)
+    .filter((row) => row.some((value) => value !== "" && value !== null && value !== undefined))
+    .map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])));
+}
+
+async function parseStandardExcelFallback(file: File): Promise<ParsedTransferFile> {
+  const files = await unzipExcel(await file.arrayBuffer());
+  const workbookBytes = files.get("xl/workbook.xml");
+  if (!workbookBytes) throw new Error("El archivo Excel no contiene un libro válido.");
+
+  const workbook = xmlDocument(workbookBytes);
+  const relationshipBytes = files.get("xl/_rels/workbook.xml.rels");
+  const relationshipMap = new Map<string, string>();
+  if (relationshipBytes) {
+    const relationships = xmlDocument(relationshipBytes);
+    Array.from(relationships.getElementsByTagName("Relationship")).forEach((node) => {
+      const id = node.getAttribute("Id") ?? "";
+      const target = node.getAttribute("Target") ?? "";
+      if (id && target) relationshipMap.set(id, normalizeWorkbookTarget(target));
+    });
+  }
+
+  const shared = sharedStrings(files);
+  const sheets = Array.from(workbook.getElementsByTagName("sheet"));
+  for (let index = 0; index < sheets.length; index += 1) {
+    const sheet = sheets[index];
+    if ((sheet.getAttribute("name") ?? "") === "__CYA_MANIFEST") continue;
+    const relationId = sheet.getAttribute("r:id")
+      ?? sheet.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id")
+      ?? "";
+    const candidates = [
+      relationshipMap.get(relationId),
+      `xl/worksheets/sheet${index + 1}.xml`,
+    ].filter((value): value is string => Boolean(value));
+    const worksheet = candidates.map((path) => files.get(path)).find(Boolean);
+    if (!worksheet) continue;
+    const rows = worksheetRows(worksheet, shared);
+    if (rows.length) return { kind: "rows", format: "xlsx", rows };
+  }
+
+  // Last-resort discovery for workbooks whose relationship metadata is unusual.
+  const worksheetNames = Array.from(files.keys()).filter((name) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(name)).sort();
+  for (const name of worksheetNames) {
+    const bytes = files.get(name);
+    if (!bytes) continue;
+    const rows = worksheetRows(bytes, shared);
+    if (rows.length) return { kind: "rows", format: "xlsx", rows };
+  }
+
+  throw new Error("El archivo Excel contiene hojas, pero no se han encontrado filas de datos utilizables.");
+}
+
 export function downloadBundle(bundle: CyaDataBundle, format: TransferFormat) {
   downloadBaseBundle(format === "xlsx" ? withExactExcelRows(bundle) : bundle, format);
 }
@@ -104,6 +260,9 @@ export async function parseTransferFile(file: File): Promise<ParsedTransferFile>
   const parsed = await parseBaseTransferFile(file);
   if (parsed.kind === "bundle" && parsed.format === "xlsx") {
     return { ...parsed, bundle: recoverExactExcelRows(parsed.bundle) };
+  }
+  if (parsed.kind === "rows" && parsed.format === "xlsx" && parsed.rows.length === 0) {
+    return parseStandardExcelFallback(file);
   }
   return parsed;
 }
