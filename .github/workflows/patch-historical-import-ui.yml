@@ -1,0 +1,99 @@
+name: Patch historical import UI
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-historical-import-ui.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply targeted production patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('app/student-detail.tsx')
+          text = path.read_text()
+
+          def replace_once(old, new, label):
+              global text
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'Missing target: {label}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+          '''  health_notes?: string | null;\n  active: boolean;''',
+          '''  health_notes?: string | null;\n  city?: string | null;\n  has_partner?: boolean | null;\n  continues_dancing?: boolean | null;\n  bought_bonus?: boolean | null;\n  wedding?: boolean | null;\n  tourist?: boolean | null;\n  referred_by?: string | null;\n  dance_start_label?: string | null;\n  dance_end_label?: string | null;\n  historical_classes?: number | null;\n  historical_consumed_classes?: number | null;\n  historical_total_paid_cents?: number | null;\n  active: boolean;''',
+          'student profile canonical fields')
+
+          replace_once(
+          '''  const [financialNotice, setFinancialNotice] = useState("");\n  const [financialRefresh, setFinancialRefresh] = useState(0);''',
+          '''  const [financialNotice, setFinancialNotice] = useState("");\n  const [consumedDrafts, setConsumedDrafts] = useState<Record<number, string>>({});\n  const [financialRefresh, setFinancialRefresh] = useState(0);''',
+          'consumed draft state')
+
+          replace_once(
+          '''client.from("student_profiles").select("person_id,student_since,goals,teacher_notes,health_notes,active")''',
+          '''client.from("student_profiles").select("person_id,student_since,goals,teacher_notes,health_notes,city,has_partner,continues_dancing,bought_bonus,wedding,tourist,referred_by,dance_start_label,dance_end_label,historical_classes,historical_consumed_classes,historical_total_paid_cents,active")''',
+          'student profile select')
+
+          replace_once(
+          '''  const evaluationScale=terms.filter((term) => term.taxonomy==='evaluation_scale').map((term) => ({term,score:Number(term.metadata?.score)})).filter(({score}) => [0,25,50,75,100].includes(score)).sort((a,b)=>a.score-b.score);''',
+          '''  async function adjustGrantConsumption(grant: CreditItem, consumedMinutes: number) {\n    if (!Number.isInteger(consumedMinutes) || consumedMinutes < 0 || consumedMinutes > grant.total_minutes) {\n      setError(`El consumo debe estar entre 0 y ${grant.total_minutes} minutos.`);\n      return;\n    }\n    setFinancialBusy(`adjust-${grant.id}`);\n    setFinancialNotice("");\n    setError("");\n    const result = await client.rpc("set_credit_grant_consumed_minutes", {\n      p_grant_id: grant.id,\n      p_consumed_minutes: consumedMinutes,\n      p_note: `Ajuste desde la ficha de ${student.display_name}.`,\n    });\n    if (result.error) setError(result.error.message);\n    else {\n      const remaining = Number((result.data as { remaining_minutes?: number } | null)?.remaining_minutes ?? (grant.total_minutes - consumedMinutes));\n      setConsumedDrafts((current) => ({ ...current, [grant.id]: String(consumedMinutes) }));\n      setFinancialNotice(`Consumo actualizado: ${minutesLabel(consumedMinutes)} consumidos · ${minutesLabel(remaining)} disponibles.`);\n      setFinancialRefresh((value) => value + 1);\n      await refresh();\n    }\n    setFinancialBusy("");\n  }\n\n  const evaluationScale=terms.filter((term) => term.taxonomy==='evaluation_scale').map((term) => ({term,score:Number(term.metadata?.score)})).filter(({score}) => [0,25,50,75,100].includes(score)).sort((a,b)=>a.score-b.score);''',
+          'grant consumption rpc')
+
+          old_credit = '''        {ownCredits.length ? <div className={styles.creditGrid}>{ownCredits.map((item) => { const itemBalance = balanceFor(item); return <article key={item.id} className={item.payment_status === "pending" ? styles.pendingCredit : ""}><div><span>{dateLabel(item.purchased_at, false)}</span><strong>{item.label || (item.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong></div><b>{minutesLabel(itemBalance)}</b><small>de {minutesLabel(item.total_minutes)} · {euros(item.price_cents)} · {item.payment_status === "paid" ? "Pagado" : item.payment_status === "pending" ? "Pago pendiente" : "Reembolsado"}</small></article>; })}</div> : <div className={styles.empty}><WalletCards /><span>No hay bonos registrados.</span></div>}'''
+          new_credit = '''        {ownCredits.length ? <div className={styles.creditGrid}>{ownCredits.map((item) => {\n          const itemBalance = balanceFor(item);\n          const consumed = Math.max(0, item.total_minutes - itemBalance);\n          const draft = consumedDrafts[item.id] ?? String(consumed);\n          const quick = [60, 120, 180].filter((minutes) => minutes <= item.total_minutes);\n          return <article key={item.id} className={item.payment_status === "pending" ? styles.pendingCredit : ""}>\n            <div><span>{dateLabel(item.purchased_at, false)}</span><strong>{item.label || (item.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong></div>\n            <b>{minutesLabel(itemBalance)} disponibles</b>\n            <small>{minutesLabel(consumed)} consumidos de {minutesLabel(item.total_minutes)} · {euros(item.price_cents)} · {item.payment_status === "paid" ? "Pagado" : item.payment_status === "pending" ? "Pago pendiente" : "Reembolsado"}</small>\n            <div className="fields-2">\n              <label className="field"><span>Minutos consumidos</span><input type="number" min={0} max={item.total_minutes} step={15} value={draft} onChange={(event) => setConsumedDrafts((current) => ({ ...current, [item.id]: event.target.value }))} /></label>\n              <div className="field"><span>Acciones rápidas</span><div className="actions">{quick.map((minutes) => <button key={minutes} type="button" className="btn ghost" disabled={financialBusy === `adjust-${item.id}`} onClick={() => void adjustGrantConsumption(item, minutes)}>{minutes / 60} h</button>)}<button type="button" className="btn ghost" disabled={financialBusy === `adjust-${item.id}`} onClick={() => void adjustGrantConsumption(item, item.total_minutes)}>Todo consumido</button></div></div>\n            </div>\n            <button type="button" className="btn" disabled={financialBusy === `adjust-${item.id}`} onClick={() => void adjustGrantConsumption(item, Number(draft))}>{financialBusy === `adjust-${item.id}` ? "Guardando…" : "Guardar consumo"}</button>\n          </article>;\n        })}</div> : <div className={styles.empty}><WalletCards /><span>No hay bonos registrados.</span></div>}'''
+          replace_once(old_credit, new_credit, 'credit editor')
+
+          old_data = '''      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Baile</span><h3>Contextos guardados</h3></div></div>{danceProfiles.length ? <div className={styles.danceGrid}>{danceProfiles.map((item) => <div key={item.id} className={item.is_primary ? styles.primaryDance : ""}><strong>{termLabel(item.style_term_id, terms)}</strong><span>{termLabel(item.role_term_id, terms)} · {termLabel(item.level_term_id, terms)}</span>{item.is_primary ? <small>Principal</small> : null}</div>)}</div> : <div className={styles.empty}><GraduationCap /><span>Sin contexto de baile.</span></div>}</section>\n      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Objetivos</span><h3>Información pedagógica</h3></div></div>'''
+          new_data = '''      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Baile</span><h3>Contextos guardados</h3></div></div>{danceProfiles.length ? <div className={styles.danceGrid}>{danceProfiles.map((item) => <div key={item.id} className={item.is_primary ? styles.primaryDance : ""}><strong>{termLabel(item.style_term_id, terms)}</strong><span>{termLabel(item.role_term_id, terms)} · {termLabel(item.level_term_id, terms)}</span>{item.is_primary ? <small>Principal</small> : null}</div>)}</div> : <div className={styles.empty}><GraduationCap /><span>Sin contexto de baile.</span></div>}</section>\n      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Ficha del alumno</span><h3>Datos personales e históricos</h3></div></div><div className={styles.readGrid}><div><MapPin /><span>Ciudad</span><strong>{profile?.city || "Sin indicar"}</strong></div><div><CircleUserRound /><span>Tiene pareja</span><strong>{profile?.has_partner === null || profile?.has_partner === undefined ? "Sin indicar" : profile.has_partner ? "Sí" : "No"}</strong></div><div><TrendingUp /><span>Sigue bailando</span><strong>{profile?.continues_dancing === null || profile?.continues_dancing === undefined ? "Sin indicar" : profile.continues_dancing ? "Sí" : "No"}</strong></div><div><WalletCards /><span>Compró bono</span><strong>{profile?.bought_bonus === null || profile?.bought_bonus === undefined ? "Sin indicar" : profile.bought_bonus ? "Sí" : "No"}</strong></div><div><CalendarDays /><span>Inicio</span><strong>{profile?.dance_start_label || (profile?.student_since ? dateLabel(profile.student_since, false) : "Sin indicar")}</strong></div><div><CalendarDays /><span>Fin</span><strong>{profile?.dance_end_label || "Sin indicar"}</strong></div><div><CalendarDays /><span>Clases históricas</span><strong>{profile?.historical_classes ?? 0}</strong></div><div><CheckCircle2 /><span>Clases consumidas</span><strong>{profile?.historical_consumed_classes ?? 0}</strong></div><div><WalletCards /><span>Total histórico pagado</span><strong>{euros(profile?.historical_total_paid_cents)}</strong></div><div><CheckCircle2 /><span>Boda</span><strong>{profile?.wedding === null || profile?.wedding === undefined ? "Sin indicar" : profile.wedding ? "Sí" : "No"}</strong></div><div><CheckCircle2 /><span>Turista</span><strong>{profile?.tourist === null || profile?.tourist === undefined ? "Sin indicar" : profile.tourist ? "Sí" : "No"}</strong></div><div><Target /><span>Recomendado por</span><strong>{profile?.referred_by || "Sin indicar"}</strong></div></div></section>\n      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Objetivos</span><h3>Información pedagógica</h3></div></div>'''
+          replace_once(old_data, new_data, 'structured student data')
+
+          path.write_text(text)
+
+          stats_path = Path('app/statistics-engine.ts')
+          stats = stats_path.read_text()
+          if 'type CreditGrantRef={purchased_at:string;payment_status:string;status:string};' not in stats:
+              stats = stats.replace(
+                  '  type ParticipantRow={person_id:number;classes:ClassRef|ClassRef[]|null};',
+                  '  type ParticipantRow={person_id:number;classes:ClassRef|ClassRef[]|null};\n  type CreditGrantRef={purchased_at:string;payment_status:string;status:string};\n  type CreditMemberRow={person_id:number;credit_grants:CreditGrantRef|CreditGrantRef[]|null};',
+                  1,
+              )
+              stats = stats.replace(
+                  '  const [participants,orders,requests,enrollments]=await Promise.all([',
+                  '  const [participants,grants,orders,requests,enrollments]=await Promise.all([',
+                  1,
+              )
+              marker = '''    collectPages<ActivityRow>(async(from,to)=>{\n      const result=await client.from("feedback_credit_orders").select("person_id,requested_at").in("payment_status",["pending","paid"]).lt("requested_at",bounds.toIso).range(from,to);'''
+              insertion = '''    collectPages<CreditMemberRow>(async(from,to)=>{\n      const result=await client.from("credit_grant_members").select("person_id,credit_grants!credit_grant_members_grant_id_fkey!inner(purchased_at,payment_status,status)").in("credit_grants.payment_status",["pending","paid"]).neq("credit_grants.status","cancelled").lt("credit_grants.purchased_at",bounds.toIso).range(from,to);\n      return {data:(result.data??[]) as CreditMemberRow[],error:result.error};\n    }),\n''' + marker
+              if marker not in stats:
+                  raise SystemExit('Missing statistics insertion marker')
+              stats = stats.replace(marker, insertion, 1)
+              stats = stats.replace(
+                  '  participants.forEach((row)=>remember(row.person_id,relationOne(row.classes)?.scheduled_start_at));\n  orders.forEach',
+                  '  participants.forEach((row)=>remember(row.person_id,relationOne(row.classes)?.scheduled_start_at));\n  grants.forEach((row)=>remember(row.person_id,relationOne(row.credit_grants)?.purchased_at));\n  orders.forEach',
+                  1,
+              )
+              stats_path.write_text(stats)
+          PY
+
+          git config user.name 'CYA Hub Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add app/student-detail.tsx app/statistics-engine.ts
+          if git diff --cached --quiet; then
+            echo 'No changes required.'
+            exit 0
+          fi
+          git commit -m 'feat: structure imported student data and editable bonus consumption'
+          git push origin HEAD:main
