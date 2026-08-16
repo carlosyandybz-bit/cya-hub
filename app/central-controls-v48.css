@@ -3,12 +3,10 @@
    Professor: Dar clase + Más. Student: Mi formación + Más. */
 
 @media (max-width: 900px) {
-  /* Shared main control */
+  /* Shared main control appearance. Positioning remains role-specific so the
+     professor grid keeps all five slots while Portal CYA keeps its centre wrapper. */
   .mobile-nav button.primary,
   nav[aria-label="Portal CYA"] .formationMain {
-    position: absolute !important;
-    left: 50% !important;
-    bottom: -1px !important;
     z-index: 5 !important;
     width: 72px !important;
     min-width: 72px !important;
@@ -16,7 +14,6 @@
     min-height: 72px !important;
     margin: 0 !important;
     padding: 8px 5px 7px !important;
-    transform: translateX(-50%) translateY(-7px) !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -39,6 +36,26 @@
     text-align: center !important;
   }
 
+  .mobile-nav button.primary {
+    position: relative !important;
+    left: auto !important;
+    bottom: auto !important;
+    transform: translateY(-7px) !important;
+  }
+
+  nav[aria-label="Portal CYA"] .formationNav {
+    position: relative !important;
+    height: 72px !important;
+    overflow: visible !important;
+  }
+
+  nav[aria-label="Portal CYA"] .formationMain {
+    position: absolute !important;
+    left: 50% !important;
+    bottom: -1px !important;
+    transform: translateX(-50%) translateY(-7px) !important;
+  }
+
   .mobile-nav button.primary svg,
   nav[aria-label="Portal CYA"] .formationMain svg {
     width: 23px !important;
@@ -50,16 +67,12 @@
     filter: drop-shadow(0 2px 6px rgba(200, 116, 247, .28));
   }
 
-  .mobile-nav button.primary:active,
-  nav[aria-label="Portal CYA"] .formationMain:active {
-    transform: translateX(-50%) translateY(-5px) scale(.975) !important;
+  .mobile-nav button.primary:active {
+    transform: translateY(-5px) scale(.975) !important;
   }
 
-  /* Student centre column must behave like the professor centre slot. */
-  nav[aria-label="Portal CYA"] .formationNav {
-    position: relative !important;
-    height: 72px !important;
-    overflow: visible !important;
+  nav[aria-label="Portal CYA"] .formationMain:active {
+    transform: translateX(-50%) translateY(-5px) scale(.975) !important;
   }
 
   /* Shared secondary control */
