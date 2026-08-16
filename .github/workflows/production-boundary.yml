@@ -1,0 +1,37 @@
+name: Production boundary
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reject-staging-only-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reject staging-only paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch origin "${{ github.base_ref }}" --depth=1
+            FILES="$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)"
+          else
+            FILES="$(git ls-files)"
+          fi
+
+          printf '%s\n' "$FILES" > /tmp/cya-files.txt
+
+          forbidden='^(\.env\.staging\.example$|\.agents/|\.vinext/|qa/|examples/|supabase/functions/cya-qa-bootstrap/|tsconfig\.tsbuildinfo$|staging/)'
+          if grep -E "$forbidden" /tmp/cya-files.txt; then
+            echo "ERROR: staging-only artifacts cannot be published to main."
+            exit 1
+          fi
+
+          echo "Production boundary OK."
