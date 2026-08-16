@@ -128,6 +128,8 @@ async function studentCount(client:SupabaseClient,bounds:PeriodBounds,filters:St
   type ActivityRow={person_id:number;activity_at:string|null};
   type ClassRef={class_type:string;status:string;scheduled_start_at:string};
   type ParticipantRow={person_id:number;classes:ClassRef|ClassRef[]|null};
+  type CreditGrantRef={purchased_at:string;payment_status:string;status:string};
+  type CreditMemberRow={person_id:number;credit_grants:CreditGrantRef|CreditGrantRef[]|null};
 
   const profiles=await collectPages<ProfileRow>(async(from,to)=>{
     let query=client.from("student_profiles").select("person_id,people!student_profiles_person_id_fkey!inner(country_code)").eq("active",true);
@@ -138,7 +140,7 @@ async function studentCount(client:SupabaseClient,bounds:PeriodBounds,filters:St
   const eligibleIds=new Set(profiles.map((row)=>row.person_id));
   if(!eligibleIds.size)return 0;
 
-  const [participants,orders,requests,enrollments]=await Promise.all([
+  const [participants,grants,orders,requests,enrollments]=await Promise.all([
     collectPages<ParticipantRow>(async(from,to)=>{
       const result=await client.from("class_participants")
         .select("person_id,classes!class_participants_class_id_fkey!inner(class_type,status,scheduled_start_at)")
@@ -147,6 +149,10 @@ async function studentCount(client:SupabaseClient,bounds:PeriodBounds,filters:St
         .lt("classes.scheduled_start_at",bounds.toIso)
         .range(from,to);
       return {data:(result.data??[]) as ParticipantRow[],error:result.error};
+    }),
+    collectPages<CreditMemberRow>(async(from,to)=>{
+      const result=await client.from("credit_grant_members").select("person_id,credit_grants!credit_grant_members_grant_id_fkey!inner(purchased_at,payment_status,status)").in("credit_grants.payment_status",["pending","paid"]).neq("credit_grants.status","cancelled").lt("credit_grants.purchased_at",bounds.toIso).range(from,to);
+      return {data:(result.data??[]) as CreditMemberRow[],error:result.error};
     }),
     collectPages<ActivityRow>(async(from,to)=>{
       const result=await client.from("feedback_credit_orders").select("person_id,requested_at").in("payment_status",["pending","paid"]).lt("requested_at",bounds.toIso).range(from,to);
@@ -171,6 +177,7 @@ async function studentCount(client:SupabaseClient,bounds:PeriodBounds,filters:St
     if(current===undefined||at<current)firstActivity.set(personId,at);
   }
   participants.forEach((row)=>remember(row.person_id,relationOne(row.classes)?.scheduled_start_at));
+  grants.forEach((row)=>remember(row.person_id,relationOne(row.credit_grants)?.purchased_at));
   orders.forEach((row)=>remember(row.person_id,row.activity_at));
   requests.forEach((row)=>remember(row.person_id,row.activity_at));
   enrollments.forEach((row)=>remember(row.person_id,row.activity_at));
