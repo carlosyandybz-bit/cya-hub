@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 type CyaHistoryState = {
   cyaHub?: boolean;
@@ -14,6 +14,14 @@ type SummaryDraft = {
   studentMessage: string;
   internalNote: string;
   updatedAt: string;
+};
+
+type BoundSummary = {
+  root: HTMLElement;
+  student: HTMLTextAreaElement;
+  internal: HTMLTextAreaElement;
+  classId: number;
+  cleanup: () => void;
 };
 
 const DRAFT_PREFIX = "cya:class-summary-draft:v1:";
@@ -69,8 +77,8 @@ function writeDraft(classId: number, studentMessage: string, internalNote: strin
     };
     window.localStorage.setItem(keyFor(classId), JSON.stringify(draft));
   } catch {
-    // Storage may be unavailable in hardened/private browser modes. The form
-    // remains fully usable; persistence is a resilience enhancement, not a blocker.
+    // Storage can be unavailable in hardened/private browser modes. The form
+    // remains usable; persistence is a resilience enhancement, not a blocker.
   }
 }
 
@@ -80,84 +88,103 @@ function setReactTextareaValue(element: HTMLTextAreaElement, value: string) {
   element.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-function ensureStatus(root: HTMLElement) {
-  const messagesCard = root.querySelector<HTMLElement>(`.workflow-card:has(textarea[placeholder="${STUDENT_PLACEHOLDER}"])`);
-  if (!messagesCard) return null;
-  let status = messagesCard.querySelector<HTMLElement>(".summary-draft-status");
-  if (!status) {
-    status = document.createElement("p");
-    status.className = "summary-draft-status";
-    status.setAttribute("role", "status");
-    status.setAttribute("aria-live", "polite");
-    const heading = messagesCard.querySelector(".card-head");
-    heading?.insertAdjacentElement("afterend", status);
-  }
-  return status;
-}
-
-function bindSummary(root: HTMLElement) {
-  if (root.dataset.ux05DraftBound === "true") return;
-  const classId = currentClassId();
-  if (!classId) return;
-
-  const student = root.querySelector<HTMLTextAreaElement>(`textarea[placeholder="${STUDENT_PLACEHOLDER}"]`);
-  const internal = root.querySelector<HTMLTextAreaElement>(`textarea[placeholder="${INTERNAL_PLACEHOLDER}"]`);
-  if (!student || !internal) return;
-
-  root.dataset.ux05DraftBound = "true";
-  root.dataset.ux05ClassId = String(classId);
-  const status = ensureStatus(root);
-  const restored = readDraft(classId);
-  if (restored) {
-    setReactTextareaValue(student, restored.studentMessage);
-    setReactTextareaValue(internal, restored.internalNote);
-    if (status) status.textContent = "Borrador recuperado · se guarda temporalmente en este dispositivo.";
-  } else if (status) {
-    status.textContent = "Guardado automático temporal en este dispositivo hasta cerrar la clase.";
-  }
-
-  let saveTimer = 0;
-  let closing = false;
-  const persist = () => {
-    window.clearTimeout(saveTimer);
-    saveTimer = window.setTimeout(() => {
-      writeDraft(classId, student.value, internal.value);
-      if (status) status.textContent = "Borrador guardado automáticamente.";
-    }, 180);
-  };
-  student.addEventListener("input", persist);
-  internal.addEventListener("input", persist);
-
-  const closeButton = [...root.querySelectorAll<HTMLButtonElement>("button")]
-    .find((button) => /cerrar y enviar al alumno/i.test(button.textContent || ""));
-  const markClosing = () => { closing = true; };
-  closeButton?.addEventListener("click", markClosing);
-
-  const removalObserver = new MutationObserver(() => {
-    if (root.isConnected) return;
-    removalObserver.disconnect();
-    window.clearTimeout(saveTimer);
-    student.removeEventListener("input", persist);
-    internal.removeEventListener("input", persist);
-    closeButton?.removeEventListener("click", markClosing);
-    if (closing) {
-      try { window.localStorage.removeItem(keyFor(classId)); } catch { /* noop */ }
-    }
-  });
-  removalObserver.observe(document.body, { childList: true, subtree: true });
-}
-
 export function ClassSummaryDraftUx() {
+  const [active, setActive] = useState(false);
+  const [status, setStatus] = useState("");
+
   useEffect(() => {
+    let bound: BoundSummary | null = null;
+
+    const unbind = () => {
+      if (!bound) return;
+      bound.cleanup();
+      bound = null;
+    };
+
     const bindVisibleSummary = () => {
       const root = document.querySelector<HTMLElement>(".class-workflow-page.final-summary");
-      if (root) bindSummary(root);
+      const classId = currentClassId();
+      const student = root?.querySelector<HTMLTextAreaElement>(`textarea[placeholder="${STUDENT_PLACEHOLDER}"]`) ?? null;
+      const internal = root?.querySelector<HTMLTextAreaElement>(`textarea[placeholder="${INTERNAL_PLACEHOLDER}"]`) ?? null;
+
+      if (!root || !classId || !student || !internal) {
+        unbind();
+        setActive(false);
+        setStatus("");
+        return;
+      }
+
+      if (bound && bound.root === root && bound.student === student && bound.internal === internal && bound.classId === classId) {
+        return;
+      }
+
+      unbind();
+      setActive(true);
+
+      const restored = readDraft(classId);
+      if (restored) {
+        setReactTextareaValue(student, restored.studentMessage);
+        setReactTextareaValue(internal, restored.internalNote);
+        setStatus("Borrador recuperado · se guarda temporalmente en este dispositivo.");
+      } else {
+        setStatus("Guardado automático temporal en este dispositivo hasta cerrar la clase.");
+      }
+
+      let saveTimer = 0;
+      let closeAttemptAt = 0;
+      const persist = () => {
+        window.clearTimeout(saveTimer);
+        setStatus("Guardando borrador…");
+        saveTimer = window.setTimeout(() => {
+          writeDraft(classId, student.value, internal.value);
+          setStatus("Borrador guardado automáticamente.");
+        }, 180);
+      };
+      student.addEventListener("input", persist);
+      internal.addEventListener("input", persist);
+
+      const closeButton = [...root.querySelectorAll<HTMLButtonElement>("button")]
+        .find((button) => /cerrar y enviar al alumno/i.test(button.textContent || ""));
+      const markClosing = () => { closeAttemptAt = Date.now(); };
+      closeButton?.addEventListener("click", markClosing);
+
+      const removalObserver = new MutationObserver(() => {
+        if (root.isConnected) return;
+        removalObserver.disconnect();
+        window.clearTimeout(saveTimer);
+        student.removeEventListener("input", persist);
+        internal.removeEventListener("input", persist);
+        closeButton?.removeEventListener("click", markClosing);
+        if (closeAttemptAt && Date.now() - closeAttemptAt < 10_000) {
+          try { window.localStorage.removeItem(keyFor(classId)); } catch { /* noop */ }
+        }
+      });
+      removalObserver.observe(document.body, { childList: true, subtree: true });
+
+      bound = {
+        root,
+        student,
+        internal,
+        classId,
+        cleanup: () => {
+          removalObserver.disconnect();
+          window.clearTimeout(saveTimer);
+          student.removeEventListener("input", persist);
+          internal.removeEventListener("input", persist);
+          closeButton?.removeEventListener("click", markClosing);
+        },
+      };
     };
+
     bindVisibleSummary();
     const observer = new MutationObserver(bindVisibleSummary);
     observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      unbind();
+    };
   }, []);
 
-  return null;
+  if (!active || !status) return null;
+  return <p className="summary-draft-status summary-draft-status-fixed" role="status" aria-live="polite">{status}</p>;
 }
