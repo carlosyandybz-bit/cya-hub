@@ -122,9 +122,14 @@ export function AccountMenu({
   return (
     <>
       <P31AppearanceRuntime />
-      <div ref={rootRef} className={`${styles.root} ${variant === "sidebar" ? styles.sidebarRoot : styles.headerRoot}`}>
+      <div
+        ref={rootRef}
+        className={`${styles.root} ${variant === "sidebar" ? styles.sidebarRoot : styles.headerRoot}`}
+        data-cya-account-menu
+        data-experience={experience}
+      >
         {variant === "sidebar" ? (
-          <button type="button" className={styles.sidebarTrigger} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+          <button type="button" className={styles.sidebarTrigger} aria-label="Abrir cuenta y preferencias" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
             {avatar(styles.sidebarAvatar)}
             <span className={styles.sidebarIdentity}><strong>{displayName}</strong><small>{contextLabels[experience]}</small></span>
             <ChevronRight className={open ? styles.chevronOpen : ""} />

@@ -1597,6 +1597,7 @@ function StaffApp({ session }: { session: Session }) {
     setExperienceState(nextExperience);
     setLiveClassId(state.liveClassId);
     setView(nextView);
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
   }
   function replaceView(nextView: View, options: { experience?: ExperienceContext } = {}) {
     const nextExperience = options.experience ?? experience;

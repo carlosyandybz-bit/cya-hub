@@ -119,6 +119,7 @@ Asset oficial: public/cya-logo.png.
 6. Barra inferior: el logo es la pieza principal de DAR CLASE.
 7. No usar más de tres apariciones reconocibles dentro de un mismo viewport.
 8. Mantener contraste, espacio de seguridad y nitidez.
+9. El runtime de Apariencia no añade un segundo nombre junto a `brand-wordmark` ni superpone etiquetas de área sobre el logo.
 
 ## Navegación inferior de profesor
 
@@ -231,6 +232,8 @@ Reglas:
 - Hasta 350px: reducción de labels e iconos sin perder targets.
 - Usar dvh/svh en overlays y flujos.
 - html y body no generan overflow horizontal.
+- Cambiar de módulo principal restablece el scroll al inicio; una pantalla nueva no hereda la posición vertical de la anterior.
+- Las rutas autónomas de progreso, histórico y configuración de evaluación consumen el mismo canvas y los mismos tokens oscuros.
 
 ## Accesibilidad
 

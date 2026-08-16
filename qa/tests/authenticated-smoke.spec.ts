@@ -52,17 +52,33 @@ async function login(page: Page, role: QaRole, testInfo: TestInfo) {
 }
 
 async function openAccountMenu(page: Page) {
-  const trigger = page.locator(
-    'button[aria-label="Abrir cuenta y preferencias"]:visible, .sidebar button[aria-haspopup="menu"]:visible',
-  ).first();
-  await expect(trigger).toBeVisible({ timeout: 20_000 });
-  await trigger.click();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const root = page.locator("[data-cya-account-menu]:visible").first();
+    await expect(root).toBeVisible({ timeout: 20_000 });
+
+    const menu = root.getByRole("menu", { name: "Cuenta CYA" });
+    if (await menu.isVisible()) return menu;
+
+    const trigger = root.getByRole("button", { name: "Abrir cuenta y preferencias", exact: true });
+    await expect(trigger).toBeVisible({ timeout: 20_000 });
+    await trigger.click();
+    try {
+      await expect(menu).toBeVisible({ timeout: 4_000 });
+      return menu;
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await page.waitForTimeout(250);
+    }
+  }
+  throw new Error("No se pudo abrir el menú de cuenta.");
 }
 
 async function selectExperience(page: Page, label: "Profesor" | "Alumno" | "Administrador") {
-  await openAccountMenu(page);
-  await expect(page.getByText("Ver como", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: new RegExp(`^${label}(?:,|\\.)`) }).click();
+  const target = label === "Profesor" ? "teacher" : label === "Alumno" ? "student" : "admin";
+  const menu = await openAccountMenu(page);
+  await expect(menu.getByText("Ver como", { exact: true })).toBeVisible();
+  await menu.getByRole("button", { name: new RegExp(`^${label}(?:,|\\.)`) }).click();
+  await expect(page.locator(`[data-cya-account-menu][data-experience="${target}"]:visible`).first()).toBeVisible({ timeout: 20_000 });
 }
 
 for (const role of ["teacher", "student", "admin"] as const) {

@@ -128,7 +128,7 @@
 .nowItem strong { font-size: 15px; line-height: 1.28; }
 .nowItem span { color: var(--prf-muted); font-size: 13px; line-height: 1.4; }
 .nowItem > button {
-  min-height: 44px;
+  min-height: 46px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -558,7 +558,7 @@ button:disabled { cursor: default; opacity: .52; }
   .contentList article { flex-direction: column; }
   .scoreList { grid-template-columns: 1fr; }
   .nowItem { grid-template-columns: 28px minmax(0, 1fr); }
-  .nowItem > button { grid-column: 2; justify-self: start; padding: 0; }
+  .nowItem > button { grid-column: 2; justify-self: start; min-height: 46px; padding: 4px 0; }
 }
 
 @media (max-width: 430px) {

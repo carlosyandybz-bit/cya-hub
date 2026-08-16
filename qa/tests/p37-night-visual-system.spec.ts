@@ -46,7 +46,7 @@ async function attachScreen(page: Page, testInfo: TestInfo, name: string) {
   });
 }
 
-async function assertDarkAndContained(page: Page, surface: string) {
+async function assertDarkAndContained(page: Page, surface: string, requireLogo = true) {
   const audit = await page.evaluate(() => {
     const root = document.documentElement;
     const body = getComputedStyle(document.body);
@@ -64,7 +64,7 @@ async function assertDarkAndContained(page: Page, surface: string) {
   });
   expect(audit.overflow, surface + ": horizontal overflow").toBeLessThanOrEqual(2);
   expect(audit.bodyLuminance, surface + ": canvas must stay dark (" + audit.bodyColor + ")").toBeLessThan(.08);
-  expect(audit.logoLoaded, surface + ": CYA logo must be loaded").toBe(true);
+  if (requireLogo) expect(audit.logoLoaded, surface + ": CYA logo must be loaded").toBe(true);
 }
 
 test.describe("P37 CYA night visual system", () => {
@@ -155,6 +155,7 @@ test.describe("P37 CYA night visual system", () => {
         await qaRow.locator(".student-row-main").click();
         const detail = page.getByRole("dialog").filter({ hasText: "QA · Alumno" });
         await expect(detail).toBeVisible();
+        await expect(detail.getByText("Cargando ficha completa…", { exact: true })).toBeHidden({ timeout: 20_000 });
         await assertDarkAndContained(page, "Perfil alumno " + viewport.name);
         await attachScreen(page, testInfo, "p37-" + viewport.name + "-perfil-alumno");
         const close = detail.getByRole("button", { name: /Cerrar|Volver/i }).first();
@@ -187,6 +188,7 @@ test.describe("P37 CYA night visual system", () => {
     await expect(adminEntry).toBeVisible({ timeout: 20_000 });
     await adminEntry.click();
     await expect(adminPage.getByRole("heading", { name: "Administración" })).toBeVisible({ timeout: 20_000 });
+    await expect(adminPage.getByText("Preparando Administración…", { exact: true })).toBeHidden({ timeout: 20_000 });
     for (const viewport of REPRESENTATIVE_WIDTHS) {
       await adminPage.setViewportSize({ width: viewport.width, height: viewport.height });
       await assertDarkAndContained(adminPage, "Administración " + viewport.name);
@@ -204,5 +206,28 @@ test.describe("P37 CYA night visual system", () => {
       await attachScreen(studentPage, testInfo, "p37-" + viewport.name + "-panel-alumno");
     }
     await studentContext.close();
+  });
+
+  test("dedicated progress and evaluation routes stay dark and contained", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chromium", "one explicit screenshot matrix is enough");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await login(page, "admin");
+
+    const routes = [
+      { path: "/progress-summary", heading: "Resumen real de progreso", name: "resumen-progreso" },
+      { path: "/evaluation-history", heading: "Histórico y evolución", name: "historico-evaluacion" },
+      { path: "/evaluation-settings", heading: "Evaluación y progreso", name: "configuracion-evaluacion" },
+    ] as const;
+
+    for (const viewport of [REPRESENTATIVE_WIDTHS[0], REPRESENTATIVE_WIDTHS[2]]) {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      for (const route of routes) {
+        await page.goto(route.path, { waitUntil: "domcontentloaded" });
+        await expect(page.getByRole("heading", { name: route.heading, exact: true })).toBeVisible({ timeout: 20_000 });
+        await expect(page.getByText(/Comprobando permisos|Cargando evolución/i)).toBeHidden({ timeout: 20_000 });
+        await assertDarkAndContained(page, route.heading + " " + viewport.name, false);
+        await attachScreen(page, testInfo, "p37-" + viewport.name + "-" + route.name);
+      }
+    }
   });
 });
