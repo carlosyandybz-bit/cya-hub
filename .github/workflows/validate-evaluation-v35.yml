@@ -1,8 +1,8 @@
-name: Validate CYA Hub main
+name: Validate CYA Hub staging
 
 on:
   push:
-    branches: [main]
+    branches: [staging]
   workflow_dispatch:
 
 permissions:
@@ -13,6 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Refuse non-staging branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_NAME}" != "staging" ]]; then
+            echo "Canonical build validation is restricted to staging." >&2
+            exit 1
+          fi
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
