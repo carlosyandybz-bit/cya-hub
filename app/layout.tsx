@@ -23,6 +23,7 @@ import "./p36-live-class.css";
 import "./p36-teaching.css";
 import "./p36-marketing.css";
 import "./p36-admin-teaching.css";
+import "./cya-detail-system-v2.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

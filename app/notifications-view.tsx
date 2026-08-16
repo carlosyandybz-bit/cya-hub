@@ -301,7 +301,7 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
 
   return <section className={styles.root}>
     <header className={styles.hero}>
-      <div><p>NOTIFICACIONES</p><h1>{audience === "student" ? "Tus avisos" : "Avisos de trabajo"}</h1><span>{audience === "student" ? "Aquí encontrarás únicamente novedades y acciones relacionadas con tu propia experiencia en CYA." : "Clases, alumnos, bonos, enseñanza, misiones y otras tareas que requieren tu atención se organizan aquí sin mezclar asuntos distintos."}</span></div>
+      <div><p>NOTIFICACIONES</p><h1>{audience === "student" ? "Tus avisos" : "Avisos de trabajo"}</h1><span>{audience === "student" ? "Novedades y acciones relacionadas con tu experiencia en CYA." : "Tus avisos pendientes y el historial reciente."}</span></div>
       <div className={styles.heroIcon}>{pending.length ? <BellRing /> : <CheckCheck />}</div>
     </header>
 

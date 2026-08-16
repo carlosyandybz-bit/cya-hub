@@ -33,5 +33,7 @@ test("notification screen resolves mission priority and precise person or class 
 });
 
 test("invalid notification targets are not navigated", () => {
-  assert.match(notifications, /validTargets\.has\(target\)/);
+  assert.match(notifications, /function targetBase\(/);
+  assert.match(notifications, /validTargets\.has\(base\) \? base : null/);
+  assert.match(notifications, /const base = targetBase\(target\);[\s\S]*if \(!base\) return;[\s\S]*openTarget\(base,/);
 });

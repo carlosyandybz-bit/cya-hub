@@ -266,13 +266,6 @@ export function StudentMasterDetail({
   const [profileRefresh,setProfileRefresh] = useState(0);
   const [danceProfiles, setDanceProfiles] = useState<DanceProfile[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
-  const [evaluationDraftOpen,setEvaluationDraftOpen]=useState(false);
-  const [evaluationProfileId,setEvaluationProfileId]=useState<number|null>(null);
-  const [evaluationLevelId,setEvaluationLevelId]=useState<number|null>(null);
-  const [evaluationKind,setEvaluationKind]=useState<"manual"|"reevaluation">("manual");
-  const [evaluationSessionId,setEvaluationSessionId]=useState<number|null>(null);
-  const [evaluationScores,setEvaluationScores]=useState<Record<number,number>>({});
-  const [evaluationBusy,setEvaluationBusy]=useState("");
   const [crmActivities, setCrmActivities] = useState<CrmActivity[]>([]);
   const [incidents, setIncidents] = useState<StudentIncident[]>([]);
   const [liveBalances, setLiveBalances] = useState<Record<number, number>>({});
@@ -436,36 +429,7 @@ export function StudentMasterDetail({
     setFinancialBusy("");
   }
 
-  const evaluationProfile=danceProfiles.find((item) => item.id===evaluationProfileId) ?? danceProfiles.find((item) => item.is_primary) ?? danceProfiles[0] ?? null;
-  const effectiveEvaluationLevelId=evaluationLevelId ?? evaluationProfile?.level_term_id ?? null;
-  const evaluationLevel=terms.find((term) => term.id===effectiveEvaluationLevelId && term.taxonomy==='dance_level') ?? null;
-  const evaluationStyle=terms.find((term) => term.id===evaluationProfile?.style_term_id), evaluationRole=terms.find((term) => term.id===evaluationProfile?.role_term_id);
-  const evaluationAptitudes=terms.filter((term) => { if (term.taxonomy!=='aptitude' || !evaluationLevel) return false; const metadata=term.metadata ?? {}, levels=Array.isArray(metadata.levels)?metadata.levels as unknown[]:null, styles=Array.isArray(metadata.styles)?metadata.styles as unknown[]:null, roles=Array.isArray(metadata.roles)?metadata.roles as unknown[]:null; return (!levels || levels.includes(evaluationLevel.term_key ?? '')) && (!styles || styles.includes(evaluationStyle?.term_key ?? '')) && (!roles || roles.includes(evaluationRole?.term_key ?? '')); });
   const evaluationScale=terms.filter((term) => term.taxonomy==='evaluation_scale').map((term) => ({term,score:Number(term.metadata?.score)})).filter(({score}) => [0,25,50,75,100].includes(score)).sort((a,b)=>a.score-b.score);
-  const hasPreviousContextEvaluation=Boolean(evaluationProfile && evaluations.some((item) => item.style_term_id===evaluationProfile.style_term_id && item.role_term_id===evaluationProfile.role_term_id));
-
-  async function startEvaluationCapture() {
-    if (!evaluationProfile || !effectiveEvaluationLevelId) return setError('Selecciona primero el nivel y el contexto de baile.');
-    setEvaluationBusy('start'); setError('');
-    const kind=hasPreviousContextEvaluation?evaluationKind:'initial';
-    const result=await client.rpc('start_student_evaluation',{p_person_id:student.id,p_level_term_id:effectiveEvaluationLevelId,p_evaluation_kind:kind,p_style_term_id:evaluationProfile.style_term_id,p_role_term_id:evaluationProfile.role_term_id,p_class_id:null,p_note:null});
-    if (result.error) setError(result.error.message); else { setEvaluationSessionId(Number((result.data as {id:number}).id)); setEvaluationScores({}); }
-    setEvaluationBusy('');
-  }
-
-  async function saveEvaluationCapture(aptitudeId:number,score:number) {
-    if (!evaluationSessionId) return; setEvaluationBusy(`score-${aptitudeId}`); setError('');
-    const result=await client.rpc('save_evaluation_score',{p_session_id:evaluationSessionId,p_aptitude_term_id:aptitudeId,p_score:score,p_note:null});
-    if (result.error) setError(result.error.message); else { const row=result.data as Evaluation; setEvaluationScores((current) => ({...current,[aptitudeId]:score})); setEvaluations((current) => [row,...current.filter((item) => item.id!==row.id)]); }
-    setEvaluationBusy('');
-  }
-
-  async function finishEvaluationCapture() {
-    if (!evaluationSessionId) return; setEvaluationBusy('finish'); setError('');
-    const result=await client.rpc('complete_evaluation_session',{p_session_id:evaluationSessionId});
-    if (result.error) setError(result.error.message); else { setEvaluationSessionId(null); setEvaluationDraftOpen(false); setEvaluationScores({}); }
-    setEvaluationBusy('');
-  }
 
   function renderSummary() {
     return <div className={styles.stack}>

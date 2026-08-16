@@ -4,13 +4,17 @@ import fs from "node:fs";
 
 const app = fs.readFileSync("app/cya-app.tsx", "utf8");
 const menu = fs.readFileSync("app/account-menu.tsx", "utf8");
+const switcher = fs.readFileSync("app/experience-switcher.tsx", "utf8");
 const pages = fs.readFileSync("app/account-pages.tsx", "utf8");
 const css = fs.readFileSync("app/account-menu.module.css", "utf8");
 
 test("avatar menu owns portal and routes account actions", () => {
-  for (const label of ["Cambiar de portal", "Editar perfil", "Preferencias", "Cuenta y sesión", "Cerrar sesión"]) {
+  for (const label of ["Editar perfil", "Preferencias", "Cuenta y sesión", "Cerrar sesión"]) {
     assert.ok(menu.includes(label), `missing ${label}`);
   }
+  assert.match(menu, /<ExperienceSwitcher/);
+  assert.match(switcher, />Ver como</);
+  assert.match(switcher, /Cambiar de vista no cambia tus permisos reales/);
   assert.ok(menu.includes("onOpenProfile"));
   assert.ok(menu.includes("onOpenPreferences"));
   assert.ok(!menu.includes('name="avatar_url"'));

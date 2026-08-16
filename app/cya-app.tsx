@@ -30,7 +30,7 @@ import { StudentMasterDetail } from "./student-detail";
 import { TeachingContentCard, type TeachingCardMedia } from "./teaching-content-card";
 import { SecureDriveAsset } from "./drive-media";
 import { TeachingMediaEditor, type TeachingMediaDraft } from "./teaching-media-editor";
-import { setRuntimeSupabaseClient } from "./supabase-runtime";
+import { getRuntimeSupabaseClient, setRuntimeSupabaseClient } from "./supabase-runtime";
 import { ClassSummaryContentEditor } from "./class-summary-content-editor";
 import { ContextEvaluationPanel } from "./context-evaluation-panel-p0f";
 import { QuickProvisionalStudentModal, type EditablePersonIdentity } from "./person-identity-editor";
@@ -141,6 +141,11 @@ let dbConnection: Promise<SupabaseClient> | null = null;
 
 async function connectDatabase() {
   if (db) return db;
+  const runtimeClient = getRuntimeSupabaseClient();
+  if (runtimeClient) {
+    db = runtimeClient;
+    return db;
+  }
   if (!dbConnection) {
     dbConnection = fetch("/api/runtime-config", {
       cache: "no-store",
@@ -256,7 +261,7 @@ function Login() {
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [mode, setMode] = useState<"login" | "recovery">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "recovery">("login");
   const [notice, setNotice] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -268,6 +273,30 @@ function Login() {
       password: String(form.get("password") ?? ""),
     });
     if (result.error) setError(authError(result.error.message));
+    setBusy(false);
+  }
+  async function register(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!db) return setError("La conexión de CYA Hub todavía no está configurada.");
+    const form = new FormData(event.currentTarget);
+    const fullName = String(form.get("full_name") ?? "").trim();
+    const email = String(form.get("email") ?? "").trim();
+    const password = String(form.get("password") ?? "");
+    const confirmation = String(form.get("confirmation") ?? "");
+    if (fullName.length < 2) return setError("Escribe tu nombre completo.");
+    if (password.length < 10) return setError("Usa al menos 10 caracteres.");
+    if (password !== confirmation) return setError("Las dos contraseñas no coinciden.");
+    setBusy(true); setError(""); setNotice("");
+    const result = await db.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName },
+        emailRedirectTo: `${window.location.origin}/`,
+      },
+    });
+    if (result.error) setError(authError(result.error.message));
+    else setNotice("Revisa tu email para confirmar la cuenta. Cuando vuelvas, entrarás como Alumno.");
     setBusy(false);
   }
   async function requestRecovery(event: FormEvent<HTMLFormElement>) {
@@ -284,8 +313,8 @@ function Login() {
     <main className="login">
       <section className="login-card">
         <Brand />
-        <h1>{mode === "login" ? "Tu trabajo, en un solo sitio." : "Recupera tu acceso."}</h1>
-        <p>{mode === "login" ? "Acceso privado para Carlos & Andy y su equipo." : "Te enviaremos un enlace de un solo uso al email autorizado."}</p>
+        <h1>{mode === "login" ? "Tu trabajo, en un solo sitio." : mode === "signup" ? "Crea tu cuenta CYA." : "Recupera tu acceso."}</h1>
+        <p>{mode === "login" ? "Accede a tu espacio de Carlos & Andy." : mode === "signup" ? "Tu cuenta comienza como Alumno y se activa al confirmar el email." : "Te enviaremos un enlace de un solo uso al email de tu cuenta."}</p>
         {mode === "login" ? <form className="form" onSubmit={submit}>
             <label className="field"><span>Email</span><input name="email" type="email" inputMode="email" autoComplete="email" required placeholder="tu@email.com" /></label>
             <label className="field"><span>Contraseña</span><div className="password">
@@ -296,7 +325,22 @@ function Login() {
             </div></label>
             {error ? <p className="error" role="alert">{error}</p> : null}
             <button className="btn" type="submit" disabled={busy}>{busy ? "Entrando…" : <>Entrar <ArrowRight size={18} /></>}</button>
+            <button className="login-link login-link-primary" type="button" onClick={() => { setMode("signup"); setError(""); setNotice(""); }}>Crear cuenta de alumno</button>
             <button className="login-link" type="button" onClick={() => { setMode("recovery"); setError(""); }}>¿Has olvidado tu contraseña?</button>
+          </form> : mode === "signup" ? <form className="form signup-form" onSubmit={register}>
+            <label className="field"><span>Nombre completo</span><input name="full_name" type="text" autoComplete="name" minLength={2} required placeholder="Tu nombre y apellidos" /></label>
+            <label className="field"><span>Email</span><input name="email" type="email" inputMode="email" autoComplete="email" required placeholder="tu@email.com" /></label>
+            <label className="field"><span>Contraseña</span><div className="password">
+              <input name="password" type={visible ? "text" : "password"} autoComplete="new-password" minLength={10} required placeholder="10 caracteres como mínimo" />
+              <button type="button" aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setVisible(!visible)}>
+                {visible ? <EyeOff size={19} /> : <Eye size={19} />}
+              </button>
+            </div></label>
+            <label className="field"><span>Repetir contraseña</span><input name="confirmation" type={visible ? "text" : "password"} autoComplete="new-password" minLength={10} required /></label>
+            {error ? <p className="error" role="alert">{error}</p> : null}
+            {notice ? <p className="success" role="status">{notice}</p> : null}
+            <button className="btn" type="submit" disabled={busy || Boolean(notice)}>{busy ? "Creando…" : notice ? "Email enviado" : "Crear cuenta"}</button>
+            <button className="login-link" type="button" onClick={() => { setMode("login"); setError(""); setNotice(""); }}>Ya tengo cuenta</button>
           </form> : <form className="form" onSubmit={requestRecovery}>
             <label className="field"><span>Email</span><input name="email" type="email" inputMode="email" autoComplete="email" required placeholder="tu@email.com" /></label>
             {error ? <p className="error" role="alert">{error}</p> : null}
@@ -304,7 +348,7 @@ function Login() {
             <button className="btn" type="submit" disabled={busy}>{busy ? "Enviando…" : "Enviar enlace seguro"}</button>
             <button className="login-link" type="button" onClick={() => { setMode("login"); setError(""); setNotice(""); }}>Volver al acceso</button>
           </form>}
-        <div className="privacy"><LockKeyhole size={15} /> Acceso privado · solo para personas autorizadas.</div>
+        <div className="privacy"><LockKeyhole size={15} /> {mode === "signup" ? "Alta segura · sin selector de permisos." : "Acceso seguro para tu cuenta CYA."}</div>
       </section>
     </main>
   );
@@ -878,7 +922,7 @@ function ClassPreparationStage({ item, classes, students, assignments, terms, re
 }
 
 function ClassPostAdministrative({ item, students, no, yes }: { item: ClassItem; students: Person[]; no: () => void; yes: () => void }) {
-  return <div className="class-workflow-page post-admin"><div className="workflow-stepbar"><span>Datos</span><span>Preparar</span><span>Dar clase</span><span className="active">Resumen</span></div><section className="card pad post-admin-card"><CheckCircle2 /><p className="eyebrow">Administración terminada</p><h1>{namesFor(item.class_participants.map((p) => p.person_id),students)}</h1><p>El saldo y el cobro ya están registrados. La evaluación es siempre la misma evaluación del alumno y es opcional: nunca bloquea el cierre de esta clase.</p><div className="post-admin-actions"><button className="btn ghost" onClick={no}>No, terminaré después</button><button className="btn" onClick={yes}>Preparar resumen <ArrowRight /></button></div></section></div>;
+  return <div className="class-workflow-page post-admin"><div className="workflow-stepbar"><span>Datos</span><span>Preparar</span><span>Dar clase</span><span className="active">Resumen</span></div><section className="card pad post-admin-card"><CheckCircle2 /><p className="eyebrow">Administración terminada</p><h1>{namesFor(item.class_participants.map((p) => p.person_id),students)}</h1><p>El saldo y el cobro ya están registrados. ¿Quieres realizar el cierre de la clase y enviarle la documentación al alumno? La evaluación es siempre la misma evaluación del alumno; es opcional y nunca bloquea el cierre de esta clase.</p><div className="post-admin-actions"><button className="btn ghost" onClick={no}>No, terminaré después</button><button className="btn" onClick={yes}>Sí, preparar resumen <ArrowRight /></button></div></section></div>;
 }
 
 function ClassFinalSummary({ item, students, library, refresh, notify, done, back }: { item: ClassItem; students: Person[]; library: TeachingContent[]; refresh: () => Promise<void>; notify: (message:string) => void; done: () => void; back: () => void }) {
@@ -1712,7 +1756,7 @@ function StaffApp({ session }: { session: Session }) {
     <aside className="sidebar"><Brand /><DesktopPrimaryNavigation client={db!} view={view} studentArea={studentArea} navigate={(target) => navigateView(target as View)} />
       <AccountMenu client={db!} identity={identity} experience={experience} email={accountEmail} variant="sidebar" onExperience={setExperience} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} notify={setToast} />
     </aside>
-    <div><header className="mobile-head"><div className="mobile-head-back">{view !== "home" ? <button className="mobile-back" type="button" onClick={() => goBack("home")} aria-label="Volver">‹</button> : null}</div><div className="mobile-head-brand"><Brand /></div><div className="mobile-head-actions"><button className={`icon-btn notification-trigger ${unreadNotificationCount ? "has-notifications" : ""}`} onClick={() => navigateView("notifications")} aria-label={unreadNotificationCount ? `${unreadNotificationCount} notificaciones pendientes` : "Notificaciones"}>{unreadNotificationCount ? <BellRing /> : <Bell />}{unreadNotificationCount ? <span className="notification-dot" aria-hidden="true" /> : null}</button><AccountMenu client={db!} identity={identity} experience={experience} email={accountEmail} variant="header" onExperience={setExperience} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} notify={setToast} /></div></header>
+    <div><header className="mobile-head"><div className="mobile-head-back">{view !== "home" ? <button className="mobile-back" type="button" onClick={() => goBack("home")} aria-label="Volver">‹</button> : null}</div><div className="mobile-head-brand"><Brand /><span className="mobile-owner-name">Carlos &amp; Andy</span></div><div className="mobile-head-actions"><button className={`icon-btn notification-trigger ${unreadNotificationCount ? "has-notifications" : ""}`} onClick={() => navigateView("notifications")} aria-label={unreadNotificationCount ? `${unreadNotificationCount} notificaciones pendientes` : "Notificaciones"}>{unreadNotificationCount ? <BellRing /> : <Bell />}{unreadNotificationCount ? <span className="notification-dot" aria-hidden="true" /> : null}</button><AccountMenu client={db!} identity={identity} experience={experience} email={accountEmail} variant="header" onExperience={setExperience} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} notify={setToast} /></div></header>
       <main className="main"><div className="content">
         {studentArea ? <nav className="module-tabs" aria-label="Alumnado"><button className={view === "students" ? "active" : ""} onClick={() => navigateView("students")}><UsersRound /> Alumnos</button><button className={view === "classes" ? "active" : ""} onClick={() => navigateView("classes")}><CalendarDays /> Clases</button><button className={view === "credits" ? "active" : ""} onClick={() => navigateView("credits")}><WalletCards /> Bonos</button><button className={view === "agenda" ? "active" : ""} onClick={() => navigateView("agenda")}><CalendarDays /> Agenda</button></nav> : null}
         {view === "home" && db ? <HomeView client={db} identity={identity} studentCount={students.length} classes={classes} students={students} go={goTarget} goLive={goLive} addStudent={openNewStudent} scheduleClass={() => openSchedule(null)} notify={setToast} /> : null}
@@ -1731,7 +1775,7 @@ function StaffApp({ session }: { session: Session }) {
       {!isLiveClassSessionActive ? <>
         <nav className="mobile-nav" aria-label="Navegación principal">
           {nav.map(([id, label, Icon]) => <button key={id} data-nav-item={id} aria-current={activeNav(id) ? "page" : undefined} className={`${activeNav(id) ? "active" : ""} ${id === "live" ? "primary" : ""}`} onClick={() => { setClassQuickMenuOpen(false); navigateView(id); }}>{id === "live" ? <span className="mobile-nav-logo" aria-hidden="true"><Image src="/cya-logo.png" alt="" width={1024} height={1024} /></span> : <Icon />}<span>{label}</span></button>)}
-          <button type="button" className={`mobile-nav-secondary ${classQuickMenuOpen ? "open" : ""}`} aria-label="Más opciones de clase" aria-expanded={classQuickMenuOpen} aria-haspopup="menu" onClick={() => setClassQuickMenuOpen((value) => !value)}><ChevronDown /></button>
+          <button type="button" className={`mobile-nav-secondary ${classQuickMenuOpen ? "open" : ""}`} aria-label="Más opciones de clase" aria-expanded={classQuickMenuOpen} aria-haspopup="menu" onClick={() => setClassQuickMenuOpen((value) => !value)}><span>Más</span><ChevronDown /></button>
         </nav>
         {classQuickMenuOpen ? <div className="mobile-class-sheet" role="menu" aria-label="Opciones de clase">
           <button type="button" role="menuitem" onClick={() => { setClassQuickMenuOpen(false); openSchedule(); }}><Plus /><span><strong>Programar clase</strong><small>Crear una nueva clase</small></span><ChevronRight /></button>

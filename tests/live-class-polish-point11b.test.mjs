@@ -18,10 +18,12 @@ test('live class keeps one creation route and removes the redundant correction c
 });
 
 test('live correction cards expose state frequency and importance while collapsed', () => {
-  assert.ok(live.includes('quickControls={<div className="live-card-quick correction-quick">'));
+  assert.ok(live.includes('quickControls={renderCorrectionSummary(assignment)}'));
+  assert.ok(live.includes("compactMetric('frequency',assignment.current_frequency"));
+  assert.ok(live.includes("compactMetric('influence',assignment.current_importance"));
   assert.ok(live.includes('aria-label={`Estado de ${assignment.teaching_contents.title}`}'));
   assert.ok(live.includes('aria-label={`Frecuencia de ${assignment.teaching_contents.title}`}'));
-  assert.ok(live.includes('aria-label={`Importancia de ${assignment.teaching_contents.title}`}'));
+  assert.ok(live.includes('aria-label={`Influencia de ${assignment.teaching_contents.title}`}'));
   assert.ok(live.includes('live-priority-high'));
   assert.ok(live.includes('live-priority-medium'));
   assert.ok(live.includes('live-priority-low'));
@@ -58,8 +60,8 @@ test('TeachingContentCard supports chromatic kinds and collapsed quick controls'
   assert.ok(card.includes('quickControls?: ReactNode'));
   assert.ok(card.includes('kindTone?: "correction" | "explanation" | "exercise" | "sequence"'));
   assert.ok(card.includes('className={styles.quickControls}'));
-  assert.ok(cardCss.includes('.correction{'));
-  assert.ok(cardCss.includes('.explanation{'));
+  assert.match(cardCss,/\.correction(?:::before)?\{/);
+  assert.match(cardCss,/\.explanation(?:::before)?\{/);
   assert.ok(cardCss.includes('.quickControls{'));
 });
 

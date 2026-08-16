@@ -36,6 +36,16 @@ export function ContextEvaluationPanel({client,personId,personName,classId=null,
 
   const loadSession=useCallback(async(target:SessionRow)=>{const [evaluationResult,progressResult,milestoneResult]=await Promise.all([client.from("student_evaluations").select("id,session_id,aptitude_term_id,answer_scale_term_id,answer_label,score,reviewed_at").eq("session_id",target.id),client.from("student_aptitude_progress").select("id,aptitude_term_id,raw_score,effective_score,current_milestone_id,pending_milestone_id,pending_since_class_id,score_before_pending").eq("person_id",target.person_id).eq("style_term_id",target.style_term_id).eq("role_term_id",target.role_term_id).eq("level_term_id",target.level_term_id),client.from("evaluation_milestones").select("id,style_term_id,role_term_id,level_term_id,aptitude_term_id,label,threshold_score,sort_order,active").eq("style_term_id",target.style_term_id).eq("role_term_id",target.role_term_id).eq("level_term_id",target.level_term_id).eq("active",true).order("threshold_score")]);const firstError=evaluationResult.error||progressResult.error||milestoneResult.error;if(firstError){setError(firstError.message);return;}const nextProgress=(progressResult.data??[]) as ProgressRow[];setEvaluations((evaluationResult.data??[]) as EvaluationRow[]);setProgress(nextProgress);setMilestones((milestoneResult.data??[]) as Milestone[]);if(nextProgress.length){const decisionResult=await client.from("evaluation_milestone_decisions").select("id,progress_id,milestone_id,decision,class_id,created_at").in("progress_id",nextProgress.map((row)=>row.id)).order("created_at");if(decisionResult.error)setError(decisionResult.error.message);else setDecisions((decisionResult.data??[]) as Decision[]);}else setDecisions([]);},[client]);
   useEffect(()=>{const timer=window.setTimeout(()=>{if(!session){setEvaluations([]);setProgress([]);setMilestones([]);setDecisions([]);return;}void loadSession(session);},0);return()=>window.clearTimeout(timer);},[loadSession,session]);
+  useEffect(()=>{
+    if(!session)return;
+    const refresh=()=>void loadSession(session);
+    const channel=client.channel(`context-evaluation-${session.id}`)
+      .on("postgres_changes",{event:"*",schema:"public",table:"student_evaluations",filter:`session_id=eq.${session.id}`},refresh)
+      .on("postgres_changes",{event:"*",schema:"public",table:"student_aptitude_progress",filter:`person_id=eq.${session.person_id}`},refresh)
+      .on("postgres_changes",{event:"*",schema:"public",table:"evaluation_sessions",filter:`id=eq.${session.id}`},()=>void loadContext())
+      .subscribe();
+    return()=>{void client.removeChannel(channel);};
+  },[client,loadContext,loadSession,session]);
 
   const scale=useMemo(()=>terms.filter((term)=>term.taxonomy==="evaluation_scale").map((term)=>({term,score:Number(term.metadata?.score)})).filter(({score})=>[0,25,50,75,100].includes(score)).sort((a,b)=>a.score-b.score),[terms]);
   const aptitudes=useMemo(()=>{const progressIds=new Set(progress.map((row)=>row.aptitude_term_id));return terms.filter((term)=>term.taxonomy==="aptitude"&&progressIds.has(term.id)&&metadataAllows(term,"styles",styleKey)&&metadataAllows(term,"roles",roleKey)&&metadataAllows(term,"levels",levelKey)).sort((a,b)=>a.sort_order-b.sort_order);},[levelKey,progress,roleKey,styleKey,terms]);

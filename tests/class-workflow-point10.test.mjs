@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const app = fs.readFileSync('app/cya-app.tsx','utf8');
 const sql = fs.readFileSync('supabase/v31-class-workflow-realtime.sql','utf8');
+const currentWorkflow = fs.readFileSync('db/migrations/v54_p0f_live_class_milestones.sql','utf8');
 
 test('Dar clase opens a class center instead of auto-entering the first active class', () => {
   const start=app.indexOf('function LiveClassView('), end=app.indexOf('\nfunction TeachingContentEditor(',start), live=app.slice(start,end);
@@ -33,13 +34,12 @@ test('multiple teachers receive live class changes through Supabase Realtime', (
   assert.ok(sql.includes('alter publication supabase_realtime add table public.class_content_events'));
 });
 
-test('correction state is only pending/corrected and improvement is an event', () => {
-  assert.ok(app.includes('["pending", "Pendiente de corrección"], ["corrected", "Corregida"]'));
-  assert.equal(app.includes('["in_correction", "En corrección"]'),false);
-  assert.ok(app.includes("recordEvent(assignment.content_id,'improved')"));
-  assert.ok(sql.includes("p_assignment_status not in ('pending','corrected')"));
+test('correction state follows the current pending/in-correction/corrected lifecycle', () => {
+  assert.ok(app.includes('["pending", "Pendiente de corrección"], ["in_correction", "En corrección"], ["corrected", "Corregido"]'));
+  assert.ok(currentWorkflow.includes("p_assignment_status not in ('pending','in_correction','corrected')"));
+  assert.ok(currentWorkflow.includes("student_visible_at=case when p_assignment_status in ('pending','in_correction') then null"));
   assert.ok(sql.includes("'improved'"));
-  assert.ok(sql.includes("values(p_person_id,v_content.id,'pending'"));
+  assert.ok(currentWorkflow.includes("'improved'::text"));
 });
 
 test('explanations and sequences use pending/explained plus reviewed event', () => {
@@ -58,7 +58,7 @@ test('exercises are class events instead of recurring permanent assignments', ()
 
 test('live screen has work, evaluation and observations separated', () => {
   assert.ok(app.includes("liveTab==='work'"));
-  assert.ok(app.includes("liveTab==='evaluate'"));
+  assert.ok(app.includes("liveTab==='evaluation'"));
   assert.ok(app.includes("liveTab==='notes'"));
   assert.ok(app.includes("p_visibility_scope:scope"));
 });

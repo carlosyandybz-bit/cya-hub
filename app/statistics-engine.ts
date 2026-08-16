@@ -123,10 +123,60 @@ async function attendanceRate(client:SupabaseClient,bounds:PeriodBounds,filters:
 
 async function studentCount(client:SupabaseClient,bounds:PeriodBounds,filters:StatisticFilters,isNew:boolean){
   const country=textFilter(filters,"country")?.toUpperCase()??null;
-  let query=client.from("student_profiles").select("person_id,people!student_profiles_person_id_fkey!inner(country_code)",{count:"exact",head:true});
-  if(isNew)query=query.gte("student_since",bounds.fromDate).lte("student_since",bounds.toDate);else query=query.eq("active",true);
-  if(country)query=query.eq("people.country_code",country);
-  return exactCount(query);
+  type PersonRef={country_code:string|null};
+  type ProfileRow={person_id:number;people:PersonRef|PersonRef[]|null};
+  type ActivityRow={person_id:number;activity_at:string|null};
+  type ClassRef={class_type:string;status:string;scheduled_start_at:string};
+  type ParticipantRow={person_id:number;classes:ClassRef|ClassRef[]|null};
+
+  const profiles=await collectPages<ProfileRow>(async(from,to)=>{
+    let query=client.from("student_profiles").select("person_id,people!student_profiles_person_id_fkey!inner(country_code)").eq("active",true);
+    if(country)query=query.eq("people.country_code",country);
+    const result=await query.range(from,to);
+    return {data:(result.data??[]) as ProfileRow[],error:result.error};
+  });
+  const eligibleIds=new Set(profiles.map((row)=>row.person_id));
+  if(!eligibleIds.size)return 0;
+
+  const [participants,orders,requests,enrollments]=await Promise.all([
+    collectPages<ParticipantRow>(async(from,to)=>{
+      const result=await client.from("class_participants")
+        .select("person_id,classes!class_participants_class_id_fkey!inner(class_type,status,scheduled_start_at)")
+        .in("classes.class_type",["individual","pair"])
+        .in("classes.status",["scheduled","active","finished"])
+        .lt("classes.scheduled_start_at",bounds.toIso)
+        .range(from,to);
+      return {data:(result.data??[]) as ParticipantRow[],error:result.error};
+    }),
+    collectPages<ActivityRow>(async(from,to)=>{
+      const result=await client.from("feedback_credit_orders").select("person_id,requested_at").in("payment_status",["pending","paid"]).lt("requested_at",bounds.toIso).range(from,to);
+      return {data:(result.data??[]).map((row)=>({person_id:Number(row.person_id),activity_at:String(row.requested_at)})),error:result.error};
+    }),
+    collectPages<ActivityRow>(async(from,to)=>{
+      const result=await client.from("feedback_requests").select("person_id,submitted_at").in("status",["submitted","in_review","completed"]).not("submitted_at","is",null).lt("submitted_at",bounds.toIso).range(from,to);
+      return {data:(result.data??[]).map((row)=>({person_id:Number(row.person_id),activity_at:row.submitted_at?String(row.submitted_at):null})),error:result.error};
+    }),
+    collectPages<ActivityRow>(async(from,to)=>{
+      const result=await client.from("academy_enrollments").select("person_id,starts_at").eq("access_source","purchase").in("status",["active","completed"]).lt("starts_at",bounds.toIso).range(from,to);
+      return {data:(result.data??[]).map((row)=>({person_id:Number(row.person_id),activity_at:String(row.starts_at)})),error:result.error};
+    }),
+  ]);
+
+  const firstActivity=new Map<number,number>();
+  function remember(personId:number,value:string|null|undefined){
+    if(!eligibleIds.has(personId)||!value)return;
+    const at=new Date(value).getTime();
+    if(!Number.isFinite(at)||at>=bounds.to.getTime())return;
+    const current=firstActivity.get(personId);
+    if(current===undefined||at<current)firstActivity.set(personId,at);
+  }
+  participants.forEach((row)=>remember(row.person_id,relationOne(row.classes)?.scheduled_start_at));
+  orders.forEach((row)=>remember(row.person_id,row.activity_at));
+  requests.forEach((row)=>remember(row.person_id,row.activity_at));
+  enrollments.forEach((row)=>remember(row.person_id,row.activity_at));
+
+  if(!isNew)return firstActivity.size;
+  return [...firstActivity.values()].filter((at)=>at>=bounds.from.getTime()&&at<bounds.to.getTime()).length;
 }
 
 async function grantMetric(client:SupabaseClient,bounds:PeriodBounds,filters:StatisticFilters,sumPrice:boolean){

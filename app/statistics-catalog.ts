@@ -42,8 +42,8 @@ export const statisticCatalog: StatisticMetric[] = [
   { key:"class_minutes", block:"classes", label:"Minutos impartidos", format:"minutes", filters:["teacher","student","class_location","location_scope","style","class_status"], description:"Duración real, o planificada si aún no existe duración real." },
   { key:"attendance_rate", block:"classes", label:"Asistencia", format:"percentage", filters:["teacher","student","class_location","location_scope","style"], description:"Porcentaje de presentes sobre presentes + ausentes." },
 
-  { key:"students_active", block:"students", label:"Alumnos activos", format:"number", filters:["country"], description:"Perfiles de alumno actualmente activos." },
-  { key:"new_students", block:"students", label:"Nuevos alumnos", format:"number", filters:["country"], description:"Alumnos cuya fecha de alta cae dentro del periodo." },
+  { key:"students_active", block:"students", label:"Alumnos activos", format:"number", filters:["country"], description:"Perfiles activos con actividad real de clase, Feedback o una compra de Academia registrada hasta el final del periodo." },
+  { key:"new_students", block:"students", label:"Nuevos alumnos", format:"number", filters:["country"], description:"Alumnos cuya primera actividad real de clase, Feedback o compra de Academia cae dentro del periodo." },
 
   { key:"credit_sales", block:"business", label:"Importe de bonos", format:"currency", filters:["student","payment_status"], description:"Importe total de bonos según su estado de pago." },
   { key:"credit_grants", block:"business", label:"Bonos", format:"number", filters:["student","payment_status"], description:"Cantidad de bonos según su estado de pago." },

@@ -24,6 +24,6 @@ test("current production rule aliases have product labels",()=>{
 
 test("notification copy remains entity-aware and audience-specific",()=>{
   assert.match(notifications,/audience === "student" \? "Tus avisos" : "Avisos de trabajo"/);
-  assert.match(notifications,/sin mezclar asuntos distintos/);
-  assert.match(notifications,/únicamente novedades y acciones relacionadas con tu propia experiencia/);
+  assert.match(notifications,/Tus avisos pendientes y el historial reciente\./);
+  assert.match(notifications,/Novedades y acciones relacionadas con tu experiencia en CYA\./);
 });

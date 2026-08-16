@@ -131,12 +131,18 @@ Inicio | Alumnado | DAR CLASE | Enseñanza | Marketing
 
 - La acción principal muestra el logo en un área aproximada de 67 × 38px.
 - La etiqueta Dar clase permanece visible y accesible.
-- Más opciones de clase se apila por encima, ligeramente hacia el segundo lóbulo del símbolo.
-- Huella táctil del control adicional: 46 × 46px; la pieza metálica visible ocupa aproximadamente 42 × 34px dentro de esa huella.
+- Más opciones de clase se apila por encima, ligeramente hacia el segundo lóbulo del símbolo, y muestra la etiqueta visible `Más` junto al chevron.
+- Huella táctil del control adicional: aproximadamente 60 × 48px para alojar texto e icono sin perder el carácter metálico.
 - El conjunto se lee como una única composición inspirada en el logo.
 - El control adicional despliega Programar clase, Clases y Agenda.
 - aria-expanded y aria-haspopup=menu son obligatorios.
 - No añadir un tercer control, un círculo oscuro desconectado ni un chevron gigante.
+
+### Detail System v2
+
+La última capa canónica es `cya-detail-system-v2.css` y se carga después de los paquetes P36. No introduce un tema paralelo: consolida Night Motion con una única señal cromática por módulo, mantiene el logo oficial, eleva las etiquetas operativas móviles a un mínimo de 11,5px y añade `Carlos & Andy` en la cabecera compacta.
+
+En la pantalla pública, el alta de cuenta se ofrece como Alumno sin selector de roles. Pide nombre completo, email, contraseña de al menos diez caracteres y confirmación; la activación depende de confirmar el email. El sistema de permisos sigue siendo responsabilidad del servidor.
 
 ### Safe area
 

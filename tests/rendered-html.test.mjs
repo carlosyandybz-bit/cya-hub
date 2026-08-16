@@ -56,7 +56,7 @@ test("preserves critical CYA Hub product behaviour", async () => {
   assert.match(manifest, /display:\s*"standalone"/);
 });
 
-test("uses one reusable 4:3 teaching card with a dedicated readable detail viewer", async () => {
+test("uses one reusable compact teaching card with a dedicated readable detail viewer", async () => {
   const [app, studentDetail, card, cardCss] = await Promise.all([
     source("../app/cya-app.tsx"),
     source("../app/student-detail.tsx"),
@@ -77,14 +77,15 @@ test("uses one reusable 4:3 teaching card with a dedicated readable detail viewe
   assert.match(card, /group_label/);
   assert.match(card, /display_in_resources/);
   assert.match(card, /SecureDriveAsset/);
-  assert.match(card, /Abrir contenido/);
+  assert.match(card, /aria-label=\{`Abrir \$\{kindLabel\}: \$\{title\}`\}/);
   assert.match(card, /role="dialog"/);
   assert.match(card, /aria-modal="true"/);
-  assert.match(card, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(card, /document\.body\.style\.overflow\s*=\s*"hidden"/);
   assert.match(card, /resourceGroup/);
   assert.doesNotMatch(card, /<iframe/);
-  assert.match(cardCss, /aspect-ratio:4\/3/);
-  assert.match(cardCss, /grid-template-columns:138px minmax\(0,1fr\)/);
+  assert.match(cardCss, /\.compactButton\{[^}]*grid-template-columns:minmax\(0,1fr\) 16px/);
+  assert.match(cardCss, /\.detailHeroMedia\{[^}]*aspect-ratio:16\/9/);
+  assert.doesNotMatch(cardCss, /grid-template-columns:138px/);
   assert.match(cardCss, /detailBackdrop/);
   assert.match(cardCss, /resourceGrid/);
 });

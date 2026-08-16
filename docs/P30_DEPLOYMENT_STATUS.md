@@ -56,7 +56,11 @@ Bloques disponibles:
 
 Marketing utiliza el esquema real de `CyA hub 2`: inversión, impresiones, alcance, clics, consultas, reservas, ingresos, CTR, tasas de conversión y ROI.
 
-Se mantiene la extensión prevista para BZ Points, Feedback Online, Academia Online y vídeo cuando existan sus módulos canónicos.
+BZ Points, Feedback Online y Academia Online se incorporan mediante el mismo catálogo declarativo; vídeo queda reservado para una métrica futura con decisión de producto explícita.
+
+### Alineación de alumnado (2026-08-16)
+
+El motor cliente ya no usa `student_since` como sustituto de captación real. `students_active` exige perfil activo y actividad cualificante; `new_students` toma la primera fecha entre clase, Feedback Online y compra de Academia Online. Esta alineación es de lectura y no requiere migración de base de datos.
 
 ## Verificaciones contra producción
 

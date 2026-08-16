@@ -46,6 +46,17 @@ El sistema expone un catálogo declarativo de métricas agrupadas por bloques: N
 
 BZ Points utiliza como fuente `bz_point_ledger` y `bz_reward_redemptions`; los ajustes manuales no se presentan como puntos ganados ni como canjes. Las métricas BZ disponibles son puntos ganados, puntos canjeados, acciones premiadas, personas que han ganado puntos y recompensas canjeadas.
 
+### Regla canónica de alumnado
+
+`students_active` y `new_students` no cuentan un perfil vacío por el mero hecho de existir. Para entrar en estas métricas, la persona debe conservar un perfil de alumno activo y al menos una actividad real cualificante:
+
+- participación en una clase individual o de pareja programada, activa o finalizada;
+- pedido de crédito de Feedback Online pendiente o pagado;
+- solicitud de Feedback enviada, en revisión o completada;
+- matrícula de Academia Online comprada y activa o completada.
+
+`new_students` usa la fecha de la primera de esas actividades, no `student_since`. Así se evita inflar captación con perfiles provisionales o registros creados para pruebas sin aprendizaje ni compra real.
+
 ## Filtros
 
 Se habilitarán solo cuando exista un dato canónico fiable. Entre otros: profesor, alumno, ubicación/ciudad, dentro o fuera de una ubicación, país, estilo, estado de clase, estado de pago, tipo de contenido, campaña, prioridad/tipo de misión y canal/tipo de notificación. Las métricas BZ que representan movimientos individuales admiten filtro por alumno.
@@ -83,4 +94,4 @@ Debe existir una sección específica para Estadísticas desde la que un adminis
 
 ## Extensibilidad
 
-BZ Points y recompensas ya están integrados en el catálogo P30. Feedback Online, Academia Online y almacenamiento/compresión de vídeo deberán registrar sus métricas en el mismo catálogo cuando sus módulos existan. No se crearán dashboards paralelos incompatibles.
+BZ Points, Feedback Online y Academia Online ya están integrados en el catálogo P30. El almacenamiento/compresión de vídeo deberá registrar sus métricas en este mismo catálogo cuando exista una decisión de producto que las justifique. No se crearán dashboards paralelos incompatibles.

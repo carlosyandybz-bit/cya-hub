@@ -42,7 +42,7 @@ test('P0G usa Influencia visible y una capa cromática compacta',()=>{
   assert.doesNotMatch(app,/importance: "Importancia"/);
   assert.match(compact,/--cya-teaching:#149e99/);
   assert.match(compact,/--cya-marketing:#7a3f68/);
-  assert.match(compact,/\.btn\{color:#fff\}/);
+  assert.match(compact,/\.btn\{color:var\(--cya-on-accent\)\}/);
   assert.match(compact,/p0g-metric/);
 });
 
