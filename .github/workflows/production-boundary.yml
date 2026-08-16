@@ -1,37 +1,51 @@
-name: Production boundary
+name: Staging isolation boundary
 
 on:
+  push:
+    branches: [staging]
   pull_request:
-    branches: [main]
+    branches: [staging]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  reject-staging-only-artifacts:
+  enforce-staging-boundary:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Reject staging-only paths
+      - name: Enforce staging-only environment contract
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            git fetch origin "${{ github.base_ref }}" --depth=1
-            FILES="$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)"
+
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            [[ "${GITHUB_BASE_REF}" == "staging" ]] || {
+              echo "This workflow only accepts PRs targeting staging." >&2
+              exit 1
+            }
           else
-            FILES="$(git ls-files)"
+            [[ "${GITHUB_REF_NAME}" == "staging" ]] || {
+              echo "This workflow only accepts staging runs." >&2
+              exit 1
+            }
           fi
 
-          printf '%s\n' "$FILES" > /tmp/cya-files.txt
+          test -f .env.staging.example
+          grep -q '^SENTRY_ENVIRONMENT=staging$' .env.staging.example
+          grep -q 'STAGING' .env.staging.example
 
-          forbidden='^(\.env\.staging\.example$|\.agents/|\.vinext/|qa/|examples/|supabase/functions/cya-qa-bootstrap/|tsconfig\.tsbuildinfo$|staging/)'
-          if grep -E "$forbidden" /tmp/cya-files.txt; then
-            echo "ERROR: staging-only artifacts cannot be published to main."
+          if grep -q 'ldvyeyhzrepaaouzavgs' .env.staging.example; then
+            echo "Production Supabase project reference found in staging environment template." >&2
             exit 1
           fi
 
-          echo "Production boundary OK."
+          if grep -RInE --include='*.yml' --include='*.yaml' \
+            'branches:[[:space:]]*\[main\]|^[[:space:]]*-[[:space:]]*main[[:space:]]*$|--ref[[:space:]]+main|HEAD:main|ref:[[:space:]]*main' \
+            .github/workflows; then
+            echo "A development workflow still targets main. Staging must be the only development branch." >&2
+            exit 1
+          fi
+
+          echo "Staging isolation boundary OK."
