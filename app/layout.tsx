@@ -30,18 +30,37 @@ import "./professor-header-v44.css";
 import "./student-portal-touch-target-v45.css";
 import "./professor-class-control-v46.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
   title: "CYA Hub",
   applicationName: "CYA Hub",
   description: "Gestión de alumnado, clases, enseñanza y marketing de Carlos & Andy.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "CYA Hub" },
-  formatDetection: { telephone: false },
-  other: { "codex-preview": "development" },
-  icons: { icon: "/favicon.svg", shortcut: "/favicon.svg", apple: "/icon-192.png" },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "CYA Hub",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  other: {
+    "codex-preview": "development",
+  },
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/icon-192.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -52,6 +71,18 @@ export const viewport: Viewport = {
   themeColor: "#08090d",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="es"><body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>{children}</body></html>;
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="es">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        {children}
+      </body>
+    </html>
+  );
 }
