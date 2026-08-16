@@ -18,7 +18,7 @@ type HeaderGeometry = {
   brand: { left: number; right: number; width: number; centerX: number; scrollWidth: number; clientWidth: number };
   actions: { left: number; right: number; width: number };
   back: { left: number; right: number; width: number } | null;
-  actionTargets: Array<{ label: string; width: number; height: number }>;
+  actionTargets: Array<{ label: string; left: number; right: number; width: number; height: number }>;
   rightGap: number;
   leftGap: number | null;
 };
@@ -29,22 +29,41 @@ async function readGeometry(page: Page): Promise<HeaderGeometry> {
       const box = (element as HTMLElement).getBoundingClientRect();
       return { left: box.left, right: box.right, width: box.width };
     };
+    const visible = (element: HTMLElement) => {
+      const style = getComputedStyle(element);
+      const box = element.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || "1") > 0 && box.width > 0 && box.height > 0;
+    };
+
     const header = document.querySelector<HTMLElement>(".mobile-head")!;
     const brand = document.querySelector<HTMLElement>(".mobile-head-brand")!;
     const actions = document.querySelector<HTMLElement>(".mobile-head-actions")!;
     const backButton = document.querySelector<HTMLElement>(".mobile-head-back .mobile-back");
     const headerBox = rect(header);
     const brandBox = rect(brand);
-    const actionBox = rect(actions);
-    const backBox = backButton ? rect(backButton) : null;
-    const actionTargets = Array.from(actions.querySelectorAll<HTMLElement>("button")).map((button) => {
-      const box = button.getBoundingClientRect();
-      return {
-        label: button.getAttribute("aria-label") || button.innerText.trim() || button.className,
-        width: box.width,
-        height: box.height,
-      };
-    });
+    const backBox = backButton && visible(backButton) ? rect(backButton) : null;
+
+    const actionTargets = Array.from(actions.querySelectorAll<HTMLElement>("button"))
+      .filter(visible)
+      .map((button) => {
+        const box = button.getBoundingClientRect();
+        return {
+          label: button.getAttribute("aria-label") || button.innerText.trim() || button.className,
+          left: box.left,
+          right: box.right,
+          width: box.width,
+          height: box.height,
+        };
+      });
+
+    const actionBox = actionTargets.length
+      ? {
+          left: Math.min(...actionTargets.map((target) => target.left)),
+          right: Math.max(...actionTargets.map((target) => target.right)),
+          width: Math.max(...actionTargets.map((target) => target.right)) - Math.min(...actionTargets.map((target) => target.left)),
+        }
+      : rect(actions);
+
     return {
       header: headerBox,
       brand: {
@@ -75,7 +94,8 @@ for (const width of widths) {
     expect(Math.abs(geometry.brand.centerX - headerCenter), "brand must remain on the physical viewport axis").toBeLessThanOrEqual(1);
     expect(geometry.brand.left, "brand must not clip the left viewport edge").toBeGreaterThanOrEqual(0);
     expect(geometry.brand.right, "brand must not clip the right viewport edge").toBeLessThanOrEqual(width);
-    expect(geometry.rightGap, "brand needs at least 10px clearance from header actions").toBeGreaterThanOrEqual(10);
+    expect(geometry.brand.scrollWidth, "brand content must remain fully visible without internal clipping").toBeLessThanOrEqual(geometry.brand.clientWidth + 1);
+    expect(geometry.rightGap, "brand needs at least 10px clearance from visible header actions").toBeGreaterThanOrEqual(10);
 
     for (const target of geometry.actionTargets) {
       expect(target.width, `${target.label} must be at least 44px wide`).toBeGreaterThanOrEqual(44);
@@ -103,6 +123,7 @@ test("UX-01 detail and immersive headers preserve clearance and back navigation"
   expect(detail.leftGap, "detail brand needs clearance from back action").not.toBeNull();
   expect(detail.leftGap!).toBeGreaterThanOrEqual(10);
   expect(detail.rightGap).toBeGreaterThanOrEqual(10);
+  expect(detail.brand.scrollWidth).toBeLessThanOrEqual(detail.brand.clientWidth + 1);
 
   await page.getByRole("button", { name: "Dar clase", exact: true }).last().click();
   await expect(page.locator('.shell[data-view="live"]')).toBeVisible();
@@ -110,6 +131,7 @@ test("UX-01 detail and immersive headers preserve clearance and back navigation"
   expect(immersive.leftGap, "immersive brand needs clearance from back action").not.toBeNull();
   expect(immersive.leftGap!).toBeGreaterThanOrEqual(10);
   expect(immersive.rightGap).toBeGreaterThanOrEqual(10);
+  expect(immersive.brand.scrollWidth).toBeLessThanOrEqual(immersive.brand.clientWidth + 1);
 
   await testInfo.attach("ux01-detail-immersive", {
     body: JSON.stringify({ detail, immersive }, null, 2),
