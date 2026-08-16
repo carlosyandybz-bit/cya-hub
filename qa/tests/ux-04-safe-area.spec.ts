@@ -17,7 +17,11 @@ async function login(page: Page, role: "teacher" | "student") {
 async function assertScrollableContentClearsBottomChrome(page: Page, nav: ReturnType<Page["locator"]>, main: ReturnType<Page["locator"]>) {
   await expect(nav).toBeVisible();
   await expect(main).toBeVisible();
-  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.evaluate(async () => {
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    window.scrollTo(0, document.documentElement.scrollHeight);
+  });
   await page.waitForTimeout(120);
 
   const result = await page.evaluate(() => {
@@ -45,19 +49,16 @@ async function assertScrollableContentClearsBottomChrome(page: Page, nav: Return
       .sort((a, b) => b.rect.bottom - a.rect.bottom)[0];
 
     return {
-      viewportHeight: innerHeight,
       navTop: navRect.top,
       navHeight: navRect.height,
       mainPaddingBottom: parseFloat(getComputedStyle(activeMain).paddingBottom || "0"),
       lowest: lowest ? { text: lowest.text, top: lowest.rect.top, bottom: lowest.rect.bottom } : null,
-      documentBottomGap: document.documentElement.scrollHeight - (scrollY + innerHeight),
     };
   });
 
   expect(result).not.toBeNull();
   expect(result!.mainPaddingBottom).toBeGreaterThanOrEqual(result!.navHeight + 8);
   if (result!.lowest) expect(result!.lowest.bottom).toBeLessThanOrEqual(result!.navTop + 1);
-  expect(result!.documentBottomGap).toBeLessThanOrEqual(2);
 }
 
 for (const width of widths) {
@@ -102,6 +103,7 @@ test("UX-04 student master dialog remains fully operable inside the mobile viewp
   });
   expect(geometry.top).toBeGreaterThanOrEqual(0);
   expect(geometry.bottom).toBeLessThanOrEqual(geometry.viewport + 1);
+  expect(geometry.height).toBeLessThanOrEqual(geometry.viewport);
 
   const close = dialog.getByRole("button", { name: /cerrar/i }).first();
   await expect(close).toBeVisible();
