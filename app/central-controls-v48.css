@@ -178,11 +178,70 @@
   nav[aria-label="Portal CYA"] + [role="menu"] {
     max-width: calc(100vw - 24px);
   }
+
+  /* Student legacy neutralization. v38 targets the centre disclosure by DOM
+     position and forces 44×44 plus the old 40×20 visual shell. Match that
+     specificity here so the canonical v48 control remains the source of truth. */
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button[aria-label="Abrir apartados de Mi formación"] {
+    top: -37px !important;
+    right: auto !important;
+    left: 50% !important;
+    width: 60px !important;
+    min-width: 60px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
+    padding: 5px 8px 15px !important;
+    transform: translateX(-50%) !important;
+    display: flex !important;
+    place-items: initial !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    border: 1px solid rgba(220, 188, 240, .43) !important;
+    border-radius: 20px 20px 13px 13px !important;
+    background: linear-gradient(180deg, rgba(74, 58, 86, .995), rgba(32, 28, 38, .995)) !important;
+    box-shadow:
+      0 0 0 2px rgba(8, 9, 13, .97),
+      0 5px 12px rgba(0, 0, 0, .34),
+      inset 0 1px 0 rgba(255, 255, 255, .15) !important;
+  }
+
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button[aria-label="Abrir apartados de Mi formación"]::before {
+    content: "Más" !important;
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    width: auto !important;
+    height: auto !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: inherit !important;
+    font: inherit !important;
+    line-height: 1 !important;
+  }
+
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button[aria-label="Abrir apartados de Mi formación"] svg {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    width: 12px !important;
+    height: 12px !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button[aria-label="Abrir apartados de Mi formación"][aria-expanded="true"] svg {
+    transform: rotate(180deg) !important;
+  }
 }
 
 @media (max-width: 350px) {
   .mobile-nav .mobile-nav-secondary,
-  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] {
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"],
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button[aria-label="Abrir apartados de Mi formación"] {
     width: 58px !important;
     min-width: 58px !important;
     font-size: 9.5px !important;
