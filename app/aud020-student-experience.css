@@ -348,7 +348,7 @@ body:has(nav[aria-label="Portal CYA"]) nav[aria-label="Portal CYA"] button:activ
   }
 
   [role="dialog"][aria-labelledby="student-master-title"] nav[aria-label^="Vistas de"] button {
-    min-height: 44px !important;
+    min-height: 46px !important;
   }
 }
 

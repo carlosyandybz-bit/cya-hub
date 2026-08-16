@@ -16,13 +16,13 @@
     min-height: 46px !important;
   }
 
-  /* Los switches conservan un track visual 35x21, pero el botón real pasa a 44x44. */
+  /* Los switches conservan un track visual 35x21, pero el botón real pasa a 46x46. */
   .switch {
     position: relative;
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
-    min-height: 44px;
+    width: 46px;
+    min-width: 46px;
+    height: 46px;
+    min-height: 46px;
     padding: 0;
     border: 0;
     border-radius: 12px;

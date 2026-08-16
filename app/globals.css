@@ -696,17 +696,17 @@ body:has([role="dialog"]){overflow:hidden}
   .modal.teaching-modal{width:min(94vw,680px)}
   .modal-head{padding:16px 17px}
   .modal-body{padding:16px 17px}
-  button:not(.switch),summary,.btn,a.btn,.text-button,.check-grid label,.role-chip-list>label,.portal-media a,.existing-media a,.communication-media a{min-height:44px}
-  .icon-btn,.close,.live-exit,.drive-remove,.mobile-back{width:44px;min-width:44px;height:44px;min-height:44px}
-  .context-selector.compact button{min-width:44px;min-height:44px}
+  button:not(.switch),summary,.btn,a.btn,.text-button,.check-grid label,.role-chip-list>label,.portal-media a,.existing-media a,.communication-media a{min-height:46px}
+  .icon-btn,.close,.live-exit,.drive-remove,.mobile-back{width:46px;min-width:46px;height:46px;min-height:46px}
+  .context-selector.compact button{min-width:46px;min-height:46px}
   .mobile-nav button{min-height:52px}
-  .module-tabs button,.segmented button,.score-grid button,.student-assignment-list select,.guide-row select{min-height:44px}
-  .student-row-actions .btn,.crm-row-actions .btn,.communication-recipient-actions .btn,.communication-batch-head .btn,.drive-folder-row .btn{min-height:44px}
+  .module-tabs button,.segmented button,.score-grid button,.student-assignment-list select,.guide-row select{min-height:46px}
+  .student-row-actions .btn,.crm-row-actions .btn,.communication-recipient-actions .btn,.communication-batch-head .btn,.drive-folder-row .btn{min-height:46px}
   .main,.content,.page-head,.card,.student-row,.agenda-row,.marketing-workspace,.admin-panel{min-width:0;max-width:100%}
 }
 
 @media(max-width:560px){
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),select,textarea{min-height:44px;font-size:16px!important}
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),select,textarea{min-height:46px;font-size:16px!important}
   .field textarea{min-height:96px}
   .main{padding-right:12px;padding-left:12px}
   .mobile-nav{right:8px;left:8px;bottom:max(8px,env(safe-area-inset-bottom))}
