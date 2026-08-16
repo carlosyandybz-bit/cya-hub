@@ -1,287 +1,216 @@
-/* v38 · Bottom navigation controls inspired by the approved CYA concept.
-   Shared visual language for the professor and student bottom bars without
-   changing routes, permissions or navigation semantics. */
+/* v39 · Integrated dual-flush navigation control.
+   Inspired by a concentric dual push-button: one shared symmetrical housing,
+   large primary action + small integrated reveal segment. */
 
 @media (max-width: 900px) {
-  /* ---------- Shared bar treatment ---------- */
   .mobile-nav,
   nav[aria-label="Portal CYA"] {
-    border: 1px solid rgba(176, 137, 255, .24) !important;
-    background:
-      linear-gradient(180deg, rgba(22, 18, 34, .97), rgba(8, 8, 13, .985)) !important;
-    box-shadow:
-      0 18px 42px rgba(0, 0, 0, .42),
-      0 -1px 0 rgba(180, 117, 255, .12),
-      inset 0 1px 0 rgba(255, 255, 255, .055) !important;
-    backdrop-filter: blur(22px) saturate(1.18) !important;
-    -webkit-backdrop-filter: blur(22px) saturate(1.18) !important;
     overflow: visible !important;
     isolation: isolate;
+    border: 1px solid rgba(155, 129, 198, .30) !important;
+    background: linear-gradient(180deg, rgba(18,19,27,.985), rgba(9,10,15,.995)) !important;
+    box-shadow: 0 14px 34px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.055) !important;
+    backdrop-filter: blur(22px) saturate(1.12) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.12) !important;
   }
 
-  .mobile-nav::before,
-  nav[aria-label="Portal CYA"]::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    left: 50%;
-    top: -1px;
-    width: 34%;
-    height: 1px;
-    transform: translateX(-50%);
-    background: linear-gradient(90deg, transparent, rgba(194, 119, 255, .52), transparent);
-    pointer-events: none;
-  }
-
-  .mobile-nav > button:not(.primary):not(.mobile-nav-secondary),
-  nav[aria-label="Portal CYA"] > button {
-    transition: color .16s ease, transform .16s ease, background .16s ease;
-  }
-
-  .mobile-nav > button:not(.primary):not(.mobile-nav-secondary):active,
-  nav[aria-label="Portal CYA"] > button:active {
-    transform: translateY(-1px) scale(.97);
-  }
-
-  /* ---------- Professor: DAR CLASE ---------- */
+  /* PROFESSOR · shared round housing */
   .mobile-nav button.primary {
     position: relative;
     z-index: 3;
-    min-height: 68px !important;
-    margin: -8px 3px -1px;
-    padding: 8px 6px 5px !important;
+    width: 78px !important;
+    height: 78px !important;
+    min-height: 78px !important;
+    justify-self: center;
+    margin: 0 !important;
+    padding: 9px 5px 7px !important;
     transform: translateY(-12px) !important;
     overflow: visible;
-    border: 1px solid rgba(224, 180, 255, .7) !important;
-    border-radius: 47% 53% 48% 52% / 58% 58% 42% 42% !important;
+    border: 1px solid rgba(205,178,232,.44) !important;
+    border-radius: 50% !important;
     background:
-      radial-gradient(ellipse at 50% 12%, rgba(255, 255, 255, .24), transparent 31%),
-      radial-gradient(ellipse at 50% 78%, rgba(157, 42, 255, .34), transparent 66%),
-      linear-gradient(180deg, rgba(78, 29, 113, .97), rgba(26, 13, 42, .99)) !important;
-    color: #f7eaff !important;
+      radial-gradient(circle at 50% 30%, rgba(91,61,119,.34), transparent 48%),
+      linear-gradient(145deg, rgba(42,35,54,.99), rgba(16,15,23,.99)) !important;
+    color: #f2e9f8 !important;
     box-shadow:
-      0 0 0 3px rgba(124, 44, 205, .24),
-      0 0 22px rgba(176, 56, 255, .46),
-      0 14px 30px rgba(0, 0, 0, .46),
-      inset 0 1px 0 rgba(255, 255, 255, .34),
-      inset 0 -12px 24px rgba(62, 10, 98, .32) !important;
+      0 0 0 3px rgba(8,8,13,.92),
+      0 0 0 4px rgba(174,118,220,.20),
+      0 9px 22px rgba(0,0,0,.46),
+      inset 0 1px 0 rgba(255,255,255,.16),
+      inset 0 -8px 15px rgba(0,0,0,.24) !important;
   }
 
   .mobile-nav button.primary::before {
     content: "";
     position: absolute;
-    inset: 4px;
-    border: 1px solid rgba(226, 170, 255, .28);
-    border-radius: inherit;
-    pointer-events: none;
-  }
-
-  .mobile-nav button.primary::after {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    left: 50%;
-    bottom: -5px;
-    width: 82%;
-    height: 14px;
-    transform: translateX(-50%);
+    inset: 5px;
+    border: 1px solid rgba(193,147,229,.20);
     border-radius: 50%;
-    background: rgba(164, 48, 255, .26);
-    filter: blur(9px);
     pointer-events: none;
   }
 
   .mobile-nav button.primary .mobile-nav-logo {
-    width: 54px !important;
-    height: 32px !important;
+    width: 55px !important;
+    height: 34px !important;
     display: grid !important;
     place-items: center;
     overflow: hidden;
     border: 0 !important;
-    border-radius: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
-    filter: drop-shadow(0 0 7px rgba(231, 183, 255, .76));
+    filter: drop-shadow(0 0 6px rgba(174,74,255,.55));
   }
-
   .mobile-nav button.primary .mobile-nav-logo img {
-    width: 57px !important;
-    height: 57px !important;
+    width: 58px !important;
+    height: 58px !important;
     max-width: none !important;
     object-fit: contain;
   }
-
   .mobile-nav button.primary > span:last-child {
-    margin-top: -1px;
-    color: #f1d9ff;
-    font-size: 10px;
-    line-height: 1;
-    font-weight: 790;
-    letter-spacing: .005em;
-    text-shadow: 0 0 10px rgba(185, 78, 255, .48);
+    margin-top: -2px;
+    font-size: 9px !important;
+    line-height: 1 !important;
+    font-weight: 780 !important;
+    color: #e7d7f2 !important;
   }
-
   .mobile-nav button.primary.active {
-    border-color: rgba(239, 200, 255, .9) !important;
-    box-shadow:
-      0 0 0 3px rgba(149, 53, 230, .3),
-      0 0 30px rgba(190, 72, 255, .58),
-      0 15px 32px rgba(0, 0, 0, .5),
-      inset 0 1px 0 rgba(255, 255, 255, .4) !important;
+    border-color: rgba(203,126,255,.66) !important;
+    box-shadow: 0 0 0 3px rgba(8,8,13,.94), 0 0 0 4px rgba(187,83,255,.35), 0 0 18px rgba(157,47,235,.24), 0 9px 22px rgba(0,0,0,.46), inset 0 1px 0 rgba(255,255,255,.18) !important;
   }
+  .mobile-nav button.primary:active { transform: translateY(-10px) scale(.97) !important; }
 
-  .mobile-nav button.primary:active {
-    transform: translateY(-10px) scale(.965) !important;
-  }
-
-  /* The additional action sits directly above the main control, never beside it. */
+  /* Small reveal segment: visually cut into the top of the same round control. */
   .mobile-nav .mobile-nav-secondary {
-    z-index: 5 !important;
-    top: -30px !important;
+    position: absolute !important;
+    z-index: 6 !important;
+    top: -19px !important;
     left: 50% !important;
-    width: 42px !important;
-    height: 32px !important;
-    min-height: 32px !important;
+    width: 44px !important;
+    height: 24px !important;
+    min-height: 24px !important;
     padding: 0 !important;
     transform: translateX(-50%) !important;
-    border: 1px solid rgba(224, 181, 255, .64) !important;
-    border-radius: 15px 15px 12px 12px !important;
-    background:
-      radial-gradient(circle at 50% 10%, rgba(255, 255, 255, .18), transparent 45%),
-      linear-gradient(180deg, rgba(71, 29, 103, .98), rgba(28, 14, 43, .99)) !important;
-    color: #f4e3ff !important;
-    box-shadow:
-      0 0 0 2px rgba(130, 43, 205, .18),
-      0 0 15px rgba(171, 60, 255, .34),
-      0 8px 18px rgba(0, 0, 0, .34),
-      inset 0 1px 0 rgba(255, 255, 255, .25) !important;
+    display: grid !important;
+    place-items: center !important;
+    border: 1px solid rgba(212,181,235,.48) !important;
+    border-radius: 22px 22px 12px 12px !important;
+    background: linear-gradient(180deg, rgba(62,48,76,.99), rgba(29,25,37,.99)) !important;
+    color: #e8d9f1 !important;
+    box-shadow: 0 0 0 3px rgba(9,9,14,.96), 0 5px 10px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.17) !important;
   }
-
   .mobile-nav .mobile-nav-secondary > span {
     position: absolute !important;
     width: 1px !important;
     height: 1px !important;
-    padding: 0 !important;
     margin: -1px !important;
     overflow: hidden !important;
-    clip: rect(0, 0, 0, 0) !important;
-    white-space: nowrap !important;
-    border: 0 !important;
+    clip: rect(0,0,0,0) !important;
   }
-
   .mobile-nav .mobile-nav-secondary svg {
-    width: 16px !important;
-    height: 16px !important;
+    width: 15px !important;
+    height: 15px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
     transition: transform .16s ease;
   }
-
   .mobile-nav .mobile-nav-secondary.open {
-    background: linear-gradient(180deg, rgba(126, 46, 174, .98), rgba(55, 22, 80, .99)) !important;
-    box-shadow:
-      0 0 0 2px rgba(160, 63, 229, .24),
-      0 0 22px rgba(189, 72, 255, .44),
-      0 8px 20px rgba(0, 0, 0, .36) !important;
+    background: linear-gradient(180deg, rgba(105,55,139,.99), rgba(45,29,58,.99)) !important;
+    border-color: rgba(207,135,255,.65) !important;
   }
+  .mobile-class-sheet { bottom: calc(94px + env(safe-area-inset-bottom)) !important; }
 
-  .mobile-class-sheet {
-    bottom: calc(96px + env(safe-area-inset-bottom)) !important;
-  }
-
-  /* ---------- Student: MI FORMACIÓN ---------- */
+  /* STUDENT · same mechanism, primary face carries CYA logo + Mi formación. */
   nav[aria-label="Portal CYA"] > div:nth-child(3) {
     position: relative !important;
-    z-index: 3;
+    z-index: 4;
     height: 64px !important;
     overflow: visible !important;
   }
 
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:first-child {
+    position: absolute !important;
     left: 50% !important;
     bottom: 0 !important;
-    width: calc(100% - 6px) !important;
-    min-height: 68px !important;
-    padding: 8px 5px 5px !important;
-    transform: translate(-50%, -7px) !important;
-    overflow: visible;
-    border: 1px solid rgba(224, 180, 255, .7) !important;
-    border-radius: 47% 53% 48% 52% / 58% 58% 42% 42% !important;
+    width: 78px !important;
+    height: 78px !important;
+    min-height: 78px !important;
+    padding: 29px 4px 7px !important;
+    transform: translate(-50%, -5px) !important;
+    overflow: visible !important;
+    border: 1px solid rgba(205,178,232,.44) !important;
+    border-radius: 50% !important;
     background:
-      radial-gradient(ellipse at 50% 12%, rgba(255, 255, 255, .22), transparent 31%),
-      radial-gradient(ellipse at 50% 78%, rgba(157, 42, 255, .32), transparent 66%),
-      linear-gradient(180deg, rgba(78, 29, 113, .97), rgba(26, 13, 42, .99)) !important;
-    color: #f7eaff !important;
+      url('/cya-logo.png') center 10px / 49px 49px no-repeat,
+      radial-gradient(circle at 50% 30%, rgba(91,61,119,.34), transparent 48%),
+      linear-gradient(145deg, rgba(42,35,54,.99), rgba(16,15,23,.99)) !important;
+    color: #eee5f5 !important;
     box-shadow:
-      0 0 0 3px rgba(124, 44, 205, .22),
-      0 0 22px rgba(176, 56, 255, .42),
-      0 14px 30px rgba(0, 0, 0, .44),
-      inset 0 1px 0 rgba(255, 255, 255, .32),
-      inset 0 -12px 24px rgba(62, 10, 98, .3) !important;
+      0 0 0 3px rgba(8,8,13,.92),
+      0 0 0 4px rgba(174,118,220,.20),
+      0 9px 22px rgba(0,0,0,.46),
+      inset 0 1px 0 rgba(255,255,255,.16),
+      inset 0 -8px 15px rgba(0,0,0,.24) !important;
   }
-
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:first-child::before {
     content: "";
     position: absolute;
-    inset: 4px;
-    border: 1px solid rgba(226, 170, 255, .27);
-    border-radius: inherit;
+    inset: 5px;
+    border: 1px solid rgba(193,147,229,.20);
+    border-radius: 50%;
     pointer-events: none;
   }
-
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:first-child svg {
-    width: 25px !important;
-    height: 25px !important;
-    filter: drop-shadow(0 0 7px rgba(231, 183, 255, .64));
+    display: none !important;
   }
-
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:first-child > span {
-    color: #f1d9ff !important;
-    font-size: 9.5px !important;
+    position: absolute;
+    right: -8px;
+    bottom: 8px;
+    left: -8px;
+    color: #eadcf3 !important;
+    font-size: 8.5px !important;
+    line-height: 1 !important;
     font-weight: 790 !important;
-    text-shadow: 0 0 10px rgba(185, 78, 255, .44);
+    white-space: nowrap;
   }
-
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:first-child.active {
+    border-color: rgba(203,126,255,.66) !important;
+    box-shadow: 0 0 0 3px rgba(8,8,13,.94), 0 0 0 4px rgba(187,83,255,.35), 0 0 18px rgba(157,47,235,.24), 0 9px 22px rgba(0,0,0,.46), inset 0 1px 0 rgba(255,255,255,.18) !important;
+  }
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:first-child:active {
-    transform: translate(-50%, -5px) scale(.965) !important;
+    transform: translate(-50%, -3px) scale(.97) !important;
   }
 
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2) {
-    z-index: 5 !important;
-    top: -27px !important;
+    position: absolute !important;
+    z-index: 7 !important;
+    top: -18px !important;
     right: auto !important;
     left: 50% !important;
-    width: 42px !important;
-    height: 32px !important;
-    min-height: 32px !important;
+    width: 44px !important;
+    height: 24px !important;
+    min-height: 24px !important;
     padding: 0 !important;
     transform: translateX(-50%) !important;
-    border: 1px solid rgba(224, 181, 255, .64) !important;
-    border-radius: 15px 15px 12px 12px !important;
-    background:
-      radial-gradient(circle at 50% 10%, rgba(255, 255, 255, .18), transparent 45%),
-      linear-gradient(180deg, rgba(71, 29, 103, .98), rgba(28, 14, 43, .99)) !important;
-    color: #f4e3ff !important;
-    box-shadow:
-      0 0 0 2px rgba(130, 43, 205, .18),
-      0 0 15px rgba(171, 60, 255, .34),
-      0 8px 18px rgba(0, 0, 0, .34),
-      inset 0 1px 0 rgba(255, 255, 255, .25) !important;
+    display: grid !important;
+    place-items: center !important;
+    border: 1px solid rgba(212,181,235,.48) !important;
+    border-radius: 22px 22px 12px 12px !important;
+    background: linear-gradient(180deg, rgba(62,48,76,.99), rgba(29,25,37,.99)) !important;
+    color: #e8d9f1 !important;
+    box-shadow: 0 0 0 3px rgba(9,9,14,.96), 0 5px 10px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.17) !important;
   }
-
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2)[aria-expanded="true"] {
-    background: linear-gradient(180deg, rgba(126, 46, 174, .98), rgba(55, 22, 80, .99)) !important;
-    box-shadow:
-      0 0 0 2px rgba(160, 63, 229, .24),
-      0 0 22px rgba(189, 72, 255, .44),
-      0 8px 20px rgba(0, 0, 0, .36) !important;
+    background: linear-gradient(180deg, rgba(105,55,139,.99), rgba(45,29,58,.99)) !important;
+    border-color: rgba(207,135,255,.65) !important;
   }
-
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2) svg {
-    width: 16px !important;
-    height: 16px !important;
+    width: 15px !important;
+    height: 15px !important;
   }
-
   div[role="menu"][aria-label="Apartados de Mi formación"] {
-    bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+    bottom: calc(94px + env(safe-area-inset-bottom)) !important;
   }
 }
 
@@ -291,20 +220,10 @@
     right: 7px !important;
     left: 7px !important;
   }
-
-  .mobile-nav button.primary {
-    margin-inline: 1px;
-  }
-
-  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:first-child {
-    width: calc(100% - 2px) !important;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .mobile-nav > button,
   .mobile-nav .mobile-nav-secondary,
-  nav[aria-label="Portal CYA"] button {
-    transition: none !important;
-  }
+  nav[aria-label="Portal CYA"] button { transition: none !important; }
 }
