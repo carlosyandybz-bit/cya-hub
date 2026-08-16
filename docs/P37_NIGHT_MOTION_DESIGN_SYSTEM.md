@@ -131,7 +131,7 @@ Inicio | Alumnado | DAR CLASE | Enseñanza | Marketing
 - La acción principal muestra el logo en un área aproximada de 67 × 38px.
 - La etiqueta Dar clase permanece visible y accesible.
 - Más opciones de clase se apila por encima, ligeramente hacia el segundo lóbulo del símbolo.
-- Tamaño del control adicional: aproximadamente 38 × 29px.
+- Huella táctil del control adicional: 46 × 46px; la pieza metálica visible ocupa aproximadamente 42 × 34px dentro de esa huella.
 - El conjunto se lee como una única composición inspirada en el logo.
 - El control adicional despliega Programar clase, Clases y Agenda.
 - aria-expanded y aria-haspopup=menu son obligatorios.
