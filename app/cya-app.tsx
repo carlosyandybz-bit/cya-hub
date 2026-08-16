@@ -8,6 +8,7 @@ import {
   WalletCards, X,
 } from "lucide-react";
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
+import Image from "next/image";
 import { FormEvent, lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   MarketingView,
@@ -221,7 +222,10 @@ function decimalFieldValue(value: FormDataEntryValue | null, min = 0, max = 1000
 }
 
 function Brand() {
-  return <div className="brand"><span className="brand-mark">CYA</span><span>CYA Hub</span></div>;
+  return <div className="brand">
+    <span className="brand-logo" aria-hidden="true"><Image src="/cya-logo.png" alt="" width={1024} height={1024} priority /></span>
+    <span className="brand-wordmark"><strong>CYA</strong><span>Hub</span></span>
+  </div>;
 }
 
 function RadarChart({ items, scaleLabel }: { items: Array<{ label: string; value: number }>; scaleLabel: string }) {
@@ -1593,6 +1597,7 @@ function StaffApp({ session }: { session: Session }) {
     setExperienceState(nextExperience);
     setLiveClassId(state.liveClassId);
     setView(nextView);
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: "auto" }));
   }
   function replaceView(nextView: View, options: { experience?: ExperienceContext } = {}) {
     const nextExperience = options.experience ?? experience;
@@ -1702,7 +1707,8 @@ function StaffApp({ session }: { session: Session }) {
   }
   const studentArea = ["students", "classes", "credits", "agenda"].includes(view);
   const activeNav = (id: string) => id === "students" ? studentArea : view === id;
-  return <div className="shell">
+  const activeModule = view === "live" ? "live" : view === "teaching" ? "teaching" : view === "marketing" ? "marketing" : view === "admin" ? "admin" : studentArea ? "students" : "home";
+  return <div className="shell" data-view={view} data-module={activeModule}>
     <aside className="sidebar"><Brand /><DesktopPrimaryNavigation client={db!} view={view} studentArea={studentArea} navigate={(target) => navigateView(target as View)} />
       <AccountMenu client={db!} identity={identity} experience={experience} email={accountEmail} variant="sidebar" onExperience={setExperience} onOpenProfile={() => navigateView("profile")} onOpenPreferences={() => navigateView("preferences")} notify={setToast} />
     </aside>
@@ -1723,9 +1729,9 @@ function StaffApp({ session }: { session: Session }) {
         {view === "marketing" && db ? <MarketingView db={db} contacts={crmContacts} rates={marketingRates} content={marketingContent} events={marketingEvents} campaigns={marketingCampaigns} metrics={campaignMetrics} recipients={communicationRecipients} refresh={refreshMarketing} notify={setToast} /> : null}
       </div></main>
       {!isLiveClassSessionActive ? <>
-        <nav className="mobile-nav">
-          {nav.map(([id, label, Icon]) => <button key={id} className={`${activeNav(id) ? "active" : ""} ${id === "live" ? "primary" : ""}`} onClick={() => { setClassQuickMenuOpen(false); navigateView(id); }}><Icon /><span>{label}</span></button>)}
-          <button type="button" className={`mobile-nav-secondary ${classQuickMenuOpen ? "open" : ""}`} aria-label="Más opciones de clase" aria-expanded={classQuickMenuOpen} onClick={() => setClassQuickMenuOpen((value) => !value)}><ChevronDown /></button>
+        <nav className="mobile-nav" aria-label="Navegación principal">
+          {nav.map(([id, label, Icon]) => <button key={id} data-nav-item={id} aria-current={activeNav(id) ? "page" : undefined} className={`${activeNav(id) ? "active" : ""} ${id === "live" ? "primary" : ""}`} onClick={() => { setClassQuickMenuOpen(false); navigateView(id); }}>{id === "live" ? <span className="mobile-nav-logo" aria-hidden="true"><Image src="/cya-logo.png" alt="" width={1024} height={1024} /></span> : <Icon />}<span>{label}</span></button>)}
+          <button type="button" className={`mobile-nav-secondary ${classQuickMenuOpen ? "open" : ""}`} aria-label="Más opciones de clase" aria-expanded={classQuickMenuOpen} aria-haspopup="menu" onClick={() => setClassQuickMenuOpen((value) => !value)}><ChevronDown /></button>
         </nav>
         {classQuickMenuOpen ? <div className="mobile-class-sheet" role="menu" aria-label="Opciones de clase">
           <button type="button" role="menuitem" onClick={() => { setClassQuickMenuOpen(false); openSchedule(); }}><Plus /><span><strong>Programar clase</strong><small>Crear una nueva clase</small></span><ChevronRight /></button>

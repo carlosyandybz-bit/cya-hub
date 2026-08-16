@@ -3,15 +3,15 @@
    Scope deliberately relies on semantic attributes already protected by PR-F/P22. */
 
 :root {
-  --aud020-ink: #17151f;
-  --aud020-muted: #6f6a79;
-  --aud020-line: #e7e3ee;
-  --aud020-purple: #6d4aff;
-  --aud020-purple-dark: #5337d9;
-  --aud020-soft: #f3f0ff;
-  --aud020-surface: #ffffff;
-  --aud020-canvas: #f7f6fa;
-  --aud020-shadow: 0 18px 54px rgba(38, 27, 73, .09);
+  --aud020-ink: var(--cya-text);
+  --aud020-muted: var(--cya-text-muted);
+  --aud020-line: var(--cya-line);
+  --aud020-purple: var(--cya-accent);
+  --aud020-purple-dark: var(--cya-accent-strong);
+  --aud020-soft: var(--cya-accent-soft);
+  --aud020-surface: var(--cya-surface);
+  --aud020-canvas: var(--cya-canvas);
+  --aud020-shadow: var(--cya-shadow-raised);
 }
 
 /* --------------------------------------------------------------------------
@@ -19,7 +19,7 @@
    -------------------------------------------------------------------------- */
 body:has(nav[aria-label="Portal CYA"]) {
   background:
-    radial-gradient(circle at 8% 0%, rgba(109, 74, 255, .08), transparent 24rem),
+    radial-gradient(circle at 8% 0%, rgba(157, 66, 245, .14), transparent 24rem),
     var(--aud020-canvas);
 }
 
@@ -45,9 +45,9 @@ body:has(nav[aria-label="Portal CYA"]) main > section[aria-labelledby="portal-no
   border: 1px solid rgba(109, 74, 255, .18);
   border-radius: 28px;
   background:
-    radial-gradient(circle at 100% 0%, rgba(178, 158, 255, .28), transparent 20rem),
-    linear-gradient(145deg, #211c31 0%, #29213d 55%, #342557 100%);
-  color: #fff;
+    radial-gradient(circle at 100% 0%, rgba(178, 88, 255, .22), transparent 20rem),
+    linear-gradient(145deg, #11111a 0%, #181522 55%, #241638 100%);
+  color:var(--cya-on-accent);
   box-shadow: 0 22px 60px rgba(46, 31, 93, .18);
 }
 
@@ -65,7 +65,7 @@ body:has(nav[aria-label="Portal CYA"]) main > section[aria-labelledby="portal-no
 }
 
 body:has(nav[aria-label="Portal CYA"]) #portal-now-title {
-  color: #fff;
+  color:var(--cya-on-accent);
   font-size: clamp(23px, 4vw, 31px);
   letter-spacing: -.035em;
 }
@@ -77,13 +77,13 @@ body:has(nav[aria-label="Portal CYA"]) section[aria-labelledby="portal-now-title
 body:has(nav[aria-label="Portal CYA"]) section[aria-labelledby="portal-now-title"] article {
   border-color: rgba(255,255,255,.11) !important;
   background: rgba(255,255,255,.09) !important;
-  color: #fff !important;
+  color:var(--cya-on-accent) !important;
   box-shadow: none !important;
   backdrop-filter: blur(10px);
 }
 
 body:has(nav[aria-label="Portal CYA"]) section[aria-labelledby="portal-now-title"] article strong {
-  color: #fff !important;
+  color:var(--cya-on-accent) !important;
 }
 
 body:has(nav[aria-label="Portal CYA"]) section[aria-labelledby="portal-now-title"] article span {
@@ -91,13 +91,13 @@ body:has(nav[aria-label="Portal CYA"]) section[aria-labelledby="portal-now-title
 }
 
 body:has(nav[aria-label="Portal CYA"]) section[aria-labelledby="portal-now-title"] article button {
-  color: #fff !important;
+  color:var(--cya-on-accent) !important;
 }
 
 /* Preparation is the next real action and therefore outranks secondary summaries. */
 body:has(nav[aria-label="Portal CYA"]) main > section:has(#prepare-next-class-title) {
   order: 2;
-  border-color: #dcd4ff !important;
+  border-color: rgba(184,98,255,.28) !important;
   border-radius: 24px !important;
   box-shadow: var(--aud020-shadow) !important;
 }
@@ -116,7 +116,7 @@ body:has(nav[aria-label="Portal CYA"]) main > div {
 
 body:has(nav[aria-label="Portal CYA"]) section[aria-label="Resumen de tu espacio"] button {
   border-color: transparent !important;
-  background: rgba(255,255,255,.78) !important;
+  background: rgba(23,25,35,.92) !important;
   box-shadow: 0 8px 26px rgba(36, 27, 70, .06);
 }
 
@@ -127,9 +127,9 @@ body:has(nav[aria-label="Portal CYA"]) main > div > section {
 }
 
 body:has(nav[aria-label="Portal CYA"]) nav[aria-label="Portal CYA"] {
-  background: rgba(255,255,255,.94) !important;
-  border-color: rgba(40, 30, 70, .10) !important;
-  box-shadow: 0 -12px 32px rgba(36, 26, 70, .08) !important;
+  background: rgba(17,19,26,.94) !important;
+  border-color: var(--cya-line-strong) !important;
+  box-shadow: 0 -12px 32px rgba(0,0,0,.32) !important;
   backdrop-filter: blur(18px);
 }
 
@@ -167,7 +167,7 @@ body:has(nav[aria-label="Portal CYA"]) nav[aria-label="Portal CYA"] button:activ
   z-index: 12;
   min-height: 82px;
   border-bottom: 1px solid var(--aud020-line) !important;
-  background: rgba(255,255,255,.96) !important;
+  background: rgba(17,19,26,.96) !important;
   backdrop-filter: blur(16px);
 }
 
@@ -183,7 +183,7 @@ body:has(nav[aria-label="Portal CYA"]) nav[aria-label="Portal CYA"] button:activ
   gap: 8px !important;
   padding: 10px 14px !important;
   overflow: visible !important;
-  background: rgba(247,246,250,.96) !important;
+  background: rgba(14,16,22,.97) !important;
   backdrop-filter: blur(14px);
 }
 
@@ -196,8 +196,8 @@ body:has(nav[aria-label="Portal CYA"]) nav[aria-label="Portal CYA"] button:activ
 }
 
 [role="dialog"][aria-labelledby="student-master-title"] nav[aria-label="Áreas de la ficha del alumno"] button[aria-pressed="true"] {
-  border-color: #ddd4ff !important;
-  background: #fff !important;
+  border-color: var(--cya-line-strong) !important;
+  background:var(--cya-surface) !important;
   color: var(--aud020-purple-dark) !important;
   box-shadow: 0 8px 22px rgba(65, 45, 126, .08) !important;
 }
@@ -207,12 +207,12 @@ body:has(nav[aria-label="Portal CYA"]) nav[aria-label="Portal CYA"] button:activ
   top: 156px;
   z-index: 10;
   padding: 0 14px 10px !important;
-  background: rgba(247,246,250,.96) !important;
+  background: rgba(14,16,22,.97) !important;
   backdrop-filter: blur(14px);
 }
 
 [role="dialog"][aria-labelledby="student-master-title"] nav[aria-label^="Vistas de"] button[aria-current="page"] {
-  border-color: #d9d0ff !important;
+  border-color:var(--cya-line-strong) !important;
   background: var(--aud020-soft) !important;
   color: var(--aud020-purple-dark) !important;
 }
@@ -348,7 +348,7 @@ body:has(nav[aria-label="Portal CYA"]) nav[aria-label="Portal CYA"] button:activ
   }
 
   [role="dialog"][aria-labelledby="student-master-title"] nav[aria-label^="Vistas de"] button {
-    min-height: 44px !important;
+    min-height: 46px !important;
   }
 }
 

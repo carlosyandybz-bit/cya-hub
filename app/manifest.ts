@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Gestión privada de alumnado, clases, enseñanza y marketing de Carlos & Andy.",
     start_url: "/",
     display: "standalone",
-    background_color: "#faf9fc",
-    theme_color: "#6d4aff",
+    background_color: "#08090d",
+    theme_color: "#08090d",
     lang: "es",
     orientation: "portrait-primary",
     icons: [

@@ -1,6 +1,7 @@
 "use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import Image from "next/image";
 import {
   AlertTriangle,
   Bell,
@@ -550,7 +551,7 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
 
   return <div className={styles.shell}>
     <header className={styles.topbar}>
-      <button className={styles.logo} type="button" onClick={() => go("home")} aria-label="Ir a Inicio"><strong>CYA</strong><span>Hub</span></button>
+      <button className={styles.logo} type="button" onClick={() => go("home")} aria-label="Ir a Inicio"><span className={styles.logoImage} aria-hidden="true"><Image src="/cya-logo.png" alt="" width={1024} height={1024} priority /></span><strong>CYA</strong><span>Hub</span></button>
       <div className={styles.topActions}>
         <button className={styles.notificationButton} type="button" onClick={() => go("notifications")} aria-label={unread ? `${unread} notificaciones pendientes` : "Notificaciones"}><Bell />{unread ? <span>{unread > 99 ? "99+" : unread}</span> : null}</button>
         <AccountMenu client={client} identity={identity} experience={experience} email={email} onExperience={onExperience} onOpenProfile={() => go("profile")} onOpenPreferences={() => go("preferences")} onIdentityPatch={onIdentityPatch} notify={setToast} />

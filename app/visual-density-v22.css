@@ -79,12 +79,12 @@
   .credit-grid{gap:8px}.credit-card.pad{padding:13px}.credit-balance{margin-top:12px;font-size:28px}.credit-label{margin-top:10px;padding-top:9px}
 
   /* Navegación de módulos */
-  .teaching-switch{margin-bottom:10px;padding:4px}.teaching-switch button{min-height:44px!important}.teaching-kind-grid{gap:7px;margin-bottom:10px}.teaching-kind-grid button{min-height:66px;padding:10px}.teaching-actions{gap:6px;margin-bottom:10px}.teaching-actions .btn{min-height:40px!important}
+  .teaching-switch{margin-bottom:10px;padding:4px}.teaching-switch button{min-height:46px!important}.teaching-kind-grid{gap:7px;margin-bottom:10px}.teaching-kind-grid button{min-height:66px;padding:10px}.teaching-actions{gap:6px;margin-bottom:10px}.teaching-actions .btn{min-height:46px!important}
   .marketing-tabs{margin-bottom:10px!important;padding:4px!important}.marketing-tabs button{min-height:46px!important}
-  .admin-nav{margin-bottom:10px!important}.admin-nav button{min-height:40px!important}
+  .admin-nav{margin-bottom:10px!important}.admin-nav button{min-height:46px!important}
 
   /* Dar clase */
-  .live-card{padding:12px!important;border-radius:16px!important}.live-card-head{margin-bottom:8px!important}.live-search-kinds button{min-height:34px!important}.quick-content-create{margin-top:7px!important}.quick-content-create>summary{min-height:40px!important;padding:0 10px!important}
+  .live-card{padding:12px!important;border-radius:16px!important}.live-card-head{margin-bottom:8px!important}.live-search-kinds button{min-height:46px!important}.quick-content-create{margin-top:7px!important}.quick-content-create>summary{min-height:46px!important;padding:0 10px!important}
   .observation-phase{padding:10px!important;border-radius:14px!important}.student-context{padding:11px!important;border-radius:14px!important}.student-context-main h2{margin-block:2px!important}.correction-item summary{min-height:46px!important;padding:8px 9px!important}.correction-detail{padding:9px!important}.evaluation-row{padding:7px 0!important}.score-grid button{min-height:36px!important}.note-list>div,.guide-row{padding:8px 9px!important}.guide-suggestions button{padding:8px 9px!important}
 
   /* Portal */
@@ -94,10 +94,10 @@
   .crm-pipeline{gap:6px!important}.crm-pipeline button{min-height:56px!important;padding:8px!important}.crm-row{padding:8px 9px!important;border-radius:13px!important}.marketing-grid{gap:7px!important}.marketing-item{padding:11px!important;border-radius:14px!important}.marketing-item-meta{margin-top:7px}.marketing-item>p{margin-top:7px}.campaign-foot{margin-top:8px;padding-top:8px}.communication-info{margin-bottom:8px;padding:9px 10px}.communication-batch{padding:11px}.communication-stats{margin-top:7px}.communication-recipient-list{margin-top:8px;padding-top:8px}.communication-recipient{grid-template-columns:38px minmax(0,1fr) auto;gap:8px;padding:7px 8px}.communication-recipient .avatar{width:38px;height:38px}.rate-card{padding:11px}.stat-card{min-height:92px;padding:11px}
 
   /* Administración */
-  .admin-grid{gap:8px!important}.admin-section{padding:12px!important;border-radius:16px!important}.admin-team-row,.admin-choice-list>label,.form-field-admin-list>div,.term-list>div,.notification-rule,.transfer-list>div,.audit-list>div{padding-block:8px!important}.admin-rule>summary{min-height:44px!important;padding:8px 9px!important}.admin-rule-body{padding:9px!important}.file-drop{padding:15px!important}.appearance-preview,.security-summary{padding:11px!important}
+  .admin-grid{gap:8px!important}.admin-section{padding:12px!important;border-radius:16px!important}.admin-team-row,.admin-choice-list>label,.form-field-admin-list>div,.term-list>div,.notification-rule,.transfer-list>div,.audit-list>div{padding-block:8px!important}.admin-rule>summary{min-height:46px!important;padding:8px 9px!important}.admin-rule-body{padding:9px!important}.file-drop{padding:15px!important}.appearance-preview,.security-summary{padding:11px!important}
 
   /* Modales y formularios */
-  .modal-head{padding:14px}.modal-body{padding:13px}.modal-body>.form,.form{gap:11px}.detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}.detail-grid>div{padding:9px!important}.segmented button{min-height:40px!important}
+  .modal-head{padding:14px}.modal-body{padding:13px}.modal-body>.form,.form{gap:11px}.detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}.detail-grid>div{padding:9px!important}.segmented button{min-height:46px!important}
 
   /* Mapa */
   .graph-filterbar{gap:5px!important}.graph-actions button{min-height:36px!important}.graph-detail{padding:11px!important}
