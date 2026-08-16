@@ -2,7 +2,7 @@
 
 import { CheckCircle2, ClipboardList, DatabaseBackup, Download, FileInput, ShieldCheck, Upload } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useState } from "react";
 import { AdminDataReset } from "./admin-data-reset";
 import { downloadBundle, normalizeImportRows, parseTransferFile, type CyaDataBundle, type TransferFormat } from "./data-transfer-formats-safe";
 
@@ -78,12 +78,7 @@ export function AdminDataTransfer({
   const [importPreview, setImportPreview] = useState<TransferJob | null>(null);
   const [restoreConfirmation, setRestoreConfirmation] = useState("");
   const [busy, setBusy] = useState("");
-
-  useEffect(() => {
-    if (importPreview) return;
-    const pending = transfers.find((job) => job.direction === "import" && job.status === "validated");
-    if (pending) setImportPreview(pending);
-  }, [transfers, importPreview]);
+  const activeImportPreview = importPreview ?? transfers.find((job) => job.direction === "import" && job.status === "validated") ?? null;
 
   async function exportDomain(domain: string) {
     setBusy(`export-${domain}`);
@@ -142,8 +137,8 @@ export function AdminDataTransfer({
   }
 
   async function applyImport() {
-    if (!importPreview) return;
-    const isBackup = Boolean(importPreview.preview.backup);
+    if (!activeImportPreview) return;
+    const isBackup = Boolean(activeImportPreview.preview.backup);
     if (isBackup && restoreConfirmation !== "RESTAURAR") {
       notify("Escribe RESTAURAR para confirmar la restauración de la copia.");
       return;
@@ -152,8 +147,8 @@ export function AdminDataTransfer({
     setBusy("apply");
     try {
       const result = isBackup
-        ? await client.rpc("apply_backup_restore", { p_job_id: importPreview.id })
-        : await client.rpc("apply_data_import_v2", { p_job_id: importPreview.id });
+        ? await client.rpc("apply_backup_restore", { p_job_id: activeImportPreview.id })
+        : await client.rpc("apply_data_import_v2", { p_job_id: activeImportPreview.id });
       if (result.error) throw result.error;
       const job = result.data as TransferJob;
       setImportPreview(job);
@@ -170,7 +165,7 @@ export function AdminDataTransfer({
     setBusy("");
   }
 
-  const previewData = importPreview?.preview ?? {};
+  const previewData = activeImportPreview?.preview ?? {};
   const isBackup = Boolean(previewData.backup);
   const restorable = !isBackup || Boolean(previewData.restorable);
   const missingAuth = Array.isArray(previewData.missing_auth_users) ? previewData.missing_auth_users : [];
@@ -194,15 +189,15 @@ export function AdminDataTransfer({
         </div>
         <button className="btn" disabled={!importFile || Boolean(busy)} onClick={previewImport}><ClipboardList /> {busy === "preview" ? "Analizando…" : "Previsualizar importación"}</button>
 
-        {importPreview ? <div className="import-preview"><CheckCircle2 /><div><strong>{isBackup ? (restorable ? "Copia verificada y restaurable" : "Copia válida, pero bloqueada") : "Archivo validado"}</strong>{isBackup ? <span>{String(previewData.total ?? 0)} registros · {Object.keys(tableCounts).length} tablas · checksum {previewData.checksum_valid ? "correcto" : "incorrecto"}</span> : <span>{String(previewData.total ?? 0)} registros · {String(previewData.duplicates ?? 0)} duplicados · {String(previewData.new ?? 0)} nuevos</span>}</div></div> : null}
+        {activeImportPreview ? <div className="import-preview"><CheckCircle2 /><div><strong>{isBackup ? (restorable ? "Copia verificada y restaurable" : "Copia válida, pero bloqueada") : "Archivo validado"}</strong>{isBackup ? <span>{String(previewData.total ?? 0)} registros · {Object.keys(tableCounts).length} tablas · checksum {previewData.checksum_valid ? "correcto" : "incorrecto"}</span> : <span>{String(previewData.total ?? 0)} registros · {String(previewData.duplicates ?? 0)} duplicados · {String(previewData.new ?? 0)} nuevos</span>}</div></div> : null}
 
-        {isBackup && importPreview ? <div className="admin-stack">
+        {isBackup && activeImportPreview ? <div className="admin-stack">
           <div className="status-list"><div><ShieldCheck /> La restauración recupera los datos incluidos sin borrar información adicional.</div><div><ShieldCheck /> Secretos y credenciales existentes se conservan y nunca se importan desde el archivo.</div>{missingAuth.length ? <div>Faltan {missingAuth.length} cuentas de acceso necesarias; la restauración está bloqueada.</div> : <div><ShieldCheck /> Todas las identidades Auth requeridas existen.</div>}</div>
           <label className="field"><span>Confirmación</span><input value={restoreConfirmation} onChange={(event) => setRestoreConfirmation(event.target.value.toUpperCase())} placeholder="Escribe RESTAURAR" autoComplete="off" /></label>
         </div> : null}
 
-        {importPreview?.status === "validated" ? <button className="btn" disabled={Boolean(busy) || !restorable || (isBackup && restoreConfirmation !== "RESTAURAR")} onClick={applyImport}><DatabaseBackup /> {busy === "apply" ? "Aplicando…" : isBackup ? "Restaurar copia" : "Aplicar importación"}</button> : null}
-        {importPreview?.status === "failed" ? <p className="error">{importPreview.error_message || "La operación se revirtió y no se aplicaron cambios parciales."}</p> : null}
+        {activeImportPreview?.status === "validated" ? <button className="btn" disabled={Boolean(busy) || !restorable || (isBackup && restoreConfirmation !== "RESTAURAR")} onClick={applyImport}><DatabaseBackup /> {busy === "apply" ? "Aplicando…" : isBackup ? "Restaurar copia" : "Aplicar importación"}</button> : null}
+        {activeImportPreview?.status === "failed" ? <p className="error">{activeImportPreview.error_message || "La operación se revirtió y no se aplicaron cambios parciales."}</p> : null}
       </article>
     </div>
 
