@@ -2,7 +2,7 @@ name: Validate P18 identity and navigation
 
 on:
   pull_request:
-    branches: [main]
+    branches: [staging]
     paths:
       - 'app/cya-app.tsx'
       - 'app/account-menu.tsx'
@@ -10,13 +10,14 @@ on:
       - 'supabase/v46_p18_experience_context.sql'
       - 'tests/p18-identity-navigation.test.mjs'
       - '.github/workflows/validate-p18-identity-navigation.yml'
+  workflow_dispatch:
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
