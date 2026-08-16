@@ -3,7 +3,8 @@
    Mantiene la densidad visual existente y eleva el área pulsable efectiva a >=44 px. */
 
 @media (max-width: 720px) {
-  /* Navegación secundaria y acciones auditadas. */
+  /* Navegación secundaria y acciones auditadas.
+     46px absorbe el redondeo subpíxel y garantiza >=44px efectivos. */
   .module-tabs button,
   .admin-nav button,
   .page-head > .btn,
@@ -12,11 +13,6 @@
   .export-grid .btn,
   a[href="/evaluation-settings"],
   [class*="kindSwitch"] > button {
-    min-height: 44px !important;
-  }
-
-  /* Absorb subpixel rounding in horizontally scrollable module tabs. */
-  .module-tabs button {
     min-height: 46px !important;
   }
 
