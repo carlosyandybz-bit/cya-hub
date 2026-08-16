@@ -1,0 +1,20 @@
+/* v46 · UX-02 canonical professor DAR CLASE + Más control.
+   Professor-only. Student Portal CYA selectors are intentionally excluded.
+   Night Motion: visible Más + chevron, ~60×48 touch footprint, one stacked composition. */
+
+@media (max-width:900px) {
+  .mobile-nav { overflow:visible !important; }
+  .mobile-nav button.primary { position:relative !important; z-index:4 !important; width:72px !important; height:72px !important; min-width:72px !important; min-height:72px !important; margin:0 !important; transform:translateY(-7px) !important; }
+  .mobile-nav button.primary:active { transform:translateY(-5px) scale(.975) !important; }
+  .mobile-nav .mobile-nav-secondary { position:absolute !important; z-index:7 !important; top:-36px !important; left:50% !important; width:60px !important; min-width:60px !important; height:48px !important; min-height:48px !important; padding:4px 9px 18px !important; transform:translateX(-50%) !important; display:flex !important; align-items:center !important; justify-content:center !important; gap:3px !important; overflow:visible !important; border:0 !important; border-radius:0 !important; background:transparent !important; color:#eadff1 !important; box-shadow:none !important; font-size:10px !important; line-height:1 !important; font-weight:800 !important; letter-spacing:.01em !important; }
+  .mobile-nav .mobile-nav-secondary::before { content:""; position:absolute; z-index:-1; left:2px; right:2px; bottom:8px; height:28px; border:1px solid rgba(210,181,231,.46); border-radius:18px 18px 11px 11px; background:linear-gradient(180deg,rgba(76,59,89,.99),rgba(34,29,41,.99)); box-shadow:0 0 0 2px rgba(9,9,14,.97),0 4px 10px rgba(0,0,0,.31),inset 0 1px 0 rgba(255,255,255,.16); pointer-events:none; transition:border-color var(--cya-motion-base,180ms) cubic-bezier(.2,.8,.2,1),background var(--cya-motion-base,180ms) cubic-bezier(.2,.8,.2,1),transform var(--cya-motion-fast,120ms) cubic-bezier(.2,.8,.2,1); }
+  .mobile-nav .mobile-nav-secondary > span { position:relative !important; width:auto !important; height:auto !important; margin:0 !important; overflow:visible !important; clip:auto !important; clip-path:none !important; white-space:nowrap !important; }
+  .mobile-nav .mobile-nav-secondary svg { position:relative !important; top:auto !important; left:auto !important; width:12px !important; height:12px !important; flex:0 0 12px !important; margin:0 !important; padding:0 !important; transform:none !important; transform-origin:center !important; transition:transform var(--cya-motion-base,180ms) cubic-bezier(.2,.8,.2,1) !important; }
+  .mobile-nav .mobile-nav-secondary.open::before { border-color:rgba(207,135,255,.62); background:linear-gradient(180deg,rgba(103,61,131,.99),rgba(47,32,58,.99)); }
+  .mobile-nav .mobile-nav-secondary.open svg { transform:rotate(180deg) !important; }
+  .mobile-nav .mobile-nav-secondary:active::before { transform:scale(.975); }
+  .mobile-nav .mobile-nav-secondary:focus-visible { outline:3px solid rgba(213,140,255,.72) !important; outline-offset:2px !important; border-radius:20px !important; }
+  .mobile-class-sheet { bottom:calc(92px + env(safe-area-inset-bottom)) !important; }
+}
+@media (max-width:350px) { .mobile-nav .mobile-nav-secondary { width:58px !important; min-width:58px !important; font-size:9.5px !important; } }
+@media (prefers-reduced-motion:reduce) { .mobile-nav .mobile-nav-secondary,.mobile-nav .mobile-nav-secondary::before,.mobile-nav .mobile-nav-secondary svg { transition:none !important; } }
