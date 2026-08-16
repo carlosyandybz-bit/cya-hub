@@ -1,9 +1,12 @@
-name: CYA QA E2E
+name: CYA QA E2E — Staging
 
 on:
+  push:
+    branches:
+      - staging
   pull_request:
     branches:
-      - main
+      - staging
   workflow_dispatch:
 
 permissions:
@@ -13,12 +16,12 @@ permissions:
 # Shared QA identities are rotated by the bootstrap, so browser QA remains mutually
 # exclusive. The newest run is authoritative: stale runs must never starve the queue.
 concurrency:
-  group: cya-qa-shared-identities
+  group: cya-qa-staging-shared-identities
   cancel-in-progress: true
 
 jobs:
   browser-qa:
-    name: Browser QA
+    name: Browser QA — Staging
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -28,6 +31,20 @@ jobs:
       CYA_QA_BOOTSTRAP_URL: https://qlngfkzmncihtdzktcmd.supabase.co/functions/v1/cya-qa-bootstrap
 
     steps:
+      - name: Refuse non-staging branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            if [[ "${GITHUB_BASE_REF}" != "staging" ]]; then
+              echo "Browser QA is restricted to PRs targeting staging." >&2
+              exit 1
+            fi
+          elif [[ "${GITHUB_REF_NAME}" != "staging" ]]; then
+            echo "Browser QA is restricted to the staging branch." >&2
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v6
 
@@ -47,6 +64,10 @@ jobs:
           fi
           if [[ "${CYA_QA_BOOTSTRAP_URL}" == *"ldvyeyhzrepaaouzavgs"* ]]; then
             echo "QA bootstrap must never target production Supabase" >&2
+            exit 1
+          fi
+          if [[ "${NEXT_PUBLIC_SUPABASE_URL}" != "https://qlngfkzmncihtdzktcmd.supabase.co" ]]; then
+            echo "QA must target the dedicated CYA Hub Staging Supabase project." >&2
             exit 1
           fi
 
@@ -140,7 +161,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v5
         with:
-          name: cya-browser-qa-${{ github.run_id }}
+          name: cya-browser-qa-staging-${{ github.run_id }}
           path: |
             playwright-report/
             test-results/
