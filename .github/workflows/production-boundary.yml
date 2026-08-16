@@ -14,7 +14,7 @@ jobs:
   enforce-staging-boundary:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Enforce staging-only environment contract
         shell: bash
         run: |
@@ -37,14 +37,21 @@ jobs:
           grep -q 'STAGING' .env.staging.example
 
           if grep -q 'ldvyeyhzrepaaouzavgs' .env.staging.example; then
-            echo "Production Supabase project reference found in staging environment template." >&2
+            echo "::error file=.env.staging.example::Production Supabase project reference found in staging environment template."
             exit 1
           fi
 
-          if grep -RInE --include='*.yml' --include='*.yaml' \
+          found=0
+          while IFS=: read -r file line text; do
+            [[ -z "${file}" ]] && continue
+            echo "::error file=${file},line=${line}::Development workflow still targets main: ${text}"
+            found=1
+          done < <(grep -RInE --include='*.yml' --include='*.yaml' \
             'branches:[[:space:]]*\[main\]|^[[:space:]]*-[[:space:]]*main[[:space:]]*$|--ref[[:space:]]+main|HEAD:main|ref:[[:space:]]*main' \
-            .github/workflows; then
-            echo "A development workflow still targets main. Staging must be the only development branch." >&2
+            .github/workflows || true)
+
+          if [[ "${found}" -ne 0 ]]; then
+            echo "One or more development workflows still target main." >&2
             exit 1
           fi
 
