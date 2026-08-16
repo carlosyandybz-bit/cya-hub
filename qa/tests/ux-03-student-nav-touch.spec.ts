@@ -27,23 +27,21 @@ for (const width of widths) {
 
     const geometry = await disclosure.evaluate((element) => {
       const rect = element.getBoundingClientRect();
-      const visual = getComputedStyle(element, "::before");
+      const label = getComputedStyle(element, "::before").content.replace(/["']/g, "");
       return {
         width: rect.width,
         height: rect.height,
         left: rect.left,
         right: rect.right,
-        visualWidth: Number.parseFloat(visual.width),
-        visualHeight: Number.parseFloat(visual.height),
+        label,
       };
     });
 
-    expect(geometry.width).toBeGreaterThanOrEqual(44);
-    expect(geometry.height).toBeGreaterThanOrEqual(44);
+    expect(geometry.width).toBeGreaterThanOrEqual(width <= 350 ? 58 : 60);
+    expect(geometry.height).toBeGreaterThanOrEqual(48);
     expect(geometry.left).toBeGreaterThanOrEqual(0);
     expect(geometry.right).toBeLessThanOrEqual(width);
-    expect(geometry.visualWidth, "UX-03 must preserve the compact reveal-key appearance").toBe(40);
-    expect(geometry.visualHeight, "UX-03 must preserve the compact reveal-key appearance").toBe(20);
+    expect(geometry.label, "UX-04B secondary control must expose the visible Más label").toBe("Más");
 
     const undersized = await collectUndersizedTouchTargets(nav, "button");
     expect(undersized, `Portal CYA must expose zero visible button targets below 44×44 at ${width}px`).toEqual([]);
