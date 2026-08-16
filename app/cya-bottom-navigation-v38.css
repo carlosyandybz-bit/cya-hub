@@ -121,29 +121,44 @@
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:first-child.active { border-color:rgba(203,126,255,.58) !important;box-shadow:0 0 0 2px rgba(8,8,13,.96),0 0 0 3px rgba(187,83,255,.25),0 0 13px rgba(157,47,235,.18),0 8px 19px rgba(0,0,0,.43),inset 0 1px 0 rgba(255,255,255,.17) !important; }
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:first-child:active { transform:translate(-50%,-2px) scale(.975) !important; }
 
-  /* STUDENT · reveal key uses identical geometry */
+  /* STUDENT · 44×44 hit area with the approved 40×20 reveal-key face */
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2) {
     position:absolute !important;
     z-index:7 !important;
-    top:-13px !important;
+    top:-25px !important;
     right:auto !important;
     left:50% !important;
-    width:40px !important;
-    height:20px !important;
-    min-height:20px !important;
+    width:44px !important;
+    height:44px !important;
+    min-height:44px !important;
     padding:0 !important;
     transform:translateX(-50%) !important;
     display:grid !important;
     place-items:center !important;
-    border:1px solid rgba(210,181,231,.43) !important;
-    border-radius:18px 18px 10px 10px !important;
-    background:linear-gradient(180deg,rgba(61,49,72,.99),rgba(29,26,35,.99)) !important;
+    border:0 !important;
+    border-radius:22px !important;
+    background:transparent !important;
     color:#eadff1 !important;
-    box-shadow:0 0 0 2px rgba(9,9,14,.97),0 3px 7px rgba(0,0,0,.27),inset 0 1px 0 rgba(255,255,255,.15) !important;
+    box-shadow:none !important;
   }
-  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2)[aria-expanded="true"] { background:linear-gradient(180deg,rgba(94,57,119,.99),rgba(42,30,52,.99)) !important;border-color:rgba(207,135,255,.58) !important; }
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2)::before {
+    content:"";
+    position:absolute;
+    top:12px;
+    left:2px;
+    width:40px;
+    height:20px;
+    pointer-events:none;
+    border:1px solid rgba(210,181,231,.43);
+    border-radius:18px 18px 10px 10px;
+    background:linear-gradient(180deg,rgba(61,49,72,.99),rgba(29,26,35,.99));
+    box-shadow:0 0 0 2px rgba(9,9,14,.97),0 3px 7px rgba(0,0,0,.27),inset 0 1px 0 rgba(255,255,255,.15);
+  }
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2)[aria-expanded="true"] { background:transparent !important;border:0 !important; }
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2)[aria-expanded="true"]::before { background:linear-gradient(180deg,rgba(94,57,119,.99),rgba(42,30,52,.99));border-color:rgba(207,135,255,.58); }
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2) svg {
     position:absolute !important;
+    z-index:1;
     top:50% !important;
     left:50% !important;
     width:13px !important;
