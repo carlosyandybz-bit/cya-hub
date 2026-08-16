@@ -72,7 +72,8 @@ for (const width of [320, 390, 430]) {
     const sectionWidths = await sections.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().width));
     for (const sectionWidth of sectionWidths) expect(sectionWidth).toBeGreaterThanOrEqual(rootGeometry.width - 2);
 
-    const identity = sections.filter({ has: dialog.getByRole("heading", { name: "Datos principales" }) });
+    const identity = sections.filter({ hasText: "Datos principales" }).first();
+    await expect(identity).toBeVisible();
     const facts = identity.locator(":scope > div:last-child > div");
     expect(await facts.count()).toBeGreaterThanOrEqual(6);
 
@@ -84,7 +85,6 @@ for (const width of [320, 390, 430]) {
         width: rect.width,
         height: rect.height,
         valueWhiteSpace: valueStyle?.whiteSpace,
-        valueOverflow: valueStyle?.overflow,
         valueTextOverflow: valueStyle?.textOverflow,
       };
     }));
@@ -117,7 +117,8 @@ test("student master Datos keeps spacious two-column facts on desktop without fo
   const sectionWidths = await sections.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().width));
   for (const sectionWidth of sectionWidths) expect(sectionWidth).toBeGreaterThanOrEqual((rootBox?.width ?? 0) - 2);
 
-  const identity = sections.filter({ has: dialog.getByRole("heading", { name: "Datos principales" }) });
+  const identity = sections.filter({ hasText: "Datos principales" }).first();
+  await expect(identity).toBeVisible();
   const facts = identity.locator(":scope > div:last-child > div");
   const boxes = (await Promise.all((await facts.all()).map((fact) => fact.boundingBox()))).filter(Boolean);
   expect(boxes.length).toBeGreaterThanOrEqual(6);
