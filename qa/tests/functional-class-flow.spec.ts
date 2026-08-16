@@ -146,7 +146,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
 
     await expect(page.getByText("Administración terminada", { exact: true })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/nunca bloquea el cierre de esta clase/)).toBeVisible();
-    await page.getByRole("button", { name: /Preparar resumen/ }).click();
+    await page.getByRole("button", { name: /preparar resumen/i }).click();
     await expect(page.getByRole("heading", { name: "Resumen de la clase" })).toBeVisible();
     await page.locator('textarea[placeholder="Resumen, recomendaciones o recordatorio visible"]').fill(studentSummary);
     await page.getByRole("button", { name: /Cerrar y enviar al alumno/ }).click();
