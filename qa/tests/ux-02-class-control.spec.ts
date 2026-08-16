@@ -61,7 +61,7 @@ for (const width of widths) {
   });
 }
 
-test("UX-02 student Portal CYA remains outside professor control layer", async ({ page }) => {
+test("UX-02 student Portal CYA follows the newer shared central-control contract", async ({ page }) => {
   const email = process.env.QA_STUDENT_EMAIL;
   const password = process.env.QA_STUDENT_PASSWORD;
   test.skip(!email || !password, "student QA credentials are not configured");
@@ -72,5 +72,5 @@ test("UX-02 student Portal CYA remains outside professor control layer", async (
   await page.getByRole("button", { name: /^Entrar$/ }).click();
   const portal = page.getByRole("navigation", { name: "Portal CYA" });
   await expect(portal).toBeVisible({ timeout: 20_000 });
-  await expect(portal.getByRole("button", { name: "Abrir apartados de Mi formación" })).toHaveCSS("min-height", "44px");
+  await expect(portal.getByRole("button", { name: "Abrir apartados de Mi formación" })).toHaveCSS("min-height", "48px");
 });
