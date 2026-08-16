@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ClassSummaryDraftUx } from "./class-summary-draft-ux";
 import "./globals.css";
 import "./visual-audit-v21.css";
 import "./visual-density-v22.css";
@@ -31,6 +32,7 @@ import "./student-portal-touch-target-v45.css";
 import "./professor-class-control-v46.css";
 import "./student-master-profile-v47.css";
 import "./central-controls-v48.css";
+import "./class-summary-ux-v49.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -83,6 +85,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <ClassSummaryDraftUx />
         {children}
       </body>
     </html>
