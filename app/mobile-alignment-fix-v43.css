@@ -1,0 +1,73 @@
+/* v43 · mobile geometric alignment hardening
+   Keeps the current CYA visual language while enforcing a real screen axis,
+   symmetric header geometry and touch-safe stacked class controls. */
+
+@media (max-width:900px) {
+  /* Header: equal flexible rails guarantee the brand sits on the physical
+     center of the viewport regardless of asymmetric action counts. */
+  .mobile-head {
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) !important;
+  }
+  .mobile-head-back,
+  .mobile-head-left {
+    justify-self:start !important;
+  }
+  .mobile-head-brand {
+    justify-self:center !important;
+    min-width:0;
+  }
+  .mobile-head-actions {
+    justify-self:end !important;
+  }
+
+  /* Teacher: disclosure/reveal key shares the exact X axis of Dar clase.
+     Its hit target is a full 44×44 CSS px and remains visually nested into
+     the top of the primary circular control. */
+  .mobile-nav .mobile-nav-secondary {
+    top:-30px !important;
+    left:50% !important;
+    width:44px !important;
+    min-width:44px !important;
+    height:44px !important;
+    min-height:44px !important;
+    padding:0 !important;
+    transform:translateX(-50%) !important;
+    border-radius:999px !important;
+  }
+  .mobile-nav .mobile-nav-secondary svg {
+    top:50% !important;
+    left:50% !important;
+    width:16px !important;
+    height:16px !important;
+    margin:0 !important;
+    transform:translate(-50%,-50%) !important;
+  }
+  .mobile-nav .mobile-nav-secondary.open svg {
+    transform:translate(-50%,-50%) rotate(180deg) !important;
+  }
+
+  /* Student portal: identical stacked geometry and target size. */
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2) {
+    top:-30px !important;
+    right:auto !important;
+    left:50% !important;
+    width:44px !important;
+    min-width:44px !important;
+    height:44px !important;
+    min-height:44px !important;
+    padding:0 !important;
+    transform:translateX(-50%) !important;
+    border-radius:999px !important;
+  }
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2) svg {
+    top:50% !important;
+    left:50% !important;
+    width:16px !important;
+    height:16px !important;
+    margin:0 !important;
+    transform:translate(-50%,-50%) !important;
+  }
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2)[aria-expanded="true"] svg {
+    transform:translate(-50%,-50%) rotate(180deg) !important;
+  }
+}
