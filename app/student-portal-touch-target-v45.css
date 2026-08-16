@@ -1,9 +1,10 @@
 /* v45 · Student Portal disclosure touch target.
    Preserve the approved 40×20 reveal-key appearance while exposing a real
-   44×44 interactive hit area for touch accessibility. */
+   44×44 interactive hit area for touch accessibility.
+   Target the disclosure by its semantic accessible name, never DOM position. */
 
 @media (max-width: 900px) {
-  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2) {
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] {
     top: -25px !important;
     width: 44px !important;
     height: 44px !important;
@@ -15,7 +16,7 @@
     box-shadow: none !important;
   }
 
-  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2)::before {
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"]::before {
     content: "";
     position: absolute;
     top: 12px;
@@ -29,17 +30,17 @@
     box-shadow: 0 0 0 2px rgba(9,9,14,.97),0 3px 7px rgba(0,0,0,.27),inset 0 1px 0 rgba(255,255,255,.15);
   }
 
-  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2)[aria-expanded="true"] {
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"][aria-expanded="true"] {
     border: 0 !important;
     background: transparent !important;
   }
 
-  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2)[aria-expanded="true"]::before {
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"][aria-expanded="true"]::before {
     border-color: rgba(207,135,255,.58);
     background: linear-gradient(180deg,rgba(94,57,119,.99),rgba(42,30,52,.99));
   }
 
-  nav[aria-label="Portal CYA"] > div:nth-child(3) > button:nth-child(2) svg {
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] svg {
     z-index: 1;
   }
 }
