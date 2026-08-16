@@ -46,7 +46,7 @@ jobs:
             [[ -z "${file}" ]] && continue
             echo "::error file=${file},line=${line}::Development workflow still targets main: ${text}"
             found=1
-          done < <(grep -RInE --include='*.yml' --include='*.yaml' \
+          done < <(grep -RInE --include='*.yml' --include='*.yaml' --exclude='production-boundary.yml' \
             'branches:[[:space:]]*\[main\]|^[[:space:]]*-[[:space:]]*main[[:space:]]*$|--ref[[:space:]]+main|HEAD:main|ref:[[:space:]]*main' \
             .github/workflows || true)
 
