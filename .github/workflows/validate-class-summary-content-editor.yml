@@ -2,7 +2,7 @@ name: Validate class summary content editor
 
 on:
   pull_request:
-    branches: [main]
+    branches: [staging]
     paths:
       - 'app/cya-app.tsx'
       - 'app/class-summary-content-editor.tsx'
@@ -10,13 +10,14 @@ on:
       - 'supabase/v45_fix_teaching_rls_and_summary_edit.sql'
       - 'tests/class-summary-content-editor.test.mjs'
       - '.github/workflows/validate-class-summary-content-editor.yml'
+  workflow_dispatch:
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
