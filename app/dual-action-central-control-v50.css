@@ -1,374 +1,266 @@
 /* CYA dual-action central control v50
    SINGLE runtime authority for professor + student central control.
-   Compact rounded six-sided chassis, one right-side divider, real CYA logo,
-   shared alignment and restrained premium motion. */
+   One compact rounded six-sided chassis, one right divider, one optical centre. */
 
 :root {
-  --cya-dual-w: 112px;
-  --cya-dual-h: 56px;
-  --cya-dual-split: 24px;
-  --cya-dual-bottom: 8px;
-  --cya-dual-divider: rgba(243, 218, 255, .38);
-  --cya-dual-edge: rgba(225, 166, 255, .88);
-  --cya-dual-glow: rgba(187, 73, 237, .16);
-  /* Six principal sides, with quadratic curves only softening the six vertices. */
-  --cya-dual-shape: path("M 15 0 H 97 Q 102 0 105 5 L 111 23 Q 113 28 111 33 L 105 51 Q 102 56 97 56 H 15 Q 10 56 7 51 L 1 33 Q -1 28 1 23 L 7 5 Q 10 0 15 0 Z");
+  --cya-dual-w: 104px;
+  --cya-dual-h: 52px;
+  --cya-dual-split: 20px;
+  --cya-dual-top: -8px;
+  --cya-dual-divider: rgba(244, 221, 255, .36);
+  --cya-dual-edge: rgba(229, 176, 255, .88);
+  --cya-dual-shape: path("M 16 0 H 88 Q 94 0 97 5 L 103 21 Q 105 26 103 31 L 97 47 Q 94 52 88 52 H 16 Q 10 52 7 47 L 1 31 Q -1 26 1 21 L 7 5 Q 10 0 16 0 Z");
 }
 
-@keyframes cya-dual-breathe {
-  0%, 100% { filter: drop-shadow(0 5px 9px rgba(0,0,0,.30)) drop-shadow(0 0 2px rgba(190,78,238,.16)); }
-  50% { filter: drop-shadow(0 6px 11px rgba(0,0,0,.32)) drop-shadow(0 0 5px rgba(215,117,255,.24)); }
+@keyframes cya-control-breathe {
+  0%,100% { filter: drop-shadow(0 5px 10px rgba(0,0,0,.32)) drop-shadow(0 0 2px rgba(197,84,241,.15)); }
+  50% { filter: drop-shadow(0 7px 13px rgba(0,0,0,.34)) drop-shadow(0 0 6px rgba(222,126,255,.27)); }
 }
 
-@keyframes cya-dual-sheen {
-  0%, 68%, 100% { background-position: -155% 0, 50% 0, 50% 0; }
-  82% { background-position: 155% 0, 50% 0, 50% 0; }
+@keyframes cya-control-sheen {
+  0%,72%,100% { background-position: -180% 0, 50% 0, 50% 0; opacity:.58; }
+  84% { background-position: 180% 0, 50% 0, 50% 0; opacity:.92; }
 }
 
-@media (max-width: 900px) {
+@media (max-width:900px) {
   .mobile-nav,
   nav[aria-label="Portal CYA"] {
     overflow: visible !important;
     grid-template-columns: minmax(44px,1fr) minmax(44px,1fr) var(--cya-dual-w) minmax(44px,1fr) minmax(44px,1fr) !important;
   }
 
-  .mobile-nav::before { display: none !important; content: none !important; }
+  .mobile-nav::before { display:none !important; content:none !important; }
 
-  /* ---------- Shared physical material ---------- */
   .mobile-nav button.primary,
   nav[aria-label="Portal CYA"] [class*="formationMain"] {
-    z-index: 8 !important;
-    width: var(--cya-dual-w) !important;
-    min-width: var(--cya-dual-w) !important;
-    max-width: var(--cya-dual-w) !important;
-    height: var(--cya-dual-h) !important;
-    min-height: var(--cya-dual-h) !important;
-    max-height: var(--cya-dual-h) !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-    border: 0 !important;
-    border-radius: 16px !important;
-    clip-path: var(--cya-dual-shape) !important;
+    position:absolute !important;
+    z-index:8 !important;
+    top:var(--cya-dual-top) !important;
+    bottom:auto !important;
+    width:var(--cya-dual-w) !important;
+    min-width:var(--cya-dual-w) !important;
+    max-width:var(--cya-dual-w) !important;
+    height:var(--cya-dual-h) !important;
+    min-height:var(--cya-dual-h) !important;
+    max-height:var(--cya-dual-h) !important;
+    margin:0 !important;
+    padding:0 !important;
+    overflow:hidden !important;
+    border:0 !important;
+    border-radius:17px !important;
+    clip-path:var(--cya-dual-shape) !important;
     background:
-      radial-gradient(86% 115% at 50% -20%, rgba(231,155,255,.22), transparent 58%),
-      linear-gradient(180deg, rgba(65,22,91,.985), rgba(24,12,35,.995)) !important;
-    color: #fff !important;
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,.16),
-      inset 0 -8px 14px rgba(0,0,0,.18) !important;
-    animation: cya-dual-breathe 5.6s ease-in-out infinite !important;
-    isolation: isolate;
-    -webkit-tap-highlight-color: transparent;
+      radial-gradient(90% 120% at 50% -24%,rgba(239,170,255,.24),transparent 56%),
+      linear-gradient(180deg,rgba(70,24,97,.99),rgba(23,11,34,.998)) !important;
+    color:#fff !important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.17),inset 0 -8px 14px rgba(0,0,0,.18) !important;
+    animation:cya-control-breathe 5.8s ease-in-out infinite !important;
+    isolation:isolate;
+    -webkit-tap-highlight-color:transparent;
   }
 
-  /* Full six-side border. SVG path matches the rounded six-sided silhouette exactly. */
-  .mobile-nav button.primary::after,
-  nav[aria-label="Portal CYA"] [class*="formationMain"]::before {
-    content: "" !important;
-    display: block !important;
-    position: absolute !important;
-    z-index: 5 !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    pointer-events: none !important;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 112 56' preserveAspectRatio='none'%3E%3Cpath d='M15 1H97Q101 1 104 6L110 23Q112 28 110 33L104 50Q101 55 97 55H15Q11 55 8 50L2 33Q0 28 2 23L8 6Q11 1 15 1Z' fill='none' stroke='%23dda6f5' stroke-opacity='.82' stroke-width='1.35'/%3E%3C/svg%3E") center / 100% 100% no-repeat !important;
-    filter: drop-shadow(0 0 2px rgba(219,140,255,.20)) !important;
-  }
+  .mobile-nav button.primary { left:50% !important; transform:translateX(-50%) !important; }
 
-  /* Moving highlight remains inside the chassis and is intentionally infrequent. */
-  .mobile-nav button.primary::before,
-  nav[aria-label="Portal CYA"] [class*="formationMain"]::after {
-    content: "" !important;
-    display: block !important;
-    position: absolute !important;
-    z-index: 1 !important;
-    inset: 1px !important;
-    clip-path: polygon(7% 9%, 93% 9%, 99% 50%, 93% 91%, 7% 91%, 1% 50%) !important;
-    background:
-      linear-gradient(112deg, transparent 36%, rgba(255,255,255,.12) 49%, transparent 62%),
-      radial-gradient(72% 95% at 50% -10%, rgba(227,146,255,.15), transparent 62%),
-      linear-gradient(180deg, rgba(76,29,101,.25), rgba(20,10,31,.18)) !important;
-    background-size: 230% 100%, 100% 100%, 100% 100% !important;
-    animation: cya-dual-sheen 7.2s ease-in-out infinite !important;
-    opacity: .88 !important;
-    pointer-events: none !important;
-  }
-
-  /* ---------- Professor placement: same baseline as student ---------- */
-  .mobile-nav button.primary {
-    position: absolute !important;
-    left: 50% !important;
-    bottom: var(--cya-dual-bottom) !important;
-    transform: translateX(-50%) !important;
-    transition: transform .15s cubic-bezier(.2,.8,.2,1), filter .2s ease !important;
-  }
-
-  /* Real logo: larger, centred on the exact viewport axis. */
-  .mobile-nav button.primary .mobile-nav-logo {
-    display: block !important;
-    position: absolute !important;
-    z-index: 7 !important;
-    left: 50% !important;
-    top: 1px !important;
-    width: 52px !important;
-    height: 33px !important;
-    transform: translateX(-50%) !important;
-    overflow: hidden !important;
-    filter: drop-shadow(0 0 4px rgba(224,146,255,.24)) !important;
-    pointer-events: none !important;
-  }
-  .mobile-nav button.primary .mobile-nav-logo img {
-    position: absolute !important;
-    top: -11px !important;
-    left: -3px !important;
-    width: 58px !important;
-    height: 58px !important;
-    max-width: none !important;
-  }
-  .mobile-nav button.primary > span:last-child {
-    position: absolute !important;
-    z-index: 7 !important;
-    left: 50% !important;
-    bottom: 5px !important;
-    width: 68px !important;
-    transform: translateX(-50%) !important;
-    color: rgba(255,255,255,.99) !important;
-    font-size: 8.7px !important;
-    line-height: 1 !important;
-    font-weight: 850 !important;
-    letter-spacing: .022em !important;
-    text-align: center !important;
-    text-transform: uppercase !important;
-    white-space: nowrap !important;
-    text-shadow: 0 0 8px rgba(220,142,255,.16) !important;
-    pointer-events: none !important;
-  }
-
-  /* ---------- Secondary action: only the right 24px ---------- */
-  .mobile-nav .mobile-nav-secondary {
-    position: absolute !important;
-    z-index: 10 !important;
-    left: calc(50% + (var(--cya-dual-w) / 2) - var(--cya-dual-split)) !important;
-    right: auto !important;
-    bottom: var(--cya-dual-bottom) !important;
-    top: auto !important;
-    width: var(--cya-dual-split) !important;
-    min-width: var(--cya-dual-split) !important;
-    max-width: var(--cya-dual-split) !important;
-    height: var(--cya-dual-h) !important;
-    min-height: var(--cya-dual-h) !important;
-    max-height: var(--cya-dual-h) !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    transform: none !important;
-    overflow: visible !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    clip-path: none !important;
-    background: transparent !important;
-    color: rgba(255,255,255,.94) !important;
-    box-shadow: none !important;
-    filter: none !important;
-    animation: none !important;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .mobile-nav .mobile-nav-secondary::before {
-    content: "" !important;
-    display: block !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 12px !important;
-    bottom: 12px !important;
-    width: 1px !important;
-    background: linear-gradient(180deg, transparent, var(--cya-dual-divider) 20%, var(--cya-dual-divider) 80%, transparent) !important;
-    box-shadow: 0 0 5px rgba(218,136,250,.13) !important;
-    pointer-events: none !important;
-  }
-  .mobile-nav .mobile-nav-secondary::after { display: none !important; content: none !important; }
-  .mobile-nav .mobile-nav-secondary > span { display: none !important; }
-  .mobile-nav .mobile-nav-secondary svg {
-    display: block !important;
-    position: absolute !important;
-    left: 50% !important;
-    top: 50% !important;
-    width: 15px !important;
-    height: 15px !important;
-    margin: 0 !important;
-    transform: translate(-50%, -50%) !important;
-    color: currentColor !important;
-    filter: drop-shadow(0 0 3px rgba(224,151,255,.18)) !important;
-    transition: transform .2s cubic-bezier(.2,.8,.2,1), filter .2s ease !important;
-  }
-  .mobile-nav .mobile-nav-secondary.open svg {
-    transform: translate(-50%, -50%) rotate(180deg) !important;
-    filter: drop-shadow(0 0 5px rgba(224,151,255,.34)) !important;
-  }
-
-  /* ---------- Student placement: absolute viewport-centred wrapper ---------- */
   nav[aria-label="Portal CYA"] [class*="formationNav"] {
-    position: absolute !important;
-    z-index: 8 !important;
-    left: 50% !important;
-    right: auto !important;
-    bottom: var(--cya-dual-bottom) !important;
-    width: var(--cya-dual-w) !important;
-    min-width: var(--cya-dual-w) !important;
-    max-width: var(--cya-dual-w) !important;
-    height: var(--cya-dual-h) !important;
-    margin: 0 !important;
-    transform: translateX(-50%) !important;
-    overflow: visible !important;
+    position:absolute !important;
+    z-index:8 !important;
+    left:50% !important;
+    right:auto !important;
+    top:var(--cya-dual-top) !important;
+    bottom:auto !important;
+    width:var(--cya-dual-w) !important;
+    min-width:var(--cya-dual-w) !important;
+    max-width:var(--cya-dual-w) !important;
+    height:var(--cya-dual-h) !important;
+    margin:0 !important;
+    transform:translateX(-50%) !important;
+    overflow:visible !important;
   }
-  nav[aria-label="Portal CYA"] [class*="formationNav"]::before,
-  nav[aria-label="Portal CYA"] [class*="formationNav"]::after { display: none !important; content: none !important; }
 
   nav[aria-label="Portal CYA"] [class*="formationMain"] {
-    position: absolute !important;
-    left: 0 !important;
-    bottom: 0 !important;
-    transform: none !important;
-    transition: transform .15s cubic-bezier(.2,.8,.2,1), filter .2s ease !important;
+    left:0 !important;
+    top:0 !important;
+    transform:none !important;
   }
-  nav[aria-label="Portal CYA"] [class*="formationMain"] > svg { display: none !important; }
 
-  /* Student logo uses a dedicated pseudo-element layered above sheen/border. */
+  /* Continuous six-side border. */
+  .mobile-nav button.primary::after,
+  nav[aria-label="Portal CYA"] [class*="formationMain"]::before {
+    content:"" !important;
+    display:block !important;
+    position:absolute !important;
+    z-index:6 !important;
+    inset:0 !important;
+    pointer-events:none !important;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 104 52' preserveAspectRatio='none'%3E%3Cpath d='M16 1H88Q93 1 96 6L102 21Q104 26 102 31L96 46Q93 51 88 51H16Q11 51 8 46L2 31Q0 26 2 21L8 6Q11 1 16 1Z' fill='none' stroke='%23e5b0ff' stroke-opacity='.9' stroke-width='1.35'/%3E%3C/svg%3E") center/100% 100% no-repeat !important;
+    filter:drop-shadow(0 0 3px rgba(224,145,255,.22)) !important;
+  }
+
+  /* Slow premium light sweep, fully inside the chassis. */
+  .mobile-nav button.primary::before,
+  nav[aria-label="Portal CYA"] [class*="formationMain"]::after {
+    content:"" !important;
+    display:block !important;
+    position:absolute !important;
+    z-index:1 !important;
+    inset:1px !important;
+    clip-path:polygon(9% 7%,91% 7%,99% 50%,91% 93%,9% 93%,1% 50%) !important;
+    background:
+      linear-gradient(112deg,transparent 38%,rgba(255,255,255,.16) 49%,transparent 60%),
+      radial-gradient(72% 95% at 50% -8%,rgba(231,154,255,.15),transparent 62%),
+      linear-gradient(180deg,rgba(89,34,116,.22),rgba(20,9,31,.15)) !important;
+    background-size:240% 100%,100% 100%,100% 100% !important;
+    animation:cya-control-sheen 8.4s ease-in-out infinite !important;
+    pointer-events:none !important;
+  }
+
+  /* Professor logo + label: exact viewport centre. */
+  .mobile-nav button.primary .mobile-nav-logo {
+    display:block !important;
+    position:absolute !important;
+    z-index:7 !important;
+    left:50% !important;
+    top:-1px !important;
+    width:54px !important;
+    height:33px !important;
+    transform:translateX(-50%) !important;
+    overflow:hidden !important;
+    filter:drop-shadow(0 0 5px rgba(226,151,255,.27)) !important;
+    pointer-events:none !important;
+  }
+  .mobile-nav button.primary .mobile-nav-logo img {
+    position:absolute !important;
+    top:-12px !important;
+    left:-3px !important;
+    width:60px !important;
+    height:60px !important;
+    max-width:none !important;
+  }
+  .mobile-nav button.primary > span:last-child,
   nav[aria-label="Portal CYA"] [class*="formationMain"] > span {
-    position: absolute !important;
-    z-index: 7 !important;
-    left: 50% !important;
-    bottom: 5px !important;
-    width: 76px !important;
-    transform: translateX(-50%) !important;
-    color: rgba(255,255,255,.99) !important;
-    font-size: 7.9px !important;
-    line-height: 1 !important;
-    font-weight: 850 !important;
-    letter-spacing: .006em !important;
-    text-align: center !important;
-    text-transform: uppercase !important;
-    white-space: nowrap !important;
-    text-shadow: 0 0 8px rgba(220,142,255,.16) !important;
-    pointer-events: none !important;
+    position:absolute !important;
+    z-index:7 !important;
+    left:50% !important;
+    bottom:5px !important;
+    transform:translateX(-50%) !important;
+    color:rgba(255,255,255,.99) !important;
+    line-height:1 !important;
+    font-weight:850 !important;
+    text-align:center !important;
+    text-transform:uppercase !important;
+    white-space:nowrap !important;
+    text-shadow:0 0 9px rgba(223,148,255,.17) !important;
+    pointer-events:none !important;
   }
+  .mobile-nav button.primary > span:last-child { width:64px !important; font-size:8.3px !important; letter-spacing:.018em !important; }
+  nav[aria-label="Portal CYA"] [class*="formationMain"] > span { width:76px !important; font-size:7.45px !important; letter-spacing:0 !important; }
+  nav[aria-label="Portal CYA"] [class*="formationMain"] > svg { display:none !important; }
   nav[aria-label="Portal CYA"] [class*="formationMain"] > span::before {
-    content: "" !important;
-    display: block !important;
-    position: absolute !important;
-    left: 50% !important;
-    bottom: 10px !important;
-    width: 54px !important;
-    height: 35px !important;
-    transform: translateX(-50%) !important;
-    background: url('/cya-logo.png') center / 60px 60px no-repeat !important;
-    background-position: center -12px !important;
-    filter: drop-shadow(0 0 4px rgba(224,146,255,.24)) !important;
-    pointer-events: none !important;
+    content:"" !important;
+    display:block !important;
+    position:absolute !important;
+    left:50% !important;
+    bottom:9px !important;
+    width:56px !important;
+    height:34px !important;
+    transform:translateX(-50%) !important;
+    background:url('/cya-logo.png') center/62px 62px no-repeat !important;
+    background-position:center -13px !important;
+    filter:drop-shadow(0 0 5px rgba(226,151,255,.27)) !important;
+    pointer-events:none !important;
   }
 
+  /* Secondary zone is only 20px; divider sits far right. */
+  .mobile-nav .mobile-nav-secondary,
   nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] {
-    position: absolute !important;
-    z-index: 10 !important;
-    right: 0 !important;
-    left: auto !important;
-    bottom: 0 !important;
-    top: auto !important;
-    width: var(--cya-dual-split) !important;
-    min-width: var(--cya-dual-split) !important;
-    max-width: var(--cya-dual-split) !important;
-    height: var(--cya-dual-h) !important;
-    min-height: var(--cya-dual-h) !important;
-    max-height: var(--cya-dual-h) !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    transform: none !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    clip-path: none !important;
-    background: transparent !important;
-    color: rgba(255,255,255,.94) !important;
-    box-shadow: none !important;
-    filter: none !important;
-    animation: none !important;
+    position:absolute !important;
+    z-index:10 !important;
+    top:0 !important;
+    bottom:auto !important;
+    right:0 !important;
+    left:auto !important;
+    width:var(--cya-dual-split) !important;
+    min-width:var(--cya-dual-split) !important;
+    max-width:var(--cya-dual-split) !important;
+    height:var(--cya-dual-h) !important;
+    min-height:var(--cya-dual-h) !important;
+    max-height:var(--cya-dual-h) !important;
+    margin:0 !important;
+    padding:0 !important;
+    transform:none !important;
+    overflow:visible !important;
+    border:0 !important;
+    border-radius:0 !important;
+    clip-path:none !important;
+    background:transparent !important;
+    color:rgba(255,255,255,.95) !important;
+    box-shadow:none !important;
+    filter:none !important;
+    animation:none !important;
   }
+  .mobile-nav .mobile-nav-secondary { right:calc(50% - (var(--cya-dual-w) / 2)) !important; }
+
+  .mobile-nav .mobile-nav-secondary::before,
   nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"]::before {
-    content: "" !important;
-    display: block !important;
-    position: absolute !important;
-    left: 0 !important;
-    top: 12px !important;
-    bottom: 12px !important;
-    width: 1px !important;
-    background: linear-gradient(180deg, transparent, var(--cya-dual-divider) 20%, var(--cya-dual-divider) 80%, transparent) !important;
-    box-shadow: 0 0 5px rgba(218,136,250,.13) !important;
-    pointer-events: none !important;
+    content:"" !important;
+    display:block !important;
+    position:absolute !important;
+    left:0 !important;
+    top:13px !important;
+    bottom:13px !important;
+    width:1px !important;
+    background:linear-gradient(180deg,transparent,var(--cya-dual-divider) 18%,var(--cya-dual-divider) 82%,transparent) !important;
+    box-shadow:0 0 4px rgba(220,141,252,.13) !important;
+    pointer-events:none !important;
   }
-  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"]::after { display: none !important; content: none !important; }
+  .mobile-nav .mobile-nav-secondary::after,
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"]::after { display:none !important; content:none !important; }
+  .mobile-nav .mobile-nav-secondary > span { display:none !important; }
+  .mobile-nav .mobile-nav-secondary svg,
   nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] svg {
-    display: block !important;
-    position: absolute !important;
-    left: 50% !important;
-    top: 50% !important;
-    width: 15px !important;
-    height: 15px !important;
-    margin: 0 !important;
-    transform: translate(-50%, -50%) !important;
-    color: currentColor !important;
-    filter: drop-shadow(0 0 3px rgba(224,151,255,.18)) !important;
-    transition: transform .2s cubic-bezier(.2,.8,.2,1), filter .2s ease !important;
+    display:block !important;
+    position:absolute !important;
+    left:50% !important;
+    top:50% !important;
+    width:13px !important;
+    height:13px !important;
+    margin:0 !important;
+    transform:translate(-50%,-50%) !important;
+    color:currentColor !important;
+    filter:drop-shadow(0 0 3px rgba(227,158,255,.20)) !important;
+    transition:transform .22s cubic-bezier(.2,.8,.2,1),filter .22s ease !important;
   }
+  .mobile-nav .mobile-nav-secondary.open svg,
   nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"][aria-expanded="true"] svg {
-    transform: translate(-50%, -50%) rotate(180deg) !important;
-    filter: drop-shadow(0 0 5px rgba(224,151,255,.34)) !important;
+    transform:translate(-50%,-50%) rotate(180deg) !important;
+    filter:drop-shadow(0 0 6px rgba(231,169,255,.44)) !important;
   }
 
-  /* Premium response without permanent visual noise. */
-  @media (hover: hover) {
-    .mobile-nav button.primary:hover,
-    nav[aria-label="Portal CYA"] [class*="formationMain"]:hover {
-      filter: drop-shadow(0 7px 12px rgba(0,0,0,.34)) drop-shadow(0 0 7px rgba(211,104,252,.27)) brightness(1.045) !important;
-    }
-  }
+  .mobile-nav button.primary:active { transform:translateX(-50%) translateY(1px) scale(.985) !important; }
+  nav[aria-label="Portal CYA"] [class*="formationMain"]:active { transform:translateY(1px) scale(.985) !important; }
 
-  .mobile-nav button.primary:active {
-    transform: translateX(-50%) translateY(1px) scale(.982) !important;
-  }
-  nav[aria-label="Portal CYA"] [class*="formationMain"]:active {
-    transform: translateY(1px) scale(.982) !important;
-  }
-  .mobile-nav .mobile-nav-secondary:active,
-  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"]:active {
-    background: radial-gradient(circle at 50% 50%, rgba(225,151,255,.10), transparent 72%) !important;
+  .mobile-nav button.primary:hover,
+  nav[aria-label="Portal CYA"] [class*="formationMain"]:hover {
+    filter:brightness(1.08) saturate(1.05) drop-shadow(0 0 5px rgba(220,127,255,.22)) !important;
   }
 
   .mobile-class-sheet,
   nav[aria-label="Portal CYA"] + [role="menu"] {
-    bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+    bottom:calc(88px + env(safe-area-inset-bottom)) !important;
   }
 }
 
-@media (max-width: 350px) {
-  :root {
-    --cya-dual-w: 108px;
-    --cya-dual-h: 54px;
-    --cya-dual-split: 23px;
-    --cya-dual-shape: path("M 14 0 H 94 Q 99 0 102 5 L 107 22 Q 109 27 107 32 L 102 49 Q 99 54 94 54 H 14 Q 9 54 6 49 L 1 32 Q -1 27 1 22 L 6 5 Q 9 0 14 0 Z");
-  }
-  .mobile-nav button.primary > span:last-child { font-size: 8.3px !important; }
-  nav[aria-label="Portal CYA"] [class*="formationMain"] > span { font-size: 7.5px !important; }
+@media (max-width:370px) {
+  :root { --cya-dual-w:100px; --cya-dual-h:50px; --cya-dual-split:19px; --cya-dual-top:-6px; }
+  .mobile-nav button.primary > span:last-child { font-size:8px !important; }
+  nav[aria-label="Portal CYA"] [class*="formationMain"] > span { font-size:7.1px !important; }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion:reduce) {
   .mobile-nav button.primary,
   nav[aria-label="Portal CYA"] [class*="formationMain"],
   .mobile-nav button.primary::before,
-  nav[aria-label="Portal CYA"] [class*="formationMain"]::after {
-    animation: none !important;
-    transition: none !important;
-  }
+  nav[aria-label="Portal CYA"] [class*="formationMain"]::after { animation:none !important; }
   .mobile-nav .mobile-nav-secondary svg,
-  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] svg {
-    transition: none !important;
-  }
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] svg { transition:none !important; }
 }
