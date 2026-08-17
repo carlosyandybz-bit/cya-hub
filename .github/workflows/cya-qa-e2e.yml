@@ -153,6 +153,10 @@ jobs:
           cat qa/app-server.log
           exit 1
 
+      - name: Run fast visual design gate
+        working-directory: qa
+        run: npm run test:visual
+
       - name: Run browser QA
         working-directory: qa
         run: npm run test:e2e
