@@ -1,5 +1,5 @@
 /* Canonical app chrome · professor + student
-   Shared header + bottom dock. Quiet premium material; role-specific semantics stay untouched. */
+   Shared header + bottom dock. Student staging header is the production standard. */
 
 :root {
   --cya-chrome-bg: linear-gradient(180deg, rgba(18,19,25,.965), rgba(9,10,14,.992));
@@ -18,6 +18,55 @@
     box-shadow: inset 0 -1px 0 rgba(255,255,255,.018) !important;
     backdrop-filter: blur(var(--cya-chrome-blur)) saturate(1.04) !important;
     -webkit-backdrop-filter: blur(var(--cya-chrome-blur)) saturate(1.04) !important;
+  }
+
+  .shell .mobile-head {
+    display: grid !important;
+    grid-template-columns: 90px minmax(0,1fr) 90px !important;
+    align-items: center !important;
+    padding: env(safe-area-inset-top) 10px 0 !important;
+  }
+
+  .shell .mobile-head .mobile-head-back { grid-column: 1 !important; justify-self: start !important; }
+  .shell .mobile-head .mobile-head-brand {
+    grid-column: 2 !important;
+    justify-self: center !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:8px !important;
+    min-width:0 !important;
+  }
+  .shell .mobile-head .mobile-head-actions {
+    grid-column: 3 !important;
+    justify-self: end !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:2px !important;
+  }
+
+  .shell .mobile-head .mobile-owner-name {
+    display:inline-flex !important;
+    align-items:baseline !important;
+    gap:6px !important;
+    font-size:0 !important;
+    line-height:1 !important;
+    white-space:nowrap !important;
+  }
+  .shell .mobile-head .mobile-owner-name::before {
+    content:"CYA";
+    font-size:18px;
+    line-height:1;
+    font-weight:800;
+    letter-spacing:-.02em;
+    color:rgba(255,255,255,.98);
+  }
+  .shell .mobile-head .mobile-owner-name::after {
+    content:"Hub";
+    font-size:18px;
+    line-height:1;
+    font-weight:500;
+    letter-spacing:-.02em;
+    color:rgba(218,213,227,.76);
   }
 
   body:has(nav[aria-label="Portal CYA"]) header {
