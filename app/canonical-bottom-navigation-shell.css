@@ -19,7 +19,6 @@
     -webkit-backdrop-filter: blur(22px) saturate(1.12) !important;
   }
 
-  /* Explicit tracks keep the four secondary destinations away from the central chassis. */
   .mobile-nav > button[data-nav-item="home"] { grid-column: 1 !important; }
   .mobile-nav > button[data-nav-item="students"] { grid-column: 2 !important; }
   .mobile-nav > button[data-nav-item="teaching"] { grid-column: 4 !important; }
@@ -73,6 +72,9 @@
 @media (max-width: 350px) {
   .mobile-nav,
   nav[aria-label="Portal CYA"] {
+    --cya-central-main-w: 84px;
+    --cya-central-toggle-w: 44px;
+    --cya-central-h: 50px;
     grid-template-columns: minmax(44px,1fr) minmax(44px,1fr) var(--cya-central-group-w,128px) minmax(44px,1fr) minmax(44px,1fr) !important;
   }
 }
