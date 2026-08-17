@@ -33,7 +33,10 @@ const SUMMARY_SELECTOR = ".class-workflow-page.final-summary";
 function currentClassId() {
   const state = window.history.state as CyaHistoryState | null;
   const value = Number(state?.liveClassId || 0);
-  return state?.cyaHub && state.view === "live" && Number.isInteger(value) && value > 0 ? value : null;
+  // The class id remains authoritative throughout the administrative and
+  // pedagogical close. Requiring view === "live" made the id disappear from
+  // the autosave layer precisely when the final summary became visible.
+  return state?.cyaHub && Number.isInteger(value) && value > 0 ? value : null;
 }
 
 function dateLabel(value: string) {
@@ -81,7 +84,7 @@ async function resolveClassIdFromSummary(root: HTMLElement) {
 
   const classId = matches[0].id;
   const state = (window.history.state || {}) as CyaHistoryState;
-  window.history.replaceState({ ...state, cyaHub: true, view: "live", liveClassId: classId }, "", window.location.href);
+  window.history.replaceState({ ...state, cyaHub: true, liveClassId: classId }, "", window.location.href);
   return classId;
 }
 
@@ -219,15 +222,27 @@ export function ClassSummaryDraftUx() {
     const schedulePersist = () => {
       if (restoring) return;
       window.clearTimeout(saveTimer);
+      setActive(true);
       setStatus("Guardando borrador…");
       saveTimer = window.setTimeout(() => {
-        const root = visibleSummary();
-        if (!root) return;
-        const fields = summaryFields(root);
-        const classId = currentClassId() ?? activeClassId;
-        if (!classId || !fields.student || !fields.internal) return;
-        writeDraft(classId, fields.student.value, fields.internal.value);
-        setStatus("Borrador guardado automáticamente.");
+        void (async () => {
+          const root = visibleSummary();
+          if (!root) return;
+          const fields = summaryFields(root);
+          if (!fields.student || !fields.internal) return;
+
+          let classId = currentClassId() ?? activeClassId;
+          if (!classId) classId = await resolveClassIdFromSummary(root);
+          if (!classId || disposed || !root.isConnected) {
+            setStatus("No hemos podido guardar el borrador todavía.");
+            return;
+          }
+
+          activeClassId = classId;
+          activeRoot = root;
+          writeDraft(classId, fields.student.value, fields.internal.value);
+          setStatus("Borrador guardado automáticamente.");
+        })();
       }, 180);
     };
 
