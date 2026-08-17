@@ -76,17 +76,18 @@ test('P24 RPCs stay invoker-side and preview execution is removed from PUBLIC an
   assert.doesNotMatch(migration,/security definer/i);
 });
 
-test('QA bootstrap keeps public-repo trust pinned to owner or exact internal main dispatch',()=>{
+test('QA bootstrap is pinned to the owner, staging ref and exact staging workflow',()=>{
   assert.match(qaBootstrap,/const EXPECTED_REPOSITORY_ID = "1328286685"/);
   assert.match(qaBootstrap,/const EXPECTED_ACTOR = "carlosyandybz-bit"/);
   assert.match(qaBootstrap,/const EXPECTED_ACTOR_ID = "306267740"/);
-  assert.match(qaBootstrap,/const GITHUB_ACTIONS_BOT = "github-actions\[bot\]"/);
-  assert.match(qaBootstrap,/const GITHUB_ACTIONS_BOT_ID = "41898282"/);
-  assert.match(qaBootstrap,/const EXPECTED_MAIN_REF = "refs\/heads\/main"/);
+  assert.match(qaBootstrap,/const EXPECTED_STAGING_REF = "refs\/heads\/staging"/);
+  assert.match(qaBootstrap,/const EXPECTED_WORKFLOW_REF = `\$\{EXPECTED_REPOSITORY\}\/\.github\/workflows\/cya-qa-e2e\.yml@\$\{EXPECTED_STAGING_REF\}`/);
   assert.match(qaBootstrap,/\["private", "public"\]\.includes\(claims\.repository_visibility \?\? ""\)/);
-  assert.match(qaBootstrap,/const ownerActor = claims\.actor === EXPECTED_ACTOR && claims\.actor_id === EXPECTED_ACTOR_ID/);
-  assert.match(qaBootstrap,/claims\.actor === GITHUB_ACTIONS_BOT[\s\S]*claims\.actor_id === GITHUB_ACTIONS_BOT_ID[\s\S]*claims\.event_name === "workflow_dispatch"[\s\S]*claims\.ref === EXPECTED_MAIN_REF[\s\S]*claims\.workflow_ref === EXPECTED_MAIN_WORKFLOW_REF/);
-  assert.match(qaBootstrap,/if \(!ownerActor && !internalMainDispatch\) throw new Error\("Untrusted OIDC actor"\)/);
-  assert.match(qaBootstrap,/EXPECTED_WORKFLOW_PREFIX/);
+  assert.match(qaBootstrap,/claims\.actor !== EXPECTED_ACTOR \|\| claims\.actor_id !== EXPECTED_ACTOR_ID/);
+  assert.match(qaBootstrap,/claims\.ref !== EXPECTED_STAGING_REF/);
+  assert.match(qaBootstrap,/claims\.workflow_ref !== EXPECTED_WORKFLOW_REF/);
+  assert.match(qaBootstrap,/claims\.runner_environment !== "github-hosted"/);
+  assert.doesNotMatch(qaBootstrap,/EXPECTED_MAIN_REF/);
+  assert.doesNotMatch(qaBootstrap,/GITHUB_ACTIONS_BOT/);
   assert.doesNotMatch(qaBootstrap,/repository_visibility !== "private"/);
 });
