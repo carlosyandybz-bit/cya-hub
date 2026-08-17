@@ -55,37 +55,33 @@ const requiredCentralMarkers = [
   "formationMain",
   "Abrir apartados de Mi formación",
   "url('/cya-logo.png')",
-  "--cya-dual-w: 112px",
-  "--cya-dual-h: 56px",
-  "--cya-dual-split: 24px",
-  "--cya-dual-bottom: 8px",
-  "path(\"M 15 0 H 97",
-  "cya-dual-sheen",
-  "data:image/svg+xml",
-  "top: 12px",
-  "bottom: 12px",
-  "transform: translate(-50%, -50%)",
-  "position: absolute !important;\n    z-index: 8 !important;\n    left: 50% !important;\n    right: auto !important;\n    bottom: var(--cya-dual-bottom)",
+  "--cya-dual-w: 104px",
+  "--cya-dual-h: 52px",
+  "--cya-dual-split: 20px",
+  "--cya-dual-top: -8px",
+  "top:var(--cya-dual-top)",
+  "cya-control-breathe",
+  "cya-control-sheen",
+  "transform:translate(-50%,-50%)",
   "prefers-reduced-motion",
-  ".mobile-nav::before { display: none",
+  ".mobile-nav::before { display:none",
 ];
 const missingCentral = requiredCentralMarkers.filter((marker) => !central.includes(marker));
 if (missingCentral.length > 0) fail(`El control central v50 ha perdido contratos necesarios:\n- ${missingCentral.join("\n- ")}`);
 
 const forbiddenCentralMarkers = [
   "--cya-central-secondary-h",
-  "bottom: 54px",
-  "Two vertically stacked actions",
-  "border-left:",
-  "--cya-dual-w: 146px",
+  "--cya-dual-bottom",
   "--cya-dual-w: 126px",
+  "--cya-dual-w: 112px",
   "--cya-dual-split: 36px",
-  "polygon(10% 0, 90% 0, 100% 50%, 90% 100%, 10% 100%, 0 50%)",
+  "--cya-dual-split: 24px",
+  "border-left:",
 ];
 const staleCentral = forbiddenCentralMarkers.filter((marker) => central.includes(marker));
 if (staleCentral.length > 0) fail(`El control v50 ha recuperado geometría legacy/no aprobada:\n- ${staleCentral.join("\n- ")}`);
 
-if (!shell.includes("112px") || !shell.includes("108px")) {
+if (!shell.includes("104px") || !shell.includes("100px")) {
   fail("El shell no reserva las mismas anchuras compactas que el control v50.");
 }
 
@@ -108,4 +104,4 @@ if (/background\s*:\s*white\b/i.test(primitives) || /#fff(?:fff)?\b/i.test(primi
   fail("Las primitives canónicas contienen una superficie blanca hardcoded incompatible con Night Motion.");
 }
 
-console.log("[CYA visual contract] OK: v50 es autoridad única, compacto, suavizado, divisor derecho, alineación compartida y motion premium.");
+console.log("[CYA visual contract] OK: v50 es autoridad única, top-anchored, compacto y premium en profesor/alumno.");
