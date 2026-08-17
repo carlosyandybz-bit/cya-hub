@@ -142,9 +142,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  .shell,
+  .shell::before,
+  .shell::after,
+  .shell * ,
+  .shell *::before,
+  .shell *::after {
     scroll-behavior: auto !important;
   }
 }
