@@ -1,6 +1,6 @@
 /* v49 · Canonical central control · professor + student
    Product CSS. One compact futuristic family, vertically stacked, safe touch targets.
-   This layer replaces professor geometry from v46/v48 without changing DOM behavior. */
+   This layer fully replaces central-control geometry from v48 while preserving DOM behavior. */
 
 :root {
   --cya-central-primary-w: 78px;
@@ -19,10 +19,15 @@
     overflow: visible !important;
   }
 
-  /* Main action: same semantic button, new compact silhouette. */
+  nav[aria-label="Portal CYA"] .formationNav {
+    position: relative !important;
+    height: 72px !important;
+    overflow: visible !important;
+  }
+
+  /* Main action: same semantic button, compact canonical silhouette. */
   .mobile-nav button.primary,
   nav[aria-label="Portal CYA"] .formationMain {
-    position: relative !important;
     z-index: 6 !important;
     width: var(--cya-central-primary-w) !important;
     min-width: var(--cya-central-primary-w) !important;
@@ -69,6 +74,7 @@
   }
 
   .mobile-nav button.primary {
+    position: relative !important;
     left: auto !important;
     bottom: auto !important;
     transform: translateY(-5px) !important;
@@ -79,6 +85,9 @@
   }
 
   nav[aria-label="Portal CYA"] .formationMain {
+    position: absolute !important;
+    left: 50% !important;
+    bottom: -1px !important;
     transform: translateX(-50%) translateY(-5px) !important;
   }
 
@@ -148,9 +157,12 @@
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button[aria-label="Abrir apartados de Mi formación"]::before {
     content: "Más" !important;
     position: static !important;
+    top: auto !important;
+    left: auto !important;
     width: auto !important;
     height: auto !important;
     border: 0 !important;
+    border-radius: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
     color: inherit !important;
@@ -174,6 +186,8 @@
   nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] svg,
   nav[aria-label="Portal CYA"] > div:nth-child(3) > button[aria-label="Abrir apartados de Mi formación"] svg {
     position: static !important;
+    top: auto !important;
+    left: auto !important;
     width: 12px !important;
     height: 12px !important;
     flex: 0 0 12px !important;
@@ -193,7 +207,8 @@
   }
 
   .mobile-nav .mobile-nav-secondary.open svg,
-  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"][aria-expanded="true"] svg {
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"][aria-expanded="true"] svg,
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button[aria-label="Abrir apartados de Mi formación"][aria-expanded="true"] svg {
     transform: rotate(180deg) !important;
   }
 
@@ -210,6 +225,11 @@
 
   .mobile-class-sheet {
     bottom: calc(94px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .mobile-class-sheet,
+  nav[aria-label="Portal CYA"] + [role="menu"] {
+    max-width: calc(100vw - 24px);
   }
 }
 
