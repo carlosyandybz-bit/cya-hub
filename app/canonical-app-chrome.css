@@ -151,3 +151,27 @@
     transition: none !important;
   }
 }
+
+/* V1-006 · modal/overlay background scroll lock.
+   The document keeps its current scroll position while the foreground surface owns
+   vertical gestures. This avoids the classic iOS/Safari background drift without
+   forcing body position:fixed, so closing the overlay does not jump the page. */
+html:has(.backdrop),
+body:has(.backdrop),
+html:has(.live-overlay),
+body:has(.live-overlay) {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+.backdrop {
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.backdrop .modal,
+.live-overlay {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
