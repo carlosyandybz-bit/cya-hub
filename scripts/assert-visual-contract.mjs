@@ -55,10 +55,14 @@ const requiredCentralMarkers = [
   "formationMain",
   "Abrir apartados de Mi formación",
   "url('/cya-logo.png')",
-  "clip-path",
-  "border-left",
+  "--cya-dual-w: 126px",
+  "--cya-dual-h: 54px",
+  "--cya-dual-shape: polygon(10% 0, 90% 0, 100% 50%, 90% 100%, 10% 100%, 0 50%)",
+  ".mobile-nav .mobile-nav-secondary::before",
+  "top: 9px",
+  "bottom: 9px",
+  "transform: translate(-50%, -50%)",
   "prefers-reduced-motion",
-  "--cya-dual-w: 146px",
   ".mobile-nav::before { display: none",
 ];
 const missingCentral = requiredCentralMarkers.filter((marker) => !central.includes(marker));
@@ -68,9 +72,16 @@ const forbiddenCentralMarkers = [
   "--cya-central-secondary-h",
   "bottom: 54px",
   "Two vertically stacked actions",
+  "clip-path: polygon(10% 0, 90% 0, 100% 27%, 100% 73%, 90% 100%, 10% 100%, 0 73%, 0 27%)",
+  "border-left:",
+  "--cya-dual-w: 146px",
 ];
 const staleCentral = forbiddenCentralMarkers.filter((marker) => central.includes(marker));
-if (staleCentral.length > 0) fail(`El control v50 ha recuperado geometría legacy:\n- ${staleCentral.join("\n- ")}`);
+if (staleCentral.length > 0) fail(`El control v50 ha recuperado geometría legacy/no aprobada:\n- ${staleCentral.join("\n- ")}`);
+
+if (!shell.includes("126px") || !shell.includes("120px")) {
+  fail("El shell no reserva las mismas anchuras compactas que el control v50.");
+}
 
 const requiredPrimitiveMarkers = [".card",".field input","var(--cya-surface-interactive)","var(--cya-focus-ring)","-webkit-autofill","prefers-reduced-motion"];
 const missingPrimitives = requiredPrimitiveMarkers.filter((marker) => !primitives.includes(marker));
@@ -91,4 +102,4 @@ if (/background\s*:\s*white\b/i.test(primitives) || /#fff(?:fff)?\b/i.test(primi
   fail("Las primitives canónicas contienen una superficie blanca hardcoded incompatible con Night Motion.");
 }
 
-console.log("[CYA visual contract] OK: v50 es la única autoridad del control central y no hay doble chasis legacy.");
+console.log("[CYA visual contract] OK: v50 es autoridad única, hexágono real de seis lados, divisor único y dock compacto alineado.");
