@@ -40,12 +40,13 @@ body {
 }
 
 .cya-pull-refresh__surface {
-  min-height: 44px;
+  min-height: 48px;
   padding: 6px 12px 6px 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  overflow: visible;
   border: 1px solid rgba(217, 197, 236, .16);
   border-radius: 999px;
   background:
@@ -61,29 +62,33 @@ body {
 
 .cya-pull-refresh__mark {
   position: relative;
-  width: 34px;
-  height: 30px;
-  flex: 0 0 34px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   display: grid;
   place-items: center;
-  overflow: hidden;
+  overflow: visible;
   filter: drop-shadow(0 0 5px rgba(164, 77, 231, .5));
-  transform: rotate(-8deg) scale(.94);
-  transition: filter 160ms ease, transform 160ms ease;
+  transform: none;
+  transform-origin: 50% 50%;
+  transition: filter 160ms ease;
 }
 
 .cya-pull-refresh[data-phase="armed"] .cya-pull-refresh__mark,
 .cya-pull-refresh[data-phase="refreshing"] .cya-pull-refresh__mark,
 .cya-pull-refresh[data-phase="success"] .cya-pull-refresh__mark {
-  transform: rotate(0) scale(1);
+  transform: none;
 }
 
 .cya-pull-refresh__mark img {
-  width: 48px;
-  height: 48px;
+  display: block;
+  width: 40px;
+  height: 40px;
   max-width: none;
   object-fit: contain;
-  transform: translateY(-1px);
+  transform: rotate(0deg);
+  transform-origin: 50% 50%;
+  will-change: transform;
 }
 
 .cya-pull-refresh__label {
@@ -108,7 +113,7 @@ body {
 }
 
 .cya-pull-refresh[data-phase="refreshing"] .cya-pull-refresh__mark img {
-  animation: cya-pull-refresh-orbit 1.25s linear infinite;
+  animation: cya-pull-refresh-spin 1.25s linear infinite;
 }
 
 .cya-pull-refresh[data-phase="success"] .cya-pull-refresh__surface {
@@ -119,9 +124,9 @@ body {
     inset 0 1px 0 rgba(255,255,255,.06);
 }
 
-@keyframes cya-pull-refresh-orbit {
-  from { transform: translateY(-1px) rotate(0deg); }
-  to { transform: translateY(-1px) rotate(360deg); }
+@keyframes cya-pull-refresh-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes cya-pull-refresh-breathe {
