@@ -113,7 +113,7 @@ test("UX-04 student master dialog remains fully operable inside the mobile viewp
   await testInfo.attach("ux04-student-master-dialog", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
 });
 
-test("V1-006 modal locks background scroll and restores the same position on close", async ({ page }, testInfo) => {
+test("V1-006 modal pins the background on iOS-style lock and restores the exact position on close", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await login(page, "teacher");
 
@@ -131,17 +131,31 @@ test("V1-006 modal locks background scroll and restores the same position on clo
   await expect(modal).toBeVisible();
 
   const lock = await page.evaluate(() => ({
+    htmlLocked: document.documentElement.classList.contains("cya-overlay-open"),
+    bodyLocked: document.body.classList.contains("cya-overlay-open"),
     htmlOverflow: getComputedStyle(document.documentElement).overflow,
     bodyOverflow: getComputedStyle(document.body).overflow,
+    bodyPosition: getComputedStyle(document.body).position,
+    bodyTop: parseFloat(getComputedStyle(document.body).top || "0"),
   }));
+  expect(lock.htmlLocked).toBe(true);
+  expect(lock.bodyLocked).toBe(true);
   expect(["hidden", "clip"]).toContain(lock.htmlOverflow);
   expect(["hidden", "clip"]).toContain(lock.bodyOverflow);
+  expect(lock.bodyPosition).toBe("fixed");
+  expect(Math.abs(lock.bodyTop + before), "fixed body top must preserve the pre-modal visual position").toBeLessThanOrEqual(1);
 
   await page.mouse.move(6, 200);
   await page.mouse.wheel(0, 700);
   await page.waitForTimeout(120);
-  const during = await page.evaluate(() => window.scrollY);
-  expect(Math.abs(during - before), "background page must not drift while modal is open").toBeLessThanOrEqual(1);
+  const during = await page.evaluate(() => ({
+    bodyTop: parseFloat(getComputedStyle(document.body).top || "0"),
+    bodyPosition: getComputedStyle(document.body).position,
+    locked: document.body.classList.contains("cya-overlay-open"),
+  }));
+  expect(during.locked).toBe(true);
+  expect(during.bodyPosition).toBe("fixed");
+  expect(Math.abs(during.bodyTop + before), "background visual position must not drift while modal is open").toBeLessThanOrEqual(1);
 
   const modalScroll = await modal.evaluate((el) => ({ scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, scrollTop: el.scrollTop }));
   if (modalScroll.scrollHeight > modalScroll.clientHeight + 4) {
@@ -157,6 +171,12 @@ test("V1-006 modal locks background scroll and restores the same position on clo
   await close.click();
   await expect(backdrop).toBeHidden();
 
-  const after = await page.evaluate(() => window.scrollY);
-  expect(Math.abs(after - before), "closing modal must restore the exact background position").toBeLessThanOrEqual(1);
+  const after = await page.evaluate(() => ({
+    scrollY: window.scrollY,
+    bodyPosition: getComputedStyle(document.body).position,
+    locked: document.body.classList.contains("cya-overlay-open"),
+  }));
+  expect(after.locked).toBe(false);
+  expect(after.bodyPosition).not.toBe("fixed");
+  expect(Math.abs(after.scrollY - before), "closing modal must restore the exact background position").toBeLessThanOrEqual(1);
 });
