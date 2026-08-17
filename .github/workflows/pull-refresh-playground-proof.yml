@@ -41,6 +41,8 @@ jobs:
       - name: Install app
         run: npm ci
       - name: Verify production build
+        id: build
+        continue-on-error: true
         run: npm run build
       - name: Install Playwright harness
         working-directory: qa
@@ -49,6 +51,8 @@ jobs:
         working-directory: qa
         run: npx playwright install --with-deps chromium
       - name: Start playground
+        id: playground
+        continue-on-error: true
         shell: bash
         run: |
           npm run dev > /tmp/pull-refresh-playground.log 2>&1 &
@@ -59,29 +63,27 @@ jobs:
           cat /tmp/pull-refresh-playground.log
           exit 1
       - name: Exercise pull gesture and context preservation
+        id: gesture
+        if: steps.playground.outcome == 'success'
+        continue-on-error: true
         working-directory: qa
         shell: bash
         run: |
           node --input-type=module <<'EOF'
           import { chromium } from '@playwright/test';
-
           const browser = await chromium.launch({headless:true});
           const context = await browser.newContext({viewport:{width:390,height:844}, isMobile:true, hasTouch:true, deviceScaleFactor:1});
           const page = await context.newPage();
           const errors = [];
           page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
-
           const url = 'http://127.0.0.1:3000/staging-lab/pull-refresh-playground?tab=progress';
           await page.goto(url, {waitUntil:'networkidle'});
-          if (!page.url().includes('/staging-lab/pull-refresh-playground')) throw new Error(`Wrong page: ${page.url()}`);
           if (!(await page.getByTestId('pull-refresh-playground').isVisible())) throw new Error('Playground did not render');
-
           const indicator = page.getByTestId('cya-pull-refresh');
           const input = page.getByTestId('context-input');
           const stamp = page.getByTestId('server-stamp');
           const beforeStamp = await stamp.textContent();
           await input.fill('Borrador preservado');
-
           const client = await context.newCDPSession(page);
           const pull = async (fromY, toY) => {
             await client.send('Input.dispatchTouchEvent', {type:'touchStart', touchPoints:[{x:195,y:fromY}]});
@@ -91,60 +93,45 @@ jobs:
             }
             await client.send('Input.dispatchTouchEvent', {type:'touchEnd', touchPoints:[]});
           };
-
           await pull(80, 260);
           await page.waitForFunction(() => document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') === 'success', null, {timeout:7000});
-          const successText = await indicator.textContent();
-          if (!successText?.includes('Actualizado')) throw new Error(`Expected Actualizado, got ${successText}`);
+          if (!(await indicator.textContent())?.includes('Actualizado')) throw new Error('Success label missing');
           await page.waitForFunction((oldStamp) => document.querySelector('[data-testid="server-stamp"]')?.textContent !== oldStamp, beforeStamp, {timeout:7000});
-          if (await input.inputValue() !== 'Borrador preservado') throw new Error('Client context was reset by refresh');
-          if (page.url() !== url) throw new Error(`URL/context changed: ${page.url()}`);
-
+          if (await input.inputValue() !== 'Borrador preservado') throw new Error('Client context reset');
+          if (page.url() !== url) throw new Error(`URL changed: ${page.url()}`);
           await page.evaluate(() => window.scrollTo(0, 700));
           const scrolledStamp = await stamp.textContent();
           await pull(120, 300);
           await new Promise(r => setTimeout(r, 650));
-          if (await stamp.textContent() !== scrolledStamp) throw new Error('Refresh triggered while page was scrolled');
+          if (await stamp.textContent() !== scrolledStamp) throw new Error('Refresh triggered away from scroll top');
           if (errors.length) throw new Error(`Console errors: ${errors.join(' | ')}`);
-
-          console.log('PULL_REFRESH_PROOF=PASS');
-          console.log(`URL_PRESERVED=${page.url()}`);
-          console.log(`CONTEXT_PRESERVED=${await input.inputValue()}`);
           await browser.close();
           EOF
-      - name: Record successful QA marker
-        if: success()
+      - name: Record QA outcome
+        if: always()
         shell: bash
+        env:
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PLAYGROUND_OUTCOME: ${{ steps.playground.outcome }}
+          GESTURE_OUTCOME: ${{ steps.gesture.outcome }}
         run: |
+          status=PASS
+          if [ "$BUILD_OUTCOME" != success ] || [ "$PLAYGROUND_OUTCOME" != success ] || [ "$GESTURE_OUTCOME" != success ]; then status=FAIL; fi
           mkdir -p docs/qa
           cat > docs/qa/pull-refresh-latest.json <<EOF
           {
-            "status": "PASS",
+            "status": "$status",
             "tested_commit": "$(git rev-parse HEAD)",
             "viewport": "390x844",
-            "checks": ["build", "gesture", "context", "url", "success-state", "nonzero-scroll", "console"],
+            "build": "$BUILD_OUTCOME",
+            "playground": "$PLAYGROUND_OUTCOME",
+            "gesture": "$GESTURE_OUTCOME",
             "screenshots_generated": false
           }
           EOF
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add docs/qa/pull-refresh-latest.json
-          git commit -m 'qa(staging): record pull-refresh PASS' || exit 0
+          git commit -m "qa(staging): record pull-refresh $status" || exit 0
           git push origin HEAD:staging
-      - name: Record failed QA marker
-        if: failure()
-        shell: bash
-        run: |
-          mkdir -p docs/qa
-          cat > docs/qa/pull-refresh-latest.json <<EOF
-          {
-            "status": "FAIL",
-            "tested_commit": "$(git rev-parse HEAD)",
-            "screenshots_generated": false
-          }
-          EOF
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/qa/pull-refresh-latest.json
-          git commit -m 'qa(staging): record pull-refresh FAIL' || exit 0
-          git push origin HEAD:staging
+          test "$status" = PASS
