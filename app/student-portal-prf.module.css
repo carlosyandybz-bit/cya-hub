@@ -62,6 +62,7 @@
   cursor: pointer;
 }
 .notificationButton:hover { background: var(--cya-surface-interactive); }
+.notificationButton:focus-visible { outline: none; box-shadow: var(--cya-focus-ring); }
 .notificationButton svg { width: 22px; height: 22px; stroke-width: 1.9; }
 .notificationButton > span {
   position: absolute;
@@ -109,6 +110,7 @@
 .sectionHeading h3 { margin: 0; font-size: 20px; line-height: 1.16; letter-spacing: -.025em; }
 .sectionHeading > strong { font-size: 14px; color: var(--prf-muted); }
 .sectionHeading > button { min-height: 44px; border: 0; background: transparent; color: var(--prf-purple-dark); font-weight: 800; cursor: pointer; }
+.sectionHeading > button:focus-visible { outline: none; box-shadow: var(--cya-focus-ring); border-radius: 10px; }
 
 .nowSection { margin-bottom: 22px; }
 .nowList { display: grid; gap: 10px; }
@@ -138,6 +140,7 @@
   font-weight: 800;
   cursor: pointer;
 }
+.nowItem > button:focus-visible { outline: none; box-shadow: var(--cya-focus-ring); border-radius: 10px; }
 .nowItem > button svg { width: 16px; }
 .nowWarning { border-color: var(--cya-line-strong); background: var(--cya-surface-subtle); }
 .nowWarning > svg { color:var(--cya-text-secondary); }
@@ -162,6 +165,7 @@
   color: var(--prf-ink);
   cursor: pointer;
 }
+.summaryStrip button:focus-visible { outline: none; box-shadow: var(--cya-focus-ring); }
 .summaryStrip button > svg:first-child { width: 22px; color: var(--prf-purple); }
 .summaryStrip button > svg:last-child { width: 15px; color: var(--cya-text-soft); }
 .summaryStrip button span { display: grid; gap: 2px; color: var(--prf-muted); font-size: 11px; }
@@ -174,13 +178,15 @@
   justify-content: space-between;
   gap: 24px;
   padding: 23px 24px;
+  border: 1px solid var(--cya-line-strong);
   border-radius: 22px;
-  background: #1c1925;
-  color:var(--cya-on-accent);
+  background: var(--cya-surface-elevated);
+  color: var(--cya-text);
+  box-shadow: var(--cya-shadow-raised);
 }
 .feedbackCallout h2 { margin: 0; font-size: 22px; letter-spacing: -.03em; }
-.feedbackCallout p { margin: 7px 0 0; max-width: 620px; color: #d8d5e2; line-height: 1.5; }
-.feedbackCallout > div > span { color: #bcaeff; }
+.feedbackCallout p { margin: 7px 0 0; max-width: 620px; color: var(--cya-text-secondary); line-height: 1.5; }
+.feedbackCallout > div > span { color: var(--cya-accent-strong); }
 .feedbackCallout > button,
 .prepareField button,
 .inlineControl button,
@@ -199,10 +205,21 @@
   font: inherit;
   font-weight: 800;
   cursor: pointer;
+  transition: transform var(--cya-motion-fast) var(--cya-ease-standard), background var(--cya-motion-base) var(--cya-ease-standard), border-color var(--cya-motion-base) var(--cya-ease-standard);
 }
-.feedbackCallout > button { flex: 0 0 auto; background:var(--cya-surface); color:var(--cya-text); }
+.feedbackCallout > button:focus-visible,
+.prepareField button:focus-visible,
+.inlineControl button:focus-visible,
+.missionList button:focus-visible,
+.loading button:focus-visible { outline: none; box-shadow: var(--cya-focus-ring); }
+.feedbackCallout > button:active,
+.prepareField button:active,
+.inlineControl button:active,
+.missionList button:active,
+.loading button:active { transform: translateY(1px) scale(.99); }
+.feedbackCallout > button { flex: 0 0 auto; border: 1px solid var(--cya-line-strong); background:var(--cya-surface-interactive); color:var(--cya-text); }
 .feedbackCallout svg, .prepareField button svg, .inlineControl button svg { width: 18px; }
-button:disabled { cursor: default; opacity: .52; }
+button:disabled { cursor: default; opacity: var(--cya-disabled-opacity, .52); }
 
 .preparePanel {
   margin: 0 0 28px;
@@ -210,7 +227,7 @@ button:disabled { cursor: default; opacity: .52; }
   border: 1px solid var(--cya-line-strong);
   border-radius: 24px;
   background:var(--cya-surface);
-  box-shadow: 0 16px 44px rgba(73, 52, 146, .07);
+  box-shadow: var(--cya-shadow-raised);
 }
 .prepareIntro { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 20px; }
 .prepareIntro h2 { margin: 0; max-width: 670px; font-size: 25px; line-height: 1.12; letter-spacing: -.035em; }
@@ -222,6 +239,7 @@ button:disabled { cursor: default; opacity: .52; }
   padding: 14px;
   display: grid;
   gap: 8px;
+  border: 1px solid var(--cya-line);
   border-radius: 16px;
   background: var(--cya-surface-subtle);
 }
@@ -236,17 +254,22 @@ button:disabled { cursor: default; opacity: .52; }
   padding: 11px 12px;
   border: 1px solid var(--cya-line-strong);
   border-radius: 11px;
-  background:var(--cya-surface);
+  background:var(--cya-surface-interactive);
   color: var(--prf-ink);
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   outline: none;
+  transition: border-color var(--cya-motion-base) var(--cya-ease-standard), box-shadow var(--cya-motion-base) var(--cya-ease-standard), background var(--cya-motion-base) var(--cya-ease-standard);
 }
 .prepareField textarea { min-height: 72px; resize: vertical; }
 .prepareField textarea:focus,
 .prepareField input:focus,
 .prepareField select:focus,
-.editRow input:focus { border-color: var(--prf-purple); box-shadow: 0 0 0 3px rgba(109, 74, 255, .1); }
+.editRow input:focus,
+.prepareField textarea:focus-visible,
+.prepareField input:focus-visible,
+.prepareField select:focus-visible,
+.editRow input:focus-visible { border-color: var(--cya-focus); box-shadow: var(--cya-focus-ring); background: var(--cya-surface-elevated); }
 .prepareField > button { justify-self: start; }
 .prepareField small { color: var(--prf-muted); font-size: 11px; line-height: 1.4; }
 .inlineControl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
@@ -260,17 +283,20 @@ button:disabled { cursor: default; opacity: .52; }
   grid-template-columns: 32px minmax(0, 1fr) 24px;
   align-items: center;
   gap: 12px;
-  border: 1.5px dashed #c8c0f8;
+  border: 1.5px dashed color-mix(in srgb, var(--cya-accent) 55%, var(--cya-line-strong));
   border-radius: 16px;
   background: var(--cya-surface-subtle);
   cursor: pointer;
+  transition: border-color var(--cya-motion-base) var(--cya-ease-standard), background var(--cya-motion-base) var(--cya-ease-standard);
 }
+.videoDrop:hover { border-color: var(--cya-accent); background: var(--cya-surface-interactive); }
+.videoDrop:focus-within { border-color: var(--cya-focus); box-shadow: var(--cya-focus-ring); }
 .videoDrop > svg { width: 24px; color: var(--prf-purple); }
 .videoDrop > span { display: grid; gap: 3px; }
 .videoDrop strong { font-size: 14px; }
 .videoDrop small { color: var(--prf-muted); line-height: 1.35; }
 .videoDrop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.videoDropBusy { opacity: .7; }
+.videoDropBusy { opacity: var(--cya-disabled-opacity, .55); }
 
 .sentBlock { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--prf-line); }
 .requestList { display: grid; gap: 8px; }
@@ -308,14 +334,17 @@ button:disabled { cursor: default; opacity: .52; }
 }
 .requestActions button:hover,
 .editRow button:hover { background:var(--cya-surface-subtle); color: var(--prf-ink); }
+.requestActions button:focus-visible,
+.editRow button:focus-visible,
+.backButton:focus-visible { outline: none; box-shadow: var(--cya-focus-ring); }
 .requestActions svg, .editRow svg { width: 17px; }
 .editRow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
 .editRow button:first-of-type { min-width: auto; display: inline-flex; gap: 5px; align-items: center; color: var(--prf-purple-dark); }
 .prepVideo { width: min(100%, 430px); margin-top: 8px; border-radius: 13px; overflow: hidden; }
 .prepareEmpty { margin: 16px 0 0; color: var(--prf-muted); font-size: 13px; line-height: 1.5; }
-.success, .error { margin: 12px 0 0; padding: 11px 13px; border-radius: 12px; font-size: 13px; line-height: 1.45; }
-.success { background:var(--cya-surface-subtle); color:var(--cya-text-secondary); }
-.error { background:var(--cya-surface-subtle); color:var(--cya-text-secondary); }
+.success, .error { margin: 12px 0 0; padding: 11px 13px; border: 1px solid transparent; border-radius: 12px; font-size: 13px; line-height: 1.45; }
+.success { border-color: color-mix(in srgb, var(--cya-success) 30%, transparent); background:var(--cya-success-soft); color:var(--cya-success); }
+.error { border-color: color-mix(in srgb, var(--cya-danger) 30%, transparent); background:var(--cya-danger-soft); color:var(--cya-danger); }
 
 .homeColumns { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; }
 .openSection { padding: 20px; background:var(--cya-surface); border: 1px solid var(--prf-line); border-radius: 20px; }
@@ -334,6 +363,7 @@ button:disabled { cursor: default; opacity: .52; }
   color: var(--prf-ink);
   cursor: pointer;
 }
+.simpleList button:focus-visible { outline: none; box-shadow: var(--cya-focus-ring); border-radius: 10px; }
 .simpleList button > svg:first-child { width: 20px; color: var(--prf-purple); }
 .simpleList button > svg:last-child { width: 16px; color: var(--cya-text-soft); }
 .simpleList span { min-width: 0; display: grid; gap: 3px; }
@@ -387,6 +417,7 @@ button:disabled { cursor: default; opacity: .52; }
   text-align: left;
   cursor: pointer;
 }
+.formationAccess button:focus-visible { outline: none; box-shadow: var(--cya-focus-ring); }
 .formationAccess svg:first-child { color: var(--prf-purple); }
 .formationAccess span { display: grid; gap: 3px; }
 .formationAccess small { color: var(--prf-muted); }
@@ -410,7 +441,7 @@ button:disabled { cursor: default; opacity: .52; }
 .missionList article > div:last-child { flex: 0 0 auto; display: flex; align-items: center; gap: 7px; }
 .missionList article > div:last-child > svg { color: var(--prf-purple); }
 .missionList small { display: inline-block; margin-top: 7px; color: var(--prf-muted); }
-.missionList button:first-child:not(:last-child) { background: #eeeafc; color:var(--cya-text-secondary); }
+.missionList button:first-child:not(:last-child) { border: 1px solid var(--cya-line-strong); background: var(--cya-surface-interactive); color:var(--cya-text-secondary); }
 
 .backButton { margin: 0 0 12px; display: inline-flex; align-items: center; gap: 5px; color: var(--prf-purple-dark); }
 .backButton svg { width: 16px; transform: rotate(180deg); }
@@ -455,6 +486,9 @@ button:disabled { cursor: default; opacity: .52; }
   font-size: 10px;
   font-weight: 750;
 }
+.bottomNav > button:focus-visible,
+.formationMain:focus-visible,
+.formationToggle:focus-visible { outline: none; box-shadow: var(--cya-focus-ring); }
 .bottomNav svg { width: 21px; height: 21px; stroke-width: 1.9; }
 .bottomNav .active { color: var(--cya-accent-strong); }
 .formationNav { position: relative; min-width: 0; height: 64px; }
@@ -492,16 +526,18 @@ button:disabled { cursor: default; opacity: .52; }
   width: min(calc(100% - 24px), 430px);
   padding: 10px;
   transform: translateX(-50%);
-  border: 1px solid var(--prf-line);
+  border: 1px solid var(--cya-line-strong);
   border-radius: 20px;
-  background:var(--cya-surface);
-  box-shadow: 0 20px 55px rgba(35, 27, 66, .17);
+  background:var(--cya-surface-elevated);
+  box-shadow: var(--cya-shadow-raised);
 }
 .formationSheet > div { min-height: 48px; padding: 2px 5px 8px 10px; display: flex; align-items: center; justify-content: space-between; }
 .formationSheet > div button { width: 44px; height: 44px; border: 0; background: transparent; cursor: pointer; }
+.formationSheet > div button:focus-visible { outline: none; box-shadow: var(--cya-focus-ring); border-radius: 50%; }
 .formationSheet > div svg { width: 18px; }
 .formationSheet > button { width: 100%; min-height: 52px; padding: 0 10px; display: grid; grid-template-columns: 24px 1fr 18px; gap: 8px; align-items: center; border: 0; border-radius: 12px; background: transparent; color: var(--prf-ink); text-align: left; font: inherit; font-weight: 750; cursor: pointer; }
-.formationSheet > button:hover { background:var(--cya-surface-subtle); }
+.formationSheet > button:hover { background:var(--cya-surface-interactive); }
+.formationSheet > button:focus-visible { outline: none; background: var(--cya-surface-interactive); box-shadow: var(--cya-focus-ring); }
 .formationSheet > button svg:first-child { color: var(--prf-purple); }
 .formationSheet > button svg:last-child { color: var(--cya-text-soft); }
 
@@ -513,12 +549,13 @@ button:disabled { cursor: default; opacity: .52; }
   width: min(calc(100% - 32px), 520px);
   padding: 12px 15px;
   transform: translateX(-50%);
+  border: 1px solid var(--cya-line-strong);
   border-radius: 13px;
-  background: #211d2a;
-  color:var(--cya-on-accent);
+  background: var(--cya-surface-elevated);
+  color:var(--cya-text);
   text-align: center;
   font-size: 13px;
-  box-shadow: 0 12px 30px rgba(0,0,0,.18);
+  box-shadow: var(--cya-shadow-raised);
 }
 
 .loading {
