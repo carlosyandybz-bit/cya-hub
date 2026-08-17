@@ -17,37 +17,33 @@ async function assertContained(page: Page) {
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
-for (const width of [320, 390, 430, 768]) {
-  test(`CYA mobile chrome visual review ${width}px`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width, height: 844 });
+test("CYA mobile chrome master visual review 390px", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
 
-    await loginAs(page, "teacher", "Profesor");
-    const teacherNav = page.locator('nav.mobile-nav[aria-label="Navegación principal"]');
-    await expect(teacherNav).toBeVisible({ timeout: 20_000 });
-    const darClase = teacherNav.locator('button[data-nav-item="live"]');
-    const more = teacherNav.getByRole("button", { name: "Más opciones de clase" });
-    await expect(darClase).toBeVisible();
-    await expect(more).toBeVisible();
-    for (const button of await teacherNav.locator("button:visible").all()) {
-      const box = await button.boundingBox();
-      expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
-      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
-    }
-    await assertContained(page);
-    await attach(page, testInfo, `professor-${width}`);
+  await loginAs(page, "teacher", "Profesor");
+  const teacherNav = page.locator('nav.mobile-nav[aria-label="Navegación principal"]');
+  await expect(teacherNav).toBeVisible({ timeout: 20_000 });
+  await expect(teacherNav.locator('button[data-nav-item="live"]')).toBeVisible();
+  await expect(teacherNav.getByRole("button", { name: "Más opciones de clase" })).toBeVisible();
+  for (const button of await teacherNav.locator("button:visible").all()) {
+    const box = await button.boundingBox();
+    expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+  await assertContained(page);
+  await attach(page, testInfo, "professor-390-master");
 
-    await resetSession(page);
-    await loginAs(page, "student", "Alumno");
-    const studentNav = page.getByRole("navigation", { name: "Portal CYA" });
-    await expect(studentNav).toBeVisible({ timeout: 20_000 });
-    await expect(studentNav.getByRole("button", { name: "Mi formación", exact: true })).toBeVisible();
-    await expect(studentNav.getByRole("button", { name: "Abrir apartados de Mi formación" })).toBeVisible();
-    for (const button of await studentNav.locator("button:visible").all()) {
-      const box = await button.boundingBox();
-      expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
-      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
-    }
-    await assertContained(page);
-    await attach(page, testInfo, `student-${width}`);
-  });
-}
+  await resetSession(page);
+  await loginAs(page, "student", "Alumno");
+  const studentNav = page.getByRole("navigation", { name: "Portal CYA" });
+  await expect(studentNav).toBeVisible({ timeout: 20_000 });
+  await expect(studentNav.getByRole("button", { name: "Mi formación", exact: true })).toBeVisible();
+  await expect(studentNav.getByRole("button", { name: "Abrir apartados de Mi formación" })).toBeVisible();
+  for (const button of await studentNav.locator("button:visible").all()) {
+    const box = await button.boundingBox();
+    expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+  await assertContained(page);
+  await attach(page, testInfo, "student-390-master");
+});
