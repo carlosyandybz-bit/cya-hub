@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
 const MAX_PULL = 118;
 const TRIGGER_PULL = 76;
@@ -68,21 +68,27 @@ export function PullToRefresh() {
   const startY = useRef<number | null>(null);
   const tracking = useRef(false);
   const refreshing = useRef(false);
+  const distanceRef = useRef(0);
   const [distance, setDistance] = useState(0);
   const [phase, setPhase] = useState<RefreshPhase>("idle");
+
+  const setPullDistance = useCallback((next: number) => {
+    distanceRef.current = next;
+    setDistance(next);
+  }, []);
 
   const reset = useCallback(() => {
     startY.current = null;
     tracking.current = false;
-    setDistance(0);
+    setPullDistance(0);
     setPhase((current) => (current === "refreshing" || current === "success" ? current : "idle"));
-  }, []);
+  }, [setPullDistance]);
 
   const refresh = useCallback(async () => {
     if (refreshing.current) return;
     refreshing.current = true;
     setPhase("refreshing");
-    setDistance(TRIGGER_PULL);
+    setPullDistance(TRIGGER_PULL);
 
     try {
       await settlePendingAutosaves();
@@ -94,14 +100,14 @@ export function PullToRefresh() {
       // stable while React merges the refreshed server payload without resetting client context.
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       setPhase("success");
-      setDistance(54);
+      setPullDistance(54);
       await new Promise((resolve) => window.setTimeout(resolve, SUCCESS_MS));
     } finally {
       refreshing.current = false;
-      setDistance(0);
+      setPullDistance(0);
       setPhase("idle");
     }
-  }, [router]);
+  }, [router, setPullDistance]);
 
   useEffect(() => {
     const onTouchStart = (event: TouchEvent) => {
@@ -128,13 +134,13 @@ export function PullToRefresh() {
 
       const nextDistance = Math.min(MAX_PULL, raw * RESISTANCE);
       if (nextDistance > 2 && event.cancelable) event.preventDefault();
-      setDistance(nextDistance);
+      setPullDistance(nextDistance);
       setPhase(nextDistance >= TRIGGER_PULL ? "armed" : "pulling");
     };
 
     const onTouchEnd = () => {
       if (!tracking.current) return;
-      const shouldRefresh = distance >= TRIGGER_PULL;
+      const shouldRefresh = distanceRef.current >= TRIGGER_PULL;
       startY.current = null;
       tracking.current = false;
       if (shouldRefresh) void refresh();
@@ -152,7 +158,7 @@ export function PullToRefresh() {
       document.removeEventListener("touchend", onTouchEnd);
       document.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [distance, refresh, reset]);
+  }, [refresh, reset, setPullDistance]);
 
   const progress = Math.min(1, distance / TRIGGER_PULL);
   const visible = phase !== "idle" || distance > 1;
@@ -168,7 +174,7 @@ export function PullToRefresh() {
       style={{
         "--cya-pull-distance": `${distance}px`,
         "--cya-pull-progress": progress,
-      } as React.CSSProperties}
+      } as CSSProperties}
     >
       <div className="cya-pull-refresh__surface">
         <span className="cya-pull-refresh__mark" aria-hidden="true">
