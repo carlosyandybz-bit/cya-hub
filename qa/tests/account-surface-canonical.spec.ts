@@ -1,11 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-
-function teacherCredentials() {
-  const email = process.env.QA_TEACHER_EMAIL;
-  const password = process.env.QA_TEACHER_PASSWORD;
-  if (!email || !password) throw new Error("Teacher QA credentials are missing");
-  return { email, password };
-}
+import { loginAs } from "./visual-auth";
 
 function luminance(value: string) {
   const rgb = value.match(/[\d.]+/g)?.slice(0, 3).map(Number) ?? [];
@@ -14,20 +8,10 @@ function luminance(value: string) {
   return .2126 * r + .7152 * g + .0722 * b;
 }
 
-async function login(page: Page) {
-  const { email, password } = teacherCredentials();
-  await page.goto("/", { waitUntil: "domcontentloaded" });
-  await page.locator('input[name="email"]').fill(email);
-  await page.locator('input[name="password"]').fill(password);
-  await page.getByRole("button", { name: /^Entrar$/ }).click();
-  await expect(page.locator('input[name="email"]')).toBeHidden({ timeout: 20_000 });
-  await expect(page.locator(".shell")).toBeVisible({ timeout: 20_000 });
-}
-
 for (const width of [390, 1280]) {
   test(`account menu and profile use canonical dark material at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
-    await login(page);
+    await loginAs(page, "teacher", "Profesor");
 
     const trigger = page.locator('button[aria-label="Abrir cuenta y preferencias"]:visible').first();
     await expect(trigger).toBeVisible();
@@ -55,7 +39,7 @@ for (const width of [390, 1280]) {
     });
     expect(luminance(dialogStyle.background)).toBeLessThan(.32);
     expect(dialogStyle.border).not.toBe("rgb(255, 255, 255)");
-    const close = dialog.getByRole("button", { name: "Cerrar", exact: true });
+    const close = dialog.getByLabel("Cerrar", { exact: true }).first();
     const closeBox = await close.boundingBox();
     expect(closeBox?.width ?? 0).toBeGreaterThanOrEqual(44);
     expect(closeBox?.height ?? 0).toBeGreaterThanOrEqual(44);
