@@ -224,6 +224,15 @@ export function NotificationsView({ client, timezone, openTarget, onUnreadChange
   }, [client, notify, onUnreadChange]);
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
+  useEffect(() => {
+    const onPullRefresh = (event: Event) => {
+      const promise = load();
+      const detail = (event as CustomEvent<{ waitUntil?: (promise: Promise<unknown>) => void }>).detail;
+      detail?.waitUntil?.(promise);
+    };
+    window.addEventListener("cya:refresh", onPullRefresh);
+    return () => window.removeEventListener("cya:refresh", onPullRefresh);
+  }, [load]);
 
   const pending = useMemo(() => items.filter((item) => !item.resolved), [items]);
   const history = useMemo(() => items.filter((item) => item.resolved), [items]);

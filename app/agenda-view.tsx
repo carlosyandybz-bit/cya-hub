@@ -138,6 +138,15 @@ export function AgendaView({ client, timezone, schedule, openClass, notify }: Ag
     const timer = window.setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
   }, [load]);
+  useEffect(() => {
+    const onPullRefresh = (event: Event) => {
+      const promise = load();
+      const detail = (event as CustomEvent<{ waitUntil?: (promise: Promise<unknown>) => void }>).detail;
+      detail?.waitUntil?.(promise);
+    };
+    window.addEventListener("cya:refresh", onPullRefresh);
+    return () => window.removeEventListener("cya:refresh", onPullRefresh);
+  }, [load]);
 
   const items = useMemo(() => [
     ...(snapshot.classes ?? []),

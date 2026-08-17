@@ -156,6 +156,15 @@ export function AdminView({ client, identity, terms, notify, leave }: { client: 
     const timer = window.setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
   }, [load]);
+  useEffect(() => {
+    const onPullRefresh = (event: Event) => {
+      const promise = load();
+      const detail = (event as CustomEvent<{ waitUntil?: (promise: Promise<unknown>) => void }>).detail;
+      detail?.waitUntil?.(promise);
+    };
+    window.addEventListener("cya:refresh", onPullRefresh);
+    return () => window.removeEventListener("cya:refresh", onPullRefresh);
+  }, [load]);
 
   async function updateRow(table: string, key: string, value: string | number | boolean, changes: Record<string, unknown>, busyKey: string) {
     setBusy(busyKey);
