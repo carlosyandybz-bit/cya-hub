@@ -1,6 +1,6 @@
 /* Canonical bottom navigation shell · professor + student.
-   The shell owns only dock geometry. Central-control appearance and interaction
-   are delegated to canonical-central-control-v49.css. */
+   The shell owns ONLY dock geometry. Central-control appearance and interaction
+   are delegated exclusively to dual-action-central-control-v50.css. */
 
 @media (max-width: 900px) {
   .mobile-nav,
@@ -8,7 +8,7 @@
     overflow: visible !important;
     isolation: isolate;
     display: grid !important;
-    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 154px minmax(44px, 1fr) minmax(44px, 1fr) !important;
+    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 146px minmax(44px, 1fr) minmax(44px, 1fr) !important;
     align-items: end !important;
     column-gap: 0 !important;
     border: 1px solid rgba(155, 129, 198, .28) !important;
@@ -70,9 +70,9 @@
   }
 }
 
-@media (max-width: 350px) {
+@media (max-width: 370px) {
   .mobile-nav,
   nav[aria-label="Portal CYA"] {
-    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 136px minmax(44px, 1fr) minmax(44px, 1fr) !important;
+    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 138px minmax(44px, 1fr) minmax(44px, 1fr) !important;
   }
 }
