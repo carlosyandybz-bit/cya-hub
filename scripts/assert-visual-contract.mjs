@@ -56,10 +56,11 @@ const requiredCentralMarkers = [
   "Abrir apartados de Mi formación",
   "url('/cya-logo.png')",
   "--cya-dual-w: 104px",
-  "--cya-dual-h: 52px",
+  "--cya-dual-h: 66px",
   "--cya-dual-split: 20px",
   "--cya-dual-top: -8px",
   "top:var(--cya-dual-top)",
+  ".mobile-nav .mobile-nav-secondary {\n    top:var(--cya-dual-top)",
   "cya-control-breathe",
   "cya-control-sheen",
   "transform:translate(-50%,-50%)",
@@ -74,6 +75,7 @@ const forbiddenCentralMarkers = [
   "--cya-dual-bottom",
   "--cya-dual-w: 126px",
   "--cya-dual-w: 112px",
+  "--cya-dual-h: 52px",
   "--cya-dual-split: 36px",
   "--cya-dual-split: 24px",
   "border-left:",
@@ -104,4 +106,4 @@ if (/background\s*:\s*white\b/i.test(primitives) || /#fff(?:fff)?\b/i.test(primi
   fail("Las primitives canónicas contienen una superficie blanca hardcoded incompatible con Night Motion.");
 }
 
-console.log("[CYA visual contract] OK: v50 es autoridad única, top-anchored, compacto y premium en profesor/alumno.");
+console.log("[CYA visual contract] OK: v50 es autoridad única, top-anchored, más alto y verticalmente alineado en profesor/alumno.");
