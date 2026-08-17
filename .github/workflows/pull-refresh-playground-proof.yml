@@ -113,6 +113,7 @@ jobs:
           await browser.close();
           EOF
       - name: Record successful QA marker
+        if: success()
         shell: bash
         run: |
           mkdir -p docs/qa
@@ -128,5 +129,22 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add docs/qa/pull-refresh-latest.json
-          git commit -m 'qa(staging): record pull-refresh proof' || exit 0
+          git commit -m 'qa(staging): record pull-refresh PASS' || exit 0
+          git push origin HEAD:staging
+      - name: Record failed QA marker
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p docs/qa
+          cat > docs/qa/pull-refresh-latest.json <<EOF
+          {
+            "status": "FAIL",
+            "tested_commit": "$(git rev-parse HEAD)",
+            "screenshots_generated": false
+          }
+          EOF
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/qa/pull-refresh-latest.json
+          git commit -m 'qa(staging): record pull-refresh FAIL' || exit 0
           git push origin HEAD:staging
