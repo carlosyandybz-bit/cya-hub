@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test:e2e": "playwright test",
-    "test:visual": "playwright test --config=playwright.visual.config.ts central-control-v49.spec.ts bottom-navigation-canonical.spec.ts student-navigation-canonical.spec.ts canonical-ui-primitives.spec.ts account-surface-canonical.spec.ts student-portal-surfaces.spec.ts app-chrome-homology.spec.ts"
+    "test:visual": "playwright test --config=playwright.visual.config.ts central-control-v49.spec.ts bottom-navigation-canonical.spec.ts student-bottom-navigation-canonical.spec.ts canonical-ui-primitives.spec.ts account-surface-canonical.spec.ts student-portal-surfaces.spec.ts app-chrome-homology.spec.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.62.0"
