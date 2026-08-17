@@ -94,27 +94,46 @@ jobs:
           await page.waitForFunction(() => window.scrollY === 0 && document.documentElement.scrollTop === 0 && document.body.scrollTop === 0);
           mark('exact-scroll-top');
 
-          const beginPull = async (fromY, toY) => {
-            return page.evaluate(async ({fromY, toY}) => {
-              const target = document.body;
-              const touch = (y) => new Touch({identifier: 1, target, clientX: 195, clientY: y, screenX: 195, screenY: y, pageX: 195, pageY: y});
-              const first = touch(fromY);
-              target.dispatchEvent(new TouchEvent('touchstart', {bubbles:true,cancelable:true,touches:[first],targetTouches:[first],changedTouches:[first]}));
-              let phase = document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') ?? 'missing';
-              for (const y of [fromY + 50, fromY + 100, fromY + 150, toY]) {
-                const current = touch(y);
-                target.dispatchEvent(new TouchEvent('touchmove', {bubbles:true,cancelable:true,touches:[current],targetTouches:[current],changedTouches:[current]}));
-                await new Promise((resolve) => requestAnimationFrame(() => resolve()));
-                await new Promise((resolve) => setTimeout(resolve, 35));
-                phase = document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') ?? 'missing';
-              }
-              return phase;
-            }, {fromY, toY});
-          };
-          const endPull = async (toY) => page.evaluate((toY) => {
+          const beginPull = async (fromY, toY) => page.evaluate(async ({fromY, toY}) => {
             const target = document.body;
-            const touch = new Touch({identifier: 1, target, clientX: 195, clientY: toY, screenX: 195, screenY: toY, pageX: 195, pageY: toY});
-            target.dispatchEvent(new TouchEvent('touchend', {bubbles:true,cancelable:true,touches:[],targetTouches:[],changedTouches:[touch]}));
+            const dispatch = (type, y) => target.dispatchEvent(new PointerEvent(type, {
+              bubbles: true,
+              cancelable: true,
+              pointerId: 7,
+              pointerType: 'touch',
+              isPrimary: true,
+              clientX: 195,
+              clientY: y,
+              screenX: 195,
+              screenY: y,
+              buttons: type === 'pointerup' ? 0 : 1,
+              pressure: type === 'pointerup' ? 0 : .5,
+            }));
+            dispatch('pointerdown', fromY);
+            let phase = document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') ?? 'missing';
+            for (const y of [fromY + 50, fromY + 100, fromY + 150, toY]) {
+              dispatch('pointermove', y);
+              await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+              await new Promise((resolve) => setTimeout(resolve, 35));
+              phase = document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') ?? 'missing';
+            }
+            return phase;
+          }, {fromY, toY});
+
+          const endPull = async (toY) => page.evaluate((toY) => {
+            document.body.dispatchEvent(new PointerEvent('pointerup', {
+              bubbles: true,
+              cancelable: true,
+              pointerId: 7,
+              pointerType: 'touch',
+              isPrimary: true,
+              clientX: 195,
+              clientY: toY,
+              screenX: 195,
+              screenY: toY,
+              buttons: 0,
+              pressure: 0,
+            }));
           }, toY);
 
           mark('first-pull-moves');
