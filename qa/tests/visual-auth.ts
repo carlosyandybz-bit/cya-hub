@@ -21,16 +21,10 @@ async function openAccountMenu(page: Page) {
   return menu;
 }
 
-async function experienceRendered(page: Page, experience: VisualExperience) {
-  if (experience === "Alumno") {
-    return page.getByRole("navigation", { name: "Portal CYA" }).isVisible().catch(() => false);
-  }
-  if (experience === "Profesor") {
-    const mobile = page.locator('nav.mobile-nav[aria-label="Navegación principal"]');
-    const desktop = page.locator('nav[aria-label="Módulos principales"]');
-    return (await mobile.isVisible().catch(() => false)) || (await desktop.isVisible().catch(() => false));
-  }
-  return page.locator('[data-cya-account-menu][data-experience="admin"]:visible').first().isVisible().catch(() => false);
+async function targetShell(page: Page, experience: VisualExperience) {
+  if (experience === "Alumno") return page.getByRole("navigation", { name: "Portal CYA" });
+  if (experience === "Profesor") return page.locator('nav.mobile-nav[aria-label="Navegación principal"], nav[aria-label="Módulos principales"]').first();
+  return page.locator('[data-cya-account-menu][data-experience="admin"]:visible').first();
 }
 
 export async function loginAs(page: Page, role: QaRole, experience: VisualExperience) {
@@ -46,18 +40,21 @@ export async function loginAs(page: Page, role: QaRole, experience: VisualExperi
     await expect(emailInput).toBeHidden({ timeout: 20_000 });
   }
 
-  if (await experienceRendered(page, experience)) return;
+  const nativeExperience = (role === "student" && experience === "Alumno") ||
+    (role === "teacher" && experience === "Profesor") ||
+    (role === "admin" && experience === "Administrador");
+  const shell = await targetShell(page, experience);
 
-  const target = experience === "Profesor" ? "teacher" : experience === "Alumno" ? "student" : "admin";
-  const current = page.locator(`[data-cya-account-menu][data-experience="${target}"]:visible`).first();
-  if (!(await current.isVisible({ timeout: 4_000 }).catch(() => false))) {
-    const menu = await openAccountMenu(page);
-    const switchButton = menu.getByRole("button", { name: new RegExp(`^${experience}(?:,|\\.)`) });
-    await expect(switchButton).toBeVisible({ timeout: 10_000 });
-    await switchButton.click();
+  if (nativeExperience) {
+    await expect(shell).toBeVisible({ timeout: 20_000 });
+    return;
   }
 
-  if (!(await experienceRendered(page, experience))) {
-    await expect(page.locator(`[data-cya-account-menu][data-experience="${target}"]:visible`).first()).toBeVisible({ timeout: 20_000 });
-  }
+  if (await shell.isVisible({ timeout: 4_000 }).catch(() => false)) return;
+
+  const menu = await openAccountMenu(page);
+  const switchButton = menu.getByRole("button", { name: new RegExp(`^${experience}(?:,|\\.)`) });
+  await expect(switchButton).toBeVisible({ timeout: 10_000 });
+  await switchButton.click();
+  await expect(shell).toBeVisible({ timeout: 20_000 });
 }
