@@ -1,8 +1,9 @@
 "use client";
 
-import { Cloud, Mail, Megaphone, RefreshCw, ShieldCheck } from "lucide-react";
+import { Cloud, Megaphone, RefreshCw, ShieldCheck } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { EmailIntegration } from "./email-integration";
 import { GoogleCalendarSync } from "./google-calendar-sync";
 import { WhatsAppIntegration } from "./whatsapp-integration";
 
@@ -27,16 +28,6 @@ type Props = {
   integrations: IntegrationRow[];
   notify: (message: string) => void;
 };
-
-function humanDate(value: string | null) {
-  if (!value) return null;
-  return new Intl.DateTimeFormat("es-ES", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
 
 export function P31IntegrationsAdmin({ client, integrations, notify }: Props) {
   const [drive, setDrive] = useState<DriveStatus | null>(null);
@@ -71,7 +62,6 @@ export function P31IntegrationsAdmin({ client, integrations, notify }: Props) {
     return () => window.clearTimeout(timer);
   }, [checkDrive]);
 
-  const email = byKey.get("email");
   const meta = byKey.get("meta");
 
   return <section className="admin-stack">
@@ -83,6 +73,8 @@ export function P31IntegrationsAdmin({ client, integrations, notify }: Props) {
     </header>
 
     <div className="integration-grid">
+      <EmailIntegration client={client} notify={notify} />
+
       <GoogleCalendarSync client={client} notify={notify} />
 
       <article className="card pad">
@@ -107,13 +99,6 @@ export function P31IntegrationsAdmin({ client, integrations, notify }: Props) {
       </article>
 
       <WhatsAppIntegration client={client} notify={notify} />
-
-      <article className="card pad">
-        <div className="card-head"><Mail /><span className="badge">Sin automatización</span></div>
-        <h3>{email?.label || "Email"}</h3>
-        <p>CYA puede preparar el correo y abrir tu aplicación de email. El envío automático seguirá desactivado hasta que haya una conexión compatible.</p>
-        {email?.last_checked_at ? <small>Último registro: {humanDate(email.last_checked_at)}</small> : null}
-      </article>
 
       <article className="card pad">
         <div className="card-head"><Megaphone /><span className="badge">No conectada</span></div>
