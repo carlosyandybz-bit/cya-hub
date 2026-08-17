@@ -21,17 +21,18 @@ body {
   width: min(210px, calc(100vw - 32px));
   pointer-events: none;
   opacity: 0;
-  transform: translate3d(-50%, calc(-54px + min(var(--cya-pull-distance), 54px)), 0) scale(.92);
+  transform: translate3d(-50%, calc(-54px + min(var(--cya-pull-distance), 54px)), 0) scale(.94);
   transform-origin: 50% 0;
   transition: opacity 120ms ease, transform 160ms cubic-bezier(.22,.8,.24,1);
   will-change: transform, opacity;
 }
 
 .cya-pull-refresh[data-visible="true"] {
-  opacity: calc(.45 + (.55 * var(--cya-pull-progress)));
-  transform: translate3d(-50%, calc(-54px + min(var(--cya-pull-distance), 54px)), 0) scale(calc(.92 + (.08 * var(--cya-pull-progress))));
+  opacity: .92;
+  transform: translate3d(-50%, calc(-54px + min(var(--cya-pull-distance), 54px)), 0) scale(.98);
 }
 
+.cya-pull-refresh[data-phase="armed"],
 .cya-pull-refresh[data-phase="refreshing"],
 .cya-pull-refresh[data-phase="success"] {
   opacity: 1;
@@ -52,7 +53,7 @@ body {
     linear-gradient(180deg, rgba(24, 25, 34, .965), rgba(12, 13, 18, .985));
   box-shadow:
     0 12px 28px rgba(0, 0, 0, .34),
-    0 0 22px rgba(139, 57, 206, calc(.05 + (.12 * var(--cya-pull-progress)))),
+    0 0 18px rgba(139, 57, 206, .1),
     inset 0 1px 0 rgba(255,255,255,.055);
   backdrop-filter: blur(18px) saturate(1.08);
   -webkit-backdrop-filter: blur(18px) saturate(1.08);
@@ -66,9 +67,15 @@ body {
   display: grid;
   place-items: center;
   overflow: hidden;
-  filter: drop-shadow(0 0 calc(3px + (7px * var(--cya-pull-progress))) rgba(164, 77, 231, .52));
-  transform: rotate(calc(-16deg + (16deg * var(--cya-pull-progress)))) scale(calc(.88 + (.12 * var(--cya-pull-progress))));
-  transition: filter 160ms ease;
+  filter: drop-shadow(0 0 5px rgba(164, 77, 231, .5));
+  transform: rotate(-8deg) scale(.94);
+  transition: filter 160ms ease, transform 160ms ease;
+}
+
+.cya-pull-refresh[data-phase="armed"] .cya-pull-refresh__mark,
+.cya-pull-refresh[data-phase="refreshing"] .cya-pull-refresh__mark,
+.cya-pull-refresh[data-phase="success"] .cya-pull-refresh__mark {
+  transform: rotate(0) scale(1);
 }
 
 .cya-pull-refresh__mark img {
