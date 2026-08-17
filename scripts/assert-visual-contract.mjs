@@ -61,6 +61,8 @@ const requiredCentralMarkers = [
   "--cya-dual-top: -8px",
   "top:var(--cya-dual-top)",
   ".mobile-nav .mobile-nav-secondary {\n    top:var(--cya-dual-top)",
+  "grid-column:3 !important",
+  "position:relative !important",
   "cya-control-breathe",
   "cya-control-sheen",
   "transform:translate(-50%,-50%)",
@@ -82,6 +84,16 @@ const forbiddenCentralMarkers = [
 ];
 const staleCentral = forbiddenCentralMarkers.filter((marker) => central.includes(marker));
 if (staleCentral.length > 0) fail(`El control v50 ha recuperado geometría legacy/no aprobada:\n- ${staleCentral.join("\n- ")}`);
+
+const formationRuleMatch = central.match(/nav\[aria-label="Portal CYA"\] \[class\*="formationNav"\] \{([\s\S]*?)\n  \}/);
+if (!formationRuleMatch) fail("No se puede localizar la regla formationNav del portal alumno.");
+const formationRule = formationRuleMatch[1];
+if (formationRule.includes("position:absolute")) {
+  fail("formationNav del alumno no puede ser absolute: Descubre volvería a ocupar la columna central.");
+}
+if (!formationRule.includes("position:relative") || !formationRule.includes("grid-column:3")) {
+  fail("formationNav del alumno debe reservar físicamente la columna 3 del grid.");
+}
 
 if (!shell.includes("104px") || !shell.includes("100px")) {
   fail("El shell no reserva las mismas anchuras compactas que el control v50.");
@@ -106,4 +118,4 @@ if (/background\s*:\s*white\b/i.test(primitives) || /#fff(?:fff)?\b/i.test(primi
   fail("Las primitives canónicas contienen una superficie blanca hardcoded incompatible con Night Motion.");
 }
 
-console.log("[CYA visual contract] OK: v50 es autoridad única, top-anchored, más alto y verticalmente alineado en profesor/alumno.");
+console.log("[CYA visual contract] OK: profesor intacto y Mi formación reserva la columna central sin solapar Descubre.");
