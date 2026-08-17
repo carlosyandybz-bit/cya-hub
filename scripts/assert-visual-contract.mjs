@@ -55,13 +55,17 @@ const requiredCentralMarkers = [
   "formationMain",
   "Abrir apartados de Mi formación",
   "url('/cya-logo.png')",
-  "--cya-dual-w: 126px",
-  "--cya-dual-h: 54px",
-  "--cya-dual-shape: polygon(10% 0, 90% 0, 100% 50%, 90% 100%, 10% 100%, 0 50%)",
-  ".mobile-nav .mobile-nav-secondary::before",
-  "top: 9px",
-  "bottom: 9px",
+  "--cya-dual-w: 112px",
+  "--cya-dual-h: 56px",
+  "--cya-dual-split: 24px",
+  "--cya-dual-bottom: 8px",
+  "path(\"M 15 0 H 97",
+  "cya-dual-sheen",
+  "data:image/svg+xml",
+  "top: 12px",
+  "bottom: 12px",
   "transform: translate(-50%, -50%)",
+  "position: absolute !important;\n    z-index: 8 !important;\n    left: 50% !important;\n    right: auto !important;\n    bottom: var(--cya-dual-bottom)",
   "prefers-reduced-motion",
   ".mobile-nav::before { display: none",
 ];
@@ -72,14 +76,16 @@ const forbiddenCentralMarkers = [
   "--cya-central-secondary-h",
   "bottom: 54px",
   "Two vertically stacked actions",
-  "clip-path: polygon(10% 0, 90% 0, 100% 27%, 100% 73%, 90% 100%, 10% 100%, 0 73%, 0 27%)",
   "border-left:",
   "--cya-dual-w: 146px",
+  "--cya-dual-w: 126px",
+  "--cya-dual-split: 36px",
+  "polygon(10% 0, 90% 0, 100% 50%, 90% 100%, 10% 100%, 0 50%)",
 ];
 const staleCentral = forbiddenCentralMarkers.filter((marker) => central.includes(marker));
 if (staleCentral.length > 0) fail(`El control v50 ha recuperado geometría legacy/no aprobada:\n- ${staleCentral.join("\n- ")}`);
 
-if (!shell.includes("126px") || !shell.includes("120px")) {
+if (!shell.includes("112px") || !shell.includes("108px")) {
   fail("El shell no reserva las mismas anchuras compactas que el control v50.");
 }
 
@@ -102,4 +108,4 @@ if (/background\s*:\s*white\b/i.test(primitives) || /#fff(?:fff)?\b/i.test(primi
   fail("Las primitives canónicas contienen una superficie blanca hardcoded incompatible con Night Motion.");
 }
 
-console.log("[CYA visual contract] OK: v50 es autoridad única, hexágono real de seis lados, divisor único y dock compacto alineado.");
+console.log("[CYA visual contract] OK: v50 es autoridad única, compacto, suavizado, divisor derecho, alineación compartida y motion premium.");
