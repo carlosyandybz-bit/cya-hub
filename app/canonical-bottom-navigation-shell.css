@@ -19,16 +19,16 @@
     -webkit-backdrop-filter: blur(22px) saturate(1.12) !important;
   }
 
-  /* Professor already exposes stable semantic data-nav-item attributes. */
+  /* Professor: central actions are positioned independently, so side destinations
+     are pinned to lanes 1/2/4/5 and lane 3 stays physically reserved. */
   .mobile-nav > button[data-nav-item="home"] { grid-column: 1 !important; }
   .mobile-nav > button[data-nav-item="students"] { grid-column: 2 !important; }
   .mobile-nav > button[data-nav-item="teaching"] { grid-column: 4 !important; }
   .mobile-nav > button[data-nav-item="marketing"] { grid-column: 5 !important; }
 
-  /* Student DOM order is already the canonical five-lane order; grid auto-placement
-     reserves lane 3 for the formation wrapper without positional selectors. */
-  nav[aria-label="Portal CYA"] > [class*="formationNav"] { grid-column: 3 !important; }
-
+  /* Student has five direct children in canonical order. Native grid auto-placement
+     therefore reserves lane 3 for its central split wrapper without coupling this shell
+     to CSS-module implementation names. */
   .mobile-nav > button[data-nav-item="home"],
   .mobile-nav > button[data-nav-item="students"],
   .mobile-nav > button[data-nav-item="teaching"],
