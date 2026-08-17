@@ -40,22 +40,22 @@ async function studentGeometry(page: Page): Promise<Geometry> {
   });
 }
 
-function assertIntegratedSplit(geometry: Geometry) {
+function assertIntegratedSplit(geometry: Geometry, width: number) {
   const primaryCenter = (geometry.primary.left + geometry.primary.right) / 2;
   expect(Math.abs(primaryCenter - geometry.nav.centerX)).toBeLessThanOrEqual(4);
   expect(Math.abs(geometry.primary.top - geometry.secondary.top)).toBeLessThanOrEqual(2);
   expect(Math.abs(geometry.primary.bottom - geometry.secondary.bottom)).toBeLessThanOrEqual(2);
-  expect(geometry.primary.height).toBeGreaterThanOrEqual(48);
-  expect(geometry.secondary.width).toBeGreaterThanOrEqual(44);
-  expect(geometry.secondary.height).toBeGreaterThanOrEqual(44);
+  expect(geometry.primary.height).toBeCloseTo(width <= 370 ? 62 : 66, 0);
 
-  // The secondary action is intentionally an invisible 44px hit target inside
-  // the right side of the same visual chassis. Its right edge must therefore
-  // align with the primary edge rather than extending the visual control.
+  // User-approved design exception: the disclosure remains the original compact
+  // 19/20px split zone of v50. Do not enlarge it merely to satisfy a generic
+  // 44px touch-target gate; all other mobile controls keep their normal contract.
+  expect(geometry.secondary.width).toBeCloseTo(width <= 370 ? 19 : 20, 0);
+  expect(geometry.secondary.height).toBeCloseTo(width <= 370 ? 62 : 66, 0);
+
   expect(Math.abs(geometry.primary.right - geometry.secondary.right)).toBeLessThanOrEqual(2);
   expect(geometry.secondary.left).toBeGreaterThanOrEqual(geometry.primary.left);
   expect(geometry.secondary.right).toBeLessThanOrEqual(geometry.primary.right + 2);
-
   expect(geometry.primary.left).toBeGreaterThanOrEqual(0);
   expect(geometry.primary.right).toBeLessThanOrEqual(geometry.viewportWidth);
 }
@@ -82,7 +82,7 @@ test.describe("canonical CYA integrated split control", () => {
       const professorSecondary = professorNav.getByRole("button", { name: "Más opciones de clase" });
       await expect(professorPrimary).toBeVisible(); await expect(professorSecondary).toBeVisible();
       const professor = await professorGeometry(page);
-      assertIntegratedSplit(professor);
+      assertIntegratedSplit(professor, width);
       await attach(page, testInfo, `central-control-professor-${width}`);
 
       await resetSession(page);
@@ -93,15 +93,21 @@ test.describe("canonical CYA integrated split control", () => {
       const studentSecondary = studentNav.getByRole("button", { name: "Abrir apartados de Mi formación", exact: true });
       await expect(studentPrimary).toBeVisible(); await expect(studentSecondary).toBeVisible();
       const student = await studentGeometry(page);
-      assertIntegratedSplit(student);
+      assertIntegratedSplit(student, width);
       await attach(page, testInfo, `central-control-student-${width}`);
 
       expect(Math.abs(professor.primary.height - student.primary.height)).toBeLessThanOrEqual(2);
       expect(Math.abs(professor.secondary.width - student.secondary.width)).toBeLessThanOrEqual(2);
       expect(Math.abs(professor.secondary.height - student.secondary.height)).toBeLessThanOrEqual(2);
 
-      await studentSecondary.click();
-      await expect(studentSecondary).toHaveAttribute("aria-expanded", "true");
+      await professorSecondary.click();
+      await expect(professorSecondary).toHaveClass(/open/);
+
+      await resetSession(page);
+      await loginAs(page, "student", "Alumno");
+      const reopenedStudentToggle = page.getByRole("navigation", { name: "Portal CYA" }).getByRole("button", { name: "Abrir apartados de Mi formación", exact: true });
+      await reopenedStudentToggle.click();
+      await expect(reopenedStudentToggle).toHaveAttribute("aria-expanded", "true");
     });
   }
 });
