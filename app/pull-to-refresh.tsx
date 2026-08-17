@@ -66,7 +66,6 @@ async function settlePendingAutosaves() {
 export function PullToRefresh() {
   const router = useRouter();
   const startY = useRef<number | null>(null);
-  const activePointerId = useRef<number | null>(null);
   const tracking = useRef(false);
   const refreshing = useRef(false);
   const distanceRef = useRef(0);
@@ -80,7 +79,6 @@ export function PullToRefresh() {
 
   const reset = useCallback(() => {
     startY.current = null;
-    activePointerId.current = null;
     tracking.current = false;
     setPullDistance(0);
     setPhase((current) => (current === "refreshing" || current === "success" ? current : "idle"));
@@ -119,28 +117,25 @@ export function PullToRefresh() {
   }, [router, setPullDistance]);
 
   useEffect(() => {
-    const isTouchLikePointer = (event: PointerEvent) => event.pointerType === "touch" || event.pointerType === "pen";
-
-    const onPointerDown = (event: PointerEvent) => {
-      if (!isTouchLikePointer(event)) return;
-      if (refreshing.current || !event.isPrimary || hasScrolledContainer(event.target)) {
+    const onTouchStart = (event: TouchEvent) => {
+      if (refreshing.current || event.touches.length !== 1 || hasScrolledContainer(event.target)) {
         reset();
         return;
       }
-      startY.current = event.clientY;
-      activePointerId.current = event.pointerId;
-      tracking.current = true;
+
+      startY.current = event.touches[0]?.clientY ?? null;
+      tracking.current = startY.current !== null;
     };
 
-    const onPointerMove = (event: PointerEvent) => {
-      if (!isTouchLikePointer(event) || !tracking.current || startY.current === null) return;
-      if (activePointerId.current !== event.pointerId || !event.isPrimary) return;
+    const onTouchMove = (event: TouchEvent) => {
+      if (!tracking.current || startY.current === null || event.touches.length !== 1) return;
       if (hasScrolledContainer(event.target)) {
         reset();
         return;
       }
 
-      const raw = event.clientY - startY.current;
+      const currentY = event.touches[0]?.clientY ?? startY.current;
+      const raw = currentY - startY.current;
       if (raw <= 0) {
         reset();
         return;
@@ -152,27 +147,25 @@ export function PullToRefresh() {
       setPhase(nextDistance >= TRIGGER_PULL ? "armed" : "pulling");
     };
 
-    const finishPointer = (event: PointerEvent) => {
-      if (!isTouchLikePointer(event) || !tracking.current) return;
-      if (activePointerId.current !== event.pointerId) return;
+    const finishTouch = () => {
+      if (!tracking.current) return;
       const shouldRefresh = distanceRef.current >= TRIGGER_PULL;
       startY.current = null;
-      activePointerId.current = null;
       tracking.current = false;
       if (shouldRefresh) void refresh();
       else reset();
     };
 
-    document.addEventListener("pointerdown", onPointerDown, { passive: true });
-    document.addEventListener("pointermove", onPointerMove, { passive: false });
-    document.addEventListener("pointerup", finishPointer, { passive: true });
-    document.addEventListener("pointercancel", finishPointer, { passive: true });
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", finishTouch, { passive: true });
+    document.addEventListener("touchcancel", finishTouch, { passive: true });
 
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("pointermove", onPointerMove);
-      document.removeEventListener("pointerup", finishPointer);
-      document.removeEventListener("pointercancel", finishPointer);
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", finishTouch);
+      document.removeEventListener("touchcancel", finishTouch);
     };
   }, [refresh, reset, setPullDistance]);
 
