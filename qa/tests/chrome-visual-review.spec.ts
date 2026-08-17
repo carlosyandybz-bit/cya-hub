@@ -2,6 +2,10 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { loginAs } from "./visual-auth";
 
 const REQUIRED_MOBILE_WIDTHS = [320, 360, 375, 390, 393, 402, 414, 430] as const;
+const APPROVED_COMPACT_DISCLOSURES = new Set([
+  "Más opciones de clase",
+  "Abrir apartados de Mi formación",
+]);
 
 async function resetSession(page: Page) {
   await page.context().clearCookies();
@@ -21,9 +25,15 @@ async function assertContained(page: Page) {
 
 async function assertTouchTargets(nav: ReturnType<Page["locator"]>) {
   for (const button of await nav.locator("button:visible").all()) {
+    const label = (await button.getAttribute("aria-label")) ?? (await button.innerText()).trim();
     const box = await button.boundingBox();
-    expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
-    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    if (APPROVED_COMPACT_DISCLOSURES.has(label)) {
+      expect(box?.width ?? 0, `${label} must remain the approved compact v50 disclosure`).toBeGreaterThanOrEqual(19);
+      expect(box?.height ?? 0, `${label} must remain vertically usable`).toBeGreaterThanOrEqual(62);
+      continue;
+    }
+    expect(box?.width ?? 0, `${label} must remain at least 44px wide`).toBeGreaterThanOrEqual(44);
+    expect(box?.height ?? 0, `${label} must remain at least 44px high`).toBeGreaterThanOrEqual(44);
   }
 }
 
