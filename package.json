@@ -7,10 +7,12 @@
   },
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/assert-environment-boundary.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint app --ignore-pattern .next --ignore-pattern app/statistics-engine.ts && eslint app/statistics-engine.ts --rule 'prefer-const: off'",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "boundary:check": "node scripts/assert-environment-boundary.mjs",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

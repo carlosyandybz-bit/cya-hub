@@ -1,0 +1,18 @@
+{
+  "$schema": "./staging-only.schema.json",
+  "version": 1,
+  "owner": "CYA Hub staging",
+  "description": "Recursos que deben existir exclusivamente en staging/desarrollo. Si cualquiera de ellos está presente en un build conectado a Supabase de producción, el build debe fallar.",
+  "stagingSupabaseProjectRef": "qlngfkzmncihtdzktcmd",
+  "productionSupabaseProjectRef": "ldvyeyhzrepaaouzavgs",
+  "resources": [
+    ".agents/skills/cya-hub-qa",
+    ".github/workflows/cya-qa-e2e.yml",
+    ".github/workflows/production-boundary.yml",
+    ".github/workflows/staging-lab-boundary.yml",
+    "qa",
+    "staging-lab",
+    "app/staging-lab",
+    "docs/STAGING_LAB.md"
+  ]
+}
