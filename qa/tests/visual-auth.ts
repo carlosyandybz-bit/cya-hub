@@ -21,9 +21,9 @@ async function openAccountMenu(page: Page) {
   return menu;
 }
 
-async function targetShell(page: Page, experience: VisualExperience) {
-  if (experience === "Alumno") return page.getByRole("navigation", { name: "Portal CYA" });
-  if (experience === "Profesor") return page.locator('nav.mobile-nav[aria-label="Navegación principal"], nav[aria-label="Módulos principales"]').first();
+function targetShell(page: Page, experience: VisualExperience) {
+  if (experience === "Alumno") return page.locator('nav[aria-label="Portal CYA"]:visible').first();
+  if (experience === "Profesor") return page.locator('nav.mobile-nav[aria-label="Navegación principal"]:visible, nav[aria-label="Módulos principales"]:visible').first();
   return page.locator('[data-cya-account-menu][data-experience="admin"]:visible').first();
 }
 
@@ -43,7 +43,7 @@ export async function loginAs(page: Page, role: QaRole, experience: VisualExperi
   const nativeExperience = (role === "student" && experience === "Alumno") ||
     (role === "teacher" && experience === "Profesor") ||
     (role === "admin" && experience === "Administrador");
-  const shell = await targetShell(page, experience);
+  const shell = targetShell(page, experience);
 
   if (nativeExperience) {
     await expect(shell).toBeVisible({ timeout: 20_000 });
