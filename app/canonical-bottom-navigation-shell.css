@@ -8,14 +8,12 @@
     overflow: visible !important;
     isolation: isolate;
     display: grid !important;
-    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 112px minmax(44px, 1fr) minmax(44px, 1fr) !important;
+    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 104px minmax(44px, 1fr) minmax(44px, 1fr) !important;
     align-items: end !important;
     column-gap: 0 !important;
     border: 1px solid rgba(155, 129, 198, .28) !important;
     background: linear-gradient(180deg, rgba(18, 19, 27, .985), rgba(9, 10, 15, .995)) !important;
-    box-shadow:
-      0 14px 34px rgba(0, 0, 0, .42),
-      inset 0 1px 0 rgba(255, 255, 255, .055) !important;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .055) !important;
     backdrop-filter: blur(22px) saturate(1.12) !important;
     -webkit-backdrop-filter: blur(22px) saturate(1.12) !important;
   }
@@ -57,11 +55,7 @@
 }
 
 @media (max-width: 560px) {
-  .mobile-nav {
-    right: 7px !important;
-    left: 7px !important;
-  }
-
+  .mobile-nav { right: 7px !important; left: 7px !important; }
   nav[aria-label="Portal CYA"] {
     left: 50% !important;
     right: auto !important;
@@ -70,9 +64,9 @@
   }
 }
 
-@media (max-width: 350px) {
+@media (max-width: 370px) {
   .mobile-nav,
   nav[aria-label="Portal CYA"] {
-    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 108px minmax(44px, 1fr) minmax(44px, 1fr) !important;
+    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 100px minmax(44px, 1fr) minmax(44px, 1fr) !important;
   }
 }
