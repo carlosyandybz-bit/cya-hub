@@ -1,0 +1,113 @@
+/* Canonical app chrome · professor + student
+   Shared header + bottom dock. Quiet premium material; role-specific semantics stay untouched. */
+
+:root {
+  --cya-chrome-bg: linear-gradient(180deg, rgba(18,19,25,.965), rgba(9,10,14,.992));
+  --cya-chrome-line: rgba(220, 203, 232, .115);
+  --cya-chrome-highlight: rgba(255,255,255,.045);
+  --cya-chrome-shadow: 0 -10px 28px rgba(0,0,0,.26), inset 0 1px 0 var(--cya-chrome-highlight);
+  --cya-chrome-blur: 18px;
+}
+
+@media (max-width: 900px) {
+  .shell .mobile-head,
+  body:has(nav[aria-label="Portal CYA"]) header {
+    min-height: calc(62px + env(safe-area-inset-top)) !important;
+    border-bottom: 1px solid var(--cya-chrome-line) !important;
+    background: linear-gradient(180deg, rgba(16,17,23,.965), rgba(10,11,15,.94)) !important;
+    box-shadow: inset 0 -1px 0 rgba(255,255,255,.018) !important;
+    backdrop-filter: blur(var(--cya-chrome-blur)) saturate(1.04) !important;
+    -webkit-backdrop-filter: blur(var(--cya-chrome-blur)) saturate(1.04) !important;
+  }
+
+  .shell .mobile-head {
+    display: grid !important;
+    grid-template-columns: 90px minmax(0,1fr) 90px !important;
+    align-items: center !important;
+    padding: env(safe-area-inset-top) 10px 0 !important;
+  }
+
+  .shell .mobile-head .mobile-head-back { grid-column: 1 !important; justify-self: start !important; }
+  .shell .mobile-head .mobile-head-brand { grid-column: 2 !important; justify-self: center !important; display:flex !important; align-items:center !important; gap:8px !important; min-width:0 !important; }
+  .shell .mobile-head .mobile-head-actions { grid-column: 3 !important; justify-self: end !important; display:flex !important; align-items:center !important; gap:2px !important; }
+
+  body:has(nav[aria-label="Portal CYA"]) header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 40 !important;
+    padding: env(safe-area-inset-top) 10px 0 !important;
+    display: grid !important;
+    grid-template-columns: 90px minmax(0,1fr) 90px !important;
+    align-items: center !important;
+  }
+
+  body:has(nav[aria-label="Portal CYA"]) header > button:first-child {
+    grid-column: 2 !important;
+    justify-self: center !important;
+    min-height: 44px !important;
+    max-width: 170px !important;
+  }
+
+  body:has(nav[aria-label="Portal CYA"]) header > div:last-child {
+    grid-column: 3 !important;
+    justify-self: end !important;
+    min-width: 90px !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 2px !important;
+  }
+
+  .mobile-nav,
+  nav[aria-label="Portal CYA"] {
+    min-height: calc(72px + env(safe-area-inset-bottom)) !important;
+    padding: 8px 7px max(8px, env(safe-area-inset-bottom)) !important;
+    border: 1px solid var(--cya-chrome-line) !important;
+    border-bottom: 0 !important;
+    border-radius: 22px 22px 0 0 !important;
+    background: var(--cya-chrome-bg) !important;
+    box-shadow: var(--cya-chrome-shadow) !important;
+    backdrop-filter: blur(var(--cya-chrome-blur)) saturate(1.04) !important;
+    -webkit-backdrop-filter: blur(var(--cya-chrome-blur)) saturate(1.04) !important;
+    overflow: visible !important;
+  }
+
+  .mobile-nav > button:not(.primary):not(.mobile-nav-secondary),
+  nav[aria-label="Portal CYA"] > button {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    justify-self: center !important;
+    border-radius: 13px !important;
+    transition: color var(--cya-motion-fast,120ms) ease, background var(--cya-motion-fast,120ms) ease, transform var(--cya-motion-fast,120ms) ease !important;
+  }
+
+  .mobile-nav > button:not(.primary):not(.mobile-nav-secondary):active,
+  nav[aria-label="Portal CYA"] > button:active {
+    transform: translateY(1px) scale(.975) !important;
+    background: rgba(255,255,255,.045) !important;
+  }
+
+  .mobile-nav > button:focus-visible,
+  nav[aria-label="Portal CYA"] button:focus-visible,
+  body:has(nav[aria-label="Portal CYA"]) header button:focus-visible,
+  .shell .mobile-head button:focus-visible {
+    outline: 3px solid rgba(194,111,255,.8) !important;
+    outline-offset: 2px !important;
+  }
+}
+
+@media (max-width: 350px) {
+  .mobile-nav,
+  nav[aria-label="Portal CYA"] {
+    padding-inline: 3px !important;
+    border-radius: 18px 18px 0 0 !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-nav button,
+  nav[aria-label="Portal CYA"] button,
+  body:has(nav[aria-label="Portal CYA"]) header button,
+  .shell .mobile-head button {
+    transition: none !important;
+  }
+}
