@@ -6,6 +6,7 @@ on:
     paths:
       - 'app/cya-design-system-v51.css'
       - 'app/staging-lab/design-system/**'
+      - 'app/layout.tsx'
       - '.github/workflows/design-system-v51-proof.yml'
   workflow_dispatch:
 
@@ -76,7 +77,7 @@ jobs:
             if (bad.length) throw new Error(`undersized targets at ${viewport.width}: ${JSON.stringify(bad)}`);
             const field=page.getByLabel('Nombre');
             await field.focus();
-            const focused=await field.evaluate(el=>({outline:getComputedStyle(el).outlineStyle,shadow:getComputedStyle(el).boxShadow,border:getComputedStyle(el).borderColor}));
+            const focused=await field.evaluate(el=>({shadow:getComputedStyle(el).boxShadow,border:getComputedStyle(el).borderColor}));
             if (!focused.shadow || focused.shadow==='none') throw new Error('field focus ring missing');
             const activity=page.getByRole('button',{name:'Actividad'});
             await activity.click();
