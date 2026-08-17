@@ -71,28 +71,36 @@
     color:rgba(218,213,227,.76);
   }
 
+  /* Student topbar is a two-edge layout: brand owns the true left edge and
+     notification/account actions own the right edge. Do not put the brand in a
+     synthetic centre column: that was the source of the half-left misalignment. */
   body:has(nav[aria-label="Portal CYA"]) header[class*="topbar"] {
     position: sticky !important;
     top: 0 !important;
     z-index: 40 !important;
     padding: env(safe-area-inset-top) 10px 0 !important;
-    display: grid !important;
-    grid-template-columns: 90px minmax(0,1fr) 90px !important;
+    display: flex !important;
     align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
   }
 
   body:has(nav[aria-label="Portal CYA"]) header[class*="topbar"] > button:first-child {
-    grid-column: 2 !important;
-    justify-self: center !important;
+    flex: 0 1 auto !important;
+    align-self: center !important;
     min-height: 44px !important;
-    max-width: 170px !important;
+    max-width: min(210px, calc(100vw - 118px)) !important;
+    margin-left: 0 !important;
+    margin-right: auto !important;
+    justify-self: auto !important;
   }
 
   body:has(nav[aria-label="Portal CYA"]) header[class*="topbar"] > div:last-child {
-    grid-column: 3 !important;
-    justify-self: end !important;
+    flex: 0 0 auto !important;
     min-width: 90px !important;
+    margin-left: auto !important;
     display: flex !important;
+    align-items: center !important;
     justify-content: flex-end !important;
     gap: 2px !important;
   }
