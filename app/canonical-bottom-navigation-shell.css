@@ -8,7 +8,7 @@
     overflow: visible !important;
     isolation: isolate;
     display: grid !important;
-    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 126px minmax(44px, 1fr) minmax(44px, 1fr) !important;
+    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 112px minmax(44px, 1fr) minmax(44px, 1fr) !important;
     align-items: end !important;
     column-gap: 0 !important;
     border: 1px solid rgba(155, 129, 198, .28) !important;
@@ -70,9 +70,9 @@
   }
 }
 
-@media (max-width: 370px) {
+@media (max-width: 350px) {
   .mobile-nav,
   nav[aria-label="Portal CYA"] {
-    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 120px minmax(44px, 1fr) minmax(44px, 1fr) !important;
+    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 108px minmax(44px, 1fr) minmax(44px, 1fr) !important;
   }
 }
