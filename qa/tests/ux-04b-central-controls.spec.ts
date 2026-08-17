@@ -22,13 +22,12 @@ async function geometry(primary: ReturnType<Page["locator"]>, secondary: ReturnT
     primary: p!,
     secondary: s!,
     primaryCenter: p!.x + p!.width / 2,
-    secondaryCenter: s!.x + s!.width / 2,
-    overlap: s!.y + s!.height - p!.y,
+    overlapX: Math.min(p!.x + p!.width, s!.x + s!.width) - Math.max(p!.x, s!.x),
   };
 }
 
 for (const width of widths) {
-  test(`UX-04B professor central control is canonical at ${width}px`, async ({ page }, testInfo) => {
+  test(`UX-04B professor central control matches approved v50 at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });
     await login(page, "teacher");
 
@@ -37,17 +36,14 @@ for (const width of widths) {
     const secondary = nav.getByRole("button", { name: "Más opciones de clase" });
     await expect(primary).toBeVisible();
     await expect(secondary).toBeVisible();
-    await expect(secondary).toContainText("Más");
 
     const g = await geometry(primary, secondary);
-    expect(g.primary.width).toBeCloseTo(72, 0);
-    expect(g.primary.height).toBeCloseTo(72, 0);
-    expect(g.secondary.width).toBeCloseTo(width <= 350 ? 58 : 60, 0);
-    expect(g.secondary.height).toBeCloseTo(48, 0);
-    expect(Math.abs(g.primaryCenter - width / 2)).toBeLessThanOrEqual(1);
-    expect(Math.abs(g.secondaryCenter - g.primaryCenter)).toBeLessThanOrEqual(1);
-    expect(g.overlap).toBeGreaterThanOrEqual(4);
-    expect(g.overlap).toBeLessThanOrEqual(16);
+    expect(g.primary.width).toBeCloseTo(width <= 370 ? 100 : 104, 0);
+    expect(g.primary.height).toBeCloseTo(width <= 370 ? 62 : 66, 0);
+    expect(g.secondary.width).toBeCloseTo(width <= 370 ? 19 : 20, 0);
+    expect(g.secondary.height).toBeCloseTo(width <= 370 ? 62 : 66, 0);
+    expect(Math.abs(g.primaryCenter - width / 2)).toBeLessThanOrEqual(2);
+    expect(g.overlapX).toBeGreaterThanOrEqual(g.secondary.width - 2);
 
     await secondary.click();
     await expect(secondary).toHaveClass(/open/);
@@ -59,7 +55,7 @@ for (const width of widths) {
     });
   });
 
-  test(`UX-04B student central control is canonical at ${width}px`, async ({ page }, testInfo) => {
+  test(`UX-04B student central control matches approved v50 at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });
     await login(page, "student");
 
@@ -69,18 +65,13 @@ for (const width of widths) {
     await expect(primary).toBeVisible();
     await expect(secondary).toBeVisible();
 
-    const label = await secondary.evaluate((el) => getComputedStyle(el, "::before").content.replace(/["']/g, ""));
-    expect(label).toBe("Más");
-
     const g = await geometry(primary, secondary);
-    expect(g.primary.width).toBeCloseTo(72, 0);
-    expect(g.primary.height).toBeCloseTo(72, 0);
-    expect(g.secondary.width).toBeCloseTo(width <= 350 ? 58 : 60, 0);
-    expect(g.secondary.height).toBeCloseTo(48, 0);
-    expect(Math.abs(g.primaryCenter - width / 2)).toBeLessThanOrEqual(1);
-    expect(Math.abs(g.secondaryCenter - g.primaryCenter)).toBeLessThanOrEqual(1);
-    expect(g.overlap).toBeGreaterThanOrEqual(4);
-    expect(g.overlap).toBeLessThanOrEqual(16);
+    expect(g.primary.width).toBeCloseTo(width <= 370 ? 100 : 104, 0);
+    expect(g.primary.height).toBeCloseTo(width <= 370 ? 62 : 66, 0);
+    expect(g.secondary.width).toBeCloseTo(width <= 370 ? 19 : 20, 0);
+    expect(g.secondary.height).toBeCloseTo(width <= 370 ? 62 : 66, 0);
+    expect(Math.abs(g.primaryCenter - width / 2)).toBeLessThanOrEqual(2);
+    expect(g.overlapX).toBeGreaterThanOrEqual(g.secondary.width - 2);
 
     await secondary.click();
     await expect(secondary).toHaveAttribute("aria-expanded", "true");
