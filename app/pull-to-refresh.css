@@ -1,0 +1,132 @@
+/* V1-010 · Global pull-to-refresh visual system.
+   The indicator lives above app chrome, never changes document layout and only
+   becomes interactive through the gesture controller in pull-to-refresh.tsx. */
+
+:root {
+  --cya-pull-z: 90;
+}
+
+html,
+body {
+  overscroll-behavior-y: contain;
+}
+
+.cya-pull-refresh {
+  --cya-pull-distance: 0px;
+  --cya-pull-progress: 0;
+  position: fixed;
+  z-index: var(--cya-pull-z);
+  top: max(8px, env(safe-area-inset-top));
+  left: 50%;
+  width: min(210px, calc(100vw - 32px));
+  pointer-events: none;
+  opacity: 0;
+  transform: translate3d(-50%, calc(-54px + min(var(--cya-pull-distance), 54px)), 0) scale(.92);
+  transform-origin: 50% 0;
+  transition: opacity 120ms ease, transform 160ms cubic-bezier(.22,.8,.24,1);
+  will-change: transform, opacity;
+}
+
+.cya-pull-refresh[data-visible="true"] {
+  opacity: calc(.45 + (.55 * var(--cya-pull-progress)));
+  transform: translate3d(-50%, calc(-54px + min(var(--cya-pull-distance), 54px)), 0) scale(calc(.92 + (.08 * var(--cya-pull-progress))));
+}
+
+.cya-pull-refresh[data-phase="refreshing"],
+.cya-pull-refresh[data-phase="success"] {
+  opacity: 1;
+  transform: translate3d(-50%, 0, 0) scale(1);
+}
+
+.cya-pull-refresh__surface {
+  min-height: 44px;
+  padding: 6px 12px 6px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(217, 197, 236, .16);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 28% 0%, rgba(163, 79, 225, .17), transparent 44%),
+    linear-gradient(180deg, rgba(24, 25, 34, .965), rgba(12, 13, 18, .985));
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, .34),
+    0 0 22px rgba(139, 57, 206, calc(.05 + (.12 * var(--cya-pull-progress)))),
+    inset 0 1px 0 rgba(255,255,255,.055);
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+}
+
+.cya-pull-refresh__mark {
+  position: relative;
+  width: 34px;
+  height: 30px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  filter: drop-shadow(0 0 calc(3px + (7px * var(--cya-pull-progress))) rgba(164, 77, 231, .52));
+  transform: rotate(calc(-16deg + (16deg * var(--cya-pull-progress)))) scale(calc(.88 + (.12 * var(--cya-pull-progress))));
+  transition: filter 160ms ease;
+}
+
+.cya-pull-refresh__mark img {
+  width: 48px;
+  height: 48px;
+  max-width: none;
+  object-fit: contain;
+  transform: translateY(-1px);
+}
+
+.cya-pull-refresh__label {
+  color: rgba(246,243,249,.9);
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 650;
+  letter-spacing: -.015em;
+  white-space: nowrap;
+}
+
+.cya-pull-refresh[data-phase="armed"] .cya-pull-refresh__surface {
+  border-color: rgba(198, 151, 232, .28);
+  box-shadow:
+    0 14px 30px rgba(0,0,0,.35),
+    0 0 26px rgba(142, 57, 211, .2),
+    inset 0 1px 0 rgba(255,255,255,.07);
+}
+
+.cya-pull-refresh[data-phase="refreshing"] .cya-pull-refresh__mark {
+  animation: cya-pull-refresh-breathe 820ms ease-in-out infinite alternate;
+}
+
+.cya-pull-refresh[data-phase="refreshing"] .cya-pull-refresh__mark img {
+  animation: cya-pull-refresh-orbit 1.25s linear infinite;
+}
+
+.cya-pull-refresh[data-phase="success"] .cya-pull-refresh__surface {
+  border-color: rgba(110, 222, 177, .28);
+  box-shadow:
+    0 12px 28px rgba(0,0,0,.32),
+    0 0 20px rgba(91, 209, 158, .12),
+    inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+@keyframes cya-pull-refresh-orbit {
+  from { transform: translateY(-1px) rotate(0deg); }
+  to { transform: translateY(-1px) rotate(360deg); }
+}
+
+@keyframes cya-pull-refresh-breathe {
+  from { filter: drop-shadow(0 0 5px rgba(164,77,231,.42)); }
+  to { filter: drop-shadow(0 0 10px rgba(185,111,239,.72)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cya-pull-refresh,
+  .cya-pull-refresh__mark,
+  .cya-pull-refresh__mark img {
+    animation: none !important;
+    transition: none !important;
+  }
+}
