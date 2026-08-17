@@ -89,15 +89,21 @@ jobs:
           const stamp = page.getByTestId('server-stamp');
           const beforeStamp = await stamp.textContent();
           await input.fill('Borrador preservado');
-          const client = await context.newCDPSession(page);
+
           const pull = async (fromY, toY) => {
-            await client.send('Input.dispatchTouchEvent', {type:'touchStart', touchPoints:[{x:195,y:fromY}]});
-            for (const y of [fromY + 40, fromY + 80, fromY + 120, toY]) {
-              await client.send('Input.dispatchTouchEvent', {type:'touchMove', touchPoints:[{x:195,y}]});
-              await new Promise(r => setTimeout(r, 35));
-            }
-            await client.send('Input.dispatchTouchEvent', {type:'touchEnd', touchPoints:[]});
+            await page.evaluate(async ({fromY, toY}) => {
+              const target = document.elementFromPoint(195, fromY) ?? document.body;
+              const touch = (y) => new Touch({identifier: 1, target, clientX: 195, clientY: y, screenX: 195, screenY: y, pageX: 195, pageY: y});
+              target.dispatchEvent(new TouchEvent('touchstart', {bubbles:true,cancelable:true,touches:[touch(fromY)],targetTouches:[touch(fromY)],changedTouches:[touch(fromY)]}));
+              for (const y of [fromY + 40, fromY + 80, fromY + 120, toY]) {
+                const current = touch(y);
+                target.dispatchEvent(new TouchEvent('touchmove', {bubbles:true,cancelable:true,touches:[current],targetTouches:[current],changedTouches:[current]}));
+                await new Promise((resolve) => setTimeout(resolve, 35));
+              }
+              target.dispatchEvent(new TouchEvent('touchend', {bubbles:true,cancelable:true,touches:[],targetTouches:[],changedTouches:[touch(toY)]}));
+            }, {fromY, toY});
           };
+
           mark('first-pull');
           await pull(80, 260);
           mark('wait-success-state');
