@@ -112,3 +112,51 @@ test("UX-04 student master dialog remains fully operable inside the mobile viewp
 
   await testInfo.attach("ux04-student-master-dialog", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
 });
+
+test("V1-006 modal locks background scroll and restores the same position on close", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, "teacher");
+
+  const alumnado = page.locator("nav button:visible").filter({ hasText: /^Alumnado$/ }).first();
+  await alumnado.click();
+  await expect(page.getByRole("heading", { name: "Personas, sin ruido" })).toBeVisible({ timeout: 20_000 });
+
+  await page.evaluate(() => window.scrollTo(0, Math.min(180, Math.max(0, document.documentElement.scrollHeight - innerHeight))));
+  const before = await page.evaluate(() => window.scrollY);
+
+  await page.getByRole("button", { name: "Nuevo", exact: true }).click();
+  const backdrop = page.locator(".backdrop:visible").last();
+  const modal = backdrop.locator(".modal:visible").last();
+  await expect(backdrop).toBeVisible();
+  await expect(modal).toBeVisible();
+
+  const lock = await page.evaluate(() => ({
+    htmlOverflow: getComputedStyle(document.documentElement).overflow,
+    bodyOverflow: getComputedStyle(document.body).overflow,
+  }));
+  expect(["hidden", "clip"]).toContain(lock.htmlOverflow);
+  expect(["hidden", "clip"]).toContain(lock.bodyOverflow);
+
+  await page.mouse.move(6, 200);
+  await page.mouse.wheel(0, 700);
+  await page.waitForTimeout(120);
+  const during = await page.evaluate(() => window.scrollY);
+  expect(Math.abs(during - before), "background page must not drift while modal is open").toBeLessThanOrEqual(1);
+
+  const modalScroll = await modal.evaluate((el) => ({ scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, scrollTop: el.scrollTop }));
+  if (modalScroll.scrollHeight > modalScroll.clientHeight + 4) {
+    await modal.evaluate((el) => { el.scrollTop = Math.min(160, el.scrollHeight - el.clientHeight); });
+    const afterModalScroll = await modal.evaluate((el) => el.scrollTop);
+    expect(afterModalScroll).toBeGreaterThan(0);
+  }
+
+  await testInfo.attach("v1-006-modal-open", { body: await page.screenshot({ fullPage: false }), contentType: "image/png" });
+
+  const close = modal.getByRole("button", { name: /cerrar/i }).first();
+  await expect(close).toBeVisible();
+  await close.click();
+  await expect(backdrop).toBeHidden();
+
+  const after = await page.evaluate(() => window.scrollY);
+  expect(Math.abs(after - before), "closing modal must restore the exact background position").toBeLessThanOrEqual(1);
+});
