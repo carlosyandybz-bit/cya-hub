@@ -30,6 +30,7 @@ import "./professor-header-v44.css";
 import "./student-portal-touch-target-v45.css";
 import "./student-master-profile-v47.css";
 import "./canonical-central-control-v49.css";
+import "./canonical-ui-primitives.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
