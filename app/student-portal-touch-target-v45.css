@@ -43,4 +43,11 @@
   nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] svg {
     z-index: 1;
   }
+
+  /* V1-013 · Keep student and professor header branding aligned identically.
+     The student brand button owns the left edge; account actions remain on the right. */
+  header button[aria-label="Ir a Inicio"] {
+    margin-left: 0 !important;
+    margin-right: auto !important;
+  }
 }
