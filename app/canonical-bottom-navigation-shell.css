@@ -1,5 +1,6 @@
 /* Canonical bottom navigation shell · professor + student.
-   Four-destination dock. The former central class controls are intentionally removed from the mobile chrome. */
+   The shell owns only dock geometry. Central-control appearance and interaction
+   are delegated to canonical-central-control-v49.css. */
 
 @media (max-width: 900px) {
   .mobile-nav,
@@ -7,7 +8,7 @@
     overflow: visible !important;
     isolation: isolate;
     display: grid !important;
-    grid-template-columns: repeat(4, minmax(44px, 1fr)) !important;
+    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 154px minmax(44px, 1fr) minmax(44px, 1fr) !important;
     align-items: end !important;
     column-gap: 0 !important;
     border: 1px solid rgba(155, 129, 198, .28) !important;
@@ -19,23 +20,10 @@
     -webkit-backdrop-filter: blur(22px) saturate(1.12) !important;
   }
 
-  /* Remove both former central controls from the rendered mobile chrome. */
-  .mobile-nav > button[data-nav-item="live"],
-  .mobile-nav > .mobile-nav-secondary,
-  nav[aria-label="Portal CYA"] [class*="formationNav"] {
-    display: none !important;
-  }
-
-  .mobile-nav::before,
-  nav[aria-label="Portal CYA"] [class*="formationNav"]::before {
-    display: none !important;
-    content: none !important;
-  }
-
   .mobile-nav > button[data-nav-item="home"] { grid-column: 1 !important; }
   .mobile-nav > button[data-nav-item="students"] { grid-column: 2 !important; }
-  .mobile-nav > button[data-nav-item="teaching"] { grid-column: 3 !important; }
-  .mobile-nav > button[data-nav-item="marketing"] { grid-column: 4 !important; }
+  .mobile-nav > button[data-nav-item="teaching"] { grid-column: 4 !important; }
+  .mobile-nav > button[data-nav-item="marketing"] { grid-column: 5 !important; }
 
   .mobile-nav > button[data-nav-item="home"],
   .mobile-nav > button[data-nav-item="students"],
@@ -79,5 +67,12 @@
     right: auto !important;
     width: calc(100% - 14px) !important;
     transform: translateX(-50%) !important;
+  }
+}
+
+@media (max-width: 350px) {
+  .mobile-nav,
+  nav[aria-label="Portal CYA"] {
+    grid-template-columns: minmax(44px, 1fr) minmax(44px, 1fr) 136px minmax(44px, 1fr) minmax(44px, 1fr) !important;
   }
 }
