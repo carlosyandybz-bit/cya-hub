@@ -8,6 +8,8 @@ type Geometry = {
   viewportWidth: number;
 };
 
+const REQUIRED_MOBILE_WIDTHS = [320, 360, 375, 390, 393, 402, 414, 430] as const;
+
 async function professorGeometry(page: Page): Promise<Geometry> {
   return page.evaluate(() => {
     const primary = document.querySelector<HTMLElement>('.mobile-nav button[data-nav-item="live"]');
@@ -38,20 +40,24 @@ async function studentGeometry(page: Page): Promise<Geometry> {
   });
 }
 
-function assertSplit(geometry: Geometry) {
-  const groupLeft = Math.min(geometry.primary.left, geometry.secondary.left);
-  const groupRight = Math.max(geometry.primary.right, geometry.secondary.right);
-  const groupCenter = (groupLeft + groupRight) / 2;
-  const seam = geometry.secondary.left - geometry.primary.right;
-  expect(Math.abs(groupCenter - geometry.nav.centerX)).toBeLessThanOrEqual(4);
+function assertIntegratedSplit(geometry: Geometry) {
+  const primaryCenter = (geometry.primary.left + geometry.primary.right) / 2;
+  expect(Math.abs(primaryCenter - geometry.nav.centerX)).toBeLessThanOrEqual(4);
   expect(Math.abs(geometry.primary.top - geometry.secondary.top)).toBeLessThanOrEqual(2);
   expect(Math.abs(geometry.primary.bottom - geometry.secondary.bottom)).toBeLessThanOrEqual(2);
-  expect(Math.abs(seam)).toBeLessThanOrEqual(3);
   expect(geometry.primary.height).toBeGreaterThanOrEqual(48);
   expect(geometry.secondary.width).toBeGreaterThanOrEqual(44);
   expect(geometry.secondary.height).toBeGreaterThanOrEqual(44);
-  expect(groupLeft).toBeGreaterThanOrEqual(0);
-  expect(groupRight).toBeLessThanOrEqual(geometry.viewportWidth);
+
+  // The secondary action is intentionally an invisible 44px hit target inside
+  // the right side of the same visual chassis. Its right edge must therefore
+  // align with the primary edge rather than extending the visual control.
+  expect(Math.abs(geometry.primary.right - geometry.secondary.right)).toBeLessThanOrEqual(2);
+  expect(geometry.secondary.left).toBeGreaterThanOrEqual(geometry.primary.left);
+  expect(geometry.secondary.right).toBeLessThanOrEqual(geometry.primary.right + 2);
+
+  expect(geometry.primary.left).toBeGreaterThanOrEqual(0);
+  expect(geometry.primary.right).toBeLessThanOrEqual(geometry.viewportWidth);
 }
 
 async function attach(page: Page, testInfo: TestInfo, name: string) {
@@ -64,8 +70,8 @@ async function resetSession(page: Page) {
   await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
 }
 
-test.describe("canonical CYA split control", () => {
-  for (const width of [320, 390, 430, 768]) {
+test.describe("canonical CYA integrated split control", () => {
+  for (const width of REQUIRED_MOBILE_WIDTHS) {
     test(`Professor and student central controls stay homologous at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 844 });
 
@@ -76,7 +82,7 @@ test.describe("canonical CYA split control", () => {
       const professorSecondary = professorNav.getByRole("button", { name: "Más opciones de clase" });
       await expect(professorPrimary).toBeVisible(); await expect(professorSecondary).toBeVisible();
       const professor = await professorGeometry(page);
-      assertSplit(professor);
+      assertIntegratedSplit(professor);
       await attach(page, testInfo, `central-control-professor-${width}`);
 
       await resetSession(page);
@@ -87,7 +93,7 @@ test.describe("canonical CYA split control", () => {
       const studentSecondary = studentNav.getByRole("button", { name: "Abrir apartados de Mi formación", exact: true });
       await expect(studentPrimary).toBeVisible(); await expect(studentSecondary).toBeVisible();
       const student = await studentGeometry(page);
-      assertSplit(student);
+      assertIntegratedSplit(student);
       await attach(page, testInfo, `central-control-student-${width}`);
 
       expect(Math.abs(professor.primary.height - student.primary.height)).toBeLessThanOrEqual(2);
