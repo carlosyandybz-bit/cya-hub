@@ -33,6 +33,7 @@ import "./student-master-profile-v47.css";
 import "./canonical-ui-primitives.css";
 import "./canonical-app-chrome.css";
 import "./professor-header-v44.css";
+import "./cya-design-system-v51.css";
 import "./dual-action-central-control-v50.css";
 import "./pull-to-refresh.css";
 
