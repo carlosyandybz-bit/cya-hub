@@ -1563,6 +1563,20 @@ function StaffApp({ session }: { session: Session }) {
     catch (error) { setToast(error instanceof Error ? error.message : "La clase está abierta, pero no se pudo actualizar la enseñanza."); }
   }, [loadOperations,loadStudents,loadTeaching]);
   const refreshMarketing = useCallback(async () => { await Promise.all([loadMarketing(),loadStudents()]); }, [loadMarketing,loadStudents]);
+  const refreshAllPortalData = useCallback(async () => {
+    await Promise.all([loadStudents(), loadOperations(), loadTeaching(), loadMarketing(), loadNotificationCount()]);
+  }, [loadStudents, loadOperations, loadTeaching, loadMarketing, loadNotificationCount]);
+  useEffect(() => {
+    const onPullRefresh = (event: Event) => {
+      const promise = refreshAllPortalData().catch((error) => {
+        setToast(error instanceof Error ? error.message : "No se pudieron actualizar los datos.");
+      });
+      const detail = (event as CustomEvent<{ waitUntil?: (promise: Promise<unknown>) => void }>).detail;
+      detail?.waitUntil?.(promise);
+    };
+    window.addEventListener("cya:refresh", onPullRefresh);
+    return () => window.removeEventListener("cya:refresh", onPullRefresh);
+  }, [refreshAllPortalData]);
   useEffect(() => {
     let alive = true;
     async function boot() {
