@@ -13,6 +13,7 @@
     "qa",
     "staging-lab",
     "app/staging-lab",
-    "docs/STAGING_LAB.md"
+    "docs/STAGING_LAB.md",
+    "docs/STAGING_VISUAL_AUDIT.md"
   ]
 }
