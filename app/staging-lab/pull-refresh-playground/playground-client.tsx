@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { PullToRefresh } from "../../pull-to-refresh";
 import styles from "./playground.module.css";
 
 export default function PullRefreshPlaygroundClient({ serverStamp }: { serverStamp: number }) {
@@ -9,8 +8,6 @@ export default function PullRefreshPlaygroundClient({ serverStamp }: { serverSta
 
   return (
     <main className={styles.shell} data-testid="pull-refresh-playground">
-      <PullToRefresh />
-
       <header className={styles.header}>
         <p className={styles.kicker}>STAGING_ONLY · V1-010</p>
         <h1>Pull to refresh</h1>
