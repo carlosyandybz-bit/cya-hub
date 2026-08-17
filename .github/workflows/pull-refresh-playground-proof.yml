@@ -70,15 +70,20 @@ jobs:
         shell: bash
         run: |
           node --input-type=module <<'EOF'
+          import fs from 'node:fs';
           import { chromium } from '@playwright/test';
+          const mark = (value) => fs.writeFileSync('/tmp/pull-refresh-stage', value);
+          mark('launch');
           const browser = await chromium.launch({headless:true});
           const context = await browser.newContext({viewport:{width:390,height:844}, isMobile:true, hasTouch:true, deviceScaleFactor:1});
           const page = await context.newPage();
           const errors = [];
           page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
           const url = 'http://127.0.0.1:3000/staging-lab/pull-refresh-playground?tab=progress';
+          mark('navigation');
           await page.goto(url, {waitUntil:'networkidle'});
           if (!(await page.getByTestId('pull-refresh-playground').isVisible())) throw new Error('Playground did not render');
+          mark('playground-visible');
           const indicator = page.getByTestId('cya-pull-refresh');
           const input = page.getByTestId('context-input');
           const stamp = page.getByTestId('server-stamp');
@@ -93,18 +98,28 @@ jobs:
             }
             await client.send('Input.dispatchTouchEvent', {type:'touchEnd', touchPoints:[]});
           };
+          mark('first-pull');
           await pull(80, 260);
+          mark('wait-success-state');
           await page.waitForFunction(() => document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') === 'success', null, {timeout:7000});
+          mark('success-state');
           if (!(await indicator.textContent())?.includes('Actualizado')) throw new Error('Success label missing');
+          mark('wait-server-refresh');
           await page.waitForFunction((oldStamp) => document.querySelector('[data-testid="server-stamp"]')?.textContent !== oldStamp, beforeStamp, {timeout:7000});
+          mark('server-refreshed');
           if (await input.inputValue() !== 'Borrador preservado') throw new Error('Client context reset');
+          mark('context-preserved');
           if (page.url() !== url) throw new Error(`URL changed: ${page.url()}`);
+          mark('url-preserved');
           await page.evaluate(() => window.scrollTo(0, 700));
           const scrolledStamp = await stamp.textContent();
+          mark('scrolled-pull');
           await pull(120, 300);
           await new Promise(r => setTimeout(r, 650));
           if (await stamp.textContent() !== scrolledStamp) throw new Error('Refresh triggered away from scroll top');
+          mark('scroll-guard');
           if (errors.length) throw new Error(`Console errors: ${errors.join(' | ')}`);
+          mark('complete');
           await browser.close();
           EOF
       - name: Record QA outcome
@@ -117,6 +132,7 @@ jobs:
         run: |
           status=PASS
           if [ "$BUILD_OUTCOME" != success ] || [ "$PLAYGROUND_OUTCOME" != success ] || [ "$GESTURE_OUTCOME" != success ]; then status=FAIL; fi
+          stage="$(cat /tmp/pull-refresh-stage 2>/dev/null || echo not-started)"
           mkdir -p docs/qa
           cat > docs/qa/pull-refresh-latest.json <<EOF
           {
@@ -126,12 +142,13 @@ jobs:
             "build": "$BUILD_OUTCOME",
             "playground": "$PLAYGROUND_OUTCOME",
             "gesture": "$GESTURE_OUTCOME",
+            "gesture_stage": "$stage",
             "screenshots_generated": false
           }
           EOF
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add docs/qa/pull-refresh-latest.json
-          git commit -m "qa(staging): record pull-refresh $status" || exit 0
+          git commit -m "qa(staging): record pull-refresh $status at $stage" || exit 0
           git push origin HEAD:staging
           test "$status" = PASS
