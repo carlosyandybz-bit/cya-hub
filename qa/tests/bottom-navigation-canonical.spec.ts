@@ -123,7 +123,8 @@ test("desktop swaps the bottom bar for desktop primary navigation at 1280px", as
   await login(page);
 
   await expect(page.locator('nav.mobile-nav[aria-label="Navegación principal"]')).toBeHidden();
-  const desktopNav = page.locator('nav[aria-label="Navegación principal de escritorio"]');
+  const desktopNav = page.locator('nav[aria-label="Módulos principales"]');
   await expect(desktopNav).toBeVisible();
+  await expect(desktopNav.getByRole("button", { name: /Dar clase/ })).toBeVisible();
   await assertNoHorizontalOverflow(page);
 });
