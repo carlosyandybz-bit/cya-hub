@@ -20,8 +20,6 @@ type SummaryDraft = {
 
 type BoundSummary = {
   root: HTMLElement;
-  student: HTMLTextAreaElement;
-  internal: HTMLTextAreaElement;
   classId: number;
   cleanup: () => void;
 };
@@ -145,6 +143,13 @@ function setReactTextareaValue(element: HTMLTextAreaElement, value: string) {
   element.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+function summaryFields(root: HTMLElement) {
+  return {
+    student: root.querySelector<HTMLTextAreaElement>(`textarea[placeholder="${STUDENT_PLACEHOLDER}"]`),
+    internal: root.querySelector<HTMLTextAreaElement>(`textarea[placeholder="${INTERNAL_PLACEHOLDER}"]`),
+  };
+}
+
 export function ClassSummaryDraftUx() {
   const [active, setActive] = useState(false);
   const [status, setStatus] = useState("");
@@ -162,10 +167,9 @@ export function ClassSummaryDraftUx() {
 
     const bindVisibleSummary = async () => {
       const root = document.querySelector<HTMLElement>(".class-workflow-page.final-summary");
-      const student = root?.querySelector<HTMLTextAreaElement>(`textarea[placeholder="${STUDENT_PLACEHOLDER}"]`) ?? null;
-      const internal = root?.querySelector<HTMLTextAreaElement>(`textarea[placeholder="${INTERNAL_PLACEHOLDER}"]`) ?? null;
+      const fields = root ? summaryFields(root) : { student: null, internal: null };
 
-      if (!root || !student || !internal) {
+      if (!root || !fields.student || !fields.internal) {
         unbind();
         setActive(false);
         setStatus("");
@@ -186,17 +190,15 @@ export function ClassSummaryDraftUx() {
         return;
       }
 
-      if (bound && bound.root === root && bound.student === student && bound.internal === internal && bound.classId === classId) {
-        return;
-      }
+      if (bound && bound.root === root && bound.classId === classId) return;
 
       unbind();
       setActive(true);
 
       const restored = readDraft(classId);
       if (restored) {
-        setReactTextareaValue(student, restored.studentMessage);
-        setReactTextareaValue(internal, restored.internalNote);
+        setReactTextareaValue(fields.student, restored.studentMessage);
+        setReactTextareaValue(fields.internal, restored.internalNote);
         setStatus("Borrador recuperado · se guarda temporalmente en este dispositivo.");
       } else {
         setStatus("Guardado automático temporal en este dispositivo hasta cerrar la clase.");
@@ -204,21 +206,35 @@ export function ClassSummaryDraftUx() {
 
       let saveTimer = 0;
       let closeAttemptAt = 0;
+
       const persist = () => {
         window.clearTimeout(saveTimer);
         setStatus("Guardando borrador…");
         saveTimer = window.setTimeout(() => {
-          writeDraft(classId, student.value, internal.value);
+          if (!root.isConnected) return;
+          const current = summaryFields(root);
+          if (!current.student || !current.internal) return;
+          writeDraft(classId, current.student.value, current.internal.value);
           setStatus("Borrador guardado automáticamente.");
         }, 180);
       };
-      student.addEventListener("input", persist);
-      internal.addEventListener("input", persist);
 
-      const closeButton = [...root.querySelectorAll<HTMLButtonElement>("button")]
-        .find((button) => /cerrar y enviar al alumno/i.test(button.textContent || ""));
-      const markClosing = () => { closeAttemptAt = Date.now(); };
-      closeButton?.addEventListener("click", markClosing);
+      const handleInput = (event: Event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLTextAreaElement)) return;
+        if (target.placeholder !== STUDENT_PLACEHOLDER && target.placeholder !== INTERNAL_PLACEHOLDER) return;
+        persist();
+      };
+
+      const handleClick = (event: Event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        const button = target.closest("button");
+        if (button && /cerrar y enviar al alumno/i.test(button.textContent || "")) closeAttemptAt = Date.now();
+      };
+
+      root.addEventListener("input", handleInput);
+      root.addEventListener("click", handleClick);
 
       const clearDraftAfterSuccessfulRemoval = () => {
         if (root.isConnected || !closeAttemptAt || Date.now() - closeAttemptAt >= 10_000) return;
@@ -230,24 +246,20 @@ export function ClassSummaryDraftUx() {
         clearDraftAfterSuccessfulRemoval();
         removalObserver.disconnect();
         window.clearTimeout(saveTimer);
-        student.removeEventListener("input", persist);
-        internal.removeEventListener("input", persist);
-        closeButton?.removeEventListener("click", markClosing);
+        root.removeEventListener("input", handleInput);
+        root.removeEventListener("click", handleClick);
       });
       removalObserver.observe(document.body, { childList: true, subtree: true });
 
       bound = {
         root,
-        student,
-        internal,
         classId,
         cleanup: () => {
           clearDraftAfterSuccessfulRemoval();
           removalObserver.disconnect();
           window.clearTimeout(saveTimer);
-          student.removeEventListener("input", persist);
-          internal.removeEventListener("input", persist);
-          closeButton?.removeEventListener("click", markClosing);
+          root.removeEventListener("input", handleInput);
+          root.removeEventListener("click", handleClick);
         },
       };
     };
