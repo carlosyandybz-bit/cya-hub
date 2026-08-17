@@ -1,5 +1,7 @@
 /* Canonical app chrome · professor + student
-   Shared header + bottom dock. Student staging header is the production standard. */
+   Shared header + bottom dock. Student staging header is the production standard.
+   IMPORTANT: student header rules are scoped to the real topbar only so internal
+   page headers (Progress, Formation, Discover, Missions, etc.) retain their own layout. */
 
 :root {
   --cya-chrome-bg: linear-gradient(180deg, rgba(18,19,25,.965), rgba(9,10,14,.992));
@@ -11,7 +13,7 @@
 
 @media (max-width: 900px) {
   .shell .mobile-head,
-  body:has(nav[aria-label="Portal CYA"]) header {
+  body:has(nav[aria-label="Portal CYA"]) header[class*="topbar"] {
     min-height: calc(62px + env(safe-area-inset-top)) !important;
     border-bottom: 1px solid var(--cya-chrome-line) !important;
     background: linear-gradient(180deg, rgba(16,17,23,.965), rgba(10,11,15,.94)) !important;
@@ -44,7 +46,6 @@
     gap:2px !important;
   }
 
-  /* Teacher/admin headers use the same CYA Hub lockup as the student portal. */
   .shell .mobile-head .mobile-owner-name {
     display:inline-flex !important;
     align-items:baseline !important;
@@ -70,7 +71,7 @@
     color:rgba(218,213,227,.76);
   }
 
-  body:has(nav[aria-label="Portal CYA"]) header {
+  body:has(nav[aria-label="Portal CYA"]) header[class*="topbar"] {
     position: sticky !important;
     top: 0 !important;
     z-index: 40 !important;
@@ -80,14 +81,14 @@
     align-items: center !important;
   }
 
-  body:has(nav[aria-label="Portal CYA"]) header > button:first-child {
+  body:has(nav[aria-label="Portal CYA"]) header[class*="topbar"] > button:first-child {
     grid-column: 2 !important;
     justify-self: center !important;
     min-height: 44px !important;
     max-width: 170px !important;
   }
 
-  body:has(nav[aria-label="Portal CYA"]) header > div:last-child {
+  body:has(nav[aria-label="Portal CYA"]) header[class*="topbar"] > div:last-child {
     grid-column: 3 !important;
     justify-self: end !important;
     min-width: 90px !important;
@@ -127,9 +128,9 @@
 
   .mobile-nav > button:focus-visible,
   nav[aria-label="Portal CYA"] button:focus-visible,
-  body:has(nav[aria-label="Portal CYA"]) header button:focus-visible,
+  body:has(nav[aria-label="Portal CYA"]) header[class*="topbar"] button:focus-visible,
   .shell .mobile-head button:focus-visible {
-    outline: 3px solid rgba(194,111,255,.8) !important;
+    outline: 3px solid var(--cya-focus-ring) !important;
     outline-offset: 2px !important;
   }
 }
@@ -145,7 +146,7 @@
 @media (prefers-reduced-motion: reduce) {
   .mobile-nav button,
   nav[aria-label="Portal CYA"] button,
-  body:has(nav[aria-label="Portal CYA"]) header button,
+  body:has(nav[aria-label="Portal CYA"]) header[class*="topbar"] button,
   .shell .mobile-head button {
     transition: none !important;
   }
