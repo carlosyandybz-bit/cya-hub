@@ -152,16 +152,20 @@
   }
 }
 
-/* V1-006 · modal/overlay background scroll lock.
-   The document keeps its current scroll position while the foreground surface owns
-   vertical gestures. This avoids the classic iOS/Safari background drift without
-   forcing body position:fixed, so closing the overlay does not jump the page. */
-html:has(.backdrop),
-body:has(.backdrop),
-html:has(.live-overlay),
-body:has(.live-overlay) {
+/* V1-006 · explicit modal/overlay background scroll lock.
+   A client-side observer owns the lock state because CSS-only overflow locking is
+   not reliable enough on iOS Safari. The body is pinned at the current scrollY,
+   the foreground surface remains scrollable, and the exact document position is
+   restored when the final overlay closes. */
+html.cya-overlay-open {
   overflow: hidden !important;
-  overscroll-behavior: none;
+  overscroll-behavior: none !important;
+}
+
+body.cya-overlay-open {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: none;
 }
 
 .backdrop {
