@@ -5,7 +5,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const layoutPath = path.join(root, "app", "layout.tsx");
-const shellPath = path.join(root, "app", "cya-bottom-navigation-v38.css");
+const shellPath = path.join(root, "app", "canonical-bottom-navigation-shell.css");
 const centralPath = path.join(root, "app", "canonical-central-control-v49.css");
 
 function fail(message) {
@@ -21,7 +21,7 @@ const layout = fs.readFileSync(layoutPath, "utf8");
 const shell = fs.readFileSync(shellPath, "utf8");
 const central = fs.readFileSync(centralPath, "utf8");
 
-const shellImport = 'import "./cya-bottom-navigation-v38.css";';
+const shellImport = 'import "./canonical-bottom-navigation-shell.css";';
 const centralImport = 'import "./canonical-central-control-v49.css";';
 const shellIndex = layout.indexOf(shellImport);
 const centralIndex = layout.indexOf(centralImport);
@@ -31,6 +31,9 @@ if (shellIndex === -1 || centralIndex === -1) {
 }
 if (centralIndex < shellIndex) {
   fail("El control central canónico debe cargarse después del shell para mantener una única autoridad de geometría.");
+}
+if (layout.includes("cya-bottom-navigation-v38.css")) {
+  fail("El layout ha recuperado el shell legacy v38.");
 }
 
 const forbiddenShellMarkers = [

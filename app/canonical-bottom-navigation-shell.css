@@ -1,6 +1,5 @@
-/* Bottom navigation shell · legacy filename retained temporarily for safe migration.
-   Central control geometry is canonical in canonical-central-control-v49.css.
-   This file owns only the mobile navigation container/shell and responsive width. */
+/* Canonical bottom navigation shell · professor + student.
+   Owns only the navigation container/shell. Central control geometry lives in canonical-central-control-v49.css. */
 
 @media (max-width: 900px) {
   .mobile-nav,
@@ -16,7 +15,6 @@
     -webkit-backdrop-filter: blur(22px) saturate(1.12) !important;
   }
 
-  /* Student portal uses the same centered mobile shell width as professor navigation. */
   nav[aria-label="Portal CYA"] {
     left: 50% !important;
     right: auto !important;
