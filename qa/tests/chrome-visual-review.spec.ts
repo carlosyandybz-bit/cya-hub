@@ -35,8 +35,8 @@ async function assertViewportCentered(page: Page, button: ReturnType<Page["locat
   expect(Math.abs(center - viewportWidth / 2)).toBeLessThanOrEqual(2);
 }
 
-test("CYA dual-action mobile chrome visual review across required iPhone widths", async ({ page }, testInfo) => {
-  for (const width of REQUIRED_MOBILE_WIDTHS) {
+for (const width of REQUIRED_MOBILE_WIDTHS) {
+  test(`CYA dual-action mobile chrome visual review ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });
 
     await loginAs(page, "teacher", "Profesor");
@@ -63,7 +63,5 @@ test("CYA dual-action mobile chrome visual review across required iPhone widths"
     await assertTouchTargets(studentNav);
     await assertContained(page);
     await attach(page, testInfo, `student-dual-action-${width}`);
-
-    await resetSession(page);
-  }
-});
+  });
+}
