@@ -1,11 +1,15 @@
 /* Canonical bottom navigation shell · professor + student.
-   Owns only the navigation container/shell. Central control geometry lives in canonical-central-control-v49.css. */
+   Owns the dock material and spatial grid. Central control styling lives in canonical-central-control-v49.css. */
 
 @media (max-width: 900px) {
   .mobile-nav,
   nav[aria-label="Portal CYA"] {
     overflow: visible !important;
     isolation: isolate;
+    display: grid !important;
+    grid-template-columns: minmax(44px,1fr) minmax(44px,1fr) var(--cya-central-group-w,156px) minmax(44px,1fr) minmax(44px,1fr) !important;
+    align-items: end !important;
+    column-gap: 0 !important;
     border: 1px solid rgba(155, 129, 198, .28) !important;
     background: linear-gradient(180deg, rgba(18, 19, 27, .985), rgba(9, 10, 15, .995)) !important;
     box-shadow:
@@ -13,6 +17,35 @@
       inset 0 1px 0 rgba(255, 255, 255, .055) !important;
     backdrop-filter: blur(22px) saturate(1.12) !important;
     -webkit-backdrop-filter: blur(22px) saturate(1.12) !important;
+  }
+
+  /* Explicit tracks keep the four secondary destinations away from the central chassis. */
+  .mobile-nav > button[data-nav-item="home"] { grid-column: 1 !important; }
+  .mobile-nav > button[data-nav-item="students"] { grid-column: 2 !important; }
+  .mobile-nav > button[data-nav-item="teaching"] { grid-column: 4 !important; }
+  .mobile-nav > button[data-nav-item="marketing"] { grid-column: 5 !important; }
+
+  nav[aria-label="Portal CYA"] > button:nth-child(1) { grid-column: 1 !important; }
+  nav[aria-label="Portal CYA"] > button:nth-child(2) { grid-column: 2 !important; }
+  nav[aria-label="Portal CYA"] > [class*="formationNav"] { grid-column: 3 !important; }
+  nav[aria-label="Portal CYA"] > button:nth-child(4) { grid-column: 4 !important; }
+  nav[aria-label="Portal CYA"] > button:nth-child(5) { grid-column: 5 !important; }
+
+  .mobile-nav > button:not(.primary):not(.mobile-nav-secondary),
+  nav[aria-label="Portal CYA"] > button {
+    min-width: 44px !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding-inline: 2px !important;
+    overflow: hidden !important;
+  }
+
+  .mobile-nav > button:not(.primary):not(.mobile-nav-secondary) > span,
+  nav[aria-label="Portal CYA"] > button > span {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
   }
 
   nav[aria-label="Portal CYA"] {
@@ -34,5 +67,12 @@
     right: auto !important;
     width: calc(100% - 14px) !important;
     transform: translateX(-50%) !important;
+  }
+}
+
+@media (max-width: 350px) {
+  .mobile-nav,
+  nav[aria-label="Portal CYA"] {
+    grid-template-columns: minmax(44px,1fr) minmax(44px,1fr) var(--cya-central-group-w,128px) minmax(44px,1fr) minmax(44px,1fr) !important;
   }
 }
