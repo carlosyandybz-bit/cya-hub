@@ -1,0 +1,230 @@
+/* v49 · Canonical central control · professor + student
+   Product CSS. One compact futuristic family, vertically stacked, safe touch targets.
+   This layer replaces professor geometry from v46/v48 without changing DOM behavior. */
+
+:root {
+  --cya-central-primary-w: 78px;
+  --cya-central-primary-h: 64px;
+  --cya-central-secondary-w: 64px;
+  --cya-central-secondary-h: 44px;
+  --cya-central-overlap: 13px;
+  --cya-central-metal-top: rgba(74, 48, 92, .98);
+  --cya-central-metal-bottom: rgba(27, 24, 34, .995);
+  --cya-central-edge: rgba(226, 192, 246, .38);
+  --cya-central-highlight: rgba(236, 202, 255, .22);
+}
+
+@media (max-width: 900px) {
+  .mobile-nav {
+    overflow: visible !important;
+  }
+
+  /* Main action: same semantic button, new compact silhouette. */
+  .mobile-nav button.primary,
+  nav[aria-label="Portal CYA"] .formationMain {
+    position: relative !important;
+    z-index: 6 !important;
+    width: var(--cya-central-primary-w) !important;
+    min-width: var(--cya-central-primary-w) !important;
+    height: var(--cya-central-primary-h) !important;
+    min-height: var(--cya-central-primary-h) !important;
+    margin: 0 !important;
+    padding: 7px 6px 6px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    overflow: visible !important;
+    border: 1px solid var(--cya-central-edge) !important;
+    border-radius: 29px 29px 23px 23px / 23px 23px 26px 26px !important;
+    background:
+      radial-gradient(ellipse at 27% 42%, rgba(202, 121, 250, .18) 0 25%, transparent 27%),
+      radial-gradient(ellipse at 73% 42%, rgba(202, 121, 250, .18) 0 25%, transparent 27%),
+      linear-gradient(180deg, var(--cya-central-metal-top), var(--cya-central-metal-bottom)) !important;
+    color: var(--cya-text) !important;
+    box-shadow:
+      0 0 0 2px rgba(8, 9, 13, .96),
+      0 9px 24px rgba(0, 0, 0, .40),
+      0 0 24px rgba(170, 72, 231, .10),
+      inset 0 1px 0 var(--cya-central-highlight),
+      inset 0 -8px 18px rgba(0, 0, 0, .12) !important;
+    font-size: 10px !important;
+    font-weight: 820 !important;
+    line-height: 1 !important;
+    letter-spacing: -.015em !important;
+    text-align: center !important;
+    isolation: isolate;
+  }
+
+  .mobile-nav button.primary::before,
+  nav[aria-label="Portal CYA"] .formationMain::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 4px 7px 8px;
+    border-radius: inherit;
+    border-top: 1px solid rgba(255, 255, 255, .10);
+    pointer-events: none;
+  }
+
+  .mobile-nav button.primary {
+    left: auto !important;
+    bottom: auto !important;
+    transform: translateY(-5px) !important;
+  }
+
+  .mobile-nav button.primary:active {
+    transform: translateY(-3px) scale(.975) !important;
+  }
+
+  nav[aria-label="Portal CYA"] .formationMain {
+    transform: translateX(-50%) translateY(-5px) !important;
+  }
+
+  nav[aria-label="Portal CYA"] .formationMain:active {
+    transform: translateX(-50%) translateY(-3px) scale(.975) !important;
+  }
+
+  .mobile-nav-logo {
+    width: 58px !important;
+    height: 31px !important;
+    filter: drop-shadow(0 3px 8px rgba(197, 115, 245, .24));
+  }
+
+  .mobile-nav button.primary svg,
+  nav[aria-label="Portal CYA"] .formationMain svg {
+    width: 21px !important;
+    height: 21px !important;
+    flex: 0 0 21px !important;
+    margin: 0 !important;
+    color: #d9a5f7 !important;
+    filter: drop-shadow(0 2px 5px rgba(197, 115, 245, .22));
+  }
+
+  /* Secondary action: true button above the main action, same material family. */
+  .mobile-nav .mobile-nav-secondary,
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"],
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button[aria-label="Abrir apartados de Mi formación"] {
+    position: absolute !important;
+    z-index: 9 !important;
+    top: calc(-1 * (var(--cya-central-secondary-h) - var(--cya-central-overlap))) !important;
+    right: auto !important;
+    left: 50% !important;
+    width: var(--cya-central-secondary-w) !important;
+    min-width: var(--cya-central-secondary-w) !important;
+    height: var(--cya-central-secondary-h) !important;
+    min-height: var(--cya-central-secondary-h) !important;
+    max-height: var(--cya-central-secondary-h) !important;
+    padding: 5px 8px 13px !important;
+    transform: translateX(-50%) !important;
+    display: flex !important;
+    place-items: initial !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    overflow: visible !important;
+    border: 1px solid rgba(218, 183, 240, .38) !important;
+    border-radius: 22px 22px 14px 14px / 18px 18px 14px 14px !important;
+    background:
+      radial-gradient(circle at 50% 0, rgba(213, 144, 255, .17), transparent 55%),
+      linear-gradient(180deg, rgba(65, 48, 76, .995), rgba(29, 26, 35, .995)) !important;
+    color: #eee4f3 !important;
+    box-shadow:
+      0 0 0 2px rgba(8, 9, 13, .97),
+      0 5px 14px rgba(0, 0, 0, .32),
+      inset 0 1px 0 rgba(255, 255, 255, .13) !important;
+    font-size: 10px !important;
+    font-weight: 820 !important;
+    line-height: 1 !important;
+    letter-spacing: .005em !important;
+  }
+
+  .mobile-nav .mobile-nav-secondary::before {
+    content: none !important;
+  }
+
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"]::before,
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button[aria-label="Abrir apartados de Mi formación"]::before {
+    content: "Más" !important;
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: inherit !important;
+    font: inherit !important;
+    line-height: 1 !important;
+    pointer-events: none !important;
+  }
+
+  .mobile-nav .mobile-nav-secondary > span {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    clip: auto !important;
+    clip-path: none !important;
+    white-space: nowrap !important;
+  }
+
+  .mobile-nav .mobile-nav-secondary svg,
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] svg,
+  nav[aria-label="Portal CYA"] > div:nth-child(3) > button[aria-label="Abrir apartados de Mi formación"] svg {
+    position: static !important;
+    width: 12px !important;
+    height: 12px !important;
+    flex: 0 0 12px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: currentColor !important;
+    transform: none !important;
+    transform-origin: center !important;
+  }
+
+  .mobile-nav .mobile-nav-secondary.open,
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"][aria-expanded="true"] {
+    border-color: rgba(213, 140, 255, .60) !important;
+    background:
+      radial-gradient(circle at 50% 0, rgba(221, 158, 255, .22), transparent 55%),
+      linear-gradient(180deg, rgba(88, 55, 106, .995), rgba(40, 30, 48, .995)) !important;
+  }
+
+  .mobile-nav .mobile-nav-secondary.open svg,
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"][aria-expanded="true"] svg {
+    transform: rotate(180deg) !important;
+  }
+
+  .mobile-nav .mobile-nav-secondary:active,
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"]:active {
+    transform: translateX(-50%) scale(.975) !important;
+  }
+
+  .mobile-nav .mobile-nav-secondary:focus-visible,
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"]:focus-visible {
+    outline: 3px solid var(--cya-focus-ring) !important;
+    outline-offset: 2px !important;
+  }
+
+  .mobile-class-sheet {
+    bottom: calc(94px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+@media (max-width: 350px) {
+  :root {
+    --cya-central-primary-w: 74px;
+    --cya-central-secondary-w: 60px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-nav button.primary,
+  nav[aria-label="Portal CYA"] .formationMain,
+  .mobile-nav .mobile-nav-secondary,
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] {
+    transition: none !important;
+  }
+}
