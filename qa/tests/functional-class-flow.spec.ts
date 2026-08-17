@@ -61,6 +61,7 @@ test.describe("CYA Hub functional class lifecycle", () => {
 
   test("teacher closes a QA class, student receives it, and admin remains healthy", async ({ page }, testInfo) => {
     // P0F: evaluation is the student's shared optional state. P0G: correction metrics/note are selected before adding and the collapsed card stays compact.
+    // UX-05: the final summary draft must survive an accidental refresh and disappear only after a successful close.
     const fixtures = qaFixtures();
     const fixture = fixtures.projects[testInfo.project.name];
     if (!fixture) throw new Error(`No functional fixture for ${testInfo.project.name}`);
@@ -69,6 +70,8 @@ test.describe("CYA Hub functional class lifecycle", () => {
     const correctionObservation = `QA E2E observación corrección ${runId} ${testInfo.project.name}`;
     const observation = `QA E2E observación ${runId} ${testInfo.project.name}`;
     const studentSummary = `QA E2E resumen ${runId} ${testInfo.project.name}`;
+    const internalSummary = `QA E2E nota interna ${runId} ${testInfo.project.name}`;
+    const summaryDraftKey = `cya:class-summary-draft:v1:${fixture.classId}`;
 
     await login(page, "teacher");
     const visibleClassNav = page.locator("nav button:visible").filter({ hasText: /^Dar clase$/ }).first();
@@ -148,9 +151,38 @@ test.describe("CYA Hub functional class lifecycle", () => {
     await expect(page.getByText(/nunca bloquea el cierre de esta clase/)).toBeVisible();
     await page.getByRole("button", { name: /preparar resumen/i }).click();
     await expect(page.getByRole("heading", { name: "Resumen de la clase" })).toBeVisible();
-    await page.locator('textarea[placeholder="Resumen, recomendaciones o recordatorio visible"]').fill(studentSummary);
+    const studentSummaryField = page.locator('textarea[placeholder="Resumen, recomendaciones o recordatorio visible"]');
+    const internalSummaryField = page.locator('textarea[placeholder="Solo profesores"]');
+    await studentSummaryField.fill(studentSummary);
+    await internalSummaryField.fill(internalSummary);
+    await expect(page.getByText("Borrador guardado automáticamente.", { exact: true })).toBeVisible({ timeout: 5_000 });
+    await expect.poll(() => page.evaluate((key) => Boolean(window.localStorage.getItem(key)), summaryDraftKey)).toBe(true);
+    await attachCheckpoint(page, testInfo, `${testInfo.project.name}-teacher-summary-draft-saved`);
+
+    // Simulate an accidental refresh. Session remains valid; the user re-enters the pending class and the draft is recovered.
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.locator('input[name="email"]')).toBeHidden({ timeout: 20_000 });
+    const classNavAfterReload = page.locator("nav button:visible").filter({ hasText: /^Dar clase$/ }).first();
+    await expect(classNavAfterReload).toBeVisible();
+    await classNavAfterReload.click();
+    await expect(page.getByRole("heading", { name: "Centro de clases" })).toBeVisible();
+    const pendingClassRow = page.locator(".class-center-row")
+      .filter({ hasText: fixtures.studentName })
+      .filter({ hasText: "Cerrar" })
+      .first();
+    await expect(pendingClassRow).toBeVisible();
+    await pendingClassRow.click();
+    await expect(page.getByText("Administración terminada", { exact: true })).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("button", { name: /preparar resumen/i }).click();
+    await expect(page.getByRole("heading", { name: "Resumen de la clase" })).toBeVisible();
+    await expect(page.getByText(/Borrador recuperado/)).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('textarea[placeholder="Resumen, recomendaciones o recordatorio visible"]')).toHaveValue(studentSummary);
+    await expect(page.locator('textarea[placeholder="Solo profesores"]')).toHaveValue(internalSummary);
+    await attachCheckpoint(page, testInfo, `${testInfo.project.name}-teacher-summary-draft-restored`);
+
     await page.getByRole("button", { name: /Cerrar y enviar al alumno/ }).click();
     await expect(page.getByRole("heading", { name: "Centro de clases" })).toBeVisible({ timeout: 20_000 });
+    await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), summaryDraftKey)).toBeNull();
     if ((page.viewportSize()?.width ?? 9999) <= 720) await expect(page.locator(".mobile-nav")).toBeVisible();
     await attachCheckpoint(page, testInfo, `${testInfo.project.name}-teacher-class-closed`);
 
