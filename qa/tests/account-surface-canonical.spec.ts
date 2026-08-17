@@ -29,7 +29,7 @@ for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
     await login(page);
 
-    const trigger = page.getByRole("button", { name: "Abrir cuenta y preferencias" }).filter({ visible: true }).first();
+    const trigger = page.locator('button[aria-label="Abrir cuenta y preferencias"]:visible').first();
     await expect(trigger).toBeVisible();
     const triggerBox = await trigger.boundingBox();
     expect(triggerBox?.width ?? 0).toBeGreaterThanOrEqual(44);
