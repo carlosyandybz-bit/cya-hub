@@ -1,7 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
 export type VisualExperience = "Profesor" | "Alumno" | "Administrador";
-
 type QaRole = "teacher" | "student" | "admin";
 
 function credentials(role: QaRole) {
@@ -22,6 +21,18 @@ async function openAccountMenu(page: Page) {
   return menu;
 }
 
+async function experienceRendered(page: Page, experience: VisualExperience) {
+  if (experience === "Alumno") {
+    return page.getByRole("navigation", { name: "Portal CYA" }).isVisible().catch(() => false);
+  }
+  if (experience === "Profesor") {
+    const mobile = page.locator('nav.mobile-nav[aria-label="Navegación principal"]');
+    const desktop = page.locator('nav[aria-label="Módulos principales"]');
+    return (await mobile.isVisible().catch(() => false)) || (await desktop.isVisible().catch(() => false));
+  }
+  return page.locator('[data-cya-account-menu][data-experience="admin"]:visible').first().isVisible().catch(() => false);
+}
+
 export async function loginAs(page: Page, role: QaRole, experience: VisualExperience) {
   const { email, password } = credentials(role);
   await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -35,13 +46,18 @@ export async function loginAs(page: Page, role: QaRole, experience: VisualExperi
     await expect(emailInput).toBeHidden({ timeout: 20_000 });
   }
 
+  if (await experienceRendered(page, experience)) return;
+
   const target = experience === "Profesor" ? "teacher" : experience === "Alumno" ? "student" : "admin";
   const current = page.locator(`[data-cya-account-menu][data-experience="${target}"]:visible`).first();
-  if (!(await current.isVisible({ timeout: 10_000 }).catch(() => false))) {
+  if (!(await current.isVisible({ timeout: 4_000 }).catch(() => false))) {
     const menu = await openAccountMenu(page);
     const switchButton = menu.getByRole("button", { name: new RegExp(`^${experience}(?:,|\\.)`) });
     await expect(switchButton).toBeVisible({ timeout: 10_000 });
     await switchButton.click();
   }
-  await expect(page.locator(`[data-cya-account-menu][data-experience="${target}"]:visible`).first()).toBeVisible({ timeout: 20_000 });
+
+  if (!(await experienceRendered(page, experience))) {
+    await expect(page.locator(`[data-cya-account-menu][data-experience="${target}"]:visible`).first()).toBeVisible({ timeout: 20_000 });
+  }
 }
