@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ModalScrollLock } from "./modal-scroll-lock";
+import { PullToRefresh } from "./pull-to-refresh";
 import "./globals.css";
 import "./visual-audit-v21.css";
 import "./visual-density-v22.css";
@@ -33,6 +34,7 @@ import "./canonical-ui-primitives.css";
 import "./canonical-app-chrome.css";
 import "./professor-header-v44.css";
 import "./dual-action-central-control-v50.css";
+import "./pull-to-refresh.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -86,6 +88,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ModalScrollLock />
+        <PullToRefresh />
         {children}
       </body>
     </html>
