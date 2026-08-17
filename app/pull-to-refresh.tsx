@@ -59,7 +59,6 @@ async function settlePendingAutosaves() {
   const active = document.activeElement;
   if (isEditable(active) && active instanceof HTMLElement) active.blur();
 
-  // Let controlled inputs flush their final change/blur handlers before data revalidation.
   await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
   if (pending.length) await Promise.allSettled(pending);
 }
@@ -67,6 +66,7 @@ async function settlePendingAutosaves() {
 export function PullToRefresh() {
   const router = useRouter();
   const startY = useRef<number | null>(null);
+  const activePointerId = useRef<number | null>(null);
   const tracking = useRef(false);
   const refreshing = useRef(false);
   const distanceRef = useRef(0);
@@ -80,6 +80,7 @@ export function PullToRefresh() {
 
   const reset = useCallback(() => {
     startY.current = null;
+    activePointerId.current = null;
     tracking.current = false;
     setPullDistance(0);
     setPhase((current) => (current === "refreshing" || current === "success" ? current : "idle"));
@@ -105,8 +106,6 @@ export function PullToRefresh() {
       window.dispatchEvent(new CustomEvent<CyaRefreshDetail>("cya:refresh", { detail }));
       router.refresh();
 
-      // Client-side Supabase surfaces register their own reload promises through waitUntil.
-      // The success state is shown only after those promises and the server refresh have settled.
       await Promise.allSettled(pendingRefreshes);
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       setPhase("success");
@@ -120,23 +119,28 @@ export function PullToRefresh() {
   }, [router, setPullDistance]);
 
   useEffect(() => {
-    const onTouchStart = (event: TouchEvent) => {
-      if (refreshing.current || event.touches.length !== 1 || hasScrolledContainer(event.target)) {
+    const isTouchLikePointer = (event: PointerEvent) => event.pointerType === "touch" || event.pointerType === "pen";
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!isTouchLikePointer(event)) return;
+      if (refreshing.current || !event.isPrimary || hasScrolledContainer(event.target)) {
         reset();
         return;
       }
-      startY.current = event.touches[0]?.clientY ?? null;
-      tracking.current = startY.current !== null;
+      startY.current = event.clientY;
+      activePointerId.current = event.pointerId;
+      tracking.current = true;
     };
 
-    const onTouchMove = (event: TouchEvent) => {
-      if (!tracking.current || startY.current === null || event.touches.length !== 1) return;
+    const onPointerMove = (event: PointerEvent) => {
+      if (!isTouchLikePointer(event) || !tracking.current || startY.current === null) return;
+      if (activePointerId.current !== event.pointerId || !event.isPrimary) return;
       if (hasScrolledContainer(event.target)) {
         reset();
         return;
       }
 
-      const raw = (event.touches[0]?.clientY ?? startY.current) - startY.current;
+      const raw = event.clientY - startY.current;
       if (raw <= 0) {
         reset();
         return;
@@ -148,25 +152,27 @@ export function PullToRefresh() {
       setPhase(nextDistance >= TRIGGER_PULL ? "armed" : "pulling");
     };
 
-    const onTouchEnd = () => {
-      if (!tracking.current) return;
+    const finishPointer = (event: PointerEvent) => {
+      if (!isTouchLikePointer(event) || !tracking.current) return;
+      if (activePointerId.current !== event.pointerId) return;
       const shouldRefresh = distanceRef.current >= TRIGGER_PULL;
       startY.current = null;
+      activePointerId.current = null;
       tracking.current = false;
       if (shouldRefresh) void refresh();
       else reset();
     };
 
-    document.addEventListener("touchstart", onTouchStart, { passive: true });
-    document.addEventListener("touchmove", onTouchMove, { passive: false });
-    document.addEventListener("touchend", onTouchEnd, { passive: true });
-    document.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    document.addEventListener("pointerdown", onPointerDown, { passive: true });
+    document.addEventListener("pointermove", onPointerMove, { passive: false });
+    document.addEventListener("pointerup", finishPointer, { passive: true });
+    document.addEventListener("pointercancel", finishPointer, { passive: true });
 
     return () => {
-      document.removeEventListener("touchstart", onTouchStart);
-      document.removeEventListener("touchmove", onTouchMove);
-      document.removeEventListener("touchend", onTouchEnd);
-      document.removeEventListener("touchcancel", onTouchEnd);
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerup", finishPointer);
+      document.removeEventListener("pointercancel", finishPointer);
     };
   }, [refresh, reset, setPullDistance]);
 
