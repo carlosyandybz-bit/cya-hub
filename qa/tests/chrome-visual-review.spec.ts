@@ -17,19 +17,25 @@ async function assertContained(page: Page) {
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
+async function assertFourVisibleDestinations(nav: ReturnType<Page["locator"]>) {
+  const visibleButtons = nav.locator("button:visible");
+  await expect(visibleButtons).toHaveCount(4);
+  for (const button of await visibleButtons.all()) {
+    const box = await button.boundingBox();
+    expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+}
+
 test("CYA mobile chrome master visual review 390px", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
 
   await loginAs(page, "teacher", "Profesor");
   const teacherNav = page.locator('nav.mobile-nav[aria-label="Navegación principal"]');
   await expect(teacherNav).toBeVisible({ timeout: 20_000 });
-  await expect(teacherNav.locator('button[data-nav-item="live"]')).toBeVisible();
-  await expect(teacherNav.getByRole("button", { name: "Más opciones de clase" })).toBeVisible();
-  for (const button of await teacherNav.locator("button:visible").all()) {
-    const box = await button.boundingBox();
-    expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
-    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
-  }
+  await expect(teacherNav.locator('button[data-nav-item="live"]')).toBeHidden();
+  await expect(teacherNav.getByRole("button", { name: "Más opciones de clase" })).toBeHidden();
+  await assertFourVisibleDestinations(teacherNav);
   await assertContained(page);
   await attach(page, testInfo, "professor-390-master");
 
@@ -37,13 +43,9 @@ test("CYA mobile chrome master visual review 390px", async ({ page }, testInfo) 
   await loginAs(page, "student", "Alumno");
   const studentNav = page.getByRole("navigation", { name: "Portal CYA" });
   await expect(studentNav).toBeVisible({ timeout: 20_000 });
-  await expect(studentNav.getByRole("button", { name: "Mi formación", exact: true })).toBeVisible();
-  await expect(studentNav.getByRole("button", { name: "Abrir apartados de Mi formación" })).toBeVisible();
-  for (const button of await studentNav.locator("button:visible").all()) {
-    const box = await button.boundingBox();
-    expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
-    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
-  }
+  await expect(studentNav.getByRole("button", { name: "Mi formación", exact: true })).toBeHidden();
+  await expect(studentNav.getByRole("button", { name: "Abrir apartados de Mi formación" })).toBeHidden();
+  await assertFourVisibleDestinations(studentNav);
   await assertContained(page);
   await attach(page, testInfo, "student-390-master");
 });
