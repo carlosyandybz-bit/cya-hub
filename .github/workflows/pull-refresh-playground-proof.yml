@@ -89,23 +89,39 @@ jobs:
           const stamp = page.getByTestId('server-stamp');
           const beforeStamp = await stamp.textContent();
           await input.fill('Borrador preservado');
+          await input.blur();
+          await page.evaluate(() => window.scrollTo(0, 0));
+          await page.waitForFunction(() => window.scrollY === 0 && document.documentElement.scrollTop === 0 && document.body.scrollTop === 0);
+          mark('exact-scroll-top');
 
-          const pull = async (fromY, toY) => {
-            await page.evaluate(async ({fromY, toY}) => {
-              const target = document.elementFromPoint(195, fromY) ?? document.body;
+          const beginPull = async (fromY, toY) => {
+            return page.evaluate(async ({fromY, toY}) => {
+              const target = document.body;
               const touch = (y) => new Touch({identifier: 1, target, clientX: 195, clientY: y, screenX: 195, screenY: y, pageX: 195, pageY: y});
-              target.dispatchEvent(new TouchEvent('touchstart', {bubbles:true,cancelable:true,touches:[touch(fromY)],targetTouches:[touch(fromY)],changedTouches:[touch(fromY)]}));
-              for (const y of [fromY + 40, fromY + 80, fromY + 120, toY]) {
+              const first = touch(fromY);
+              target.dispatchEvent(new TouchEvent('touchstart', {bubbles:true,cancelable:true,touches:[first],targetTouches:[first],changedTouches:[first]}));
+              let phase = document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') ?? 'missing';
+              for (const y of [fromY + 50, fromY + 100, fromY + 150, toY]) {
                 const current = touch(y);
                 target.dispatchEvent(new TouchEvent('touchmove', {bubbles:true,cancelable:true,touches:[current],targetTouches:[current],changedTouches:[current]}));
+                await new Promise((resolve) => requestAnimationFrame(() => resolve()));
                 await new Promise((resolve) => setTimeout(resolve, 35));
+                phase = document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') ?? 'missing';
               }
-              target.dispatchEvent(new TouchEvent('touchend', {bubbles:true,cancelable:true,touches:[],targetTouches:[],changedTouches:[touch(toY)]}));
+              return phase;
             }, {fromY, toY});
           };
+          const endPull = async (toY) => page.evaluate((toY) => {
+            const target = document.body;
+            const touch = new Touch({identifier: 1, target, clientX: 195, clientY: toY, screenX: 195, screenY: toY, pageX: 195, pageY: toY});
+            target.dispatchEvent(new TouchEvent('touchend', {bubbles:true,cancelable:true,touches:[],targetTouches:[],changedTouches:[touch]}));
+          }, toY);
 
-          mark('first-pull');
-          await pull(80, 260);
+          mark('first-pull-moves');
+          const armedPhase = await beginPull(80, 280);
+          mark(`after-moves-${armedPhase}`);
+          if (armedPhase !== 'armed') throw new Error(`Pull did not arm; phase=${armedPhase}`);
+          await endPull(280);
           mark('wait-success-state');
           await page.waitForFunction(() => document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') === 'success', null, {timeout:7000});
           mark('success-state');
@@ -117,12 +133,16 @@ jobs:
           mark('context-preserved');
           if (page.url() !== url) throw new Error(`URL changed: ${page.url()}`);
           mark('url-preserved');
+
+          await page.waitForFunction(() => document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') === 'idle', null, {timeout:3000});
           await page.evaluate(() => window.scrollTo(0, 700));
+          await page.waitForFunction(() => window.scrollY > 0);
           const scrolledStamp = await stamp.textContent();
           mark('scrolled-pull');
-          await pull(120, 300);
+          const scrolledPhase = await beginPull(120, 320);
+          await endPull(320);
           await new Promise(r => setTimeout(r, 650));
-          if (await stamp.textContent() !== scrolledStamp) throw new Error('Refresh triggered away from scroll top');
+          if (scrolledPhase === 'armed' || await stamp.textContent() !== scrolledStamp) throw new Error(`Refresh activated away from scroll top; phase=${scrolledPhase}`);
           mark('scroll-guard');
           if (errors.length) throw new Error(`Console errors: ${errors.join(' | ')}`);
           mark('complete');
