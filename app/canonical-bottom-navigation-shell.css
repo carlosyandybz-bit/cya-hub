@@ -1,5 +1,5 @@
 /* Canonical bottom navigation shell · professor + student.
-   Owns the dock material and spatial grid. Central control styling lives in canonical-central-control-v49.css. */
+   Owns dock material and spatial tracks only. Central control styling/geometry stays in canonical-central-control-v49.css. */
 
 @media (max-width: 900px) {
   .mobile-nav,
@@ -19,18 +19,20 @@
     -webkit-backdrop-filter: blur(22px) saturate(1.12) !important;
   }
 
+  /* Professor already exposes stable semantic data-nav-item attributes. */
   .mobile-nav > button[data-nav-item="home"] { grid-column: 1 !important; }
   .mobile-nav > button[data-nav-item="students"] { grid-column: 2 !important; }
   .mobile-nav > button[data-nav-item="teaching"] { grid-column: 4 !important; }
   .mobile-nav > button[data-nav-item="marketing"] { grid-column: 5 !important; }
 
-  nav[aria-label="Portal CYA"] > button:nth-child(1) { grid-column: 1 !important; }
-  nav[aria-label="Portal CYA"] > button:nth-child(2) { grid-column: 2 !important; }
+  /* Student DOM order is already the canonical five-lane order; grid auto-placement
+     reserves lane 3 for the formation wrapper without positional selectors. */
   nav[aria-label="Portal CYA"] > [class*="formationNav"] { grid-column: 3 !important; }
-  nav[aria-label="Portal CYA"] > button:nth-child(4) { grid-column: 4 !important; }
-  nav[aria-label="Portal CYA"] > button:nth-child(5) { grid-column: 5 !important; }
 
-  .mobile-nav > button:not(.primary):not(.mobile-nav-secondary),
+  .mobile-nav > button[data-nav-item="home"],
+  .mobile-nav > button[data-nav-item="students"],
+  .mobile-nav > button[data-nav-item="teaching"],
+  .mobile-nav > button[data-nav-item="marketing"],
   nav[aria-label="Portal CYA"] > button {
     min-width: 44px !important;
     width: 100% !important;
@@ -39,7 +41,10 @@
     overflow: hidden !important;
   }
 
-  .mobile-nav > button:not(.primary):not(.mobile-nav-secondary) > span,
+  .mobile-nav > button[data-nav-item="home"] > span,
+  .mobile-nav > button[data-nav-item="students"] > span,
+  .mobile-nav > button[data-nav-item="teaching"] > span,
+  .mobile-nav > button[data-nav-item="marketing"] > span,
   nav[aria-label="Portal CYA"] > button > span {
     max-width: 100% !important;
     overflow: hidden !important;
