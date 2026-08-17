@@ -14,71 +14,64 @@ async function loginTeacher(page: Page) {
 }
 
 for (const width of [320, 360, 375, 390, 393, 402, 414, 430]) {
-  test(`UX-01b professor header renders complete logo and owner identity at ${width}px`, async ({ page }, testInfo) => {
+  test(`UX-01b professor header mirrors student CYA Hub identity at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });
     await loginTeacher(page);
 
-    const owner = page.locator(".mobile-head .mobile-owner-name");
-    const brandContainer = page.locator(".mobile-head .mobile-head-brand");
-    const logoBox = page.locator(".mobile-head .brand-logo");
+    const header = page.locator(".mobile-head");
+    const brandContainer = header.locator(".mobile-head-brand");
+    const brand = brandContainer.locator(".brand");
+    const logoBox = brand.locator(".brand-logo");
     const logoImage = logoBox.locator("img");
+    const wordmark = brand.locator(".brand-wordmark");
+    const owner = header.locator(".mobile-owner-name");
+    const actions = header.locator(".mobile-head-actions");
 
-    await expect(owner).toBeVisible();
-    await expect(owner).toHaveText("Carlos & Andy");
+    await expect(brand).toBeVisible();
     await expect(logoBox).toBeVisible();
     await expect(logoImage).toBeVisible();
+    await expect(wordmark).toBeVisible();
+    await expect(wordmark).toContainText("CYA");
+    await expect(wordmark).toContainText("Hub");
+    await expect(owner).toBeHidden();
+    await expect(actions).toBeVisible();
 
     const state = await page.evaluate(() => {
-      const owner = document.querySelector<HTMLElement>(".mobile-head .mobile-owner-name")!;
       const header = document.querySelector<HTMLElement>(".mobile-head")!;
       const brand = document.querySelector<HTMLElement>(".mobile-head .mobile-head-brand")!;
       const logo = document.querySelector<HTMLElement>(".mobile-head .brand-logo")!;
       const image = logo.querySelector<HTMLImageElement>("img")!;
-      const ownerRect = owner.getBoundingClientRect();
+      const wordmark = document.querySelector<HTMLElement>(".mobile-head .brand-wordmark")!;
+      const actions = document.querySelector<HTMLElement>(".mobile-head .mobile-head-actions")!;
+      const headerRect = header.getBoundingClientRect();
       const brandRect = brand.getBoundingClientRect();
       const logoRect = logo.getBoundingClientRect();
       const imageRect = image.getBoundingClientRect();
-      const before = getComputedStyle(owner, "::before");
-      const after = getComputedStyle(owner, "::after");
-      const brandStyle = getComputedStyle(brand);
-      const imageStyle = getComputedStyle(image);
-
+      const wordmarkRect = wordmark.getBoundingClientRect();
+      const actionsRect = actions.getBoundingClientRect();
       return {
-        text: owner.textContent?.trim(),
-        beforeContent: before.content,
-        afterContent: after.content,
-        headerDisplay: getComputedStyle(header).display,
-        brandPosition: brandStyle.position,
-        brandOverflowX: brandStyle.overflowX,
-        owner: { left: ownerRect.left, right: ownerRect.right, width: ownerRect.width },
-        brand: { left: brandRect.left, right: brandRect.right, width: brandRect.width },
+        header: { left: headerRect.left, right: headerRect.right, width: headerRect.width, height: headerRect.height },
+        brand: { left: brandRect.left, right: brandRect.right, width: brandRect.width, height: brandRect.height },
         logo: { left: logoRect.left, right: logoRect.right, top: logoRect.top, bottom: logoRect.bottom, width: logoRect.width, height: logoRect.height },
         image: { left: imageRect.left, right: imageRect.right, top: imageRect.top, bottom: imageRect.bottom, width: imageRect.width, height: imageRect.height },
-        imagePosition: imageStyle.position,
-        imageObjectFit: imageStyle.objectFit,
+        wordmark: { left: wordmarkRect.left, right: wordmarkRect.right, width: wordmarkRect.width, height: wordmarkRect.height },
+        actions: { left: actionsRect.left, right: actionsRect.right, width: actionsRect.width, height: actionsRect.height },
+        headerDisplay: getComputedStyle(header).display,
+        logoOverflow: getComputedStyle(logo).overflow,
       };
     });
 
-    expect(state.text).toBe("Carlos & Andy");
-    expect(["none", "normal", '""']).toContain(state.beforeContent);
-    expect(["none", "normal", '""']).toContain(state.afterContent);
-    expect(state.headerDisplay).toBe("block");
-    expect(state.brandPosition).toBe("absolute");
-
+    expect(state.headerDisplay).toBe("flex");
     expect(state.brand.left).toBeGreaterThanOrEqual(0);
     expect(state.brand.right).toBeLessThanOrEqual(width);
-    expect(state.owner.left).toBeGreaterThanOrEqual(state.brand.left - 1);
-    expect(state.owner.right).toBeLessThanOrEqual(state.brand.right + 1);
-    expect(state.owner.width).toBeGreaterThan(55);
-
-    expect(state.logo.width).toBeGreaterThanOrEqual(width <= 350 ? 25 : 29);
-    expect(state.logo.height).toBeGreaterThanOrEqual(width <= 350 ? 25 : 29);
-    expect(state.image.left).toBeGreaterThanOrEqual(state.logo.left - 1);
-    expect(state.image.right).toBeLessThanOrEqual(state.logo.right + 1);
-    expect(state.image.top).toBeGreaterThanOrEqual(state.logo.top - 1);
-    expect(state.image.bottom).toBeLessThanOrEqual(state.logo.bottom + 1);
-    expect(state.imagePosition).toBe("static");
-    expect(state.imageObjectFit).toBe("contain");
+    expect(state.actions.right).toBeLessThanOrEqual(width + 1);
+    expect(state.brand.right).toBeLessThanOrEqual(state.actions.left + 1);
+    expect(state.wordmark.width).toBeGreaterThan(45);
+    expect(state.logo.width).toBeGreaterThanOrEqual(width <= 350 ? 49 : 56);
+    expect(state.logo.height).toBeGreaterThanOrEqual(37);
+    expect(state.image.width).toBeGreaterThanOrEqual(63);
+    expect(state.image.height).toBeGreaterThanOrEqual(63);
+    expect(state.logoOverflow).toBe("hidden");
 
     await testInfo.attach(`ux01b-professor-brand-${width}`, {
       body: await page.screenshot({ fullPage: false }),
