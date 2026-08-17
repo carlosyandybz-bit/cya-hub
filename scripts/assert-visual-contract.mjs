@@ -6,7 +6,7 @@ import path from "node:path";
 const root = process.cwd();
 const layoutPath = path.join(root, "app", "layout.tsx");
 const shellPath = path.join(root, "app", "canonical-bottom-navigation-shell.css");
-const centralPath = path.join(root, "app", "canonical-central-control-v49.css");
+const centralPath = path.join(root, "app", "dual-action-central-control-v50.css");
 const primitivesPath = path.join(root, "app", "canonical-ui-primitives.css");
 const chromePath = path.join(root, "app", "canonical-app-chrome.css");
 
@@ -26,20 +26,23 @@ const primitives = fs.readFileSync(primitivesPath, "utf8");
 const chrome = fs.readFileSync(chromePath, "utf8");
 
 const shellImport = 'import "./canonical-bottom-navigation-shell.css";';
-const centralImport = 'import "./canonical-central-control-v49.css";';
 const primitivesImport = 'import "./canonical-ui-primitives.css";';
 const chromeImport = 'import "./canonical-app-chrome.css";';
+const centralImport = 'import "./dual-action-central-control-v50.css";';
 const shellIndex = layout.indexOf(shellImport);
-const centralIndex = layout.indexOf(centralImport);
 const primitivesIndex = layout.indexOf(primitivesImport);
 const chromeIndex = layout.indexOf(chromeImport);
+const centralIndex = layout.indexOf(centralImport);
 
-if ([shellIndex, centralIndex, primitivesIndex, chromeIndex].some((index) => index === -1)) {
-  fail("layout.tsx debe importar shell, control central, primitives y chrome canónicos.");
+if ([shellIndex, primitivesIndex, chromeIndex, centralIndex].some((index) => index === -1)) {
+  fail("layout.tsx debe importar shell, primitives, chrome y control central v50 canónicos.");
 }
-if (centralIndex < shellIndex) fail("El control central canónico debe cargarse después del shell.");
-if (primitivesIndex < centralIndex) fail("Las primitives canónicas deben cargarse después de navegación/legacy.");
-if (chromeIndex < primitivesIndex) fail("El chrome compartido debe cargarse al final para homologar profesor y alumno.");
+if (!(shellIndex < primitivesIndex && primitivesIndex < chromeIndex && chromeIndex < centralIndex)) {
+  fail("El control central v50 debe ser la última autoridad visual después de shell, primitives y chrome.");
+}
+if (layout.includes('import "./canonical-central-control-v49.css";')) {
+  fail("El runtime ha recuperado el control central legacy v49 y volvería a superponer dos chasis.");
+}
 if (layout.includes("cya-bottom-navigation-v38.css")) fail("El layout ha recuperado el shell legacy v38.");
 
 const forbiddenShellMarkers = ["button.primary","mobile-nav-secondary","formationMain","button:first-child","button:nth-child(2)","Apartados de Mi formación","mobile-class-sheet"];
@@ -53,11 +56,21 @@ const requiredCentralMarkers = [
   "Abrir apartados de Mi formación",
   "url('/cya-logo.png')",
   "clip-path",
+  "border-left",
   "prefers-reduced-motion",
-  "focus-visible",
+  "--cya-dual-w: 146px",
+  ".mobile-nav::before { display: none",
 ];
 const missingCentral = requiredCentralMarkers.filter((marker) => !central.includes(marker));
-if (missingCentral.length > 0) fail(`El control central canónico ha perdido contratos necesarios:\n- ${missingCentral.join("\n- ")}`);
+if (missingCentral.length > 0) fail(`El control central v50 ha perdido contratos necesarios:\n- ${missingCentral.join("\n- ")}`);
+
+const forbiddenCentralMarkers = [
+  "--cya-central-secondary-h",
+  "bottom: 54px",
+  "Two vertically stacked actions",
+];
+const staleCentral = forbiddenCentralMarkers.filter((marker) => central.includes(marker));
+if (staleCentral.length > 0) fail(`El control v50 ha recuperado geometría legacy:\n- ${staleCentral.join("\n- ")}`);
 
 const requiredPrimitiveMarkers = [".card",".field input","var(--cya-surface-interactive)","var(--cya-focus-ring)","-webkit-autofill","prefers-reduced-motion"];
 const missingPrimitives = requiredPrimitiveMarkers.filter((marker) => !primitives.includes(marker));
@@ -78,4 +91,4 @@ if (/background\s*:\s*white\b/i.test(primitives) || /#fff(?:fff)?\b/i.test(primi
   fail("Las primitives canónicas contienen una superficie blanca hardcoded incompatible con Night Motion.");
 }
 
-console.log("[CYA visual contract] OK: shell, control central, primitives y chrome compartido mantienen responsabilidades canónicas.");
+console.log("[CYA visual contract] OK: v50 es la única autoridad del control central y no hay doble chasis legacy.");
