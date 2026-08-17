@@ -26,7 +26,9 @@ export async function loginAs(page: Page, role: QaRole, experience: VisualExperi
   const { email, password } = credentials(role);
   await page.goto("/", { waitUntil: "domcontentloaded" });
   const emailInput = page.locator('input[name="email"]');
-  if (await emailInput.isVisible().catch(() => false)) {
+
+  const loginVisible = await emailInput.waitFor({ state: "visible", timeout: 12_000 }).then(() => true).catch(() => false);
+  if (loginVisible) {
     await emailInput.fill(email);
     await page.locator('input[name="password"]').fill(password);
     await page.getByRole("button", { name: /^Entrar$/ }).click();
@@ -35,7 +37,7 @@ export async function loginAs(page: Page, role: QaRole, experience: VisualExperi
 
   const target = experience === "Profesor" ? "teacher" : experience === "Alumno" ? "student" : "admin";
   const current = page.locator(`[data-cya-account-menu][data-experience="${target}"]:visible`).first();
-  if (!(await current.isVisible().catch(() => false))) {
+  if (!(await current.isVisible({ timeout: 10_000 }).catch(() => false))) {
     const menu = await openAccountMenu(page);
     const switchButton = menu.getByRole("button", { name: new RegExp(`^${experience}(?:,|\\.)`) });
     await expect(switchButton).toBeVisible({ timeout: 10_000 });
