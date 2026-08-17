@@ -220,16 +220,19 @@ export function ClassSummaryDraftUx() {
       const markClosing = () => { closeAttemptAt = Date.now(); };
       closeButton?.addEventListener("click", markClosing);
 
+      const clearDraftAfterSuccessfulRemoval = () => {
+        if (root.isConnected || !closeAttemptAt || Date.now() - closeAttemptAt >= 10_000) return;
+        try { window.localStorage.removeItem(keyFor(classId)); } catch { /* noop */ }
+      };
+
       const removalObserver = new MutationObserver(() => {
         if (root.isConnected) return;
+        clearDraftAfterSuccessfulRemoval();
         removalObserver.disconnect();
         window.clearTimeout(saveTimer);
         student.removeEventListener("input", persist);
         internal.removeEventListener("input", persist);
         closeButton?.removeEventListener("click", markClosing);
-        if (closeAttemptAt && Date.now() - closeAttemptAt < 10_000) {
-          try { window.localStorage.removeItem(keyFor(classId)); } catch { /* noop */ }
-        }
       });
       removalObserver.observe(document.body, { childList: true, subtree: true });
 
@@ -239,6 +242,7 @@ export function ClassSummaryDraftUx() {
         internal,
         classId,
         cleanup: () => {
+          clearDraftAfterSuccessfulRemoval();
           removalObserver.disconnect();
           window.clearTimeout(saveTimer);
           student.removeEventListener("input", persist);
