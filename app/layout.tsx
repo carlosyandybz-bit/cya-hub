@@ -29,7 +29,6 @@ import "./mobile-alignment-fix-v43.css";
 import "./professor-header-v44.css";
 import "./student-portal-touch-target-v45.css";
 import "./student-master-profile-v47.css";
-import "./central-controls-v48.css";
 import "./canonical-central-control-v49.css";
 
 const geistSans = Geist({
