@@ -1,0 +1,111 @@
+name: Pull refresh Playground proof
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'app/pull-to-refresh.tsx'
+      - 'app/pull-to-refresh.css'
+      - 'app/staging-lab/pull-refresh-playground/**'
+      - '.github/workflows/pull-refresh-playground-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CI: 'true'
+      NEXT_PUBLIC_SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install app
+        run: npm ci
+      - name: Install Playwright harness
+        working-directory: qa
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium
+        working-directory: qa
+        run: npx playwright install --with-deps chromium
+      - name: Start playground
+        shell: bash
+        run: |
+          npm run dev > /tmp/pull-refresh-playground.log 2>&1 &
+          for i in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3000/staging-lab/pull-refresh-playground >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/pull-refresh-playground.log
+          exit 1
+      - name: Exercise pull gesture and context preservation
+        working-directory: qa
+        shell: bash
+        run: |
+          node --input-type=module <<'EOF'
+          import { chromium } from '@playwright/test';
+          import fs from 'node:fs';
+
+          const browser = await chromium.launch({headless:true});
+          const context = await browser.newContext({viewport:{width:390,height:844}, isMobile:true, hasTouch:true, deviceScaleFactor:1});
+          const page = await context.newPage();
+          const url = 'http://127.0.0.1:3000/staging-lab/pull-refresh-playground?tab=progress';
+          await page.goto(url, {waitUntil:'networkidle'});
+
+          const indicator = page.getByTestId('cya-pull-refresh');
+          const input = page.getByTestId('context-input');
+          const stamp = page.getByTestId('server-stamp');
+          const beforeStamp = await stamp.textContent();
+          await input.fill('Borrador preservado');
+
+          const client = await context.newCDPSession(page);
+          const pull = async (fromY, toY) => {
+            await client.send('Input.dispatchTouchEvent', {type:'touchStart', touchPoints:[{x:195,y:fromY}]});
+            for (const y of [fromY + 40, fromY + 80, fromY + 120, toY]) {
+              await client.send('Input.dispatchTouchEvent', {type:'touchMove', touchPoints:[{x:195,y}]});
+              await new Promise(r => setTimeout(r, 35));
+            }
+            await client.send('Input.dispatchTouchEvent', {type:'touchEnd', touchPoints:[]});
+          };
+
+          await pull(80, 260);
+          await indicator.waitFor({state:'visible'});
+          await page.waitForFunction(() => document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') === 'success', null, {timeout:5000});
+          const successText = await indicator.textContent();
+          if (!successText?.includes('Actualizado')) throw new Error(`Expected Actualizado, got ${successText}`);
+          await page.waitForFunction((oldStamp) => document.querySelector('[data-testid="server-stamp"]')?.textContent !== oldStamp, beforeStamp, {timeout:5000});
+          if (await input.inputValue() !== 'Borrador preservado') throw new Error('Client context was reset by refresh');
+          if (page.url() !== url) throw new Error(`URL/context changed: ${page.url()}`);
+
+          fs.mkdirSync('test-results-visual', {recursive:true});
+          await page.screenshot({path:'test-results-visual/pull-refresh-success-390x844.png', fullPage:false});
+
+          await page.evaluate(() => window.scrollTo(0, 700));
+          const scrolledStamp = await stamp.textContent();
+          await pull(120, 300);
+          await new Promise(r => setTimeout(r, 450));
+          if (await stamp.textContent() !== scrolledStamp) throw new Error('Refresh triggered while page was scrolled');
+
+          const errors = [];
+          page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+          if (errors.length) throw new Error(`Console errors: ${errors.join(' | ')}`);
+
+          console.log('PULL_REFRESH_PROOF=PASS');
+          console.log(`URL_PRESERVED=${page.url()}`);
+          console.log(`CONTEXT_PRESERVED=${await input.inputValue()}`);
+          await browser.close();
+          EOF
+      - name: Upload visual proof
+        uses: actions/upload-artifact@v5
+        with:
+          name: pull-refresh-proof-${{ github.run_id }}
+          path: qa/test-results-visual/pull-refresh-success-390x844.png
+          if-no-files-found: error
+          retention-days: 7
