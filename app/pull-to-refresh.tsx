@@ -15,9 +15,10 @@ type BeforeRefreshDetail = {
   waitUntil: (promise: Promise<unknown>) => void;
 };
 
-type RefreshDetail = {
+export type CyaRefreshDetail = {
   reason: "pull-to-refresh";
   startedAt: number;
+  waitUntil: (promise: Promise<unknown>) => void;
 };
 
 function isEditable(element: Element | null) {
@@ -92,12 +93,21 @@ export function PullToRefresh() {
 
     try {
       await settlePendingAutosaves();
-      const detail: RefreshDetail = { reason: "pull-to-refresh", startedAt: Date.now() };
-      window.dispatchEvent(new CustomEvent<RefreshDetail>("cya:refresh", { detail }));
+
+      const pendingRefreshes: Promise<unknown>[] = [];
+      const detail: CyaRefreshDetail = {
+        reason: "pull-to-refresh",
+        startedAt: Date.now(),
+        waitUntil(promise) {
+          pendingRefreshes.push(Promise.resolve(promise));
+        },
+      };
+      window.dispatchEvent(new CustomEvent<CyaRefreshDetail>("cya:refresh", { detail }));
       router.refresh();
 
-      // router.refresh has no completion promise. A short two-frame settle keeps the indicator
-      // stable while React merges the refreshed server payload without resetting client context.
+      // Client-side Supabase surfaces register their own reload promises through waitUntil.
+      // The success state is shown only after those promises and the server refresh have settled.
+      await Promise.allSettled(pendingRefreshes);
       await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       setPhase("success");
       setPullDistance(54);
