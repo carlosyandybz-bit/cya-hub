@@ -42,7 +42,6 @@ export function ModalScrollLock() {
       body.style.right = "0";
       body.style.width = "100%";
       body.style.overflow = "hidden";
-      body.style.touchAction = "none";
       root.style.overflow = "hidden";
       root.style.overscrollBehavior = "none";
     };
@@ -60,7 +59,6 @@ export function ModalScrollLock() {
       body.style.right = "";
       body.style.width = "";
       body.style.overflow = "";
-      body.style.touchAction = "";
       root.style.overflow = "";
       root.style.overscrollBehavior = "";
       delete body.dataset.cyaScrollLockY;
