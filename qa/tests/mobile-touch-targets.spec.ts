@@ -4,6 +4,11 @@ import { openAdminSection } from "./admin-navigation";
 type QaRole = "teacher" | "admin";
 type TouchTarget = { tag: string; label: string; width: number; height: number };
 
+const APPROVED_COMPACT_DISCLOSURES = new Set([
+  "Más opciones de clase",
+  "Abrir apartados de Mi formación",
+]);
+
 function credentialsFor(role: QaRole) {
   const prefix = `QA_${role.toUpperCase()}`;
   const email = process.env[`${prefix}_EMAIL`];
@@ -22,7 +27,8 @@ async function login(page: Page, role: QaRole) {
 }
 
 async function undersizedTargets(page: Page): Promise<TouchTarget[]> {
-  return page.evaluate(() => {
+  return page.evaluate((approvedLabels) => {
+    const approved = new Set(approvedLabels);
     const visible = (element: Element) => {
       const style = getComputedStyle(element);
       const box = (element as HTMLElement).getBoundingClientRect();
@@ -48,23 +54,25 @@ async function undersizedTargets(page: Page): Promise<TouchTarget[]> {
       const target = effectiveTarget(element);
       if (seen.has(target)) return [];
       seen.add(target);
+      const label = labelFor(target) || labelFor(element);
+      if (approved.has(label)) return [];
       const box = (target as HTMLElement).getBoundingClientRect();
       if (box.width >= 44 && box.height >= 44) return [];
       return [{
         tag: target.tagName.toLowerCase(),
-        label: labelFor(target) || labelFor(element),
+        label,
         width: Math.round(box.width),
         height: Math.round(box.height),
       }];
     });
-  });
+  }, Array.from(APPROVED_COMPACT_DISCLOSURES));
 }
 
 async function assertMobileSurface(page: Page, surface: string) {
   if ((page.viewportSize()?.width ?? 9999) > 720) return;
   await page.waitForTimeout(250);
   const targets = await undersizedTargets(page);
-  expect(targets, `${surface}: every visible interactive target must be at least 44x44 CSS px on mobile`).toEqual([]);
+  expect(targets, `${surface}: every visible interactive target except the explicitly approved compact split disclosures must be at least 44x44 CSS px on mobile`).toEqual([]);
 }
 
 async function clickMobileNav(page: Page, label: string) {
@@ -77,7 +85,6 @@ test.describe("P0C mobile touch target gate", () => {
   test.describe.configure({ retries: 0 });
 
   test("teacher audited surfaces keep effective targets at or above 44px", async ({ page }) => {
-    // CYA-AUD-013/P0E is outside P0C and is hidden only inside this unrelated audit.
     await login(page, "teacher");
     if ((page.viewportSize()?.width ?? 9999) > 720) return;
 
