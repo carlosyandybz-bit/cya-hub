@@ -16,8 +16,8 @@ async function login(page: Page) {
   await expect(page.locator('input[name="email"]')).toBeHidden({ timeout: 20_000 });
 }
 
-test.describe("v49 canonical central control", () => {
-  test("Dar clase and Más remain centered, stacked and compact on mobile", async ({ page }) => {
+test.describe("canonical CYA split control", () => {
+  test("Dar clase and disclosure form one centered horizontal control on mobile", async ({ page }) => {
     await login(page);
     const viewport = page.viewportSize();
     if (!viewport || viewport.width > 720) return;
@@ -39,29 +39,29 @@ test.describe("v49 canonical central control", () => {
       const b = secondary.getBoundingClientRect();
       const n = nav.getBoundingClientRect();
       return {
-        primary: { left: a.left, right: a.right, top: a.top, bottom: a.bottom, width: a.width, height: a.height, cx: a.left + a.width / 2 },
-        secondary: { left: b.left, right: b.right, top: b.top, bottom: b.bottom, width: b.width, height: b.height, cx: b.left + b.width / 2 },
+        primary: { left: a.left, right: a.right, top: a.top, bottom: a.bottom, width: a.width, height: a.height, cy: a.top + a.height / 2 },
+        secondary: { left: b.left, right: b.right, top: b.top, bottom: b.bottom, width: b.width, height: b.height, cy: b.top + b.height / 2 },
         nav: { left: n.left, right: n.right, width: n.width, cx: n.left + n.width / 2 },
+        groupCx: (a.left + b.right) / 2,
         viewportWidth: window.innerWidth,
       };
     });
 
-    expect(Math.abs(geometry.primary.cx - geometry.secondary.cx)).toBeLessThanOrEqual(1.5);
-    expect(Math.abs(geometry.primary.cx - geometry.nav.cx)).toBeLessThanOrEqual(3);
-    expect(geometry.primary.width).toBeGreaterThanOrEqual(70);
-    expect(geometry.primary.height).toBeGreaterThanOrEqual(60);
-    expect(geometry.secondary.width).toBeGreaterThanOrEqual(58);
-    expect(geometry.secondary.height).toBeGreaterThanOrEqual(44);
-    expect(geometry.secondary.top).toBeLessThan(geometry.primary.top);
+    expect(Math.abs(geometry.primary.cy - geometry.secondary.cy)).toBeLessThanOrEqual(2);
+    expect(Math.abs(geometry.groupCx - geometry.nav.cx)).toBeLessThanOrEqual(6);
+    expect(geometry.primary.width).toBeGreaterThanOrEqual(94);
+    expect(geometry.primary.height).toBeGreaterThanOrEqual(54);
+    expect(geometry.secondary.width).toBeGreaterThanOrEqual(40);
+    expect(geometry.secondary.height).toBeGreaterThanOrEqual(54);
 
-    const overlap = geometry.secondary.bottom - geometry.primary.top;
-    expect(overlap).toBeGreaterThanOrEqual(8);
-    expect(overlap).toBeLessThanOrEqual(20);
+    const seam = geometry.secondary.left - geometry.primary.right;
+    expect(Math.abs(seam)).toBeLessThanOrEqual(8);
 
     expect(geometry.primary.left).toBeGreaterThanOrEqual(0);
-    expect(geometry.primary.right).toBeLessThanOrEqual(geometry.viewportWidth);
-    expect(geometry.secondary.left).toBeGreaterThanOrEqual(0);
     expect(geometry.secondary.right).toBeLessThanOrEqual(geometry.viewportWidth);
+
+    const primaryStyle = await primary.evaluate((el) => getComputedStyle(el));
+    expect(primaryStyle.backgroundImage).toContain("gradient");
 
     await secondary.click();
     await expect(secondary).toHaveAttribute("aria-expanded", "true");
