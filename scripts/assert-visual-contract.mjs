@@ -7,30 +7,37 @@ const root = process.cwd();
 const layoutPath = path.join(root, "app", "layout.tsx");
 const shellPath = path.join(root, "app", "canonical-bottom-navigation-shell.css");
 const centralPath = path.join(root, "app", "canonical-central-control-v49.css");
+const primitivesPath = path.join(root, "app", "canonical-ui-primitives.css");
 
 function fail(message) {
   console.error(`\n[CYA visual contract] ${message}\n`);
   process.exit(1);
 }
 
-for (const required of [layoutPath, shellPath, centralPath]) {
+for (const required of [layoutPath, shellPath, centralPath, primitivesPath]) {
   if (!fs.existsSync(required)) fail(`Falta ${path.relative(root, required)}.`);
 }
 
 const layout = fs.readFileSync(layoutPath, "utf8");
 const shell = fs.readFileSync(shellPath, "utf8");
 const central = fs.readFileSync(centralPath, "utf8");
+const primitives = fs.readFileSync(primitivesPath, "utf8");
 
 const shellImport = 'import "./canonical-bottom-navigation-shell.css";';
 const centralImport = 'import "./canonical-central-control-v49.css";';
+const primitivesImport = 'import "./canonical-ui-primitives.css";';
 const shellIndex = layout.indexOf(shellImport);
 const centralIndex = layout.indexOf(centralImport);
+const primitivesIndex = layout.indexOf(primitivesImport);
 
-if (shellIndex === -1 || centralIndex === -1) {
-  fail("layout.tsx debe importar el shell de navegación y el control central canónico.");
+if (shellIndex === -1 || centralIndex === -1 || primitivesIndex === -1) {
+  fail("layout.tsx debe importar shell, control central y primitives canónicos.");
 }
 if (centralIndex < shellIndex) {
   fail("El control central canónico debe cargarse después del shell para mantener una única autoridad de geometría.");
+}
+if (primitivesIndex < centralIndex) {
+  fail("Las primitives canónicas deben cargarse después de las capas de navegación/legacy para mantener autoridad visual.");
 }
 if (layout.includes("cya-bottom-navigation-v38.css")) {
   fail("El layout ha recuperado el shell legacy v38.");
@@ -60,9 +67,26 @@ const requiredCentralMarkers = [
   "focus-visible",
 ];
 
-const missing = requiredCentralMarkers.filter((marker) => !central.includes(marker));
-if (missing.length > 0) {
-  fail(`El control central canónico ha perdido contratos necesarios:\n- ${missing.join("\n- ")}`);
+const missingCentral = requiredCentralMarkers.filter((marker) => !central.includes(marker));
+if (missingCentral.length > 0) {
+  fail(`El control central canónico ha perdido contratos necesarios:\n- ${missingCentral.join("\n- ")}`);
 }
 
-console.log("[CYA visual contract] OK: shell y control central mantienen responsabilidades separadas.");
+const requiredPrimitiveMarkers = [
+  ".card",
+  ".field input",
+  "var(--cya-surface-interactive)",
+  "var(--cya-focus-ring)",
+  "-webkit-autofill",
+  "prefers-reduced-motion",
+];
+const missingPrimitives = requiredPrimitiveMarkers.filter((marker) => !primitives.includes(marker));
+if (missingPrimitives.length > 0) {
+  fail(`Las primitives canónicas han perdido contratos necesarios:\n- ${missingPrimitives.join("\n- ")}`);
+}
+
+if (/background\s*:\s*white\b/i.test(primitives) || /#fff(?:fff)?\b/i.test(primitives)) {
+  fail("Las primitives canónicas contienen una superficie blanca hardcoded incompatible con Night Motion.");
+}
+
+console.log("[CYA visual contract] OK: navegación, control central y primitives mantienen responsabilidades canónicas.");
