@@ -18,12 +18,6 @@ type SummaryDraft = {
   updatedAt: string;
 };
 
-type BoundSummary = {
-  root: HTMLElement;
-  classId: number;
-  cleanup: () => void;
-};
-
 type PendingClass = {
   id: number;
   scheduled_start_at: string;
@@ -34,6 +28,7 @@ const DRAFT_PREFIX = "cya:class-summary-draft:v1:";
 const MAX_DRAFT_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const STUDENT_PLACEHOLDER = "Resumen, recomendaciones o recordatorio visible";
 const INTERNAL_PLACEHOLDER = "Solo profesores";
+const SUMMARY_SELECTOR = ".class-workflow-page.final-summary";
 
 function currentClassId() {
   const state = window.history.state as CyaHistoryState | null;
@@ -150,27 +145,39 @@ function summaryFields(root: HTMLElement) {
   };
 }
 
+function visibleSummary() {
+  return document.querySelector<HTMLElement>(SUMMARY_SELECTOR);
+}
+
 export function ClassSummaryDraftUx() {
   const [active, setActive] = useState(false);
   const [status, setStatus] = useState("");
 
   useEffect(() => {
-    let bound: BoundSummary | null = null;
-    let resolving = false;
     let disposed = false;
+    let resolving = false;
+    let restoring = false;
+    let activeClassId: number | null = null;
+    let activeRoot: HTMLElement | null = null;
+    let saveTimer = 0;
+    let closeAttemptAt = 0;
+    let closeAttemptClassId: number | null = null;
 
-    const unbind = () => {
-      if (!bound) return;
-      bound.cleanup();
-      bound = null;
+    const clearClosedDraft = () => {
+      if (!closeAttemptAt || !closeAttemptClassId || Date.now() - closeAttemptAt >= 10_000) return;
+      try { window.localStorage.removeItem(keyFor(closeAttemptClassId)); } catch { /* noop */ }
+      closeAttemptAt = 0;
+      closeAttemptClassId = null;
     };
 
-    const bindVisibleSummary = async () => {
-      const root = document.querySelector<HTMLElement>(".class-workflow-page.final-summary");
+    const syncSummary = async () => {
+      const root = visibleSummary();
       const fields = root ? summaryFields(root) : { student: null, internal: null };
 
       if (!root || !fields.student || !fields.internal) {
-        unbind();
+        if (activeRoot && !activeRoot.isConnected) clearClosedDraft();
+        activeRoot = null;
+        activeClassId = null;
         setActive(false);
         setStatus("");
         return;
@@ -184,93 +191,77 @@ export function ClassSummaryDraftUx() {
         resolving = false;
         if (disposed || !root.isConnected) return;
       }
+
       if (!classId) {
         setActive(true);
         setStatus("Preparando guardado automático…");
         return;
       }
 
-      if (bound && bound.root === root && bound.classId === classId) return;
+      if (activeRoot === root && activeClassId === classId) return;
 
-      unbind();
+      activeRoot = root;
+      activeClassId = classId;
       setActive(true);
 
       const restored = readDraft(classId);
       if (restored) {
+        restoring = true;
         setReactTextareaValue(fields.student, restored.studentMessage);
         setReactTextareaValue(fields.internal, restored.internalNote);
+        restoring = false;
         setStatus("Borrador recuperado · se guarda temporalmente en este dispositivo.");
       } else {
         setStatus("Guardado automático temporal en este dispositivo hasta cerrar la clase.");
       }
-
-      let saveTimer = 0;
-      let closeAttemptAt = 0;
-
-      const persist = () => {
-        window.clearTimeout(saveTimer);
-        setStatus("Guardando borrador…");
-        saveTimer = window.setTimeout(() => {
-          if (!root.isConnected) return;
-          const current = summaryFields(root);
-          if (!current.student || !current.internal) return;
-          writeDraft(classId, current.student.value, current.internal.value);
-          setStatus("Borrador guardado automáticamente.");
-        }, 180);
-      };
-
-      const handleInput = (event: Event) => {
-        const target = event.target;
-        if (!(target instanceof HTMLTextAreaElement)) return;
-        if (target.placeholder !== STUDENT_PLACEHOLDER && target.placeholder !== INTERNAL_PLACEHOLDER) return;
-        persist();
-      };
-
-      const handleClick = (event: Event) => {
-        const target = event.target;
-        if (!(target instanceof Element)) return;
-        const button = target.closest("button");
-        if (button && /cerrar y enviar al alumno/i.test(button.textContent || "")) closeAttemptAt = Date.now();
-      };
-
-      root.addEventListener("input", handleInput);
-      root.addEventListener("click", handleClick);
-
-      const clearDraftAfterSuccessfulRemoval = () => {
-        if (root.isConnected || !closeAttemptAt || Date.now() - closeAttemptAt >= 10_000) return;
-        try { window.localStorage.removeItem(keyFor(classId)); } catch { /* noop */ }
-      };
-
-      const removalObserver = new MutationObserver(() => {
-        if (root.isConnected) return;
-        clearDraftAfterSuccessfulRemoval();
-        removalObserver.disconnect();
-        window.clearTimeout(saveTimer);
-        root.removeEventListener("input", handleInput);
-        root.removeEventListener("click", handleClick);
-      });
-      removalObserver.observe(document.body, { childList: true, subtree: true });
-
-      bound = {
-        root,
-        classId,
-        cleanup: () => {
-          clearDraftAfterSuccessfulRemoval();
-          removalObserver.disconnect();
-          window.clearTimeout(saveTimer);
-          root.removeEventListener("input", handleInput);
-          root.removeEventListener("click", handleClick);
-        },
-      };
     };
 
-    void bindVisibleSummary();
-    const observer = new MutationObserver(() => { void bindVisibleSummary(); });
+    const schedulePersist = () => {
+      if (restoring) return;
+      window.clearTimeout(saveTimer);
+      setStatus("Guardando borrador…");
+      saveTimer = window.setTimeout(() => {
+        const root = visibleSummary();
+        if (!root) return;
+        const fields = summaryFields(root);
+        const classId = currentClassId() ?? activeClassId;
+        if (!classId || !fields.student || !fields.internal) return;
+        writeDraft(classId, fields.student.value, fields.internal.value);
+        setStatus("Borrador guardado automáticamente.");
+      }, 180);
+    };
+
+    const handleInputCapture = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLTextAreaElement)) return;
+      if (target.placeholder !== STUDENT_PLACEHOLDER && target.placeholder !== INTERNAL_PLACEHOLDER) return;
+      if (!target.closest(SUMMARY_SELECTOR)) return;
+      schedulePersist();
+    };
+
+    const handleClickCapture = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const button = target.closest("button");
+      if (!button || !/cerrar y enviar al alumno/i.test(button.textContent || "")) return;
+      closeAttemptAt = Date.now();
+      closeAttemptClassId = currentClassId() ?? activeClassId;
+    };
+
+    document.addEventListener("input", handleInputCapture, true);
+    document.addEventListener("click", handleClickCapture, true);
+
+    void syncSummary();
+    const observer = new MutationObserver(() => { void syncSummary(); });
     observer.observe(document.body, { childList: true, subtree: true });
+
     return () => {
       disposed = true;
       observer.disconnect();
-      unbind();
+      window.clearTimeout(saveTimer);
+      document.removeEventListener("input", handleInputCapture, true);
+      document.removeEventListener("click", handleClickCapture, true);
+      if (activeRoot && !activeRoot.isConnected) clearClosedDraft();
     };
   }, []);
 
