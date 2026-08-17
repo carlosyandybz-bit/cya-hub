@@ -1,6 +1,6 @@
 /* UX-01 · Professor mobile header, collision-safe.
-   Loaded after historical alignment layers so this file is the single owner of
-   professor header geometry on mobile. Student Portal is intentionally untouched.
+   Loaded after canonical app chrome so this file is the final owner of professor
+   header geometry and branding on mobile. Student Portal is intentionally untouched.
 
    Canonical variants are inferred from the shell view:
    - root:       home
@@ -28,8 +28,6 @@
     background: rgba(8, 9, 13, .94);
   }
 
-  /* Physical edge rails. They do not participate in the brand layout, so
-     historical grid sizing can no longer pull the visible controls inward. */
   .shell .mobile-head-back,
   .shell .mobile-head-actions {
     position: absolute !important;
@@ -126,9 +124,19 @@
     color: var(--cya-text) !important;
     font-size: 13px !important;
     font-weight: 760 !important;
+    line-height: 1.1 !important;
     letter-spacing: -.025em;
     text-overflow: clip;
     white-space: nowrap;
+  }
+
+  /* canonical-app-chrome uses pseudo-elements for the student-style CYA Hub wordmark.
+     They must not survive in the professor header, whose approved identity is the
+     logo plus the literal owner name Carlos & Andy. */
+  .shell .mobile-owner-name::before,
+  .shell .mobile-owner-name::after {
+    content: none !important;
+    display: none !important;
   }
 
   .shell .mobile-back {
