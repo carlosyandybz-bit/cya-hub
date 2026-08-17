@@ -1,0 +1,102 @@
+/* Canonical app chrome · professor + student
+   Product CSS. Shared header + bottom dock language. Role-specific content stays semantic. */
+
+:root {
+  --cya-chrome-bg: linear-gradient(180deg, rgba(20,22,30,.965), rgba(8,9,13,.992));
+  --cya-chrome-line: rgba(214,188,232,.16);
+  --cya-chrome-highlight: rgba(255,255,255,.055);
+  --cya-chrome-shadow: 0 -16px 40px rgba(0,0,0,.36), inset 0 1px 0 var(--cya-chrome-highlight);
+  --cya-chrome-blur: 22px;
+}
+
+@media (max-width: 900px) {
+  /* Same mobile header material and physical height in both experiences. */
+  .shell .mobile-head,
+  body:has(nav[aria-label="Portal CYA"]) header {
+    min-height: calc(62px + env(safe-area-inset-top)) !important;
+    border-bottom: 1px solid var(--cya-chrome-line) !important;
+    background: linear-gradient(180deg, rgba(17,19,26,.97), rgba(10,11,16,.92)) !important;
+    box-shadow: inset 0 -1px 0 rgba(255,255,255,.025) !important;
+    backdrop-filter: blur(var(--cya-chrome-blur)) saturate(1.08) !important;
+    -webkit-backdrop-filter: blur(var(--cya-chrome-blur)) saturate(1.08) !important;
+  }
+
+  /* Student header adopts the same rails as professor without changing semantics. */
+  body:has(nav[aria-label="Portal CYA"]) header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 40 !important;
+    padding: env(safe-area-inset-top) 10px 0 !important;
+    display: grid !important;
+    grid-template-columns: 90px minmax(0,1fr) 90px !important;
+    align-items: center !important;
+  }
+
+  body:has(nav[aria-label="Portal CYA"]) header > button:first-child {
+    grid-column: 2 !important;
+    justify-self: center !important;
+    min-height: 44px !important;
+    max-width: 170px !important;
+  }
+
+  body:has(nav[aria-label="Portal CYA"]) header > div:last-child {
+    grid-column: 3 !important;
+    justify-self: end !important;
+    min-width: 90px !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 2px !important;
+  }
+
+  /* Shared bottom dock material. */
+  .mobile-nav,
+  nav[aria-label="Portal CYA"] {
+    min-height: calc(72px + env(safe-area-inset-bottom)) !important;
+    padding: 8px 7px max(8px, env(safe-area-inset-bottom)) !important;
+    border: 1px solid var(--cya-chrome-line) !important;
+    border-bottom: 0 !important;
+    border-radius: 24px 24px 0 0 !important;
+    background: var(--cya-chrome-bg) !important;
+    box-shadow: var(--cya-chrome-shadow) !important;
+    backdrop-filter: blur(var(--cya-chrome-blur)) saturate(1.08) !important;
+    -webkit-backdrop-filter: blur(var(--cya-chrome-blur)) saturate(1.08) !important;
+    overflow: visible !important;
+  }
+
+  .mobile-nav > button:not(.primary):not(.mobile-nav-secondary),
+  nav[aria-label="Portal CYA"] > button {
+    border-radius: 14px !important;
+    transition: color var(--cya-motion-fast,120ms) ease, background var(--cya-motion-fast,120ms) ease, transform var(--cya-motion-fast,120ms) ease !important;
+  }
+
+  .mobile-nav > button:not(.primary):not(.mobile-nav-secondary):active,
+  nav[aria-label="Portal CYA"] > button:active {
+    transform: translateY(1px) scale(.97) !important;
+    background: var(--cya-surface-interactive) !important;
+  }
+
+  .mobile-nav > button:focus-visible,
+  nav[aria-label="Portal CYA"] button:focus-visible,
+  body:has(nav[aria-label="Portal CYA"]) header button:focus-visible,
+  .shell .mobile-head button:focus-visible {
+    outline: 3px solid var(--cya-focus-ring) !important;
+    outline-offset: 2px !important;
+  }
+}
+
+@media (max-width: 350px) {
+  .mobile-nav,
+  nav[aria-label="Portal CYA"] {
+    padding-inline: 4px !important;
+    border-radius: 20px 20px 0 0 !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-nav button,
+  nav[aria-label="Portal CYA"] button,
+  body:has(nav[aria-label="Portal CYA"]) header button,
+  .shell .mobile-head button {
+    transition: none !important;
+  }
+}
