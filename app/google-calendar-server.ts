@@ -3,7 +3,8 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_CALENDAR_API = "https://www.googleapis.com/calendar/v3";
 const CALENDAR_SCOPES = [
-  "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/calendar.events.owned",
+  "https://www.googleapis.com/auth/calendar.events.readonly",
   "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
 ];
 
@@ -119,7 +120,7 @@ export function bearerToken(request: Request) {
 }
 
 export function oauthRedirectUri(origin: string) {
-  return process.env.GOOGLE_CALENDAR_REDIRECT_URI?.trim() || `${origin.replace(/\/$/, "")}/api/google-calendar/callback`;
+  return process.env.GOOGLE_CALENDAR_REDIRECT_URI?.trim() || `${origin.replace(/\/$/, "")}/api/integrations/google-calendar/callback`;
 }
 
 export function buildGoogleCalendarAuthUrl(origin: string, state: string) {
