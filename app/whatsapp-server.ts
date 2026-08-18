@@ -4,6 +4,7 @@ const GRAPH_API_ORIGIN = "https://graph.facebook.com";
 
 export type WhatsAppMissingRequirement =
   | "access_token"
+  | "waba_id"
   | "phone_number_id"
   | "graph_api_version"
   | "verify_token"
@@ -35,6 +36,7 @@ function required(name: string) {
 export function whatsappRuntimeDiagnostics() {
   const missingRequirements: WhatsAppMissingRequirement[] = [];
   if (!env("WHATSAPP_ACCESS_TOKEN")) missingRequirements.push("access_token");
+  if (!env("WHATSAPP_WABA_ID")) missingRequirements.push("waba_id");
   if (!env("WHATSAPP_PHONE_NUMBER_ID")) missingRequirements.push("phone_number_id");
   if (!/^v\d+\.\d+$/.test(env("WHATSAPP_GRAPH_API_VERSION"))) missingRequirements.push("graph_api_version");
   if (!env("WHATSAPP_VERIFY_TOKEN")) missingRequirements.push("verify_token");
@@ -47,6 +49,7 @@ export function whatsappRuntimeDiagnostics() {
 
   return {
     provider: "whatsapp_cloud_api" as const,
+    wabaConfigured: !missingRequirements.includes("waba_id"),
     sendConfigured: sendMissing.length === 0,
     webhookConfigured: webhookMissing.length === 0,
     configured: missingRequirements.length === 0,
