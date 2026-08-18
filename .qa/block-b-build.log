@@ -1,0 +1,7 @@
+
+> cya-hub-web@0.2.0 prebuild
+> node scripts/assert-environment-boundary.mjs && node scripts/assert-visual-contract.mjs && node --test tests/staging-integrations-regression.test.mjs
+
+
+[CYA environment boundary] No se puede verificar el entorno. Define NEXT_PUBLIC_SUPABASE_URL con el proyecto staging/production correcto o usa CYA_ALLOW_UNVERIFIED_LOCAL_BUILD=1 únicamente para un build local no CI.
+
