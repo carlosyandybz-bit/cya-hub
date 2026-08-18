@@ -25,6 +25,7 @@ import "./p36-professor-home.css";
 import "./p36-students.css";
 import "./p36-agenda.css";
 import "./calendar-visual-main.css";
+import "./calendar-identity-polish.css";
 import "./p36-live-class.css";
 import "./p36-teaching.css";
 import "./p36-marketing.css";
