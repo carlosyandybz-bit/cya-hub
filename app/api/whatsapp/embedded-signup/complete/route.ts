@@ -23,12 +23,6 @@ type PhoneNumber = {
   quality_rating?: string;
 };
 
-type OAuthTokenResponse = MetaError & {
-  access_token?: string;
-  token_type?: string;
-  expires_in?: number;
-};
-
 type DebugTokenResponse = MetaError & {
   data?: {
     is_valid?: boolean;
@@ -62,32 +56,6 @@ async function metaFetch<T>(url: string, accessToken?: string, init?: RequestIni
 async function graph<T>(path: string, accessToken: string, init?: RequestInit) {
   const version = env("WHATSAPP_GRAPH_API_VERSION") || "v26.0";
   return metaFetch<T>(`${GRAPH_API_ORIGIN}/${version}/${path}`, accessToken, init);
-}
-
-async function exchangeEmbeddedSignupCode(code: string) {
-  const appSecret = env("WHATSAPP_APP_SECRET");
-  if (!appSecret) throw new Error("WHATSAPP_APP_SECRET no está configurado para completar Embedded Signup.");
-  const version = env("WHATSAPP_GRAPH_API_VERSION") || "v26.0";
-
-  // Embedded Signup devuelve un authorization code de Facebook Login for Business.
-  // Se intercambia explícitamente como Authorization Code Grant mediante POST JSON.
-  // No enviamos redirect_uri porque FB.login gestiona internamente el redirect del popup;
-  // forzar uno distinto provoca el subcódigo 36008 de Meta.
-  const payload = await metaFetch<OAuthTokenResponse>(
-    `${GRAPH_API_ORIGIN}/${version}/oauth/access_token`,
-    undefined,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        client_id: META_APP_ID,
-        client_secret: appSecret,
-        code,
-        grant_type: "authorization_code",
-      }),
-    },
-  );
-  if (!payload?.access_token) throw new Error("Meta no devolvió un token al intercambiar el código de Embedded Signup.");
-  return payload.access_token;
 }
 
 async function discoverWabaIds(oauthUserToken: string) {
@@ -126,25 +94,32 @@ export async function POST(request: NextRequest) {
   try {
     await requireStaff(bearerToken(request));
     const body = await request.json().catch(() => ({})) as {
+      accessToken?: string;
       code?: string;
       wabaId?: string;
       phoneNumberId?: string;
       event?: string;
     };
 
-    const code = String(body.code || "").trim();
+    const oauthUserToken = String(body.accessToken || "").trim();
     const hintedWabaId = String(body.wabaId || "").replace(/\D/g, "");
     const hintedPhoneNumberId = String(body.phoneNumberId || "").replace(/\D/g, "");
     const permanentToken = env("WHATSAPP_ACCESS_TOKEN");
     if (!permanentToken) throw new Error("WHATSAPP_ACCESS_TOKEN no está configurado.");
 
-    const oauthUserToken = code ? await exchangeEmbeddedSignupCode(code) : "";
+    // La vía principal ya no intercambia authorization codes. El JavaScript SDK de Meta
+    // entrega un access token de usuario de corta duración y lo usamos directamente para
+    // descubrir los WABA compartidos. Así eliminamos por completo el punto que producía
+    // el error 36008 por discrepancias de redirect_uri.
     const discoveredWabaIds = oauthUserToken ? await discoverWabaIds(oauthUserToken) : [];
     const candidateWabaIds = [...new Set([hintedWabaId, ...discoveredWabaIds].filter(Boolean))];
 
     if (candidateWabaIds.length === 0) {
+      const legacyCode = String(body.code || "").trim();
       return NextResponse.json({
-        error: "Meta autorizó Facebook Login, pero no compartió ninguna cuenta de WhatsApp Business con este ajuste. Revisa que el flujo de coexistencia llegue a seleccionar el número de WhatsApp Business.",
+        error: legacyCode
+          ? "Meta devolvió un código OAuth pero no un access token utilizable. CYA ya no intercambia ese código para evitar el error de redirect_uri; vuelve a iniciar la coexistencia después del nuevo despliegue."
+          : "Meta terminó el diálogo, pero no devolvió ningún WABA compartido ni access token utilizable.",
       }, { status: 409, headers: { "cache-control": "no-store" } });
     }
 
@@ -178,8 +153,6 @@ export async function POST(request: NextRequest) {
     if (!selectedWabaId) selectedWabaId = candidateWabaIds[0];
     if (!selected && fallbackPhones[0]) selected = fallbackPhones[0];
 
-    // La suscripción puede realizarse con el token de usuario devuelto por Embedded Signup.
-    // Así no dependemos de que el system user permanente ya esté asignado al WABA nuevo.
     await graph<{ success?: boolean }>(
       `${encodeURIComponent(selectedWabaId)}/subscribed_apps`,
       lookupToken,
@@ -198,7 +171,8 @@ export async function POST(request: NextRequest) {
       qualityRating: selected?.quality_rating || null,
       currentConfiguredPhoneNumberId: currentPhoneNumberId || null,
       needsPhoneNumberEnvUpdate: Boolean(selected?.id && currentPhoneNumberId && selected.id !== currentPhoneNumberId),
-      usedOAuthCode: Boolean(code),
+      usedAccessToken: Boolean(oauthUserToken),
+      usedOAuthCode: false,
     }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     return NextResponse.json({
