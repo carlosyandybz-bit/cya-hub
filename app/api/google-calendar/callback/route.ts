@@ -75,6 +75,6 @@ export async function GET(request: NextRequest) {
       headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
     });
   }
-  response.cookies.set(COOKIE_NAME, "", { httpOnly: true, sameSite: "lax", path: "/api/google-calendar", maxAge: 0 });
+  response.cookies.set(COOKIE_NAME, "", { httpOnly: true, sameSite: "lax", path: "/api", maxAge: 0 });
   return response;
 }
