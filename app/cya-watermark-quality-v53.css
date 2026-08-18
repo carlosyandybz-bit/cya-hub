@@ -1,6 +1,6 @@
 /* CYA Hub v53 · watermark rendering precision.
    Keeps v52 module identity while avoiding Safari mask resampling during transform animation.
-   Home already owns its original background/card signatures, so v52 additions are suppressed there. */
+   Home keeps its original background signature while restoring the approved embedded focus-card mark. */
 
 /* Keep the mask geometry static. Only opacity breathes; no scale/translation re-rasterization. */
 body[data-cya-module]::before {
@@ -56,14 +56,17 @@ body[data-cya-module]::before {
   to { opacity:.072; }
 }
 
-/* Inicio already has its own approved CYA signatures. Do not layer a second v52 watermark. */
+/* Inicio already has its own approved large background signature.
+   Suppress only the extra global v52 background layer to avoid duplication.
+   Keep the embedded focus-card logo: that is the approved premium mark. */
 body[data-cya-module="home"]::before {
   content:none !important;
   display:none !important;
   animation:none !important;
 }
 
-body[data-cya-module="home"] :where(.focus,.home-grid > .card:first-child)::after {
+/* Do not suppress .focus::after on Home. The focus-card signature is intentional. */
+body[data-cya-module="home"] .home-grid > .card:first-child::after {
   content:none !important;
   display:none !important;
   animation:none !important;
