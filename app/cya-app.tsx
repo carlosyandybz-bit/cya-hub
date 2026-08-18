@@ -1171,13 +1171,32 @@ function TeachingRelationEditor({ content, contents, relations, close, saved, no
     return true;
   });
   const ownRelations = relations.filter((relation) => relation.source_content_id === content.id || relation.target_content_id === content.id);
+  const directPrerequisiteIds = new Set(relations.filter((relation) => relation.relation_type === "prerequisite" && relation.source_content_id === content.id).map((relation) => relation.target_content_id));
+  const inheritedPrerequisiteIds = (() => {
+    const visited = new Set<number>();
+    const queue = [...directPrerequisiteIds];
+    while (queue.length) {
+      const current = queue.shift()!;
+      relations.filter((relation) => relation.relation_type === "prerequisite" && relation.source_content_id === current).forEach((relation) => {
+        if (!visited.has(relation.target_content_id) && !directPrerequisiteIds.has(relation.target_content_id)) { visited.add(relation.target_content_id); queue.push(relation.target_content_id); }
+      });
+    }
+    return visited;
+  })();
+  const derivedPrerequisites = [...inheritedPrerequisiteIds].map((id) => contents.find((item) => item.id === id)).filter((item): item is TeachingContent => Boolean(item));
   const sequenceItems = content.content_type === "sequence" ? relations.filter((relation) => relation.source_content_id === content.id && relation.relation_type === "sequence_item").sort((a,b)=>(a.position??999999)-(b.position??999999)||a.id-b.id) : [];
   const effectiveTargetId = targetOptions.some((target) => target.id === targetId) ? targetId : (targetOptions[0]?.id ?? 0);
   async function add() {
-    if (!db || !effectiveTargetId) return; setBusy(true); setError("");
+    if (!db || !effectiveTargetId) return;
+    if (relationType === "prerequisite" && inheritedPrerequisiteIds.has(effectiveTargetId)) {
+      const inherited = contents.find((item) => item.id === effectiveTargetId);
+      notify(`${inherited?.title ?? "Este contenido"} ya está aprendido por derivación. No se añade una relación redundante.`);
+      return;
+    }
+    setBusy(true); setError("");
     const nextPosition = relationType === "sequence_item" ? Math.max(0,...sequenceItems.map((item) => item.position ?? 0)) + 10 : null;
     const result = await db.rpc("save_teaching_relation", { p_source_content_id: content.id, p_target_content_id: effectiveTargetId, p_relation_type: relationType, p_position: nextPosition });
-    if (result.error) setError(result.error.message); else { await saved(); notify("Relación guardada."); }
+    if (result.error) setError(result.error.message); else { await saved(); notify(relationType === "prerequisite" ? "Prerrequisito guardado. Las dependencias anteriores se resolverán por derivación." : "Relación guardada."); }
     setBusy(false);
   }
   async function remove(id: number) {
@@ -1194,7 +1213,7 @@ function TeachingRelationEditor({ content, contents, relations, close, saved, no
   return <div className="backdrop" onMouseDown={(event) => event.target === event.currentTarget && close()}><section className="modal" role="dialog" aria-modal="true">
     <header className="modal-head"><div><p className="eyebrow">Relaciones</p><h2>{content.title}</h2></div><button className="icon-btn" onClick={close} aria-label="Cerrar"><X /></button></header>
     <div className="modal-body"><div className="relation-builder"><label className="field"><span>Relación</span><select value={relationType} onChange={(event) => setRelationType(event.target.value)}>{relationChoices.map((value) => <option key={value} value={value}>{relationLabels[value]}</option>)}</select></label><label className="field"><span>Contenido</span><select value={effectiveTargetId} onChange={(event) => setTargetId(Number(event.target.value))}>{targetOptions.length ? targetOptions.map((target) => <option key={target.id} value={target.id}>{teachingKindLabels[target.content_type]} · {target.title}</option>) : <option value="0">No hay contenido compatible</option>}</select></label><button className="btn" onClick={add} disabled={!effectiveTargetId || busy}><Link2 size={17} /> Relacionar</button></div>
-      {error ? <p className="error">{error}</p> : null}{content.content_type === "sequence" && sequenceItems.length ? <div className="sequence-order"><div><strong>Orden de la secuencia</strong><span>Usa los controles para ordenar los pasos.</span></div>{sequenceItems.map((relation,index) => { const step=contents.find((item)=>item.id===relation.target_content_id); return <div className="sequence-order-row" key={`order-${relation.id}`}><span>{index+1}</span><strong>{step?.title ?? "Contenido archivado"}</strong><div><button className="icon-btn" disabled={busy||index===0} onClick={() => void moveSequenceItem(index,-1)} aria-label={`Subir ${step?.title ?? "paso"}`}>↑</button><button className="icon-btn" disabled={busy||index===sequenceItems.length-1} onClick={() => void moveSequenceItem(index,1)} aria-label={`Bajar ${step?.title ?? "paso"}`}>↓</button></div></div>; })}</div> : null}<div className="relation-list">{ownRelations.length ? ownRelations.map((relation) => { const otherId = relation.source_content_id === content.id ? relation.target_content_id : relation.source_content_id, other = contents.find((item) => item.id === otherId); return <div key={relation.id}><div><span>{relationLabels[relation.relation_type] ?? relation.relation_type}</span><strong>{other?.title ?? "Contenido archivado"}</strong></div><button className="icon-btn" onClick={() => remove(relation.id)} disabled={busy} aria-label="Quitar relación"><X /></button></div>; }) : <div className="compact-empty"><Link2 /><span>Aún no tiene relaciones.</span></div>}</div>
+      {error ? <p className="error">{error}</p> : null}{content.content_type === "sequence" && sequenceItems.length ? <div className="sequence-order"><div><strong>Orden de la secuencia</strong><span>Usa los controles para ordenar los pasos.</span></div>{sequenceItems.map((relation,index) => { const step=contents.find((item)=>item.id===relation.target_content_id); return <div className="sequence-order-row" key={`order-${relation.id}`}><span>{index+1}</span><strong>{step?.title ?? "Contenido archivado"}</strong><div><button className="icon-btn" disabled={busy||index===0} onClick={() => void moveSequenceItem(index,-1)} aria-label={`Subir ${step?.title ?? "paso"}`}>↑</button><button className="icon-btn" disabled={busy||index===sequenceItems.length-1} onClick={() => void moveSequenceItem(index,1)} aria-label={`Bajar ${step?.title ?? "paso"}`}>↓</button></div></div>; })}</div> : null}{derivedPrerequisites.length ? <div className="relation-derived-list"><strong>Aprendido por derivación</strong>{derivedPrerequisites.map((item) => <div className="relation-derived-item" key={`derived-${item.id}`}><span>No necesita relación directa</span><b>{item.title}</b></div>)}</div> : null}<div className="relation-list">{ownRelations.length ? ownRelations.map((relation) => { const otherId = relation.source_content_id === content.id ? relation.target_content_id : relation.source_content_id, other = contents.find((item) => item.id === otherId); return <div key={relation.id}><div><span>{relationLabels[relation.relation_type] ?? relation.relation_type}</span><strong>{other?.title ?? "Contenido archivado"}</strong></div><button className="icon-btn" onClick={() => remove(relation.id)} disabled={busy} aria-label="Quitar relación"><X /></button></div>; }) : derivedPrerequisites.length ? null : <div className="compact-empty"><Link2 /><span>Aún no tiene relaciones.</span></div>}</div>
     </div>
   </section></div>;
 }
