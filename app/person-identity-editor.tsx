@@ -2,7 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { FormEvent, useEffect, useState } from "react";
-import { CheckCircle2, GitMerge, Instagram, Plus, Search, X } from "lucide-react";
+import { CheckCircle2, GitMerge, Plus, Search, X } from "lucide-react";
 import { CountrySelect } from "./country-field";
 import { RuntimeForm } from "./runtime-form";
 
@@ -112,7 +112,7 @@ function InstagramIdentityField({ client, personId, saved }: { client: SupabaseC
     <label className="field field-wide">
       <span>Instagram</span>
       <div style={{display:"flex", gap:8, alignItems:"center"}}>
-        <Instagram size={18} aria-hidden="true" />
+        <span aria-hidden="true" style={{fontWeight:850,fontSize:18,lineHeight:1}}>@</span>
         <input
           value={value}
           onChange={(event) => { setValue(event.target.value); setMessage(""); setError(""); }}
