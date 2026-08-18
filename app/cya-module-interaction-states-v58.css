@@ -21,23 +21,28 @@ body[data-cya-module] :where(
     opacity 160ms ease;
 }
 
-body[data-cya-module] :where(
-  .btn:not(.destructive):not(.danger),
-  .quick,
-  .icon-btn,
-  [role="tab"],
-  [class*="discoverCard"],
-  [class*="formationAccess"] > button,
-  [class*="formationSheet"] > button,
-  [class*="student-row-actions"] button,
-  [class*="sectionHeading"] > button
-):hover:not(:disabled) {
-  border-color: color-mix(in srgb,var(--cya-module-accent) 40%,var(--cya-line)) !important;
-  background-color: color-mix(in srgb,var(--cya-module-accent) 9%,var(--cya-surface-elevated)) !important;
-  color: var(--cya-accent-strong) !important;
-  box-shadow: 0 7px 22px color-mix(in srgb,var(--cya-module-accent) 12%,transparent);
+/* Hover feedback exists only on devices that actually support hover.
+   This prevents iPhone/Safari from retaining a pseudo-hover after a tap. */
+@media (hover:hover) and (pointer:fine) {
+  body[data-cya-module] :where(
+    .btn:not(.destructive):not(.danger),
+    .quick,
+    .icon-btn,
+    [role="tab"],
+    [class*="discoverCard"],
+    [class*="formationAccess"] > button,
+    [class*="formationSheet"] > button,
+    [class*="student-row-actions"] button,
+    [class*="sectionHeading"] > button
+  ):hover:not(:disabled) {
+    border-color: color-mix(in srgb,var(--cya-module-accent) 40%,var(--cya-line)) !important;
+    background-color: color-mix(in srgb,var(--cya-module-accent) 9%,var(--cya-surface-elevated)) !important;
+    color: var(--cya-accent-strong) !important;
+    box-shadow: 0 7px 22px color-mix(in srgb,var(--cya-module-accent) 12%,transparent);
+  }
 }
 
+/* Press feedback remains available to mouse, pen and touch. */
 body[data-cya-module] :where(
   .btn:not(.destructive):not(.danger),
   .quick,
@@ -77,24 +82,11 @@ body[data-cya-module] :where(button:disabled,[aria-disabled="true"],input:disabl
   box-shadow: none !important;
 }
 
-@media (hover:none) {
-  body[data-cya-module] :where(
-    .btn:not(.destructive):not(.danger),
-    .quick,
-    .icon-btn,
-    [role="tab"],
-    [class*="discoverCard"],
-    [class*="formationAccess"] > button,
-    [class*="formationSheet"] > button
-  ):hover:not(:disabled) {
-    box-shadow: none;
-  }
-}
-
 @media (prefers-reduced-motion:reduce) {
   body[data-cya-module] :where(
     .btn,.quick,.icon-btn,[role="tab"],[class*="discoverCard"],
-    [class*="formationAccess"] > button,[class*="formationSheet"] > button
+    [class*="formationAccess"] > button,[class*="formationSheet"] > button,
+    [class*="student-row-actions"] button,[class*="sectionHeading"] > button
   ) {
     transition: none !important;
   }
