@@ -22,13 +22,29 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
-      - name: Mark successful check
+      - name: Build and capture diagnostics
+        id: build
+        continue-on-error: true
+        shell: bash
         run: |
           mkdir -p .qa
-          printf 'Block B build passed at %s\n' "$GITHUB_SHA" > .qa/block-b-build-pass.txt
+          set +e
+          npm run build > .qa/block-b-build.log 2>&1
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -eq 0 ]; then
+            printf 'PASS\n' > .qa/block-b-build-status.txt
+          else
+            printf 'FAIL\n' > .qa/block-b-build-status.txt
+          fi
+          exit 0
+      - name: Commit diagnostics
+        run: |
           git config user.name 'CYA Staging QA'
           git config user.email 'actions@users.noreply.github.com'
-          git add .qa/block-b-build-pass.txt
-          git commit -m 'test(staging): Block B build PASS' || exit 0
+          git add .qa/block-b-build.log .qa/block-b-build-status.txt
+          git commit -m 'test(staging): Block B build diagnostic' || exit 0
           git push origin HEAD:staging
+      - name: Fail when build failed
+        if: steps.build.outputs.exit_code != '0'
+        run: exit 1
