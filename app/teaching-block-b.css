@@ -1,0 +1,130 @@
+/* CYA Hub · Block B · pedagogical map clarity */
+
+.teaching-graph-shell .flow-node{
+  width:260px;
+  min-height:126px;
+  align-content:start;
+  gap:6px;
+  padding:15px 17px 14px;
+  border:1px solid color-mix(in srgb,var(--cya-line-strong) 78%,transparent);
+  border-top:0;
+  color:var(--cya-text);
+  box-shadow:0 12px 30px rgba(0,0,0,.16);
+  transition:border-color .18s ease,box-shadow .18s ease,filter .18s ease;
+}
+.teaching-graph-shell .flow-node.kind-explanation{
+  border-radius:18px;
+  background:linear-gradient(145deg,rgba(28,101,91,.36),rgba(12,31,31,.96) 62%);
+  border-color:rgba(85,205,184,.34);
+}
+.teaching-graph-shell .flow-node.kind-correction{
+  border-radius:18px 18px 18px 7px;
+  background:linear-gradient(145deg,rgba(120,53,68,.36),rgba(34,18,24,.97) 62%);
+  border-color:rgba(228,111,133,.32);
+}
+.teaching-graph-shell .flow-node.kind-exercise{
+  border-radius:9px 20px 9px 20px;
+  background:linear-gradient(145deg,rgba(35,111,73,.34),rgba(14,35,26,.97) 62%);
+  border-color:rgba(91,205,139,.30);
+}
+.teaching-graph-shell .flow-node.kind-sequence{
+  border-radius:24px 10px 24px 10px;
+  background:linear-gradient(145deg,rgba(75,76,132,.38),rgba(20,22,43,.97) 62%);
+  border-color:rgba(128,139,231,.32);
+}
+.teaching-graph-shell .flow-node>span{font-size:10px;letter-spacing:.095em;color:rgba(255,255,255,.72)}
+.teaching-graph-shell .flow-node>strong{
+  overflow:visible;
+  text-overflow:clip;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  font-size:13px;
+  line-height:1.28;
+  color:#fff;
+}
+.teaching-graph-shell .flow-node-summary{
+  display:-webkit-box;
+  margin:0;
+  overflow:hidden;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  color:rgba(255,255,255,.68);
+  font-size:10.5px;
+  line-height:1.35;
+  font-style:italic;
+}
+.teaching-graph-shell .flow-node>small{color:rgba(255,255,255,.52);font-size:10px;line-height:1.3}
+.teaching-graph-shell .flow-node-flags{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+.teaching-graph-shell .flow-node-flags i,
+.teaching-graph-shell .flow-node-flags b{
+  width:max-content;
+  padding:3px 7px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  color:rgba(255,255,255,.75);
+  font-size:9.5px;
+  font-style:normal;
+  font-weight:760;
+}
+.teaching-graph-shell .flow-node-flags b{background:rgba(255,198,73,.18);color:#ffd77a;border:1px solid rgba(255,206,91,.30)}
+.teaching-graph-shell .flow-node.mandatory{
+  border:2px solid rgba(255,203,78,.92);
+  box-shadow:0 0 0 3px rgba(255,193,55,.11),0 13px 34px rgba(0,0,0,.20),0 0 24px rgba(255,190,45,.13);
+}
+.teaching-graph-shell .flow-node.mandatory::after{
+  content:"";
+  position:absolute;
+  inset:-5px;
+  border:1px solid rgba(255,210,99,.17);
+  border-radius:inherit;
+  pointer-events:none;
+}
+.teaching-graph-shell .flow-node.selected{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.12),0 15px 38px rgba(0,0,0,.24)}
+.teaching-graph-shell .flow-node .react-flow__handle{width:9px;height:9px;border:2px solid #10141a;background:rgba(255,255,255,.86)}
+
+.teaching-graph-shell .flow-edge .react-flow__edge-path{stroke:rgba(157,168,182,.60);stroke-width:1.8}
+.teaching-graph-shell .flow-edge.mandatory-edge .react-flow__edge-path{
+  stroke:#e8b84d;
+  stroke-width:3.1;
+  filter:drop-shadow(0 0 3px rgba(232,184,77,.25));
+}
+.teaching-graph-shell .flow-edge.route-edge .react-flow__edge-path{stroke-width:2.5}
+.teaching-graph-shell .flow-edge.route-edge.mandatory-edge .react-flow__edge-path{stroke-width:3.8}
+.teaching-graph-shell .react-flow__edge-text{font-size:9.5px;fill:rgba(235,238,242,.72)}
+.teaching-graph-shell .react-flow__edge-textbg{fill:#11151b;fill-opacity:.92}
+
+.teaching-graph-shell .graph-actions .graph-reorganize{
+  border-color:color-mix(in srgb,var(--cya-module-accent) 58%,var(--cya-line));
+  background:linear-gradient(180deg,color-mix(in srgb,var(--cya-module-accent) 24%,#15191f),#11151a);
+  color:#fff;
+  font-weight:800;
+}
+.teaching-graph-shell .graph-actions .graph-reorganize svg{color:var(--cya-module-accent)}
+.teaching-graph-shell .graph-mandatory-badge{
+  display:inline-flex;
+  width:max-content;
+  margin:0 0 8px;
+  padding:5px 9px;
+  border:1px solid rgba(232,184,77,.34);
+  border-radius:999px;
+  background:rgba(232,184,77,.11);
+  color:#e8c56d;
+  font-size:10px;
+  font-weight:800;
+}
+.teaching-graph-shell .graph-summary{margin:3px 0 9px!important;color:var(--cya-text-secondary)!important;font-size:12px!important;line-height:1.45!important;font-style:italic}
+
+.teaching-summary-field textarea{min-height:74px}
+.teaching-mandatory-toggle{display:flex!important;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;padding:11px 12px;border:1px solid color-mix(in srgb,#e8b84d 32%,var(--cya-line));border-radius:13px;background:rgba(232,184,77,.055)}
+.teaching-mandatory-toggle>input{width:20px!important;height:20px!important;min-height:0!important;margin:0;accent-color:#d5a843}
+.teaching-mandatory-toggle>span{display:grid;gap:2px}.teaching-mandatory-toggle strong{color:var(--cya-text);font-size:12px}.teaching-mandatory-toggle small{color:var(--cya-text-muted);font-size:10.5px;line-height:1.35}
+
+@media(max-width:760px){
+  .teaching-graph-shell .flow-node{width:235px;min-height:118px;padding:13px 14px}
+  .teaching-graph-shell .flow-node>strong{font-size:12.5px}
+  .teaching-graph-shell .flow-node-summary{-webkit-line-clamp:3}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .teaching-graph-shell .flow-node{transition:none}
+}
