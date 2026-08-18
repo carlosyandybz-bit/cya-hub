@@ -1,0 +1,101 @@
+/* CYA Hub v58 · interaction state parity.
+   Geometry stays untouched. Only hover/pressed/focus/selected/disabled feedback is unified. */
+
+body[data-cya-module] :where(
+  .btn:not(.destructive):not(.danger),
+  .quick,
+  .icon-btn,
+  [role="tab"],
+  [class*="discoverCard"],
+  [class*="formationAccess"] > button,
+  [class*="formationSheet"] > button,
+  [class*="student-row-actions"] button,
+  [class*="sectionHeading"] > button
+) {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease,
+    opacity 160ms ease;
+}
+
+body[data-cya-module] :where(
+  .btn:not(.destructive):not(.danger),
+  .quick,
+  .icon-btn,
+  [role="tab"],
+  [class*="discoverCard"],
+  [class*="formationAccess"] > button,
+  [class*="formationSheet"] > button,
+  [class*="student-row-actions"] button,
+  [class*="sectionHeading"] > button
+):hover:not(:disabled) {
+  border-color: color-mix(in srgb,var(--cya-module-accent) 40%,var(--cya-line)) !important;
+  background-color: color-mix(in srgb,var(--cya-module-accent) 9%,var(--cya-surface-elevated)) !important;
+  color: var(--cya-accent-strong) !important;
+  box-shadow: 0 7px 22px color-mix(in srgb,var(--cya-module-accent) 12%,transparent);
+}
+
+body[data-cya-module] :where(
+  .btn:not(.destructive):not(.danger),
+  .quick,
+  .icon-btn,
+  [role="tab"],
+  [class*="discoverCard"],
+  [class*="formationAccess"] > button,
+  [class*="formationSheet"] > button,
+  [class*="student-row-actions"] button,
+  [class*="sectionHeading"] > button
+):active:not(:disabled) {
+  border-color: color-mix(in srgb,var(--cya-module-accent) 58%,var(--cya-line)) !important;
+  background-color: color-mix(in srgb,var(--cya-module-accent) 15%,var(--cya-surface-elevated)) !important;
+  box-shadow: 0 3px 12px color-mix(in srgb,var(--cya-module-accent) 10%,transparent);
+  filter: brightness(.98);
+}
+
+body[data-cya-module] :where(
+  [role="tab"][aria-selected="true"],
+  nav button.active,
+  nav [aria-current="page"],
+  nav [aria-selected="true"]
+) {
+  color: var(--cya-module-accent) !important;
+}
+
+body[data-cya-module] :where(button,a,[role="button"],[role="tab"],input,select,textarea):focus-visible {
+  outline: 2px solid var(--cya-module-accent) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb,var(--cya-module-accent) 20%,transparent) !important;
+}
+
+body[data-cya-module] :where(button:disabled,[aria-disabled="true"],input:disabled,select:disabled,textarea:disabled) {
+  opacity: .48 !important;
+  filter: saturate(.55) !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+@media (hover:none) {
+  body[data-cya-module] :where(
+    .btn:not(.destructive):not(.danger),
+    .quick,
+    .icon-btn,
+    [role="tab"],
+    [class*="discoverCard"],
+    [class*="formationAccess"] > button,
+    [class*="formationSheet"] > button
+  ):hover:not(:disabled) {
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  body[data-cya-module] :where(
+    .btn,.quick,.icon-btn,[role="tab"],[class*="discoverCard"],
+    [class*="formationAccess"] > button,[class*="formationSheet"] > button
+  ) {
+    transition: none !important;
+  }
+}
