@@ -1,6 +1,6 @@
 {
   "status": "FAIL",
-  "tested_commit": "a23abaf45ea840985d5cecbf39fcc67677041c42",
+  "tested_commit": "523e8b378f0782b9356a5acb84149eee8b9d894c",
   "build": "success",
   "playground": "success",
   "playwright": "failure",
