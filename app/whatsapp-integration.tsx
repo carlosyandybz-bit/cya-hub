@@ -128,7 +128,7 @@ export function WhatsAppIntegration({ client, notify }: Props) {
     }
   }, [notify, sessionToken]);
 
-  const completeEmbeddedSignup = useCallback(async (result: EmbeddedSignupResult) => {
+  const completeEmbeddedSignup = useCallback(async (input: { code?: string; result?: EmbeddedSignupResult | null }) => {
     const token = await sessionToken();
     const response = await fetch("/api/whatsapp/embedded-signup/complete", {
       method: "POST",
@@ -137,9 +137,10 @@ export function WhatsAppIntegration({ client, notify }: Props) {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        wabaId: result.wabaId,
-        phoneNumberId: result.phoneNumberId || null,
-        event: "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING",
+        code: input.code || null,
+        wabaId: input.result?.wabaId || null,
+        phoneNumberId: input.result?.phoneNumberId || null,
+        event: input.result ? "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" : "OAUTH_CALLBACK",
       }),
       cache: "no-store",
     });
@@ -170,32 +171,20 @@ export function WhatsAppIntegration({ client, notify }: Props) {
     setOnboarding(true);
 
     window.FB.login((response) => {
+      const code = response?.authResponse?.code?.trim() || "";
       const result = signupResultRef.current;
-      if (!response?.authResponse?.code && !result) {
+      if (!code && !result) {
         setOnboarding(false);
         notify("El registro de WhatsApp se canceló o no llegó a completarse.");
         return;
       }
-      // Para esta instalación CYA mantiene el system-user token permanente del servidor.
-      // El código temporal de Embedded Signup no se almacena ni se expone.
-      if (result) {
-        void completeEmbeddedSignup(result)
-          .catch((error) => notify(error instanceof Error ? error.message : "No se pudo completar la coexistencia de WhatsApp."))
-          .finally(() => setOnboarding(false));
-      } else {
-        // Meta puede entregar primero el callback OAuth y después el evento de sesión.
-        window.setTimeout(() => {
-          const delayed = signupResultRef.current;
-          if (!delayed) {
-            setOnboarding(false);
-            notify("Meta autorizó el acceso, pero todavía no devolvió la cuenta de WhatsApp. Vuelve a abrir el registro insertado.");
-            return;
-          }
-          void completeEmbeddedSignup(delayed)
-            .catch((error) => notify(error instanceof Error ? error.message : "No se pudo completar la coexistencia de WhatsApp."))
-            .finally(() => setOnboarding(false));
-        }, 1200);
-      }
+
+      // El código OAuth de un solo uso se manda inmediatamente al servidor. El backend
+      // lo intercambia de forma segura y puede descubrir el WABA aunque Safari entregue
+      // el evento WA_EMBEDDED_SIGNUP después (o no lo exponga al cerrar el popup).
+      void completeEmbeddedSignup({ code, result })
+        .catch((error) => notify(error instanceof Error ? error.message : "No se pudo completar la coexistencia de WhatsApp."))
+        .finally(() => setOnboarding(false));
     }, {
       config_id: WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID,
       response_type: "code",
@@ -203,7 +192,7 @@ export function WhatsAppIntegration({ client, notify }: Props) {
       extras: {
         setup: {},
         featureType: "whatsapp_business_app_onboarding",
-        sessionInfoVersion: "3",
+        version: "v3",
       },
     });
   }, [completeEmbeddedSignup, embeddedSignupReady, notify]);
