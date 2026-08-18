@@ -453,6 +453,15 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
   }, [client]);
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
+  useEffect(() => {
+    const onPullRefresh = (event: Event) => {
+      const promise = load();
+      const detail = (event as CustomEvent<{ waitUntil?: (promise: Promise<unknown>) => void }>).detail;
+      detail?.waitUntil?.(promise);
+    };
+    window.addEventListener("cya:refresh", onPullRefresh);
+    return () => window.removeEventListener("cya:refresh", onPullRefresh);
+  }, [load]);
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 3500); return () => clearTimeout(timer); }, [toast]);
 
   const upcoming = useMemo(() => (snapshot?.classes ?? []).filter((item) => item.status !== "finished" && item.status !== "cancelled").sort((a, b) => new Date(a.scheduled_start_at).getTime() - new Date(b.scheduled_start_at).getTime()), [snapshot?.classes]);
