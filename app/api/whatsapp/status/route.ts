@@ -20,7 +20,14 @@ export async function GET(request: NextRequest) {
       ...diagnostics,
       missingLabels: diagnostics.missingRequirements.map((item) => labels[item]),
       webhookPath: "/api/integrations/whatsapp/webhook",
-      supports: ["server_text_send", "webhook_verification", "signed_webhooks", "manual_fallback"],
+      supports: [
+        "server_text_send",
+        "webhook_verification",
+        "signed_webhooks",
+        "embedded_signup",
+        "business_app_coexistence",
+        "manual_fallback",
+      ],
     }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     return NextResponse.json({
