@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: origin.startsWith("https://"),
       sameSite: "lax",
-      path: "/api/google-calendar",
+      path: "/api",
       maxAge: 600,
     });
     return response;
