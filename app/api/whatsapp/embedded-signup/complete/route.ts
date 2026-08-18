@@ -5,7 +5,6 @@ export const dynamic = "force-dynamic";
 
 const GRAPH_API_ORIGIN = "https://graph.facebook.com";
 const META_APP_ID = "1585899772877530";
-const FACEBOOK_JSSDK_REDIRECT_URI = "https://app.carlosyandy.com/";
 
 function env(name: string) {
   return process.env[name]?.trim() ?? "";
@@ -69,11 +68,16 @@ async function exchangeEmbeddedSignupCode(code: string) {
   const appSecret = env("WHATSAPP_APP_SECRET");
   if (!appSecret) throw new Error("WHATSAPP_APP_SECRET no está configurado para completar Embedded Signup.");
   const version = env("WHATSAPP_GRAPH_API_VERSION") || "v26.0";
+
+  // Facebook Login for Business + Embedded Signup genera el authorization code desde
+  // FB.login(). En este flujo Meta gestiona internamente el redirect del popup. Reenviar
+  // una redirect_uri inventada o forzada durante el intercambio provoca el error
+  // "redirect_uri is identical to the one you used in the OAuth dialog request".
+  // El intercambio del code se hace únicamente con app id, app secret y code.
   const query = new URLSearchParams({
     client_id: META_APP_ID,
     client_secret: appSecret,
     code,
-    redirect_uri: FACEBOOK_JSSDK_REDIRECT_URI,
   });
   const payload = await metaFetch<OAuthTokenResponse>(
     `${GRAPH_API_ORIGIN}/${version}/oauth/access_token?${query.toString()}`,
@@ -130,9 +134,6 @@ export async function POST(request: NextRequest) {
     const permanentToken = env("WHATSAPP_ACCESS_TOKEN");
     if (!permanentToken) throw new Error("WHATSAPP_ACCESS_TOKEN no está configurado.");
 
-    // Embedded Signup fuerza un redirect estable bajo el dominio público de CYA.
-    // El intercambio servidor repite exactamente esa misma URI para evitar que Meta
-    // rechace el verification code por una discrepancia de redirect_uri.
     const oauthUserToken = code ? await exchangeEmbeddedSignupCode(code) : "";
     const discoveredWabaIds = oauthUserToken ? await discoverWabaIds(oauthUserToken) : [];
     const candidateWabaIds = [...new Set([hintedWabaId, ...discoveredWabaIds].filter(Boolean))];
