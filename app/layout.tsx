@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ModalScrollLock } from "./modal-scroll-lock";
 import { PullToRefresh } from "./pull-to-refresh";
+import { CyaModuleTheme } from "./cya-module-theme";
 import "./globals.css";
 import "./visual-audit-v21.css";
 import "./visual-density-v22.css";
@@ -35,6 +36,7 @@ import "./canonical-app-chrome.css";
 import "./professor-header-v44.css";
 import "./cya-design-system-v51.css";
 import "./dual-action-central-control-v50.css";
+import "./cya-module-identity-v52.css";
 import "./pull-to-refresh.css";
 
 const geistSans = Geist({
@@ -88,6 +90,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <CyaModuleTheme />
         <ModalScrollLock />
         <PullToRefresh />
         {children}
