@@ -96,8 +96,6 @@ begin
     end if;
   end if;
 
-  -- Fresh registrations may contain automatic points and self-declared dance context.
-  -- Any other business/history attached to the duplicate still stops the automatic merge.
   for v_fk in
     select tc.table_schema, tc.table_name, kcu.column_name
     from information_schema.table_constraints tc
@@ -105,7 +103,7 @@ begin
     join information_schema.constraint_column_usage ccu on ccu.constraint_schema=tc.constraint_schema and ccu.constraint_name=tc.constraint_name
     where tc.constraint_type='FOREIGN KEY'
       and ccu.table_schema='public' and ccu.table_name='people' and ccu.column_name='id'
-      and not (tc.table_schema='public' and tc.table_name in ('student_profiles','bz_point_ledger'))
+      and not (tc.table_schema='public' and tc.table_name in ('student_profiles','bz_point_ledger','form_submissions'))
   loop
     execute format('select exists(select 1 from %I.%I where %I=$1)',v_fk.table_schema,v_fk.table_name,v_fk.column_name)
       into v_has_rows using p_source_person_id;
@@ -116,7 +114,6 @@ begin
 
   select * into v_source_profile from public.student_profiles where person_id=p_source_person_id;
 
-  -- Release unique registered identifiers before assigning them to the historical profile.
   update public.people
   set auth_user_id=null,email=null,phone=null,updated_at=now()
   where id=p_source_person_id;
@@ -126,12 +123,15 @@ begin
     v_display := initcap(lower(v_display));
   end if;
 
-  -- Registered non-empty personal data wins. Historical values only fill missing registered fields.
   update public.people
   set auth_user_id=v_source.auth_user_id,
       first_name=coalesce(nullif(btrim(v_source.first_name),''),v_target.first_name),
       last_name=coalesce(nullif(btrim(v_source.last_name),''),v_target.last_name),
-      display_name=coalesce(v_display,nullif(btrim(v_source.first_name||' '||coalesce(v_source.last_name,''))),v_target.display_name),
+      display_name=coalesce(
+        v_display,
+        nullif(btrim(concat_ws(' ',v_source.first_name,v_source.last_name)),''),
+        v_target.display_name
+      ),
       email=coalesce(nullif(btrim(v_source.email),''),v_target.email),
       phone=coalesce(nullif(btrim(v_source.phone),''),v_target.phone),
       country_code=coalesce(nullif(btrim(v_source.country_code),''),v_target.country_code),
@@ -158,12 +158,14 @@ begin
         referred_by=coalesce(nullif(btrim(v_source_profile.referred_by),''),t.referred_by),
         dance_start_label=coalesce(nullif(btrim(v_source_profile.dance_start_label),''),t.dance_start_label),
         dance_end_label=coalesce(nullif(btrim(v_source_profile.dance_end_label),''),t.dance_end_label),
-        -- teacher_notes and historical aggregates intentionally stay from the historical profile.
         updated_at=now()
     where t.person_id=p_target_person_id;
   end if;
 
-  -- The registered profile's dance level is self-reported. It never overwrites evaluations.
+  update public.form_submissions
+  set person_id=p_target_person_id,updated_at=now()
+  where person_id=p_source_person_id;
+
   insert into public.student_dance_profiles(person_id,style_term_id,role_term_id,level_term_id,self_reported_level_term_id,is_primary,active)
   select p_target_person_id,d.style_term_id,d.role_term_id,d.level_term_id,
          coalesce(d.self_reported_level_term_id,d.level_term_id),d.is_primary,d.active
