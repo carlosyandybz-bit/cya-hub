@@ -29,6 +29,15 @@ export function StatisticsExplorer({client,leave,notify}:{client:SupabaseClient;
     setValues(Object.fromEntries(results));setLoading(false);
   },[client,days]);
   useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[load]);
+  useEffect(() => {
+    const onPullRefresh = (event: Event) => {
+      const promise = load();
+      const detail = (event as CustomEvent<{ waitUntil?: (promise: Promise<unknown>) => void }>).detail;
+      detail?.waitUntil?.(promise);
+    };
+    window.addEventListener("cya:refresh", onPullRefresh);
+    return () => window.removeEventListener("cya:refresh", onPullRefresh);
+  }, [load]);
   const blocks=[...new Set(statisticCatalog.map((metric)=>metric.block))];
 
   return <section className={styles.workspace}>

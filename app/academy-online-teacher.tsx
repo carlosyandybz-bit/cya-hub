@@ -134,6 +134,15 @@ export function AcademyOnlineTeacherView({ client, identity, notify }: {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+  useEffect(() => {
+    const onPullRefresh = (event: Event) => {
+      const promise = load();
+      const detail = (event as CustomEvent<{ waitUntil?: (promise: Promise<unknown>) => void }>).detail;
+      detail?.waitUntil?.(promise);
+    };
+    window.addEventListener("cya:refresh", onPullRefresh);
+    return () => window.removeEventListener("cya:refresh", onPullRefresh);
+  }, [load]);
 
   const selected = programs.find((program) => program.id === selectedProgramId) ?? null;
   const linked = programContents.filter((item) => item.program_id === selectedProgramId).sort((a, b) => a.position - b.position || a.id - b.id);

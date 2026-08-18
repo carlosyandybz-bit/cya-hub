@@ -28,6 +28,7 @@ export type TeachingCardMeta = { label: string; value: string };
 type Props = {
   kindLabel: string;
   title: string;
+  summary?: string | null;
   subtitle?: string | null;
   statusLabel?: string | null;
   statusTone?: "default" | "success" | "warning";
@@ -51,7 +52,7 @@ function canonicalMetadataValue(item: TeachingCardMeta) {
 }
 
 export function TeachingContentCard({
-  kindLabel,title,subtitle,statusLabel,statusTone="default",description,correctionGuidance,
+  kindLabel,title,summary,subtitle,statusLabel,statusTone="default",description,correctionGuidance,
   media=[],metadata=[],tags=[],actions,quickControls,detailControls,kindTone,children,className="",defaultOpen=false,
   emptyText="No hay información adicional guardada todavía.",
 }: Props) {
@@ -66,7 +67,7 @@ export function TeachingContentCard({
     resources.forEach((item)=>{const label=item.group_label?.trim() || "Recursos"; grouped.set(label,[...(grouped.get(label)??[]),item]);});
     return [...grouped.entries()];
   },[resources]);
-  const hasDetails=Boolean(description || correctionGuidance || media.length || metadata.length || tags.length || detailControls || children);
+  const hasDetails=Boolean(summary || description || correctionGuidance || media.length || metadata.length || tags.length || detailControls || children);
 
   useEffect(()=>{
     if(!open)return;
@@ -92,6 +93,7 @@ export function TeachingContentCard({
         <span className={styles.compactInfo}>
           <span className={styles.topline}><span className={styles.kind}>{kindLabel}</span>{statusLabel?<span className={`${styles.status} ${statusTone==="success"?styles.success:statusTone==="warning"?styles.warning:""}`}>{statusLabel}</span>:null}</span>
           <strong>{title}</strong>
+          {summary?<em className={styles.summary}>{summary}</em>:null}
           {subtitle?<small>{subtitle}</small>:null}
           {quickControls?<span className={styles.quickControls}>{quickControls}</span>:null}
         </span>
@@ -103,14 +105,15 @@ export function TeachingContentCard({
     {open ? <div className={styles.detailBackdrop} onMouseDown={(event)=>event.target===event.currentTarget&&setOpen(false)}>
       <section className={styles.detailModal} role="dialog" aria-modal="true" aria-label={`${kindLabel}: ${title}`}>
         <header className={styles.detailHeader}>
-          <div><span className={styles.detailKind}>{kindLabel}</span><h2>{title}</h2>{subtitle && !metadata.length?<p>{subtitle}</p>:null}</div>
+          <div><span className={styles.detailKind}>{kindLabel}</span><h2>{title}</h2>{summary?<p className={styles.detailSummary}>{summary}</p>:null}{subtitle && !metadata.length?<p>{subtitle}</p>:null}</div>
           <div className={styles.detailHeaderActions}>{statusLabel?<span className={`${styles.status} ${statusTone==="success"?styles.success:statusTone==="warning"?styles.warning:""}`}>{statusLabel}</span>:null}<button type="button" className={styles.closeButton} onClick={()=>setOpen(false)} aria-label="Cerrar contenido"><X/></button></div>
         </header>
         <div className={styles.detailBody}>
           {detailControls ? <section className={styles.detailControls}>{detailControls}</section> : null}
           {primaryDetailMedia ? <div className={styles.detailHeroMedia}><SecureDriveAsset fileId={primaryDetailMedia.external_file_id} mediaType={primaryDetailMedia.media_type} title={primaryDetailMedia.title||title} thumbnailFileId={primaryDetailMedia.thumbnail_external_file_id} controls={primaryDetailMedia.media_type==="video"} className={styles.detailHeroAsset}/></div>:null}
           {metadata.length?<div className={styles.metaGrid}>{metadata.map((item)=>{const value=canonicalMetadataValue(item);return <div key={`${item.label}-${value}`}><span>{item.label}</span><strong>{value}</strong></div>;})}</div>:null}
-          {description?<div className={styles.textBlock}><span>Explicación</span><p>{description}</p></div>:null}
+          {summary?<div className={`${styles.textBlock} ${styles.summaryBlock}`}><span>Resumen</span><p>{summary}</p></div>:null}
+          {description?<div className={styles.textBlock}><span>{kindTone==="correction"?"Detalle":"Explicación"}</span><p>{description}</p></div>:null}
           {correctionGuidance?<div className={styles.textBlock}><span>Cómo se corrige</span><p>{correctionGuidance}</p></div>:null}
           {tags.length?<div className={styles.tagBlock}><span>Etiquetas</span><div>{tags.map((tag)=><b key={tag}>{tag}</b>)}</div></div>:null}
           {children}
