@@ -40,6 +40,11 @@ function parseOAuthCallback(raw: unknown) {
   return record;
 }
 
+function isInstalledWebApp() {
+  const iosStandalone = Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+  return iosStandalone || window.matchMedia("(display-mode: standalone)").matches;
+}
+
 export function WhatsAppIntegration({ client, notify }: Props) {
   const [status, setStatus] = useState<WhatsAppStatus | null>(null);
   const [checking, setChecking] = useState(false);
@@ -119,9 +124,13 @@ export function WhatsAppIntegration({ client, notify }: Props) {
       return;
     }
 
-    // Abrimos la ventana inmediatamente durante el gesto del usuario para evitar que
-    // Safari/Chrome la consideren un popup asíncrono y la bloqueen.
-    const popup = window.open("about:blank", "cya-whatsapp-meta", "popup=yes,width=560,height=760,resizable=yes,scrollbars=yes");
+    // En la PWA de iPhone mantenemos todo en la misma ventana para conservar la misma
+    // sesión y almacenamiento. En navegador normal abrimos una ventana separada para que
+    // CYA permanezca visible mientras Meta completa OAuth.
+    const useSameWindow = isInstalledWebApp();
+    const popup = useSameWindow
+      ? null
+      : window.open("about:blank", "cya-whatsapp-meta", "popup=yes,width=560,height=760,resizable=yes,scrollbars=yes");
     setOnboarding(true);
 
     try {
@@ -140,8 +149,6 @@ export function WhatsAppIntegration({ client, notify }: Props) {
         popup.location.replace(payload.authUrl);
         popup.focus();
       } else {
-        // Si iOS decide abrir el flujo en la misma pestaña, el callback global de CYA
-        // puede terminar igualmente la autorización al volver al dominio.
         window.location.assign(payload.authUrl);
       }
     } catch (error) {
