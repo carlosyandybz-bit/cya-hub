@@ -266,9 +266,12 @@ export default function AppEntryRouter() {
         });
         if (!cancelled) setWhatsAppOAuthMessage(`${message} Vuelve a CYA Hub para intentarlo de nuevo.`);
       } finally {
-        window.history.replaceState({}, "", `${window.location.origin}${window.location.pathname}`);
+        const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+        window.history.replaceState({}, "", cleanUrl);
         if (window.opener && !window.opener.closed) {
           window.setTimeout(() => window.close(), 700);
+        } else {
+          window.setTimeout(() => window.location.replace(cleanUrl), 1800);
         }
       }
     };
