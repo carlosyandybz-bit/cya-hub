@@ -3,6 +3,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import CyaApp from "./cya-app";
+import { RegistrationProfileGate, type RegistrationProfileStatus } from "./registration-profile-gate";
 import { StudentPortalPrf } from "./student-portal-prf";
 import { getRuntimeSupabaseClient, setRuntimeSupabaseClient } from "./supabase-runtime";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
@@ -93,8 +94,15 @@ type ActiveStudentState = {
   experience: ExperienceContext;
 };
 
+type RegistrationGateState = {
+  client: SupabaseClient;
+  email: string;
+  status: RegistrationProfileStatus;
+};
+
 export default function AppEntryRouter() {
   const [studentState, setStudentState] = useState<ActiveStudentState | null>(null);
+  const [registrationGate, setRegistrationGate] = useState<RegistrationGateState | null>(null);
   const [staffExperience, setStaffExperience] = useState<Exclude<ExperienceContext, "student"> | null>(null);
   const [checking, setChecking] = useState(true);
   const aliveRef = useRef(true);
@@ -105,7 +113,7 @@ export default function AppEntryRouter() {
       const sessionResult = await client.auth.getSession();
       const session = sessionResult.data.session;
       if (!session) {
-        if (aliveRef.current) { setStudentState(null); setStaffExperience(null); setChecking(false); }
+        if (aliveRef.current) { setStudentState(null); setRegistrationGate(null); setStaffExperience(null); setChecking(false); }
         return;
       }
       const [identityResult, preferenceResult] = await Promise.all([
@@ -114,9 +122,31 @@ export default function AppEntryRouter() {
       ]);
       if (identityResult.error || !identityResult.data) throw new Error(identityResult.error?.message || "No se ha podido leer tu perfil.");
       const identity = identityResult.data as IdentityContext;
+      const studentOnly = identity.can_study && !identity.can_teach && !identity.can_admin;
+      let incompleteProfile: RegistrationProfileStatus | null = null;
+
+      if (studentOnly) {
+        const profileResult = await client.rpc("registration_profile_status");
+        if (!profileResult.error && profileResult.data) {
+          const profileStatus = profileResult.data as RegistrationProfileStatus;
+          if (profileStatus.complete === false) incompleteProfile = profileStatus;
+        }
+      }
+
+      if (incompleteProfile) {
+        if (aliveRef.current) {
+          setStudentState(null);
+          setStaffExperience(null);
+          setRegistrationGate({ client, email: session.user.email ?? "", status: incompleteProfile });
+          setChecking(false);
+        }
+        return;
+      }
+
       const experience = preferredExperience(identity, preferenceResult.data?.preferred_context ?? null);
       if (typeof window !== "undefined") window.localStorage.setItem("cya:experience", experience);
       if (aliveRef.current) {
+        setRegistrationGate(null);
         if (experience === "student" && identity.can_study) {
           setStaffExperience(null);
           setStudentState({ client, identity, email: session.user.email ?? "", experience });
@@ -127,7 +157,7 @@ export default function AppEntryRouter() {
         setChecking(false);
       }
     } catch {
-      if (aliveRef.current) { setStudentState(null); setStaffExperience(null); setChecking(false); }
+      if (aliveRef.current) { setStudentState(null); setRegistrationGate(null); setStaffExperience(null); setChecking(false); }
     }
   }, []);
 
@@ -158,7 +188,7 @@ export default function AppEntryRouter() {
     window.localStorage.setItem("cya:experience", value);
     if (value === "student") {
       setStaffExperience(null);
-      setStudentState((current) => current ? { ...current, identity, experience: value } : current);
+      setStudentState((current) => current ? { ...current, identity: { ...current.identity, ...identity }, experience: value } : current);
     } else {
       setStudentState(null);
       setStaffExperience(value);
@@ -170,6 +200,12 @@ export default function AppEntryRouter() {
   }
 
   if (checking) return <div className={styles.loading} role="status"><strong>CYA</strong><span>Preparando tu espacio…</span></div>;
+  if (registrationGate) return <RegistrationProfileGate
+    client={registrationGate.client}
+    status={registrationGate.status}
+    email={registrationGate.email}
+    completed={inspect}
+  />;
   if (studentState) return <StudentPortalPrf
     client={studentState.client}
     identity={studentState.identity}
