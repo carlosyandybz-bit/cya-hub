@@ -68,7 +68,17 @@ export type CalendarItem = {
   ends_at: string;
   status: string;
   external_event_id?: string | null;
-  metadata?: { html_link?: string | null; location?: string | null; all_day?: boolean };
+  external_calendar_id?: string | null;
+  metadata?: {
+    html_link?: string | null;
+    location?: string | null;
+    all_day?: boolean;
+    external_calendar_id?: string | null;
+    calendar_name?: string | null;
+    calendar_color?: string | null;
+    calendar_foreground?: string | null;
+    google_color_id?: string | null;
+  };
 };
 
 export type CalendarSnapshot = {
