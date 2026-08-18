@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const META_APP_ID = "1585899772877530";
 const WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID = "886780604243575";
 const META_SDK_VERSION = "v26.0";
+const META_ALLOWED_ORIGIN = "https://app.carlosyandy.com";
 
 type WhatsAppStatus = {
   configured: boolean;
@@ -45,6 +46,17 @@ declare global {
     FB?: FacebookSdk;
     fbAsyncInit?: () => void;
   }
+}
+
+function initializeFacebookSdk() {
+  if (!window.FB) return false;
+  window.FB.init({
+    appId: META_APP_ID,
+    cookie: true,
+    xfbml: false,
+    version: META_SDK_VERSION,
+  });
+  return true;
 }
 
 function parseEmbeddedSignupMessage(raw: unknown): EmbeddedSignupResult | null {
@@ -163,10 +175,19 @@ export function WhatsAppIntegration({ client, notify }: Props) {
   }, [check, notify, sessionToken]);
 
   const launchEmbeddedSignup = useCallback(() => {
-    if (!window.FB || !embeddedSignupReady) {
+    const currentOrigin = window.location.origin.replace(/\/$/, "");
+    if (currentOrigin !== META_ALLOWED_ORIGIN) {
+      notify(`CYA está abierto desde ${currentOrigin}. Para activar coexistencia abre ${META_ALLOWED_ORIGIN}.`);
+      return;
+    }
+
+    // El SDK puede quedar cargado en la página por otra integración. Re-inicializarlo aquí
+    // garantiza que FB.login use siempre la app de Meta de CYA y no un contexto anterior.
+    if (!initializeFacebookSdk() || !embeddedSignupReady || !window.FB) {
       notify("Meta todavía está cargando el registro insertado. Espera unos segundos y vuelve a intentarlo.");
       return;
     }
+
     signupResultRef.current = null;
     setOnboarding(true);
 
@@ -208,22 +229,23 @@ export function WhatsAppIntegration({ client, notify }: Props) {
   }, []);
 
   useEffect(() => {
-    if (window.FB) {
-      setEmbeddedSignupReady(true);
-      return;
-    }
-    const existing = document.getElementById("facebook-jssdk");
-    window.fbAsyncInit = () => {
-      window.FB?.init({
-        appId: META_APP_ID,
-        cookie: true,
-        xfbml: false,
-        version: META_SDK_VERSION,
-      });
-      setEmbeddedSignupReady(Boolean(window.FB));
+    let pollTimer: number | null = null;
+    let loadTarget: HTMLElement | null = null;
+    const initialize = () => {
+      const ready = initializeFacebookSdk();
+      if (ready) setEmbeddedSignupReady(true);
+      return ready;
     };
-    if (!existing) {
-      const script = document.createElement("script");
+
+    if (initialize()) return;
+
+    window.fbAsyncInit = () => {
+      initialize();
+    };
+
+    let script = document.getElementById("facebook-jssdk") as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement("script");
       script.id = "facebook-jssdk";
       script.async = true;
       script.defer = true;
@@ -231,6 +253,26 @@ export function WhatsAppIntegration({ client, notify }: Props) {
       script.src = "https://connect.facebook.net/es_ES/sdk.js";
       document.body.appendChild(script);
     }
+
+    const onLoad = () => initialize();
+    loadTarget = script;
+    loadTarget.addEventListener("load", onLoad);
+
+    // Si otro componente insertó el script antes de montar esta tarjeta, el evento load
+    // puede haberse consumido ya. Este sondeo corto cubre ese caso sin dejar timers vivos.
+    let attempts = 0;
+    pollTimer = window.setInterval(() => {
+      attempts += 1;
+      if (initialize() || attempts >= 40) {
+        if (pollTimer !== null) window.clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    }, 100);
+
+    return () => {
+      if (pollTimer !== null) window.clearInterval(pollTimer);
+      loadTarget?.removeEventListener("load", onLoad);
+    };
   }, []);
 
   useEffect(() => {
