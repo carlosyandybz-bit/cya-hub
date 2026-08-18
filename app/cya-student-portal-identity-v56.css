@@ -29,10 +29,8 @@ body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"])::befor
   animation: cya-student-ambient-v56 10.5s ease-in-out infinite alternate;
 }
 
-/* Keep the original positioning contracts from the student portal CSS.
-   Only main needs a positioning context to stay above the ambient mark.
-   Header remains sticky, bottom navigation remains fixed and the formation sheet
-   remains fixed; never coerce them to relative here. */
+/* Keep the portal content above the ambient mark without overriding the
+   positioning contracts owned by the portal CSS module. */
 body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) > main {
   position: relative;
   z-index: 1;
@@ -59,6 +57,18 @@ body[data-cya-module="student-missions"] [class*="missionList"] > article:first-
   overflow: hidden;
 }
 
+/* Content stays above the embedded artwork while the artwork itself remains above
+   the card background. This avoids Safari placing a z-index:-1 pseudo behind the
+   element's own painted background. */
+body[data-cya-module="student-home"] section[aria-labelledby="portal-now-title"] [class*="nowItem"]:first-of-type > *,
+body[data-cya-module="student-progress"] [class*="focusList"] > article:first-of-type > *,
+body[data-cya-module="student-formation"] [class*="formationAccess"] > button:first-of-type > *,
+body[data-cya-module="student-discover"] [class*="discoverGrid"] > [class*="discoverCard"]:first-of-type > *,
+body[data-cya-module="student-missions"] [class*="missionList"] > article:first-of-type > * {
+  position: relative;
+  z-index: 1;
+}
+
 body[data-cya-module="student-home"] section[aria-labelledby="portal-now-title"] [class*="nowItem"]:first-of-type::after,
 body[data-cya-module="student-progress"] [class*="focusList"] > article:first-of-type::after,
 body[data-cya-module="student-formation"] [class*="formationAccess"] > button:first-of-type::after,
@@ -66,7 +76,7 @@ body[data-cya-module="student-discover"] [class*="discoverGrid"] > [class*="disc
 body[data-cya-module="student-missions"] [class*="missionList"] > article:first-of-type::after {
   content: "";
   position: absolute;
-  z-index: -1;
+  z-index: 0;
   right: clamp(-64px, -7vw, -24px);
   bottom: clamp(-62px, -7vw, -26px);
   width: clamp(180px, 52vw, 270px);
@@ -83,7 +93,8 @@ body[data-cya-module="student-missions"] [class*="missionList"] > article:first-
   animation: cya-student-surface-v56 9.2s ease-in-out infinite alternate;
 }
 
-/* Menus must float above the navigation but remain inside the usable viewport. */
+/* Menus must float above the navigation but remain inside the usable viewport.
+   They may never cover the sticky header or sit under the bottom navigation. */
 body[data-cya-module^="student-"] [role="menu"][aria-label="Apartados de Mi formación"] {
   position: fixed !important;
   z-index: 70 !important;
