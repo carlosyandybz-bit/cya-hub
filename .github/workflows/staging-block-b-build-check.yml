@@ -1,0 +1,34 @@
+name: Staging Block B build check
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - '.github/workflows/staging-block-b-build-check.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Mark successful check
+        run: |
+          mkdir -p .qa
+          printf 'Block B build passed at %s\n' "$GITHUB_SHA" > .qa/block-b-build-pass.txt
+          git config user.name 'CYA Staging QA'
+          git config user.email 'actions@users.noreply.github.com'
+          git add .qa/block-b-build-pass.txt
+          git commit -m 'test(staging): Block B build PASS' || exit 0
+          git push origin HEAD:staging
