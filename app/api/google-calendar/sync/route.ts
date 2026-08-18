@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { bearerToken, calendarServerConfigured, type CalendarConnectionRow, requireStaff, supabaseRequest } from "../../../google-calendar-server";
 import { syncGoogleCalendar } from "../../../google-calendar-sync-server";
+import { syncSecondaryGoogleCalendars } from "../../../google-calendar-secondary-sync-server";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,8 @@ export async function POST(request: NextRequest) {
     if (!lockToken) return NextResponse.json({ error: "Ya hay una sincronización en curso. No se iniciará otra." }, { status: 409 });
 
     const metrics = await syncGoogleCalendar(accessToken, connection, lockToken);
-    return NextResponse.json({ ok: true, metrics }, { headers: { "cache-control": "no-store" } });
+    const secondary = await syncSecondaryGoogleCalendars(accessToken, connection);
+    return NextResponse.json({ ok: true, metrics: { ...metrics, secondary } }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "No se pudo sincronizar Google Calendar.";
     if (accessToken && connection && lockToken) {
