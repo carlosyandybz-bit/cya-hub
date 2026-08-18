@@ -1,5 +1,5 @@
 /* CYA Hub v59 · targeted staging polish.
-   Fixes touch hover residue, normalises Administration header, and removes the stylised Alumnado title. */
+   Fixes hover contrast, normalises Administration header, and removes the stylised Alumnado title. */
 
 /* Alumnado list: use a conventional page title instead of the editorial phrase.
    Scope is limited to the list header immediately followed by its search field. */
@@ -71,18 +71,23 @@ body[data-cya-module="admin"] .admin-page-head > .btn {
   }
 }
 
-/* Real mouse/trackpad hover: subtle feedback without repainting primary controls
-   or changing their foreground to the module accent. */
+/* Real mouse/trackpad hover. Primary controls keep their coloured surface so
+   white labels can never become white-on-white. Secondary controls use dark
+   elevated surfaces with accent-coloured foreground. */
 @media (hover:hover) and (pointer:fine) {
   body[data-cya-module] .btn:not(.ghost):not(.destructive):not(.danger):hover:not(:disabled) {
-    color:white !important;
+    border-color:color-mix(in srgb,var(--cya-module-accent) 68%,transparent) !important;
+    background:linear-gradient(180deg,color-mix(in srgb,var(--cya-module-accent) 96%,white 4%),var(--cya-module-deep)) !important;
+    color:var(--cya-on-accent,white) !important;
+    box-shadow:0 10px 26px color-mix(in srgb,var(--cya-module-accent) 24%,transparent) !important;
     filter:brightness(1.055) saturate(1.03);
     transform:translateY(-1px);
   }
 
   body[data-cya-module] :where(.btn.ghost,.quick,.icon-btn,[role="tab"],[class*="formationAccess"] > button,[class*="formationSheet"] > button,[class*="student-row-actions"] button,[class*="sectionHeading"] > button):hover:not(:disabled) {
     border-color:color-mix(in srgb,var(--cya-module-accent) 32%,var(--cya-line)) !important;
-    background-color:color-mix(in srgb,var(--cya-module-accent) 6%,var(--cya-surface-elevated)) !important;
+    background:color-mix(in srgb,var(--cya-module-accent) 6%,var(--cya-surface-elevated)) !important;
+    color:var(--cya-accent-strong) !important;
     box-shadow:0 5px 16px color-mix(in srgb,var(--cya-module-accent) 8%,transparent) !important;
   }
 }
