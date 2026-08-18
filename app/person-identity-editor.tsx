@@ -73,7 +73,7 @@ function IdentityMergePanel({ client, person, saved, close }: { client: Supabase
     if (!matchEmail.trim() && !matchPhone.trim()) return setError("Escribe el teléfono o email de la ficha que ya existía.");
     setBusy(true); setError(""); setCandidate(null);
     try {
-      const result = await client.rpc("find_person_merge_candidate", {
+      const result = await client.rpc("admin_find_person_merge_candidate", {
         p_source_person_id: person.id,
         p_email: matchEmail.trim() || null,
         p_phone: matchPhone.trim() || null,
@@ -93,7 +93,7 @@ function IdentityMergePanel({ client, person, saved, close }: { client: Supabase
     if (!candidate) return;
     setBusy(true); setError("");
     try {
-      const result = await client.rpc("merge_fresh_registered_person", {
+      const result = await client.rpc("admin_merge_fresh_registered_person", {
         p_source_person_id: person.id,
         p_target_person_id: candidate.person_id,
         p_match_email: matchEmail.trim() || null,
