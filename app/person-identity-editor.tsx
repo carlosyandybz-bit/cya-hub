@@ -59,14 +59,12 @@ export function StudentIdentityEditor({ client, person, profile, close, saved }:
           onSaved={async () => { await saved(); close(); }}
         />
 
-        {person.auth_user_id ? <>
-          <div className="actions">
-            <button type="button" className="btn ghost" onClick={() => setMergeOpen((value) => !value)}>
-              <GitMerge size={17}/> Fusionar
-            </button>
-          </div>
-          {mergeOpen ? <SimpleIdentityMerge client={client} person={person} saved={saved} close={close} /> : null}
-        </> : null}
+        <div className="actions">
+          <button type="button" className="btn ghost" onClick={() => setMergeOpen((value) => !value)}>
+            <GitMerge size={17}/> Fusionar
+          </button>
+        </div>
+        {mergeOpen ? <SimpleIdentityMerge client={client} person={person} saved={saved} close={close} /> : null}
       </div>
     </section>
   </div>;
@@ -101,13 +99,14 @@ function SimpleIdentityMerge({ client, person, saved, close }: { client: Supabas
   async function accept(candidate: MergeCandidate) {
     setMergingId(candidate.person_id); setError("");
     try {
-      const result = await client.rpc("admin_merge_selected_person", {
-        p_source_person_id: person.id,
-        p_target_person_id: candidate.person_id,
+      const result = await client.rpc("admin_merge_people_auto", {
+        p_person_a_id: person.id,
+        p_person_b_id: candidate.person_id,
       });
       if (result.error) throw result.error;
+      const canonicalId = Number(result.data) || candidate.person_id;
       await saved().catch(() => undefined);
-      window.dispatchEvent(new CustomEvent("cya:person-merged", { detail: { personId: candidate.person_id } }));
+      window.dispatchEvent(new CustomEvent("cya:person-merged", { detail: { personId: canonicalId } }));
       close();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudieron fusionar las fichas.");
@@ -119,7 +118,7 @@ function SimpleIdentityMerge({ client, person, saved, close }: { client: Supabas
   return <section className="form" aria-label="Fusionar ficha">
     <div>
       <h3>Fusionar ficha</h3>
-      <p className="modal-intro">Busca la ficha correcta y pulsa Aceptar.</p>
+      <p className="modal-intro">Busca la otra ficha de esta misma persona y pulsa Aceptar.</p>
     </div>
     <form onSubmit={search} className="form">
       <label className="field field-wide">
