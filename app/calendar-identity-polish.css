@@ -1,0 +1,41 @@
+/* Calendar identity polish — promoted from staging visual layer only */
+.calendar-item.type-class{
+  position:relative;
+  border-left:4px solid var(--cya-accent);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--cya-accent) 14%,transparent),var(--cya-surface) 38%);
+}
+.calendar-item.type-class::after{
+  content:"CYA";
+  position:absolute;
+  top:9px;
+  right:42px;
+  padding:3px 7px;
+  border:1px solid color-mix(in srgb,var(--cya-accent) 30%,transparent);
+  border-radius:999px;
+  background:color-mix(in srgb,var(--cya-accent) 12%,var(--cya-surface));
+  color:var(--cya-accent-strong);
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.cya-class-calendar-icon{
+  isolation:isolate;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cya-accent) 28%,transparent),0 5px 16px color-mix(in srgb,var(--cya-accent) 12%,transparent);
+}
+.cya-class-calendar-icon>img{filter:drop-shadow(0 2px 5px rgba(0,0,0,.16));}
+.cya-class-calendar-corner{box-shadow:0 3px 8px rgba(0,0,0,.22);}
+.calendar-item.type-external{position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--event-calendar-color,#039BE5) 8%,transparent);}
+.calendar-item.type-external::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--event-calendar-color,#039BE5);}
+.calendar-item.type-external small{display:inline-flex;width:max-content;max-width:100%;align-items:center;gap:6px;padding:3px 8px 3px 6px;border:1px solid color-mix(in srgb,var(--event-calendar-color,#039BE5) 25%,transparent);border-radius:999px;background:color-mix(in srgb,var(--event-calendar-color,#039BE5) 10%,var(--cya-surface));color:color-mix(in srgb,var(--event-calendar-color,#039BE5) 78%,white);font-size:10px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.calendar-item.type-external small::before{content:"";flex:0 0 auto;width:7px;height:7px;border-radius:50%;background:var(--event-calendar-color,#039BE5);box-shadow:0 0 0 3px color-mix(in srgb,var(--event-calendar-color,#039BE5) 15%,transparent);}
+.calendar-item.type-external .calendar-item-icon{border:1px solid color-mix(in srgb,var(--event-calendar-color,#039BE5) 28%,transparent);box-shadow:0 5px 16px color-mix(in srgb,var(--event-calendar-color,#039BE5) 13%,transparent);}
+.external-calendar-photo{transform:scale(1.01);}
+.external-calendar-monogram{background:linear-gradient(145deg,color-mix(in srgb,var(--event-calendar-color,#039BE5) 18%,transparent),transparent);}
+.month-days button i.type-external{box-shadow:0 0 0 2px color-mix(in srgb,currentColor 10%,transparent);}
+.calendar-visual-row{transition:border-color .18s ease,transform .18s ease,background .18s ease;}
+.calendar-visual-row:hover{transform:translateY(-1px);}
+.calendar-visual-preview{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--calendar-color,#039BE5) 26%,transparent),0 5px 16px color-mix(in srgb,var(--calendar-color,#039BE5) 12%,transparent);}
+.calendar-color-palette button{transition:transform .15s ease,box-shadow .15s ease;}
+.calendar-color-palette button:hover{transform:scale(1.12);}
+@media(max-width:760px){.calendar-item.type-class::after{top:7px;right:38px;font-size:8px;padding:2px 6px}.calendar-item.type-external small{max-width:clamp(120px,52vw,260px)}}
+@media(prefers-reduced-motion:reduce){.calendar-visual-row,.calendar-color-palette button{transition:none!important}.calendar-visual-row:hover,.calendar-color-palette button:hover{transform:none!important}}
