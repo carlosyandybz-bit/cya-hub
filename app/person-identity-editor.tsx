@@ -31,10 +31,23 @@ type StudentIdentityEditorProps = {
   saved: () => Promise<void>;
 };
 
+type MergeCandidate = {
+  person_id: number;
+  display_name: string;
+  email: string | null;
+  phone: string | null;
+  lifecycle_status: string;
+};
+
 export function StudentIdentityEditor({ client, person, profile, close, saved }: StudentIdentityEditorProps) {
+  const [mergeOpen, setMergeOpen] = useState(false);
+
   return <div className="backdrop" onMouseDown={(event) => event.target === event.currentTarget && close()}>
     <section className="modal" role="dialog" aria-modal="true" aria-labelledby="person-editor-title">
-      <header className="modal-head"><div><p className="eyebrow">Alumnado</p><h2 id="person-editor-title">Editar ficha</h2></div><button type="button" className="icon-btn" onClick={close} aria-label="Cerrar"><X /></button></header>
+      <header className="modal-head">
+        <div><p className="eyebrow">Alumnado</p><h2 id="person-editor-title">Editar ficha</h2></div>
+        <button type="button" className="icon-btn" onClick={close} aria-label="Cerrar"><X /></button>
+      </header>
       <div className="modal-body">
         <RuntimeForm
           client={client}
@@ -45,59 +58,52 @@ export function StudentIdentityEditor({ client, person, profile, close, saved }:
           unavailableFallback={<LegacyStudentIdentityForm client={client} person={person} profile={profile} saved={saved} close={close} />}
           onSaved={async () => { await saved(); close(); }}
         />
-        {person.auth_user_id ? <IdentityMergePanel client={client} person={person} saved={saved} close={close} /> : null}
-        <p className="modal-intro">Los datos que CYA ya conoce se reutilizan automáticamente para que no tengas que escribirlos dos veces.</p>
+
+        {person.auth_user_id ? <>
+          <div className="actions">
+            <button type="button" className="btn ghost" onClick={() => setMergeOpen((value) => !value)}>
+              <GitMerge size={17}/> Fusionar
+            </button>
+          </div>
+          {mergeOpen ? <SimpleIdentityMerge client={client} person={person} saved={saved} close={close} /> : null}
+        </> : null}
       </div>
     </section>
   </div>;
 }
 
-type MergeCandidate = {
-  person_id: number;
-  display_name: string;
-  email: string | null;
-  phone: string | null;
-  lifecycle_status: string;
-};
-
-function IdentityMergePanel({ client, person, saved, close }: { client: SupabaseClient; person: EditablePersonIdentity; saved: () => Promise<void>; close: () => void }) {
-  const [open, setOpen] = useState(false);
+function SimpleIdentityMerge({ client, person, saved, close }: { client: SupabaseClient; person: EditablePersonIdentity; saved: () => Promise<void>; close: () => void }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<MergeCandidate[]>([]);
   const [busy, setBusy] = useState(false);
+  const [mergingId, setMergingId] = useState<number | null>(null);
   const [error, setError] = useState("");
-  const [candidate, setCandidate] = useState<MergeCandidate | null>(null);
-  const [matchEmail, setMatchEmail] = useState("");
-  const [matchPhone, setMatchPhone] = useState("");
 
-  async function findCandidate(event: FormEvent<HTMLFormElement>) {
+  async function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!matchEmail.trim() && !matchPhone.trim()) return setError("Escribe el teléfono o email de la ficha que ya existía.");
-    setBusy(true); setError(""); setCandidate(null);
+    const value = query.trim();
+    if (!value) return setError("Escribe un nombre, teléfono o email.");
+    setBusy(true); setError(""); setResults([]);
     try {
-      const result = await client.rpc("admin_find_person_merge_candidate", {
+      const result = await client.rpc("admin_search_person_merge_candidates", {
         p_source_person_id: person.id,
-        p_email: matchEmail.trim() || null,
-        p_phone: matchPhone.trim() || null,
+        p_query: value,
       });
       if (result.error) throw result.error;
-      const row = (Array.isArray(result.data) ? result.data[0] : result.data) as MergeCandidate | null;
-      if (!row?.person_id) throw new Error("No hay una única ficha previa sin cuenta que coincida con esos datos.");
-      setCandidate(row);
+      setResults((result.data ?? []) as MergeCandidate[]);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No se pudo buscar la ficha previa.");
+      setError(cause instanceof Error ? cause.message : "No se pudo realizar la búsqueda.");
     } finally {
       setBusy(false);
     }
   }
 
-  async function merge() {
-    if (!candidate) return;
-    setBusy(true); setError("");
+  async function accept(candidate: MergeCandidate) {
+    setMergingId(candidate.person_id); setError("");
     try {
-      const result = await client.rpc("admin_merge_fresh_registered_person", {
+      const result = await client.rpc("admin_merge_selected_person", {
         p_source_person_id: person.id,
         p_target_person_id: candidate.person_id,
-        p_match_email: matchEmail.trim() || null,
-        p_match_phone: matchPhone.trim() || null,
       });
       if (result.error) throw result.error;
       await saved().catch(() => undefined);
@@ -106,31 +112,41 @@ function IdentityMergePanel({ client, person, saved, close }: { client: Supabase
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudieron fusionar las fichas.");
     } finally {
-      setBusy(false);
+      setMergingId(null);
     }
   }
 
-  if (!open) return <div className="actions"><button type="button" className="btn ghost" onClick={() => setOpen(true)}><GitMerge size={17}/> Fusionar con ficha existente</button></div>;
-
-  return <section className="form" aria-label="Fusionar ficha duplicada">
+  return <section className="form" aria-label="Fusionar ficha">
     <div>
-      <p className="eyebrow">Identidad duplicada</p>
-      <h3>Fusionar con una ficha previa</h3>
-      <p className="modal-intro">Úsalo cuando esta cuenta registrada corresponde a un alumno provisional que ya existía. Busca esa ficha por su teléfono o email.</p>
+      <h3>Fusionar ficha</h3>
+      <p className="modal-intro">Busca la ficha correcta y pulsa Aceptar.</p>
     </div>
-    <form onSubmit={findCandidate} className="form">
-      <div className="fields-2">
-        <label className="field"><span>Teléfono de la ficha previa</span><input type="tel" value={matchPhone} onChange={(event) => { setMatchPhone(event.target.value); setCandidate(null); }} /></label>
-        <label className="field"><span>Email de la ficha previa</span><input type="email" value={matchEmail} onChange={(event) => { setMatchEmail(event.target.value); setCandidate(null); }} /></label>
-      </div>
-      <div className="actions"><button type="button" className="btn ghost" onClick={() => { setOpen(false); setCandidate(null); setError(""); }}>Cancelar</button><button className="btn ghost" disabled={busy}><Search size={17}/>{busy ? "Buscando…" : "Buscar ficha"}</button></div>
+    <form onSubmit={search} className="form">
+      <label className="field field-wide">
+        <span>Buscar persona</span>
+        <div style={{display:"flex", gap:8}}>
+          <input
+            value={query}
+            onChange={(event) => { setQuery(event.target.value); setResults([]); setError(""); }}
+            placeholder="Nombre, teléfono o email"
+            autoFocus
+          />
+          <button className="btn ghost" disabled={busy} aria-label="Buscar"><Search size={17}/>{busy ? "Buscando…" : "Buscar"}</button>
+        </div>
+      </label>
     </form>
-    {candidate ? <div className="notice success">
-      <strong>{candidate.display_name}</strong>
-      <p>{candidate.phone || "Sin teléfono visible"}{candidate.email ? ` · ${candidate.email}` : ""} · {candidate.lifecycle_status === "provisional" ? "Alumno provisional" : "Ficha previa"}</p>
-      <p>La cuenta registrada se vinculará a esta ficha y el duplicado recién creado quedará archivado.</p>
-      <div className="actions"><button type="button" className="btn" onClick={merge} disabled={busy}><GitMerge size={17}/>{busy ? "Fusionando…" : "Confirmar fusión"}</button></div>
-    </div> : null}
+
+    {results.length ? <div className="form">
+      {results.map((candidate) => <div className="notice" key={candidate.person_id}>
+        <strong>{candidate.display_name}</strong>
+        <p>{[candidate.phone, candidate.email].filter(Boolean).join(" · ") || "Sin teléfono ni email"}</p>
+        <div className="actions">
+          <button type="button" className="btn" onClick={() => void accept(candidate)} disabled={mergingId !== null}>
+            <CheckCircle2 size={17}/>{mergingId === candidate.person_id ? "Fusionando…" : "Aceptar"}
+          </button>
+        </div>
+      </div>)}
+    </div> : (!busy && query.trim() ? <p className="modal-intro">No hay coincidencias.</p> : null)}
     {error ? <p className="error" role="alert">{error}</p> : null}
   </section>;
 }
@@ -245,7 +261,7 @@ export function QuickProvisionalStudentModal({ client, close, created }: QuickPr
           <label className="field"><span>País</span><CountrySelect name="country_code" value={country} onChange={setCountry} /></label>
         </div>
         {error ? <p className="error">{error}</p> : null}
-        <div className="actions"><button className="btn ghost" type="button" onClick={close}>Cancelar</button><button className="btn" disabled={busy}><Plus size={17} /> {busy ? "Creando…" : "Crear y seleccionar"}</button></div>
+        <div className="actions"><button className="btn ghost" type="button" onClick={close}>Cancelar</button><button className="btn" disabled={busy}><Plus size={17}/> {busy ? "Creando…" : "Crear y seleccionar"}</button></div>
       </form>
     </section>
   </div>;
