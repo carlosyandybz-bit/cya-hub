@@ -1,10 +1,11 @@
 "use client";
 
-import { Cloud, Mail, Megaphone, MessageCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { Cloud, Mail, Megaphone, RefreshCw, ShieldCheck } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { GoogleCalendarSync } from "./google-calendar-sync";
 import { CalendarVisualAdmin } from "./calendar-visual-admin";
+import { WhatsAppIntegration } from "./whatsapp-integration";
 
 type IntegrationRow = {
   integration_key: string;
@@ -72,7 +73,6 @@ export function P31IntegrationsAdmin({ client, integrations, notify }: Props) {
   }, [checkDrive]);
 
   const email = byKey.get("email");
-  const whatsapp = byKey.get("whatsapp");
   const meta = byKey.get("meta");
 
   return <section className="admin-stack">
@@ -108,12 +108,7 @@ export function P31IntegrationsAdmin({ client, integrations, notify }: Props) {
         </div>
       </article>
 
-      <article className="card pad">
-        <div className="card-head"><MessageCircle /><span className="badge">Sin automatización</span></div>
-        <h3>{whatsapp?.label || "WhatsApp"}</h3>
-        <p>CYA puede preparar el mensaje y abrir WhatsApp para el envío manual. El envío automático seguirá desactivado hasta que haya una conexión compatible.</p>
-        {whatsapp?.last_error ? <small>{whatsapp.last_error}</small> : null}
-      </article>
+      <WhatsAppIntegration client={client} notify={notify} />
 
       <article className="card pad">
         <div className="card-head"><Mail /><span className="badge">Sin automatización</span></div>
