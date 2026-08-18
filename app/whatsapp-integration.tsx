@@ -6,8 +6,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const META_APP_ID = "1585899772877530";
 const WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID = "886780604243575";
-const META_SDK_VERSION = "v26.0";
+const META_SDK_VERSION = "v25.0";
 const META_ALLOWED_ORIGIN = "https://app.carlosyandy.com";
+const META_OAUTH_REDIRECT_URI = "https://app.carlosyandy.com/";
 
 type WhatsAppStatus = {
   configured: boolean;
@@ -29,7 +30,7 @@ type Props = {
 };
 
 type FacebookLoginResponse = {
-  authResponse?: { code?: string; accessToken?: string };
+  authResponse?: { code?: string };
   status?: string;
 };
 
@@ -140,7 +141,7 @@ export function WhatsAppIntegration({ client, notify }: Props) {
     }
   }, [notify, sessionToken]);
 
-  const completeEmbeddedSignup = useCallback(async (input: { accessToken?: string; code?: string; result?: EmbeddedSignupResult | null }) => {
+  const completeEmbeddedSignup = useCallback(async (input: { code?: string; result?: EmbeddedSignupResult | null }) => {
     const token = await sessionToken();
     const response = await fetch("/api/whatsapp/embedded-signup/complete", {
       method: "POST",
@@ -149,11 +150,10 @@ export function WhatsAppIntegration({ client, notify }: Props) {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        accessToken: input.accessToken || null,
         code: input.code || null,
         wabaId: input.result?.wabaId || null,
         phoneNumberId: input.result?.phoneNumberId || null,
-        event: input.result ? "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" : "FACEBOOK_LOGIN_CALLBACK",
+        event: input.result ? "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" : "OAUTH_CALLBACK",
       }),
       cache: "no-store",
     });
@@ -191,21 +191,23 @@ export function WhatsAppIntegration({ client, notify }: Props) {
     setOnboarding(true);
 
     window.FB.login((response) => {
-      const accessToken = response?.authResponse?.accessToken?.trim() || "";
       const code = response?.authResponse?.code?.trim() || "";
       const result = signupResultRef.current;
-      if (!accessToken && !code && !result) {
+      if (!code && !result) {
         setOnboarding(false);
-        notify("El registro de WhatsApp se canceló o Meta no devolvió credenciales de conexión.");
+        notify("El registro de WhatsApp se canceló o Meta no devolvió el código de autorización.");
         return;
       }
 
-      void completeEmbeddedSignup({ accessToken, code, result })
+      void completeEmbeddedSignup({ code, result })
         .catch((error) => notify(error instanceof Error ? error.message : "No se pudo completar la coexistencia de WhatsApp."))
         .finally(() => setOnboarding(false));
     }, {
       config_id: WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID,
       auth_type: "rerequest",
+      response_type: "code",
+      override_default_response_type: true,
+      fallback_redirect_uri: META_OAUTH_REDIRECT_URI,
       extras: {
         setup: {},
         featureType: "whatsapp_business_app_onboarding",
