@@ -4,6 +4,9 @@ import { createDriveResumableUpload, driveServerConfigured, userCanManageTeachin
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const DRIVE_UPLOAD_TIMEOUT_MS = 180_000;
+const BUFFERED_UPLOAD_LIMIT_BYTES = 64 * 1024 * 1024;
+
 function bearer(request: NextRequest) {
   const value = request.headers.get("authorization") || "";
   return value.toLowerCase().startsWith("bearer ") ? value.slice(7).trim() : "";
@@ -24,17 +27,42 @@ export async function POST(request: NextRequest) {
     if (!request.body) return NextResponse.json({ error: "El archivo está vacío." }, { status: 400 });
 
     const location = await createDriveResumableUpload(name, mimeType, size, scope);
-    const init: RequestInit & { duplex: "half" } = {
-      method: "PUT",
-      headers: { "content-type": mimeType, "content-length": String(size) },
-      body: request.body,
-      duplex: "half",
-    };
-    const upload = await fetch(location, init);
-    const payload = await upload.json().catch(() => null) as { id?: string; name?: string; mimeType?: string; webViewLink?: string } | null;
-    if (!upload.ok || !payload?.id) return NextResponse.json({ error: `Google Drive no pudo guardar el archivo (${upload.status}).` }, { status: 502 });
-    return NextResponse.json(payload, { headers: { "cache-control": "no-store" } });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DRIVE_UPLOAD_TIMEOUT_MS);
+
+    try {
+      let upload: Response;
+      if (size <= BUFFERED_UPLOAD_LIMIT_BYTES) {
+        const body = Buffer.from(await request.arrayBuffer());
+        upload = await fetch(location, {
+          method: "PUT",
+          headers: { "content-type": mimeType, "content-length": String(size) },
+          body,
+          signal: controller.signal,
+          cache: "no-store",
+        });
+      } else {
+        const init: RequestInit & { duplex: "half" } = {
+          method: "PUT",
+          headers: { "content-type": mimeType, "content-length": String(size) },
+          body: request.body,
+          duplex: "half",
+          signal: controller.signal,
+          cache: "no-store",
+        };
+        upload = await fetch(location, init);
+      }
+
+      const payload = await upload.json().catch(() => null) as { id?: string; name?: string; mimeType?: string; webViewLink?: string } | null;
+      if (!upload.ok || !payload?.id) return NextResponse.json({ error: `Google Drive no pudo guardar el archivo (${upload.status}).` }, { status: 502 });
+      return NextResponse.json(payload, { headers: { "cache-control": "no-store" } });
+    } finally {
+      clearTimeout(timeout);
+    }
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      return NextResponse.json({ error: "La subida del vídeo ha tardado demasiado. Inténtalo de nuevo; el cierre ya no quedará bloqueado." }, { status: 504 });
+    }
     return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo subir el archivo." }, { status: 500 });
   }
 }
