@@ -39,16 +39,43 @@ body[data-cya-module] :where(
   color: var(--cya-module-accent) !important;
 }
 
-/* Non-semantic badges/chips/pills cannot keep a foreign accent. */
+/* Non-semantic badges/chips/pills cannot keep a foreign accent.
+   Explicit semantic/status classes are excluded even when CSS Modules rename them. */
 body[data-cya-module] :where(
   .badge:not(.success):not(.error):not(.warning):not(.danger):not(.portal),
   .chip:not(.success):not(.error):not(.warning):not(.danger),
   .pill:not(.success):not(.error):not(.warning):not(.danger),
-  [class*="badge"]:not([class*="success"]):not([class*="error"]):not([class*="warning"]):not([class*="danger"])
+  [class*="badge"]:not([class*="success"]):not([class*="error"]):not([class*="warning"]):not([class*="danger"]):not([class*="portal"]):not([class*="status"])
 ) {
   border-color: color-mix(in srgb,var(--cya-module-accent) 28%,transparent) !important;
   background: color-mix(in srgb,var(--cya-module-accent) 13%,transparent) !important;
   color: color-mix(in srgb,var(--cya-module-accent) 84%,white) !important;
+}
+
+/* Preserve canonical semantic/status colours after the generic purity layer. */
+body[data-cya-module] :where(
+  .success,
+  [class*="success"],
+  .portal,
+  [class*="portal"][class*="badge"]
+) {
+  --cya-local-semantic: var(--cya-success);
+}
+
+body[data-cya-module] :where(
+  .error,
+  .danger,
+  [class*="error"],
+  [class*="danger"]
+) {
+  --cya-local-semantic: var(--cya-danger);
+}
+
+body[data-cya-module] :where(
+  .warning,
+  [class*="warning"]
+) {
+  --cya-local-semantic: var(--cya-warning);
 }
 
 /* Selected/active controls, including CSS-module implementations. */
@@ -99,5 +126,12 @@ body[data-cya-module] :where(
 }
 
 @media (prefers-reduced-motion:reduce) {
-  body[data-cya-module] * { transition-color: none; }
+  body[data-cya-module],
+  body[data-cya-module] :where(
+    button,a,input,select,textarea,[role="button"],[role="tab"],[role="option"],
+    .badge,.chip,.pill,[class*="badge"],[class*="logoImage"],.brand img,.mobile-nav-logo,
+    [class*="formationMain"] > span::before
+  ) {
+    transition: none !important;
+  }
 }
