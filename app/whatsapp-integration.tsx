@@ -2,10 +2,12 @@
 
 import { CheckCircle2, Link2, MessageCircle, RefreshCw, Send, ShieldCheck } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+const META_APP_ID = "1585899772877530";
+const WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID = "886780604243575";
+const META_SDK_VERSION = "v25.0";
 const META_ALLOWED_ORIGIN = "https://app.carlosyandy.com";
-const WHATSAPP_OAUTH_CALLBACK_KEY = "cya:whatsapp:oauth:callback";
 
 type WhatsAppStatus = {
   configured: boolean;
@@ -16,40 +18,72 @@ type WhatsAppStatus = {
   error?: string;
 };
 
+type EmbeddedSignupResult = {
+  wabaId: string;
+  phoneNumberId?: string;
+  event: string;
+};
+
 type Props = {
   client: SupabaseClient;
   notify: (message: string) => void;
 };
 
-type WhatsAppOAuthCallbackPayload = {
-  type?: string;
-  ok?: boolean;
-  message?: string;
-  at?: number;
+type FacebookLoginResponse = {
+  authResponse?: { code?: string };
+  status?: string;
 };
 
-function parseOAuthCallback(raw: unknown) {
-  let payload = raw;
+type FacebookSdk = {
+  init: (options: Record<string, unknown>) => void;
+  login: (
+    callback: (response: FacebookLoginResponse) => void,
+    options: Record<string, unknown>,
+  ) => void;
+};
+
+declare global {
+  interface Window {
+    FB?: FacebookSdk;
+    fbAsyncInit?: () => void;
+  }
+}
+
+function initializeFacebookSdk() {
+  if (!window.FB) return false;
+  window.FB.init({
+    appId: META_APP_ID,
+    cookie: true,
+    xfbml: false,
+    version: META_SDK_VERSION,
+  });
+  return true;
+}
+
+function parseEmbeddedSignupMessage(raw: unknown): EmbeddedSignupResult | null {
+  let payload: unknown = raw;
   if (typeof raw === "string") {
     try { payload = JSON.parse(raw); } catch { return null; }
   }
   if (!payload || typeof payload !== "object") return null;
-  const record = payload as WhatsAppOAuthCallbackPayload;
-  if (record.type !== "CYA_WHATSAPP_OAUTH_CALLBACK" || typeof record.message !== "string") return null;
-  if (record.at && Date.now() - record.at > 15 * 60 * 1000) return null;
-  return record;
-}
-
-function isInstalledWebApp() {
-  const iosStandalone = Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
-  return iosStandalone || window.matchMedia("(display-mode: standalone)").matches;
+  const record = payload as Record<string, unknown>;
+  if (record.type !== "WA_EMBEDDED_SIGNUP") return null;
+  const event = String(record.event || "");
+  if (event !== "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" && !event.startsWith("FINISH")) return null;
+  const data = record.data && typeof record.data === "object" ? record.data as Record<string, unknown> : {};
+  const wabaId = String(data.waba_id || data.wabaId || "").replace(/\D/g, "");
+  const phoneNumberId = String(data.phone_number_id || data.phoneNumberId || "").replace(/\D/g, "");
+  return wabaId ? { wabaId, ...(phoneNumberId ? { phoneNumberId } : {}), event } : null;
 }
 
 export function WhatsAppIntegration({ client, notify }: Props) {
   const [status, setStatus] = useState<WhatsAppStatus | null>(null);
   const [checking, setChecking] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
+  const [embeddedSignupReady, setEmbeddedSignupReady] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
+  const signupActiveRef = useRef(false);
+  const completionStartedRef = useRef(false);
 
   const sessionToken = useCallback(async () => {
     const { data } = await client.auth.getSession();
@@ -71,9 +105,9 @@ export function WhatsAppIntegration({ client, notify }: Props) {
       setStatus(payload);
       if (announce) {
         notify(payload.configured
-          ? "WhatsApp Business está preparado para envío y webhook."
+          ? "La configuración de WhatsApp está presente. Usa Activar coexistencia para comprobar el enlace real con Cloud API."
           : payload.sendConfigured
-            ? "WhatsApp puede enviar; falta terminar la recepción segura de estados."
+            ? "WhatsApp tiene datos de envío, pero todavía falta completar la integración."
             : "WhatsApp todavía necesita completar su configuración externa.");
       }
     } catch (error) {
@@ -108,76 +142,135 @@ export function WhatsAppIntegration({ client, notify }: Props) {
     }
   }, [notify, sessionToken]);
 
-  const consumeOAuthCallback = useCallback((raw: unknown) => {
-    const payload = parseOAuthCallback(raw);
-    if (!payload) return;
-    try { window.localStorage.removeItem(WHATSAPP_OAUTH_CALLBACK_KEY); } catch { /* noop */ }
-    setOnboarding(false);
-    notify(payload.message || "Meta terminó la autorización.");
-    if (payload.ok) void check(false);
-  }, [check, notify]);
+  const completeEmbeddedSignup = useCallback(async (result: EmbeddedSignupResult) => {
+    const token = await sessionToken();
+    const response = await fetch("/api/whatsapp/embedded-signup/complete", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        wabaId: result.wabaId,
+        phoneNumberId: result.phoneNumberId || null,
+        event: result.event,
+      }),
+      cache: "no-store",
+    });
+    const payload = await response.json().catch(() => null) as {
+      ok?: boolean;
+      error?: string;
+      displayPhoneNumber?: string | null;
+      isOnBizApp?: boolean | null;
+      platformType?: string | null;
+    } | null;
+    if (!response.ok || !payload?.ok) throw new Error(payload?.error || "Meta terminó el registro, pero CYA no pudo cerrar la coexistencia.");
 
-  const launchEmbeddedSignup = useCallback(async () => {
+    const phone = payload.displayPhoneNumber ? ` (${payload.displayPhoneNumber})` : "";
+    notify(`Coexistencia de WhatsApp confirmada${phone}. Business App y Cloud API están enlazados.`);
+    await check(false);
+  }, [check, notify, sessionToken]);
+
+  const launchEmbeddedSignup = useCallback(() => {
     const currentOrigin = window.location.origin.replace(/\/$/, "");
     if (currentOrigin !== META_ALLOWED_ORIGIN) {
       notify(`CYA está abierto desde ${currentOrigin}. Para activar coexistencia abre ${META_ALLOWED_ORIGIN}.`);
       return;
     }
 
-    // En la PWA de iPhone mantenemos todo en la misma ventana para conservar la misma
-    // sesión y almacenamiento. En navegador normal abrimos una ventana separada para que
-    // CYA permanezca visible mientras Meta completa OAuth.
-    const useSameWindow = isInstalledWebApp();
-    const popup = useSameWindow
-      ? null
-      : window.open("about:blank", "cya-whatsapp-meta", "popup=yes,width=560,height=760,resizable=yes,scrollbars=yes");
+    if (!initializeFacebookSdk() || !embeddedSignupReady || !window.FB) {
+      notify("Meta todavía está cargando Embedded Signup. Espera unos segundos y vuelve a intentarlo.");
+      return;
+    }
+
+    signupActiveRef.current = true;
+    completionStartedRef.current = false;
     setOnboarding(true);
 
-    try {
-      const token = await sessionToken();
-      const response = await fetch("/api/whatsapp/embedded-signup/start", {
-        method: "POST",
-        headers: { authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-      const payload = await response.json().catch(() => null) as { ok?: boolean; authUrl?: string; error?: string } | null;
-      if (!response.ok || !payload?.ok || !payload.authUrl) {
-        throw new Error(payload?.error || "No se pudo iniciar la autorización manual de Meta.");
+    window.FB.login((response) => {
+      if (response?.authResponse) {
+        // El code del SDK no se intercambia: esperamos el evento WA_EMBEDDED_SIGNUP,
+        // que es la confirmación autoritativa de que el onboarding de coexistencia terminó.
+        return;
       }
-
-      if (popup && !popup.closed) {
-        popup.location.replace(payload.authUrl);
-        popup.focus();
-      } else {
-        window.location.assign(payload.authUrl);
+      if (!completionStartedRef.current) {
+        signupActiveRef.current = false;
+        setOnboarding(false);
+        notify("El registro de coexistencia se canceló antes de terminar.");
       }
-    } catch (error) {
-      try { popup?.close(); } catch { /* noop */ }
-      setOnboarding(false);
-      notify(error instanceof Error ? error.message : "No se pudo iniciar la coexistencia con Meta.");
-    }
-  }, [notify, sessionToken]);
+    }, {
+      config_id: WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID,
+      auth_type: "rerequest",
+      response_type: "code",
+      override_default_response_type: true,
+      extras: {
+        setup: {},
+        featureType: "whatsapp_business_app_onboarding",
+        sessionInfoVersion: "3",
+      },
+    });
+  }, [embeddedSignupReady, notify]);
 
   useEffect(() => {
-    const current = window.localStorage.getItem(WHATSAPP_OAUTH_CALLBACK_KEY);
-    if (current) consumeOAuthCallback(current);
-
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== META_ALLOWED_ORIGIN) return;
-      consumeOAuthCallback(event.data);
+      if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
+      const result = parseEmbeddedSignupMessage(event.data);
+      if (!result || !signupActiveRef.current || completionStartedRef.current) return;
+
+      completionStartedRef.current = true;
+      void completeEmbeddedSignup(result)
+        .catch((error) => notify(error instanceof Error ? error.message : "No se pudo completar la coexistencia de WhatsApp."))
+        .finally(() => {
+          signupActiveRef.current = false;
+          setOnboarding(false);
+        });
     };
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== WHATSAPP_OAUTH_CALLBACK_KEY || !event.newValue) return;
-      consumeOAuthCallback(event.newValue);
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [completeEmbeddedSignup, notify]);
+
+  useEffect(() => {
+    let pollTimer: number | null = null;
+    let loadTarget: HTMLElement | null = null;
+    const initialize = () => {
+      const ready = initializeFacebookSdk();
+      if (ready) setEmbeddedSignupReady(true);
+      return ready;
     };
 
-    window.addEventListener("message", handleMessage);
-    window.addEventListener("storage", handleStorage);
+    if (initialize()) return;
+
+    window.fbAsyncInit = () => { initialize(); };
+
+    let script = document.getElementById("facebook-jssdk") as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement("script");
+      script.id = "facebook-jssdk";
+      script.async = true;
+      script.defer = true;
+      script.crossOrigin = "anonymous";
+      script.src = "https://connect.facebook.net/es_ES/sdk.js";
+      document.body.appendChild(script);
+    }
+
+    const onLoad = () => initialize();
+    loadTarget = script;
+    loadTarget.addEventListener("load", onLoad);
+
+    let attempts = 0;
+    pollTimer = window.setInterval(() => {
+      attempts += 1;
+      if (initialize() || attempts >= 40) {
+        if (pollTimer !== null) window.clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    }, 100);
+
     return () => {
-      window.removeEventListener("message", handleMessage);
-      window.removeEventListener("storage", handleStorage);
+      if (pollTimer !== null) window.clearInterval(pollTimer);
+      loadTarget?.removeEventListener("load", onLoad);
     };
-  }, [consumeOAuthCallback]);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void check(false), 0);
@@ -187,7 +280,7 @@ export function WhatsAppIntegration({ client, notify }: Props) {
   const badge = checking
     ? "Comprobando"
     : status?.configured
-      ? "Conectada"
+      ? "Configurada"
       : status?.sendConfigured
         ? "Envío preparado"
         : "No configurada";
@@ -199,9 +292,9 @@ export function WhatsAppIntegration({ client, notify }: Props) {
     </div>
     <h3>WhatsApp Business</h3>
     <p>{status?.configured
-      ? "CYA puede enviar mensajes mediante WhatsApp Cloud API y validar de forma segura los webhooks de Meta."
+      ? "CYA tiene la configuración de WhatsApp preparada. La coexistencia se confirma únicamente al completar Embedded Signup de Meta."
       : status?.sendConfigured
-        ? "El envío desde CYA está preparado. Falta completar la verificación del webhook para cerrar la integración."
+        ? "El envío desde CYA tiene variables configuradas. Falta completar o validar la conexión real con Meta."
         : status?.error || "El envío manual sigue disponible mientras se completa la conexión de WhatsApp Business."}</p>
 
     {status?.missingLabels?.length ? <div className="status-list">
@@ -220,7 +313,7 @@ export function WhatsAppIntegration({ client, notify }: Props) {
       <button className="btn ghost" type="button" disabled={checking || sendingTest || onboarding} onClick={() => void check(true)}>
         <RefreshCw /> {checking ? "Comprobando…" : "Comprobar ahora"}
       </button>
-      <button className="btn" type="button" disabled={onboarding} onClick={() => void launchEmbeddedSignup()}>
+      <button className="btn" type="button" disabled={onboarding || !embeddedSignupReady} onClick={launchEmbeddedSignup}>
         <Link2 /> {onboarding ? "Conectando con Meta…" : "Activar coexistencia"}
       </button>
       <button className="btn" type="button" disabled={!status?.sendConfigured || checking || sendingTest || onboarding} onClick={() => void sendTestToSelf()}>
