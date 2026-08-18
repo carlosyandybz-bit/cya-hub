@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 const GRAPH_API_ORIGIN = "https://graph.facebook.com";
 const META_APP_ID = "1585899772877530";
 const META_OAUTH_REDIRECT_URI = "https://app.carlosyandy.com/";
+const META_OAUTH_STATE_COOKIE = "cya_wa_oauth_state";
 
 function env(name: string) {
   return process.env[name]?.trim() ?? "";
@@ -41,6 +42,17 @@ type DebugTokenResponse = MetaError & {
     }>;
   };
 };
+
+function clearOAuthState(response: NextResponse) {
+  response.cookies.set(META_OAUTH_STATE_COOKIE, "", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+  return response;
+}
 
 async function metaFetch<T>(url: string, accessToken?: string, init?: RequestInit) {
   const response = await fetch(url, {
@@ -119,28 +131,37 @@ export async function POST(request: NextRequest) {
     await requireStaff(bearerToken(request));
     const body = await request.json().catch(() => ({})) as {
       code?: string;
-      wabaId?: string;
-      phoneNumberId?: string;
-      event?: string;
+      state?: string;
     };
 
     const code = String(body.code || "").trim();
-    const hintedWabaId = String(body.wabaId || "").replace(/\D/g, "");
-    const hintedPhoneNumberId = String(body.phoneNumberId || "").replace(/\D/g, "");
+    const returnedState = String(body.state || "").trim();
+    const expectedState = request.cookies.get(META_OAUTH_STATE_COOKIE)?.value || "";
+
+    if (!code) {
+      return clearOAuthState(NextResponse.json({
+        error: "Meta no devolvió el código de autorización.",
+      }, { status: 400, headers: { "cache-control": "no-store" } }));
+    }
+
+    if (!returnedState || !expectedState || returnedState !== expectedState || !returnedState.startsWith("cya_wa_")) {
+      return clearOAuthState(NextResponse.json({
+        error: "La respuesta OAuth de Meta no coincide con la sesión que inició CYA Hub. Vuelve a iniciar la coexistencia.",
+      }, { status: 400, headers: { "cache-control": "no-store" } }));
+    }
+
     const permanentToken = env("WHATSAPP_ACCESS_TOKEN");
     if (!permanentToken) throw new Error("WHATSAPP_ACCESS_TOKEN no está configurado.");
 
-    const oauthUserToken = code ? await exchangeEmbeddedSignupCode(code) : "";
-    const discoveredWabaIds = oauthUserToken ? await discoverWabaIds(oauthUserToken) : [];
-    const candidateWabaIds = [...new Set([hintedWabaId, ...discoveredWabaIds].filter(Boolean))];
+    const oauthUserToken = await exchangeEmbeddedSignupCode(code);
+    const candidateWabaIds = await discoverWabaIds(oauthUserToken);
 
     if (candidateWabaIds.length === 0) {
-      return NextResponse.json({
-        error: "Meta autorizó Facebook Login, pero no compartió ninguna cuenta de WhatsApp Business con este ajuste. Revisa que el flujo de coexistencia llegue a seleccionar el número de WhatsApp Business.",
-      }, { status: 409, headers: { "cache-control": "no-store" } });
+      return clearOAuthState(NextResponse.json({
+        error: "Meta completó el OAuth, pero no compartió ninguna cuenta de WhatsApp Business con CYA Hub.",
+      }, { status: 409, headers: { "cache-control": "no-store" } }));
     }
 
-    const lookupToken = oauthUserToken || permanentToken;
     const currentPhoneNumberId = env("WHATSAPP_PHONE_NUMBER_ID");
     let selectedWabaId = "";
     let selected: PhoneNumber | null = null;
@@ -148,10 +169,9 @@ export async function POST(request: NextRequest) {
 
     for (const candidateWabaId of candidateWabaIds) {
       try {
-        const phones = await loadPhones(candidateWabaId, lookupToken);
+        const phones = await loadPhones(candidateWabaId, oauthUserToken);
         if (!fallbackPhones.length && phones.length) fallbackPhones = phones;
-        const exact = phones.find((item) => item.id === hintedPhoneNumberId)
-          || phones.find((item) => item.id === currentPhoneNumberId);
+        const exact = phones.find((item) => item.id === currentPhoneNumberId);
         if (exact) {
           selectedWabaId = candidateWabaId;
           selected = exact;
@@ -162,8 +182,7 @@ export async function POST(request: NextRequest) {
           selected = phones[0];
         }
       } catch {
-        // Algunos WABA compartidos pueden no estar accesibles con el token temporal;
-        // seguimos probando el resto de IDs devueltos por Meta.
+        // Algunos WABA compartidos pueden no exponer teléfonos con el token temporal.
       }
     }
 
@@ -172,15 +191,15 @@ export async function POST(request: NextRequest) {
 
     await graph<{ success?: boolean }>(
       `${encodeURIComponent(selectedWabaId)}/subscribed_apps`,
-      lookupToken,
+      oauthUserToken,
       { method: "POST" },
     );
 
-    return NextResponse.json({
+    return clearOAuthState(NextResponse.json({
       ok: true,
       wabaId: selectedWabaId,
       discoveredWabaIds: candidateWabaIds,
-      phoneNumberId: selected?.id || hintedPhoneNumberId || null,
+      phoneNumberId: selected?.id || null,
       displayPhoneNumber: selected?.display_phone_number || null,
       verifiedName: selected?.verified_name || null,
       verificationStatus: selected?.code_verification_status || null,
@@ -188,12 +207,12 @@ export async function POST(request: NextRequest) {
       qualityRating: selected?.quality_rating || null,
       currentConfiguredPhoneNumberId: currentPhoneNumberId || null,
       needsPhoneNumberEnvUpdate: Boolean(selected?.id && currentPhoneNumberId && selected.id !== currentPhoneNumberId),
-      usedOAuthCode: Boolean(code),
+      usedManualOAuth: true,
       redirectUri: META_OAUTH_REDIRECT_URI,
-    }, { headers: { "cache-control": "no-store" } });
+    }, { headers: { "cache-control": "no-store" } }));
   } catch (error) {
-    return NextResponse.json({
+    return clearOAuthState(NextResponse.json({
       error: error instanceof Error ? error.message : "No se pudo completar Embedded Signup de WhatsApp.",
-    }, { status: 400, headers: { "cache-control": "no-store" } });
+    }, { status: 400, headers: { "cache-control": "no-store" } }));
   }
 }
