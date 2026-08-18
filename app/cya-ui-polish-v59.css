@@ -1,14 +1,9 @@
 /* CYA Hub v59 · targeted staging polish.
-   Fixes hover contrast, normalises Administration header, and removes the stylised Alumnado title. */
+   Fixes selector/hover contrast, normalises Administration header, and removes the stylised Alumnado title. */
 
-/* Alumnado list: use a conventional page title instead of the editorial phrase.
-   Scope is limited to the list header immediately followed by its search field. */
-body[data-cya-module="students"] .page-head:has(+ .search) .eyebrow {
-  display:none !important;
-}
-body[data-cya-module="students"] .page-head:has(+ .search) h1 {
-  font-size:0 !important;
-}
+/* Alumnado list: use a conventional page title instead of the editorial phrase. */
+body[data-cya-module="students"] .page-head:has(+ .search) .eyebrow { display:none !important; }
+body[data-cya-module="students"] .page-head:has(+ .search) h1 { font-size:0 !important; }
 body[data-cya-module="students"] .page-head:has(+ .search) h1::after {
   content:"Alumnado";
   font-size:clamp(30px,5vw,44px);
@@ -18,98 +13,82 @@ body[data-cya-module="students"] .page-head:has(+ .search) h1::after {
 
 /* Administration: calm, conventional header with a compact return action. */
 body[data-cya-module="admin"] .admin-page-head {
-  align-items:center !important;
-  gap:18px !important;
-  margin-bottom:20px !important;
-  padding:0 0 18px !important;
-  border-bottom:1px solid var(--cya-line) !important;
+  align-items:center !important; gap:18px !important; margin-bottom:20px !important;
+  padding:0 0 18px !important; border-bottom:1px solid var(--cya-line) !important;
 }
-body[data-cya-module="admin"] .admin-page-head > div {
-  min-width:0;
-}
-body[data-cya-module="admin"] .admin-page-head .eyebrow {
-  display:none !important;
-}
+body[data-cya-module="admin"] .admin-page-head > div { min-width:0; }
+body[data-cya-module="admin"] .admin-page-head .eyebrow { display:none !important; }
 body[data-cya-module="admin"] .admin-page-head h1 {
-  font-size:clamp(30px,4vw,38px) !important;
-  line-height:1.05 !important;
-  letter-spacing:-.035em !important;
+  font-size:clamp(30px,4vw,38px) !important; line-height:1.05 !important; letter-spacing:-.035em !important;
 }
 body[data-cya-module="admin"] .admin-page-head p:not(.eyebrow) {
-  max-width:620px !important;
-  margin-top:6px !important;
-  font-size:13px !important;
-  line-height:1.45 !important;
+  max-width:620px !important; margin-top:6px !important; font-size:13px !important; line-height:1.45 !important;
 }
 body[data-cya-module="admin"] .admin-page-head > .btn {
-  width:auto !important;
-  min-height:42px !important;
-  flex:0 0 auto !important;
-  padding-inline:14px !important;
-  white-space:nowrap !important;
+  width:auto !important; min-height:42px !important; flex:0 0 auto !important; padding-inline:14px !important; white-space:nowrap !important;
 }
 
-/* Coarse pointers must never retain the old module hover treatment after a tap. */
+/* Teaching content-kind selector: this is the control visible in the supplied screenshot.
+   Never allow a pale selected/hovered surface to keep a white label. */
+body[data-cya-module="teaching"] .teaching-kind-grid button.active {
+  border-color:color-mix(in srgb,var(--cya-module-accent) 72%,white 10%) !important;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--cya-module-accent) 88%,white 12%),var(--cya-module-deep)) !important;
+  color:var(--cya-on-accent,white) !important;
+  box-shadow:0 8px 20px color-mix(in srgb,var(--cya-module-accent) 18%,transparent) !important;
+}
+body[data-cya-module="teaching"] .teaching-kind-grid button.active :where(span,strong,small,svg) {
+  color:inherit !important;
+  stroke:currentColor;
+}
+
+/* Coarse pointers must not synthesize a pale hover over the active teaching selector. */
 @media (hover:none), (pointer:coarse) {
   body[data-cya-module] :where(.quick,.student-row,.agenda-row):hover {
-    border-color:var(--cya-line) !important;
-    background:var(--cya-surface) !important;
-    color:var(--cya-text) !important;
-    box-shadow:none !important;
+    border-color:var(--cya-line) !important; background:var(--cya-surface) !important;
+    color:var(--cya-text) !important; box-shadow:none !important;
   }
-
   body[data-cya-module] .btn.ghost:hover {
-    border-color:var(--cya-line) !important;
-    background:var(--cya-surface) !important;
-    color:var(--cya-text-secondary) !important;
-    box-shadow:none !important;
+    border-color:var(--cya-line) !important; background:var(--cya-surface) !important;
+    color:var(--cya-text-secondary) !important; box-shadow:none !important;
   }
-
-  body[data-cya-module] .icon-btn:hover {
-    background:transparent !important;
-    box-shadow:none !important;
+  body[data-cya-module] .icon-btn:hover { background:transparent !important; box-shadow:none !important; }
+  body[data-cya-module="teaching"] .teaching-kind-grid button.active:hover {
+    border-color:color-mix(in srgb,var(--cya-module-accent) 72%,white 10%) !important;
+    background:linear-gradient(180deg,color-mix(in srgb,var(--cya-module-accent) 88%,white 12%),var(--cya-module-deep)) !important;
+    color:var(--cya-on-accent,white) !important;
   }
 }
 
-/* Real mouse/trackpad hover. Primary controls keep their coloured surface so
-   white labels can never become white-on-white. Secondary controls use dark
-   elevated surfaces with accent-coloured foreground. */
+/* Real mouse/trackpad hover. */
 @media (hover:hover) and (pointer:fine) {
   body[data-cya-module] .btn:not(.ghost):not(.destructive):not(.danger):hover:not(:disabled) {
     border-color:color-mix(in srgb,var(--cya-module-accent) 68%,transparent) !important;
     background:linear-gradient(180deg,color-mix(in srgb,var(--cya-module-accent) 96%,white 4%),var(--cya-module-deep)) !important;
     color:var(--cya-on-accent,white) !important;
     box-shadow:0 10px 26px color-mix(in srgb,var(--cya-module-accent) 24%,transparent) !important;
-    filter:brightness(1.055) saturate(1.03);
-    transform:translateY(-1px);
+    filter:brightness(1.055) saturate(1.03); transform:translateY(-1px);
   }
-
   body[data-cya-module] :where(.btn.ghost,.quick,.icon-btn,[role="tab"],[class*="formationAccess"] > button,[class*="formationSheet"] > button,[class*="student-row-actions"] button,[class*="sectionHeading"] > button):hover:not(:disabled) {
     border-color:color-mix(in srgb,var(--cya-module-accent) 32%,var(--cya-line)) !important;
     background:color-mix(in srgb,var(--cya-module-accent) 6%,var(--cya-surface-elevated)) !important;
     color:var(--cya-accent-strong) !important;
     box-shadow:0 5px 16px color-mix(in srgb,var(--cya-module-accent) 8%,transparent) !important;
   }
+  body[data-cya-module="teaching"] .teaching-kind-grid button:hover:not(.active):not(:disabled) {
+    background:color-mix(in srgb,var(--cya-module-accent) 9%,var(--cya-surface)) !important;
+    border-color:color-mix(in srgb,var(--cya-module-accent) 38%,var(--cya-line)) !important;
+    color:var(--cya-accent-strong) !important;
+  }
 }
 
 @media (max-width:640px) {
   body[data-cya-module="admin"] .admin-page-head {
-    display:grid !important;
-    grid-template-columns:minmax(0,1fr) auto !important;
-    align-items:center !important;
-    gap:10px !important;
-    padding-bottom:14px !important;
-    margin-bottom:14px !important;
+    display:grid !important; grid-template-columns:minmax(0,1fr) auto !important;
+    align-items:center !important; gap:10px !important; padding-bottom:14px !important; margin-bottom:14px !important;
   }
-  body[data-cya-module="admin"] .admin-page-head h1 {
-    font-size:27px !important;
-  }
-  body[data-cya-module="admin"] .admin-page-head p:not(.eyebrow) {
-    display:none !important;
-  }
+  body[data-cya-module="admin"] .admin-page-head h1 { font-size:27px !important; }
+  body[data-cya-module="admin"] .admin-page-head p:not(.eyebrow) { display:none !important; }
   body[data-cya-module="admin"] .admin-page-head > .btn {
-    min-height:40px !important;
-    padding-inline:12px !important;
-    font-size:12px !important;
+    min-height:40px !important; padding-inline:12px !important; font-size:12px !important;
   }
 }
