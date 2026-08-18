@@ -25,6 +25,8 @@ jobs:
       - name: Build and capture diagnostics
         id: build
         continue-on-error: true
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
         shell: bash
         run: |
           mkdir -p .qa
