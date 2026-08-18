@@ -1,0 +1,9 @@
+{
+  "status": "FAIL",
+  "tested_commit": "1e4bf4a9e45b75aae809d5f08381d4b53a7fea7c",
+  "build": "success",
+  "playground": "success",
+  "playwright": "failure",
+  "viewport": "390x844",
+  "screenshots_generated": false
+}
