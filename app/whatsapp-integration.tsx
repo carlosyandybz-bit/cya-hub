@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, MessageCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { CheckCircle2, MessageCircle, RefreshCw, Send, ShieldCheck } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useState } from "react";
 
@@ -21,13 +21,19 @@ type Props = {
 export function WhatsAppIntegration({ client, notify }: Props) {
   const [status, setStatus] = useState<WhatsAppStatus | null>(null);
   const [checking, setChecking] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+
+  const sessionToken = useCallback(async () => {
+    const { data } = await client.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("Tu sesión ha caducado.");
+    return token;
+  }, [client]);
 
   const check = useCallback(async (announce = false) => {
     setChecking(true);
     try {
-      const { data } = await client.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) throw new Error("Tu sesión ha caducado.");
+      const token = await sessionToken();
       const response = await fetch("/api/whatsapp/status", {
         headers: { authorization: `Bearer ${token}` },
         cache: "no-store",
@@ -49,7 +55,30 @@ export function WhatsAppIntegration({ client, notify }: Props) {
     } finally {
       setChecking(false);
     }
-  }, [client, notify]);
+  }, [notify, sessionToken]);
+
+  const sendTestToSelf = useCallback(async () => {
+    setSendingTest(true);
+    try {
+      const token = await sessionToken();
+      const response = await fetch("/api/whatsapp/test-self", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        body: "{}",
+        cache: "no-store",
+      });
+      const payload = await response.json().catch(() => null) as { ok?: boolean; error?: string; recipient?: string } | null;
+      if (!response.ok || !payload?.ok) throw new Error(payload?.error || "No se pudo enviar el mensaje de prueba.");
+      notify(`Mensaje de prueba enviado a tu usuario${payload.recipient ? ` (${payload.recipient})` : ""}.`);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "No se pudo enviar el mensaje de prueba por WhatsApp.");
+    } finally {
+      setSendingTest(false);
+    }
+  }, [notify, sessionToken]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void check(false), 0);
@@ -85,8 +114,11 @@ export function WhatsAppIntegration({ client, notify }: Props) {
     </div> : null}
 
     <div className="actions">
-      <button className="btn ghost" type="button" disabled={checking} onClick={() => void check(true)}>
+      <button className="btn ghost" type="button" disabled={checking || sendingTest} onClick={() => void check(true)}>
         <RefreshCw /> {checking ? "Comprobando…" : "Comprobar ahora"}
+      </button>
+      <button className="btn" type="button" disabled={!status?.sendConfigured || checking || sendingTest} onClick={() => void sendTestToSelf()}>
+        <Send /> {sendingTest ? "Enviando…" : "Enviar prueba a mi usuario"}
       </button>
     </div>
   </article>;
