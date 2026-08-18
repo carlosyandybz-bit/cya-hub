@@ -3,6 +3,7 @@
 import { Cloud, Megaphone, RefreshCw, ShieldCheck } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CalendarVisualAdmin } from "./calendar-visual-admin";
 import { EmailIntegration } from "./email-integration";
 import { GoogleCalendarSync } from "./google-calendar-sync";
 import { WhatsAppIntegration } from "./whatsapp-integration";
@@ -76,6 +77,7 @@ export function P31IntegrationsAdmin({ client, integrations, notify }: Props) {
       <EmailIntegration client={client} notify={notify} />
 
       <GoogleCalendarSync client={client} notify={notify} />
+      <CalendarVisualAdmin client={client} notify={notify} />
 
       <article className="card pad">
         <div className="card-head">
