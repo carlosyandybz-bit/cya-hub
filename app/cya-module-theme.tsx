@@ -77,10 +77,14 @@ function studentTheme(): ModuleTheme | null {
 }
 
 function staffThemeFromDom(): ModuleTheme | null {
-  const navigations = [
+  const candidates: Array<HTMLElement | null> = [
     document.querySelector<HTMLElement>('nav[aria-label="Módulos principales"]'),
     document.querySelector<HTMLElement>('.mobile-nav'),
-  ].filter((node): node is HTMLElement => Boolean(node) && getComputedStyle(node).display !== "none");
+  ];
+  const navigations = candidates.filter((node): node is HTMLElement => {
+    if (node === null) return false;
+    return getComputedStyle(node).display !== "none";
+  });
 
   for (const navigation of navigations) {
     const active = [...navigation.querySelectorAll<HTMLButtonElement>("button")].find(isActiveControl);
