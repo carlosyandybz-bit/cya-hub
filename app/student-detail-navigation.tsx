@@ -28,7 +28,7 @@ export function StudentDetailNavigation({ tab, onTab }: {
     if (!group.tabs.some((item) => item.id === tab)) onTab(group.tabs[0].id);
   }
 
-  return <div className={styles.navigation}>
+  return <div className={styles.navigation} data-student-detail-tab={tab}>
     <nav className={styles.groupNav} aria-label="Áreas de la ficha del alumno">
       {STUDENT_DETAIL_GROUPS.map((group) => {
         const active = activeGroup.id === group.id;
