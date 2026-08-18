@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ModalScrollLock } from "./modal-scroll-lock";
 import { PullToRefresh } from "./pull-to-refresh";
 import { CyaModuleTheme } from "./cya-module-theme";
+import { StudentCardContactActions } from "./student-card-contact-actions";
 import "./globals.css";
 import "./visual-audit-v21.css";
 import "./visual-density-v22.css";
@@ -102,6 +103,7 @@ export default function RootLayout({
         <CyaModuleTheme />
         <ModalScrollLock />
         <PullToRefresh />
+        <StudentCardContactActions />
         {children}
       </body>
     </html>
