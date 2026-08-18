@@ -1,0 +1,103 @@
+/* CYA Hub v57 · module color purity.
+   Decorative + interactive accents belong exclusively to the active module.
+   Semantic success / warning / danger keep their meaning. */
+
+body[data-cya-module] {
+  --prf-purple: var(--cya-module-accent) !important;
+  --prf-purple-dark: var(--cya-accent-strong) !important;
+  --accent: var(--cya-module-accent) !important;
+  --accent-strong: var(--cya-accent-strong) !important;
+  --accent-soft: var(--cya-accent-soft) !important;
+}
+
+/* Remove legacy purple/blue glows from branded chrome and make them module-owned. */
+body[data-cya-module] [class*="logoImage"],
+body[data-cya-module] .brand img,
+body[data-cya-module] .mobile-nav-logo,
+body[data-cya-module] [class*="formationMain"] > span::before {
+  filter: drop-shadow(0 4px 9px color-mix(in srgb,var(--cya-module-accent) 32%,transparent)) !important;
+}
+
+/* Navigation, headings and decorative iconography use only the current module accent. */
+body[data-cya-module] :where(
+  nav button.active,
+  nav [aria-current="page"],
+  nav [aria-selected="true"],
+  .page-head .eyebrow,
+  .sectionHeading > div > span,
+  .pageHeading > span,
+  .quick svg,
+  .agenda-icon,
+  .marketing-icon,
+  .focus-icon,
+  .brand-mark,
+  [class*="discoverCard"] > svg,
+  [class*="missionList"] article > div:last-child > svg,
+  [class*="formationSheet"] > button svg:first-child,
+  [class*="backButton"] svg
+) {
+  color: var(--cya-module-accent) !important;
+}
+
+/* Non-semantic badges/chips/pills cannot keep a foreign accent. */
+body[data-cya-module] :where(
+  .badge:not(.success):not(.error):not(.warning):not(.danger):not(.portal),
+  .chip:not(.success):not(.error):not(.warning):not(.danger),
+  .pill:not(.success):not(.error):not(.warning):not(.danger),
+  [class*="badge"]:not([class*="success"]):not([class*="error"]):not([class*="warning"]):not([class*="danger"])
+) {
+  border-color: color-mix(in srgb,var(--cya-module-accent) 28%,transparent) !important;
+  background: color-mix(in srgb,var(--cya-module-accent) 13%,transparent) !important;
+  color: color-mix(in srgb,var(--cya-module-accent) 84%,white) !important;
+}
+
+/* Selected/active controls, including CSS-module implementations. */
+body[data-cya-module] :where(
+  [role="tab"][aria-selected="true"],
+  [role="option"][aria-selected="true"],
+  [class*="tab"][class*="active"],
+  [class*="segment"][class*="active"],
+  [class*="filter"][class*="active"]
+) {
+  border-color: color-mix(in srgb,var(--cya-module-accent) 55%,transparent) !important;
+  background-color: color-mix(in srgb,var(--cya-module-accent) 16%,var(--cya-surface-elevated)) !important;
+  color: var(--cya-accent-strong) !important;
+}
+
+/* Neutral actions stay neutral until interaction; interaction adopts only the module accent. */
+body[data-cya-module] :where(
+  button:not(.destructive):not(.danger):not([aria-invalid="true"]),
+  [role="button"]:not(.destructive):not(.danger),
+  a
+):hover {
+  --cya-local-accent: var(--cya-module-accent);
+}
+
+body[data-cya-module] :where(
+  button:not(.destructive):not(.danger):not([aria-invalid="true"]),
+  [role="button"]:not(.destructive):not(.danger),
+  a,
+  input,
+  select,
+  textarea
+):focus-visible {
+  outline-color: var(--cya-module-accent) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb,var(--cya-module-accent) 22%,transparent) !important;
+}
+
+/* Central dual-action control must inherit the current module without fixed purple remnants. */
+@media (max-width:900px) {
+  body[data-cya-module] .mobile-nav button.primary,
+  body[data-cya-module] nav[aria-label="Portal CYA"] [class*="formationMain"] {
+    border-color: color-mix(in srgb,var(--cya-module-accent) 62%,white 10%) !important;
+  }
+
+  body[data-cya-module] .mobile-nav .mobile-nav-secondary svg,
+  body[data-cya-module] nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] svg {
+    filter: drop-shadow(0 0 4px color-mix(in srgb,var(--cya-module-accent) 34%,transparent)) !important;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  body[data-cya-module] * { transition-color: none; }
+}
