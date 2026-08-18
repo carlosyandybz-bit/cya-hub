@@ -77,10 +77,15 @@ test("student formation menu stays between sticky header and bottom navigation",
       headerBottom: headerBox.bottom,
       navTop: navBox.top,
       viewportHeight: window.innerHeight,
-      menuOverflow: menu.scrollHeight - menu.clientHeight,
+      headerPosition: getComputedStyle(header).position,
+      navPosition: getComputedStyle(nav).position,
+      menuPosition: getComputedStyle(menu).position,
     };
   });
 
+  expect(geometry.headerPosition).toBe("sticky");
+  expect(geometry.navPosition).toBe("fixed");
+  expect(geometry.menuPosition).toBe("fixed");
   expect(geometry.menuTop).toBeGreaterThanOrEqual(geometry.headerBottom + 4);
   expect(geometry.menuBottom).toBeLessThanOrEqual(geometry.navTop - 2);
   expect(geometry.menuTop).toBeGreaterThanOrEqual(0);
