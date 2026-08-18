@@ -1,7 +1,7 @@
 "use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { Image as ImageIcon, Upload, Video, X } from "lucide-react";
+import { Check, Image as ImageIcon, Pencil, Upload, Video, X } from "lucide-react";
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import { SecureDriveAsset } from "./drive-media";
 import { getRuntimeAccessToken, getRuntimeSupabaseClient } from "./supabase-runtime";
@@ -47,7 +47,11 @@ export function StudentPersonalMediaOverlay({ close, personId: personIdOverride 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [savingTitle, setSavingTitle] = useState<number | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async (supabase: SupabaseClient, id: number) => {
     const [personResult, mediaResult] = await Promise.all([
@@ -71,14 +75,14 @@ export function StudentPersonalMediaOverlay({ close, personId: personIdOverride 
     void load(client, personId).catch((reason) => setError(reason instanceof Error ? reason.message : "No se pudo cargar la multimedia."));
   }, [client, personId, load]);
 
-  function chooseFile(event: ChangeEvent<HTMLInputElement>) {
+  function chooseFile(event: ChangeEvent<HTMLInputElement>, expectedType: "image" | "video") {
     const selected = event.target.files?.[0] ?? null;
     setMessage("");
     setError("");
     if (!selected) return setFile(null);
-    if (!selected.type.startsWith("image/") && !selected.type.startsWith("video/")) {
+    if (!selected.type.startsWith(`${expectedType}/`)) {
       setFile(null);
-      setError("Selecciona una foto o un vídeo.");
+      setError(expectedType === "video" ? "Selecciona un archivo de vídeo válido." : "Selecciona una imagen válida.");
       return;
     }
     if (selected.size <= 0 || selected.size > 1024 * 1024 * 1024) {
@@ -87,7 +91,15 @@ export function StudentPersonalMediaOverlay({ close, personId: personIdOverride 
       return;
     }
     setFile(selected);
-    if (!title.trim()) setTitle(selected.name.replace(/\.[^.]+$/, ""));
+    setTitle(selected.name.replace(/\.[^.]+$/, ""));
+  }
+
+  function clearSelectedFile() {
+    setFile(null);
+    setTitle("");
+    setNote("");
+    if (videoInputRef.current) videoInputRef.current.value = "";
+    if (imageInputRef.current) imageInputRef.current.value = "";
   }
 
   async function upload() {
@@ -124,10 +136,7 @@ export function StudentPersonalMediaOverlay({ close, personId: personIdOverride 
       });
       if (insert.error) throw new Error(`El archivo está en Drive, pero no se pudo vincular a la ficha: ${insert.error.message}`);
 
-      setFile(null);
-      setTitle("");
-      setNote("");
-      if (inputRef.current) inputRef.current.value = "";
+      clearSelectedFile();
       await load(client, personId);
       setMessage("Contenido guardado en Drive y vinculado a este alumno.");
     } catch (reason) {
@@ -137,30 +146,78 @@ export function StudentPersonalMediaOverlay({ close, personId: personIdOverride 
     }
   }
 
+  function startEditing(item: StudentMedia) {
+    setEditingId(item.id);
+    setTitleDraft(item.title || "");
+    setError("");
+    setMessage("");
+  }
+
+  function cancelEditing() {
+    setEditingId(null);
+    setTitleDraft("");
+  }
+
+  async function saveTitle(item: StudentMedia) {
+    if (readOnly || !client || savingTitle === item.id) return;
+    const nextTitle = titleDraft.trim();
+    if (!nextTitle) {
+      setError("El título no puede quedar vacío.");
+      return;
+    }
+    setSavingTitle(item.id);
+    setError("");
+    setMessage("");
+    const result = await client.from("student_media_resources").update({ title: nextTitle }).eq("id", item.id).eq("person_id", item.person_id);
+    if (result.error) {
+      setError(result.error.message);
+    } else {
+      setItems((current) => current.map((value) => value.id === item.id ? { ...value, title: nextTitle } : value));
+      setEditingId(null);
+      setTitleDraft("");
+      setMessage("Título actualizado.");
+    }
+    setSavingTitle(null);
+  }
+
   return <div className={styles.backdrop} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && close()}>
     <section className={styles.panel} role="dialog" aria-modal="true" aria-labelledby="student-personal-media-title">
       <header className={styles.header}>
-        <div><span>MULTIMEDIA PERSONAL</span><h2 id="student-personal-media-title">{readOnly ? "Mis archivos" : person?.display_name || "Alumno"}</h2><p>{readOnly ? "Fotos y vídeos que CYA ha compartido directamente contigo." : "Sube una foto o vídeo directamente para esta persona. El archivo vive en Google Drive y CYA Hub conserva únicamente el vínculo seguro."}</p></div>
+        <div><span>MULTIMEDIA PERSONAL</span><h2 id="student-personal-media-title">{readOnly ? "Mis archivos" : person?.display_name || "Alumno"}</h2><p>{readOnly ? "Fotos y vídeos que CYA ha compartido directamente contigo." : "Comparte contenido directamente con esta persona. Los archivos se guardan de forma privada en Google Drive y quedan vinculados a su ficha."}</p></div>
         <button type="button" onClick={close} aria-label="Cerrar"><X /></button>
       </header>
 
       {!readOnly ? <div className={styles.uploadCard}>
-        <div className={styles.uploadIntro}><Upload /><div><strong>Subir contenido para este alumno</strong><span>No necesita pertenecer a una clase ni a un contenido pedagógico existente.</span></div></div>
-        <label className={styles.filePicker}><input ref={inputRef} type="file" accept="image/*,video/*" onChange={chooseFile} /><span>{file ? file.name : "Seleccionar foto o vídeo"}</span></label>
-        <div className={styles.fields}>
-          <label><span>Título</span><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={180} placeholder="Ej. Referencia de musicalidad" /></label>
-          <label><span>Nota para el alumno</span><textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} maxLength={1000} placeholder="Opcional: por qué se lo envías o qué debe observar" /></label>
+        <div className={styles.uploadIntro}><span className={styles.uploadIcon}><Upload /></span><div><strong>Compartir contenido</strong><span>Elige qué quieres enviar. No necesita pertenecer a una clase ni a un contenido pedagógico.</span></div></div>
+        <div className={styles.uploadActions}>
+          <input ref={videoInputRef} className={styles.hiddenInput} type="file" accept="video/*" onChange={(event) => chooseFile(event, "video")} />
+          <input ref={imageInputRef} className={styles.hiddenInput} type="file" accept="image/*" onChange={(event) => chooseFile(event, "image")} />
+          <button type="button" className={styles.videoButton} onClick={() => videoInputRef.current?.click()}><Video /><span><strong>Subir vídeo</strong><small>Desde Fotos o Archivos</small></span></button>
+          <button type="button" className={styles.imageButton} onClick={() => imageInputRef.current?.click()}><ImageIcon /><span><strong>Subir foto</strong><small>Imagen para el alumno</small></span></button>
         </div>
+        {file ? <div className={styles.selectedFile}><span className={styles.selectedIcon}>{file.type.startsWith("video/") ? <Video /> : <ImageIcon />}</span><div><small>ARCHIVO SELECCIONADO</small><strong>{file.name}</strong><span>{file.type.startsWith("video/") ? "Vídeo" : "Imagen"} · {(file.size / 1024 / 1024).toFixed(file.size > 10 * 1024 * 1024 ? 0 : 1)} MB</span></div><button type="button" onClick={clearSelectedFile} aria-label="Quitar archivo"><X /></button></div> : null}
+        {file ? <div className={styles.fields}>
+          <label><span>Título visible</span><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={180} placeholder="Ej. Referencia de musicalidad" /></label>
+          <label><span>Nota para el alumno</span><textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} maxLength={1000} placeholder="Opcional: qué quieres que observe o recuerde" /></label>
+        </div> : null}
         {error ? <p className={styles.error}>{error}</p> : null}
         {message ? <p className={styles.success}>{message}</p> : null}
-        <button className={styles.primary} type="button" onClick={() => void upload()} disabled={!file || busy || !personId}>{busy ? "Subiendo a Drive…" : "Guardar para este alumno"}</button>
+        {file ? <button className={styles.primary} type="button" onClick={() => void upload()} disabled={busy || !personId}>{busy ? "Subiendo a Drive…" : "Compartir con este alumno"}</button> : null}
       </div> : error ? <p className={styles.error}>{error}</p> : null}
 
       <section className={styles.library}>
         <div className={styles.libraryHead}><div><span>{readOnly ? "COMPARTIDO CONTIGO" : "ASIGNADO DIRECTAMENTE"}</span><h3>{readOnly ? "Multimedia personal" : "Contenido personal"}</h3></div><strong>{items.length}</strong></div>
         {items.length ? <div className={styles.grid}>{items.map((item) => <article key={item.id}>
           <SecureDriveAsset fileId={item.external_file_id} mediaType={item.media_type} title={item.title} controls={item.media_type === "video"} className={styles.asset} />
-          <div className={styles.meta}><span>{item.media_type === "video" ? <Video /> : <ImageIcon />}{dateLabel(item.created_at)}</span><strong>{item.title || "Sin título"}</strong>{item.note ? <p>{item.note}</p> : null}</div>
+          <div className={styles.meta}>
+            <span className={styles.mediaDate}>{item.media_type === "video" ? <Video /> : <ImageIcon />}{dateLabel(item.created_at)}</span>
+            {editingId === item.id && !readOnly ? <div className={styles.titleEditor}>
+              <input autoFocus value={titleDraft} onChange={(event) => setTitleDraft(event.target.value)} maxLength={180} onKeyDown={(event) => { if (event.key === "Enter") void saveTitle(item); if (event.key === "Escape") cancelEditing(); }} />
+              <button type="button" className={styles.saveTitle} disabled={savingTitle === item.id} onClick={() => void saveTitle(item)} aria-label="Guardar título"><Check /></button>
+              <button type="button" className={styles.cancelTitle} onClick={cancelEditing} aria-label="Cancelar edición"><X /></button>
+            </div> : <div className={styles.titleRow}><strong>{item.title || "Sin título"}</strong>{!readOnly ? <button type="button" onClick={() => startEditing(item)} aria-label={`Editar título de ${item.title || "archivo"}`}><Pencil /><span>Editar</span></button> : null}</div>}
+            {item.note ? <p>{item.note}</p> : null}
+          </div>
         </article>)}</div> : <div className={styles.empty}><Upload /><span>{readOnly ? "Todavía no tienes archivos compartidos directamente contigo." : "Aún no has enviado contenido directamente a esta persona."}</span></div>}
       </section>
     </section>
