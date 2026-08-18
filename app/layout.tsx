@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { GoogleCalendarAutoSync } from "./google-calendar-auto-sync";
+import { ModalScrollLock } from "./modal-scroll-lock";
+import { PullToRefresh } from "./pull-to-refresh";
+import { CyaModuleTheme } from "./cya-module-theme";
 import "./globals.css";
 import "./visual-audit-v21.css";
 import "./visual-density-v22.css";
@@ -27,8 +30,22 @@ import "./p36-marketing.css";
 import "./p36-admin-teaching.css";
 import "./cya-detail-system-v2.css";
 import "./canonical-bottom-navigation-shell.css";
+import "./mobile-alignment-fix-v43.css";
+import "./student-portal-touch-target-v45.css";
+import "./student-master-profile-v47.css";
+import "./canonical-ui-primitives.css";
 import "./canonical-app-chrome.css";
+import "./professor-header-v44.css";
+import "./cya-design-system-v51.css";
 import "./dual-action-central-control-v50.css";
+import "./cya-module-identity-v52.css";
+import "./cya-watermark-quality-v53.css";
+import "./cya-premium-watermarks-v54.css";
+import "./cya-watermark-fidelity-v55.css";
+import "./cya-student-portal-identity-v56.css";
+import "./cya-module-color-purity-v57.css";
+import "./cya-module-interaction-states-v58.css";
+import "./pull-to-refresh.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -81,6 +98,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <CyaModuleTheme />
+        <ModalScrollLock />
+        <PullToRefresh />
         <GoogleCalendarAutoSync />
         {children}
       </body>
