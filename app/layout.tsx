@@ -5,6 +5,7 @@ import { PullToRefresh } from "./pull-to-refresh";
 import { CyaModuleTheme } from "./cya-module-theme";
 import { StudentCardContactActions } from "./student-card-contact-actions";
 import { ClassMediaUploadGuard } from "./class-media-upload-guard";
+import { LiveSearchCreateEnhancer } from "./live-search-create-enhancer";
 import "./globals.css";
 import "./visual-audit-v21.css";
 import "./visual-density-v22.css";
@@ -106,6 +107,7 @@ export default function RootLayout({
         <PullToRefresh />
         <ClassMediaUploadGuard />
         <StudentCardContactActions />
+        <LiveSearchCreateEnhancer />
         {children}
       </body>
     </html>
