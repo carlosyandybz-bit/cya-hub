@@ -153,60 +153,55 @@ export async function POST(request: NextRequest) {
     const permanentToken = env("WHATSAPP_ACCESS_TOKEN");
     if (!permanentToken) throw new Error("WHATSAPP_ACCESS_TOKEN no está configurado.");
 
-    const oauthUserToken = await exchangeEmbeddedSignupCode(code);
-    const candidateWabaIds = await discoverWabaIds(oauthUserToken);
+    const configuredWabaId = env("WHATSAPP_WABA_ID").replace(/\D/g, "");
+    if (!configuredWabaId) throw new Error("WHATSAPP_WABA_ID no está configurado.");
 
-    if (candidateWabaIds.length === 0) {
+    const oauthUserToken = await exchangeEmbeddedSignupCode(code);
+    const discoveredWabaIds = await discoverWabaIds(oauthUserToken);
+
+    if (!discoveredWabaIds.includes(configuredWabaId)) {
       return clearOAuthState(NextResponse.json({
-        error: "Meta completó el OAuth, pero no compartió ninguna cuenta de WhatsApp Business con CYA Hub.",
+        error: `Meta autorizó el acceso, pero no compartió la cuenta de WhatsApp configurada (${configuredWabaId}) con CYA Hub. Asigna esa WABA a la aplicación/usuario del sistema y vuelve a activar la coexistencia.`,
       }, { status: 409, headers: { "cache-control": "no-store" } }));
     }
 
-    const currentPhoneNumberId = env("WHATSAPP_PHONE_NUMBER_ID");
-    let selectedWabaId = "";
-    let selected: PhoneNumber | null = null;
-    let fallbackPhones: PhoneNumber[] = [];
+    const currentPhoneNumberId = env("WHATSAPP_PHONE_NUMBER_ID").replace(/\D/g, "");
+    if (!currentPhoneNumberId) throw new Error("WHATSAPP_PHONE_NUMBER_ID no está configurado.");
 
-    for (const candidateWabaId of candidateWabaIds) {
-      try {
-        const phones = await loadPhones(candidateWabaId, oauthUserToken);
-        if (!fallbackPhones.length && phones.length) fallbackPhones = phones;
-        const exact = phones.find((item) => item.id === currentPhoneNumberId);
-        if (exact) {
-          selectedWabaId = candidateWabaId;
-          selected = exact;
-          break;
-        }
-        if (!selected && phones[0]) {
-          selectedWabaId = candidateWabaId;
-          selected = phones[0];
-        }
-      } catch {
-        // Algunos WABA compartidos pueden no exponer teléfonos con el token temporal.
-      }
+    const phones = await loadPhones(configuredWabaId, oauthUserToken);
+    const selected = phones.find((item) => String(item.id || "").replace(/\D/g, "") === currentPhoneNumberId) || null;
+
+    if (!selected) {
+      const availableIds = phones.map((item) => String(item.id || "").replace(/\D/g, "")).filter(Boolean);
+      return clearOAuthState(NextResponse.json({
+        error: availableIds.length
+          ? `La WABA configurada es correcta, pero WHATSAPP_PHONE_NUMBER_ID no pertenece a esa cuenta. Meta devolvió: ${availableIds.join(", ")}.`
+          : "La WABA configurada es correcta, pero Meta no devolvió ningún número de teléfono accesible para ella.",
+        configuredWabaId,
+        configuredPhoneNumberId: currentPhoneNumberId,
+        availablePhoneNumberIds: availableIds,
+      }, { status: 409, headers: { "cache-control": "no-store" } }));
     }
 
-    if (!selectedWabaId) selectedWabaId = candidateWabaIds[0];
-    if (!selected && fallbackPhones[0]) selected = fallbackPhones[0];
-
     await graph<{ success?: boolean }>(
-      `${encodeURIComponent(selectedWabaId)}/subscribed_apps`,
+      `${encodeURIComponent(configuredWabaId)}/subscribed_apps`,
       oauthUserToken,
       { method: "POST" },
     );
 
     return clearOAuthState(NextResponse.json({
       ok: true,
-      wabaId: selectedWabaId,
-      discoveredWabaIds: candidateWabaIds,
-      phoneNumberId: selected?.id || null,
-      displayPhoneNumber: selected?.display_phone_number || null,
-      verifiedName: selected?.verified_name || null,
-      verificationStatus: selected?.code_verification_status || null,
-      platformType: selected?.platform_type || null,
-      qualityRating: selected?.quality_rating || null,
-      currentConfiguredPhoneNumberId: currentPhoneNumberId || null,
-      needsPhoneNumberEnvUpdate: Boolean(selected?.id && currentPhoneNumberId && selected.id !== currentPhoneNumberId),
+      wabaId: configuredWabaId,
+      configuredWabaId,
+      discoveredWabaIds,
+      phoneNumberId: selected.id || null,
+      displayPhoneNumber: selected.display_phone_number || null,
+      verifiedName: selected.verified_name || null,
+      verificationStatus: selected.code_verification_status || null,
+      platformType: selected.platform_type || null,
+      qualityRating: selected.quality_rating || null,
+      currentConfiguredPhoneNumberId: currentPhoneNumberId,
+      needsPhoneNumberEnvUpdate: false,
       usedManualOAuth: true,
       redirectUri: META_OAUTH_REDIRECT_URI,
     }, { headers: { "cache-control": "no-store" } }));
