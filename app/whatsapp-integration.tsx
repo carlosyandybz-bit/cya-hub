@@ -8,7 +8,6 @@ const META_APP_ID = "1585899772877530";
 const WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID = "886780604243575";
 const META_SDK_VERSION = "v26.0";
 const META_ALLOWED_ORIGIN = "https://app.carlosyandy.com";
-const META_OAUTH_REDIRECT_URI = "https://app.carlosyandy.com/";
 
 type WhatsAppStatus = {
   configured: boolean;
@@ -204,9 +203,9 @@ export function WhatsAppIntegration({ client, notify }: Props) {
         .finally(() => setOnboarding(false));
     }, {
       config_id: WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID,
+      auth_type: "rerequest",
       response_type: "code",
       override_default_response_type: true,
-      fallback_redirect_uri: META_OAUTH_REDIRECT_URI,
       extras: {
         setup: {},
         featureType: "whatsapp_business_app_onboarding",
