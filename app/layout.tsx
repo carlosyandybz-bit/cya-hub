@@ -38,6 +38,7 @@ import "./cya-design-system-v51.css";
 import "./dual-action-central-control-v50.css";
 import "./cya-module-identity-v52.css";
 import "./cya-watermark-quality-v53.css";
+import "./cya-premium-watermarks-v54.css";
 import "./pull-to-refresh.css";
 
 const geistSans = Geist({
