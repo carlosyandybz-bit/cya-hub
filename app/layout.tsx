@@ -42,6 +42,7 @@ import "./cya-watermark-quality-v53.css";
 import "./cya-premium-watermarks-v54.css";
 import "./cya-watermark-fidelity-v55.css";
 import "./cya-student-portal-identity-v56.css";
+import "./cya-module-color-purity-v57.css";
 import "./pull-to-refresh.css";
 
 const geistSans = Geist({
