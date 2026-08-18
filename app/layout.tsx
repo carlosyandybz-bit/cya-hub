@@ -45,6 +45,7 @@ import "./cya-student-portal-identity-v56.css";
 import "./cya-module-color-purity-v57.css";
 import "./cya-module-interaction-states-v58.css";
 import "./cya-ui-polish-v59.css";
+import "./teaching-block-b.css";
 import "./pull-to-refresh.css";
 
 const geistSans = Geist({
