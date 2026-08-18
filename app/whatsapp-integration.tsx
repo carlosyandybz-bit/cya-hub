@@ -29,7 +29,7 @@ type Props = {
 };
 
 type FacebookLoginResponse = {
-  authResponse?: { code?: string };
+  authResponse?: { code?: string; accessToken?: string };
   status?: string;
 };
 
@@ -140,7 +140,7 @@ export function WhatsAppIntegration({ client, notify }: Props) {
     }
   }, [notify, sessionToken]);
 
-  const completeEmbeddedSignup = useCallback(async (input: { code?: string; result?: EmbeddedSignupResult | null }) => {
+  const completeEmbeddedSignup = useCallback(async (input: { accessToken?: string; code?: string; result?: EmbeddedSignupResult | null }) => {
     const token = await sessionToken();
     const response = await fetch("/api/whatsapp/embedded-signup/complete", {
       method: "POST",
@@ -149,10 +149,11 @@ export function WhatsAppIntegration({ client, notify }: Props) {
         "content-type": "application/json",
       },
       body: JSON.stringify({
+        accessToken: input.accessToken || null,
         code: input.code || null,
         wabaId: input.result?.wabaId || null,
         phoneNumberId: input.result?.phoneNumberId || null,
-        event: input.result ? "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" : "OAUTH_CALLBACK",
+        event: input.result ? "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" : "FACEBOOK_LOGIN_CALLBACK",
       }),
       cache: "no-store",
     });
@@ -190,22 +191,21 @@ export function WhatsAppIntegration({ client, notify }: Props) {
     setOnboarding(true);
 
     window.FB.login((response) => {
+      const accessToken = response?.authResponse?.accessToken?.trim() || "";
       const code = response?.authResponse?.code?.trim() || "";
       const result = signupResultRef.current;
-      if (!code && !result) {
+      if (!accessToken && !code && !result) {
         setOnboarding(false);
-        notify("El registro de WhatsApp se canceló o no llegó a completarse.");
+        notify("El registro de WhatsApp se canceló o Meta no devolvió credenciales de conexión.");
         return;
       }
 
-      void completeEmbeddedSignup({ code, result })
+      void completeEmbeddedSignup({ accessToken, code, result })
         .catch((error) => notify(error instanceof Error ? error.message : "No se pudo completar la coexistencia de WhatsApp."))
         .finally(() => setOnboarding(false));
     }, {
       config_id: WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID,
       auth_type: "rerequest",
-      response_type: "code",
-      override_default_response_type: true,
       extras: {
         setup: {},
         featureType: "whatsapp_business_app_onboarding",
