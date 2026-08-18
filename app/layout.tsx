@@ -5,6 +5,7 @@ import { ModalScrollLock } from "./modal-scroll-lock";
 import { PullToRefresh } from "./pull-to-refresh";
 import { CyaModuleTheme } from "./cya-module-theme";
 import { StudentCardContactActions } from "./student-card-contact-actions";
+import { ClassMediaUploadGuard } from "./class-media-upload-guard";
 import "./globals.css";
 import "./visual-audit-v21.css";
 import "./visual-density-v22.css";
@@ -105,6 +106,7 @@ export default function RootLayout({
         <PullToRefresh />
         <GoogleCalendarAutoSync />
         <StudentCardContactActions />
+        <ClassMediaUploadGuard />
         {children}
       </body>
     </html>
