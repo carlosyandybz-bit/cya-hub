@@ -24,6 +24,11 @@ type EmbeddedSignupResult = {
   event: string;
 };
 
+type EmbeddedSignupMessage =
+  | { kind: "finish"; result: EmbeddedSignupResult }
+  | { kind: "cancel"; currentStep?: string }
+  | { kind: "error"; message: string };
+
 type Props = {
   client: SupabaseClient;
   notify: (message: string) => void;
@@ -60,7 +65,17 @@ function initializeFacebookSdk() {
   return true;
 }
 
-function parseEmbeddedSignupMessage(raw: unknown): EmbeddedSignupResult | null {
+function isTrustedMetaOrigin(origin: string) {
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname.toLowerCase();
+    return url.protocol === "https:" && (hostname === "facebook.com" || hostname.endsWith(".facebook.com"));
+  } catch {
+    return false;
+  }
+}
+
+function parseEmbeddedSignupMessage(raw: unknown): EmbeddedSignupMessage | null {
   let payload: unknown = raw;
   if (typeof raw === "string") {
     try { payload = JSON.parse(raw); } catch { return null; }
@@ -68,12 +83,23 @@ function parseEmbeddedSignupMessage(raw: unknown): EmbeddedSignupResult | null {
   if (!payload || typeof payload !== "object") return null;
   const record = payload as Record<string, unknown>;
   if (record.type !== "WA_EMBEDDED_SIGNUP") return null;
+
   const event = String(record.event || "");
-  if (event !== "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" && !event.startsWith("FINISH")) return null;
   const data = record.data && typeof record.data === "object" ? record.data as Record<string, unknown> : {};
+
+  if (event === "ERROR") {
+    return { kind: "error", message: String(data.error_message || data.errorMessage || "Meta devolvió un error durante Embedded Signup.") };
+  }
+  if (event === "CANCEL") {
+    const currentStep = String(data.current_step || data.currentStep || "").trim();
+    return { kind: "cancel", ...(currentStep ? { currentStep } : {}) };
+  }
+  if (event !== "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" && !event.startsWith("FINISH")) return null;
+
   const wabaId = String(data.waba_id || data.wabaId || "").replace(/\D/g, "");
   const phoneNumberId = String(data.phone_number_id || data.phoneNumberId || "").replace(/\D/g, "");
-  return wabaId ? { wabaId, ...(phoneNumberId ? { phoneNumberId } : {}), event } : null;
+  if (!wabaId) return { kind: "error", message: "Meta terminó Embedded Signup sin devolver el WABA enlazado." };
+  return { kind: "finish", result: { wabaId, ...(phoneNumberId ? { phoneNumberId } : {}), event } };
 }
 
 export function WhatsAppIntegration({ client, notify }: Props) {
@@ -84,6 +110,21 @@ export function WhatsAppIntegration({ client, notify }: Props) {
   const [onboarding, setOnboarding] = useState(false);
   const signupActiveRef = useRef(false);
   const completionStartedRef = useRef(false);
+  const completionGraceTimerRef = useRef<number | null>(null);
+
+  const clearCompletionGraceTimer = useCallback(() => {
+    if (completionGraceTimerRef.current !== null) {
+      window.clearTimeout(completionGraceTimerRef.current);
+      completionGraceTimerRef.current = null;
+    }
+  }, []);
+
+  const resetOnboarding = useCallback(() => {
+    clearCompletionGraceTimer();
+    signupActiveRef.current = false;
+    completionStartedRef.current = false;
+    setOnboarding(false);
+  }, [clearCompletionGraceTimer]);
 
   const sessionToken = useCallback(async () => {
     const { data } = await client.auth.getSession();
@@ -183,24 +224,29 @@ export function WhatsAppIntegration({ client, notify }: Props) {
       return;
     }
 
+    clearCompletionGraceTimer();
     signupActiveRef.current = true;
     completionStartedRef.current = false;
     setOnboarding(true);
 
     window.FB.login((response) => {
-      if (response?.authResponse) {
-        // El code del SDK no se intercambia: esperamos el evento WA_EMBEDDED_SIGNUP,
-        // que es la confirmación autoritativa de que el onboarding de coexistencia terminó.
+      if (completionStartedRef.current) return;
+      if (!response?.authResponse) {
+        resetOnboarding();
+        notify("El registro de coexistencia se canceló antes de terminar.");
         return;
       }
-      if (!completionStartedRef.current) {
-        signupActiveRef.current = false;
-        setOnboarding(false);
-        notify("El registro de coexistencia se canceló antes de terminar.");
-      }
+
+      // El evento WA_EMBEDDED_SIGNUP puede llegar justo antes o justo después del callback
+      // de FB.login. Damos un breve margen; si no llega, desbloqueamos la interfaz y
+      // mostramos un diagnóstico en lugar de dejar CYA eternamente en “Conectando”.
+      completionGraceTimerRef.current = window.setTimeout(() => {
+        if (!signupActiveRef.current || completionStartedRef.current) return;
+        resetOnboarding();
+        notify("Meta cerró el diálogo de acceso, pero no devolvió el evento de finalización de Embedded Signup. Vuelve a intentarlo; si se repite, revisaremos la configuración de Facebook Login for Business/Coexistencia.");
+      }, 5000);
     }, {
       config_id: WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID,
-      auth_type: "rerequest",
       response_type: "code",
       override_default_response_type: true,
       extras: {
@@ -209,25 +255,38 @@ export function WhatsAppIntegration({ client, notify }: Props) {
         sessionInfoVersion: "3",
       },
     });
-  }, [embeddedSignupReady, notify]);
+  }, [clearCompletionGraceTimer, embeddedSignupReady, notify, resetOnboarding]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
-      const result = parseEmbeddedSignupMessage(event.data);
-      if (!result || !signupActiveRef.current || completionStartedRef.current) return;
+      if (!isTrustedMetaOrigin(event.origin)) return;
+      const message = parseEmbeddedSignupMessage(event.data);
+      if (!message || !signupActiveRef.current) return;
 
+      if (message.kind === "cancel") {
+        resetOnboarding();
+        notify(message.currentStep
+          ? `Meta canceló Embedded Signup en el paso “${message.currentStep}”.`
+          : "Meta canceló Embedded Signup antes de terminar.");
+        return;
+      }
+
+      if (message.kind === "error") {
+        resetOnboarding();
+        notify(message.message);
+        return;
+      }
+
+      if (completionStartedRef.current) return;
+      clearCompletionGraceTimer();
       completionStartedRef.current = true;
-      void completeEmbeddedSignup(result)
+      void completeEmbeddedSignup(message.result)
         .catch((error) => notify(error instanceof Error ? error.message : "No se pudo completar la coexistencia de WhatsApp."))
-        .finally(() => {
-          signupActiveRef.current = false;
-          setOnboarding(false);
-        });
+        .finally(() => resetOnboarding());
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [completeEmbeddedSignup, notify]);
+  }, [clearCompletionGraceTimer, completeEmbeddedSignup, notify, resetOnboarding]);
 
   useEffect(() => {
     let pollTimer: number | null = null;
@@ -271,6 +330,10 @@ export function WhatsAppIntegration({ client, notify }: Props) {
       loadTarget?.removeEventListener("load", onLoad);
     };
   }, []);
+
+  useEffect(() => {
+    return () => clearCompletionGraceTimer();
+  }, [clearCompletionGraceTimer]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void check(false), 0);
