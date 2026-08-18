@@ -1,0 +1,229 @@
+/* CYA Hub v52 · Module identity + branded watermark system.
+   One accent per module. Semantic success/warning/danger remain semantic for comprehension.
+   Decorative and interactive accents inherit only --cya-module-accent. */
+
+body[data-cya-module="home"] { --cya-module-accent:#a970ff; --cya-module-deep:#5f2ca8; }
+body[data-cya-module="students"] { --cya-module-accent:#359cff; --cya-module-deep:#175fa8; }
+body[data-cya-module="live"] { --cya-module-accent:#ff4fa3; --cya-module-deep:#9b245f; }
+body[data-cya-module="teaching"] { --cya-module-accent:#36c98f; --cya-module-deep:#167653; }
+body[data-cya-module="marketing"] { --cya-module-accent:#ff9a43; --cya-module-deep:#a45412; }
+body[data-cya-module="admin"] { --cya-module-accent:#42c5d4; --cya-module-deep:#176c78; }
+body[data-cya-module="account"] { --cya-module-accent:#b69cff; --cya-module-deep:#6950b0; }
+body[data-cya-module="student-home"] { --cya-module-accent:#8d7dff; --cya-module-deep:#4d3cad; }
+body[data-cya-module="student-progress"] { --cya-module-accent:#38b8ff; --cya-module-deep:#146ca3; }
+body[data-cya-module="student-formation"] { --cya-module-accent:#c96bff; --cya-module-deep:#7d2ba9; }
+body[data-cya-module="student-discover"] { --cya-module-accent:#ff7954; --cya-module-deep:#a33c22; }
+body[data-cya-module="student-missions"] { --cya-module-accent:#55d77d; --cya-module-deep:#218346; }
+
+body[data-cya-module] {
+  --cya-accent:var(--cya-module-accent) !important;
+  --cya-accent-strong:color-mix(in srgb,var(--cya-module-accent) 82%,white) !important;
+  --cya-accent-soft:color-mix(in srgb,var(--cya-module-accent) 15%,transparent) !important;
+  --cya-focus:var(--cya-module-accent) !important;
+  --cya-focus-ring:color-mix(in srgb,var(--cya-module-accent) 22%,transparent) !important;
+  --purple:var(--cya-module-accent) !important;
+  --purple2:var(--cya-module-accent) !important;
+  --soft:color-mix(in srgb,var(--cya-module-accent) 14%,transparent) !important;
+  --cya-module-glow:color-mix(in srgb,var(--cya-module-accent) 34%,transparent);
+  --cya-module-edge:color-mix(in srgb,var(--cya-module-accent) 68%,white 12%);
+  isolation:isolate;
+  transition:background-color 240ms ease,color 180ms ease;
+}
+
+/* Global background signature: large, quiet, partially cropped CYA mark. */
+body[data-cya-module]::before {
+  content:"";
+  position:fixed;
+  z-index:-1;
+  top:clamp(80px,12vh,150px);
+  right:clamp(-130px,-8vw,-48px);
+  width:clamp(310px,48vw,690px);
+  aspect-ratio:1;
+  background:var(--cya-module-accent);
+  opacity:.032;
+  pointer-events:none;
+  transform:rotate(-8deg) translate3d(0,0,0);
+  transform-origin:center;
+  -webkit-mask:url('/cya-logo.png') center/contain no-repeat;
+  mask:url('/cya-logo.png') center/contain no-repeat;
+  animation:cya-watermark-drift 11s ease-in-out infinite alternate;
+}
+
+@keyframes cya-watermark-drift {
+  from { transform:rotate(-8deg) translate3d(0,0,0) scale(1); opacity:.026; }
+  to { transform:rotate(-6.8deg) translate3d(-2px,1px,0) scale(1.008); opacity:.042; }
+}
+
+/* Important surfaces get one embedded brand mark; not every card is decorated. */
+:where(
+  .focus,
+  .portal-hero,
+  .class-workflow-page .card:first-of-type,
+  .home-grid > .card:first-child,
+  .portal-grid > .card:first-child,
+  .marketing-workspace .card:first-of-type,
+  .admin-page .card:first-of-type,
+  .student-list .student-row:first-child
+) {
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+}
+
+:where(
+  .focus,
+  .portal-hero,
+  .class-workflow-page .card:first-of-type,
+  .home-grid > .card:first-child,
+  .portal-grid > .card:first-child,
+  .marketing-workspace .card:first-of-type,
+  .admin-page .card:first-of-type,
+  .student-list .student-row:first-child
+)::after {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  right:clamp(-52px,-5vw,-18px);
+  bottom:clamp(-62px,-6vw,-26px);
+  width:clamp(150px,25vw,270px);
+  aspect-ratio:1;
+  background:var(--cya-module-accent);
+  opacity:.055;
+  pointer-events:none;
+  transform:rotate(-10deg);
+  transform-origin:center;
+  -webkit-mask:url('/cya-logo.png') center/contain no-repeat;
+  mask:url('/cya-logo.png') center/contain no-repeat;
+  animation:cya-surface-mark 9s ease-in-out infinite alternate;
+}
+
+@keyframes cya-surface-mark {
+  from { transform:rotate(-10deg) scale(1); opacity:.045; }
+  to { transform:rotate(-8.8deg) scale(1.018); opacity:.075; }
+}
+
+/* One module accent owns all non-semantic interaction cues. */
+body[data-cya-module] :where(
+  .eyebrow,
+  .page-head .eyebrow,
+  .card-head .eyebrow,
+  .marketing-item-top span:not(.marketing-icon),
+  .media-pill,
+  .field-hint a,
+  .portal-next .eyebrow
+) { color:var(--cya-module-accent) !important; }
+
+body[data-cya-module] :where(
+  .btn:not(.ghost):not(.destructive),
+  button.primary:not(.mobile-nav button.primary),
+  [role="tab"].active,
+  .segmented button.active,
+  .teaching-switch button.active,
+  .module-tabs button.active,
+  .marketing-tabs button.active
+) {
+  border-color:color-mix(in srgb,var(--cya-module-accent) 58%,transparent) !important;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--cya-module-accent) 93%,white 7%),var(--cya-module-deep)) !important;
+  color:white !important;
+  box-shadow:0 8px 22px color-mix(in srgb,var(--cya-module-accent) 20%,transparent);
+}
+
+body[data-cya-module] :where(.btn.ghost,.icon-btn,.quick,.student-row-main,.agenda-row button) {
+  --cya-local-accent:var(--cya-module-accent);
+}
+
+body[data-cya-module] :where(.btn.ghost,.icon-btn):hover,
+body[data-cya-module] :where(.quick,.student-row,.agenda-row):hover {
+  border-color:color-mix(in srgb,var(--cya-module-accent) 42%,var(--cya-line)) !important;
+  color:var(--cya-module-accent) !important;
+  background:color-mix(in srgb,var(--cya-module-accent) 9%,var(--cya-surface-elevated)) !important;
+}
+
+body[data-cya-module] :where(
+  input:not([type="checkbox"]):not([type="radio"]),select,textarea,button,a,[role="button"],[role="tab"]
+):focus-visible {
+  outline-color:var(--cya-module-accent) !important;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--cya-module-accent) 22%,transparent) !important;
+}
+
+body[data-cya-module] :where(.badge:not(.success):not(.error):not(.warning):not(.danger),.chip,.pill) {
+  border-color:color-mix(in srgb,var(--cya-module-accent) 24%,transparent) !important;
+  background:color-mix(in srgb,var(--cya-module-accent) 13%,transparent) !important;
+  color:color-mix(in srgb,var(--cya-module-accent) 82%,white) !important;
+}
+
+body[data-cya-module] :where(.quick svg,.agenda-icon,.marketing-icon,.brand-mark,.focus-icon) {
+  color:var(--cya-module-accent) !important;
+}
+
+/* Compact brand detail for dense dialogs/forms: no large watermark behind fields. */
+body[data-cya-module] :where([role="dialog"],.modal) > :where(header,.modal-head)::after {
+  content:"";
+  width:22px;
+  height:22px;
+  margin-left:auto;
+  flex:0 0 22px;
+  background:var(--cya-module-accent);
+  opacity:.28;
+  -webkit-mask:url('/cya-logo.png') center/contain no-repeat;
+  mask:url('/cya-logo.png') center/contain no-repeat;
+  pointer-events:none;
+}
+
+/* Central control follows the current module, including hover/open states. */
+@keyframes cya-module-control-breathe {
+  0%,100% { filter:drop-shadow(0 5px 10px rgba(0,0,0,.32)) drop-shadow(0 0 2px color-mix(in srgb,var(--cya-module-accent) 18%,transparent)); }
+  50% { filter:drop-shadow(0 7px 13px rgba(0,0,0,.34)) drop-shadow(0 0 7px color-mix(in srgb,var(--cya-module-accent) 34%,transparent)); }
+}
+
+@media (max-width:900px) {
+  body[data-cya-module] .mobile-nav button.primary,
+  body[data-cya-module] nav[aria-label="Portal CYA"] [class*="formationMain"] {
+    background:
+      radial-gradient(90% 120% at 50% -24%,color-mix(in srgb,var(--cya-module-accent) 38%,white 10%),transparent 56%),
+      linear-gradient(180deg,color-mix(in srgb,var(--cya-module-accent) 48%,#1b0d24),color-mix(in srgb,var(--cya-module-deep) 38%,#09070d)) !important;
+    animation:cya-module-control-breathe 5.8s ease-in-out infinite !important;
+  }
+
+  body[data-cya-module] .mobile-nav button.primary::after,
+  body[data-cya-module] nav[aria-label="Portal CYA"] [class*="formationMain"]::before {
+    background:var(--cya-module-edge) !important;
+    -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 104 66' preserveAspectRatio='none'%3E%3Cpath d='M16 1H88Q93 1 96 7L102 27Q104 33 102 39L96 59Q93 65 88 65H16Q11 65 8 59L2 39Q0 33 2 27L8 7Q11 1 16 1Z' fill='none' stroke='white' stroke-width='1.35'/%3E%3C/svg%3E") center/100% 100% no-repeat !important;
+    mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 104 66' preserveAspectRatio='none'%3E%3Cpath d='M16 1H88Q93 1 96 7L102 27Q104 33 102 39L96 59Q93 65 88 65H16Q11 65 8 59L2 39Q0 33 2 27L8 7Q11 1 16 1Z' fill='none' stroke='white' stroke-width='1.35'/%3E%3C/svg%3E") center/100% 100% no-repeat !important;
+    filter:drop-shadow(0 0 4px var(--cya-module-glow)) !important;
+  }
+
+  body[data-cya-module] .mobile-nav button.primary::before,
+  body[data-cya-module] nav[aria-label="Portal CYA"] [class*="formationMain"]::after {
+    background:
+      linear-gradient(112deg,transparent 38%,rgba(255,255,255,.17) 49%,transparent 60%),
+      radial-gradient(72% 95% at 50% -8%,color-mix(in srgb,var(--cya-module-accent) 28%,transparent),transparent 62%),
+      linear-gradient(180deg,color-mix(in srgb,var(--cya-module-accent) 19%,transparent),rgba(8,7,12,.16)) !important;
+  }
+
+  body[data-cya-module] .mobile-nav .mobile-nav-secondary::before,
+  body[data-cya-module] nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"]::before {
+    background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--cya-module-accent) 60%,white) 18%,color-mix(in srgb,var(--cya-module-accent) 60%,white) 82%,transparent) !important;
+    box-shadow:0 0 5px var(--cya-module-glow) !important;
+  }
+
+  body[data-cya-module] .mobile-nav button.primary .mobile-nav-logo,
+  body[data-cya-module] nav[aria-label="Portal CYA"] [class*="formationMain"] > span::before {
+    filter:drop-shadow(0 0 6px var(--cya-module-glow)) !important;
+  }
+
+  body[data-cya-module] .mobile-nav button.primary:hover,
+  body[data-cya-module] nav[aria-label="Portal CYA"] [class*="formationMain"]:hover {
+    filter:brightness(1.09) saturate(1.08) drop-shadow(0 0 6px var(--cya-module-glow)) !important;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  body[data-cya-module]::before,
+  :where(.focus,.portal-hero,.class-workflow-page .card:first-of-type,.home-grid > .card:first-child,.portal-grid > .card:first-child,.marketing-workspace .card:first-of-type,.admin-page .card:first-of-type,.student-list .student-row:first-child)::after,
+  body[data-cya-module] .mobile-nav button.primary,
+  body[data-cya-module] nav[aria-label="Portal CYA"] [class*="formationMain"] {
+    animation:none !important;
+    transition:none !important;
+  }
+}

@@ -1,0 +1,110 @@
+/* CYA Hub v55 · high-fidelity watermark rendering.
+   Match the approved Main/Inicio treatment: render the real high-resolution CYA artwork,
+   preserve its internal light/depth detail, then tint it with the current module accent.
+   Do not use the PNG as a CSS mask: Safari flattens that treatment into a soft silhouette. */
+
+/* Ambient mark: real artwork + module tint through luminosity blending. */
+body[data-cya-module]:not([data-cya-module="home"])::before {
+  -webkit-mask:none !important;
+  mask:none !important;
+  background-color:var(--cya-module-accent) !important;
+  background-image:url('/cya-logo.png') !important;
+  background-repeat:no-repeat !important;
+  background-position:center !important;
+  background-size:contain !important;
+  background-blend-mode:luminosity !important;
+  opacity:.052 !important;
+  filter:saturate(.82) contrast(1.08) !important;
+  will-change:opacity !important;
+}
+
+/* Embedded premium mark: same real artwork, never a flat masked silhouette. */
+body[data-cya-module] :where(
+  .focus,
+  .portal-hero,
+  .class-workflow-page .card:first-of-type,
+  .home-grid > .card:first-child,
+  .portal-grid > .card:first-child,
+  .marketing-workspace .card:first-of-type,
+  .admin-page .card:first-of-type,
+  .student-list .student-row:first-child,
+  .agenda-page .card:first-of-type,
+  .agenda-view .card:first-of-type,
+  .teaching-workspace .card:first-of-type,
+  .teaching-page .card:first-of-type,
+  .statistics-page .card:first-of-type,
+  .academy-page .card:first-of-type,
+  .account-page .card:first-of-type,
+  .notifications-page .card:first-of-type,
+  main > .card:first-of-type,
+  main > section.card:first-of-type
+)::after {
+  -webkit-mask:none !important;
+  mask:none !important;
+  background-color:var(--cya-module-accent) !important;
+  background-image:url('/cya-logo.png') !important;
+  background-repeat:no-repeat !important;
+  background-position:center !important;
+  background-size:contain !important;
+  background-blend-mode:luminosity !important;
+  opacity:.09 !important;
+  filter:saturate(.88) contrast(1.1) !important;
+  will-change:opacity !important;
+}
+
+/* Home is the visual reference. Keep its approved ambient treatment untouched,
+   but ensure the focus-card mark uses the real artwork with the same fidelity as Main. */
+body[data-cya-module="home"] .focus::after {
+  -webkit-mask:none !important;
+  mask:none !important;
+  background-color:var(--cya-module-accent) !important;
+  background-image:url('/cya-logo.png') !important;
+  background-repeat:no-repeat !important;
+  background-position:center !important;
+  background-size:contain !important;
+  background-blend-mode:luminosity !important;
+  opacity:.105 !important;
+  filter:saturate(.9) contrast(1.1) !important;
+}
+
+/* Never animate geometry: moving/scaling a translucent raster is what made Safari look soft.
+   Only the opacity breathes. */
+@keyframes cya-fidelity-ambient-v55 {
+  from { opacity:.044; }
+  to { opacity:.058; }
+}
+@keyframes cya-fidelity-surface-v55 {
+  from { opacity:.078; }
+  to { opacity:.105; }
+}
+body[data-cya-module]:not([data-cya-module="home"])::before {
+  animation:cya-fidelity-ambient-v55 10.5s ease-in-out infinite alternate !important;
+}
+body[data-cya-module] :where(
+  .focus,.portal-hero,.class-workflow-page .card:first-of-type,
+  .home-grid > .card:first-child,.portal-grid > .card:first-child,
+  .marketing-workspace .card:first-of-type,.admin-page .card:first-of-type,
+  .student-list .student-row:first-child,.agenda-page .card:first-of-type,
+  .agenda-view .card:first-of-type,.teaching-workspace .card:first-of-type,
+  .teaching-page .card:first-of-type,.statistics-page .card:first-of-type,
+  .academy-page .card:first-of-type,.account-page .card:first-of-type,
+  .notifications-page .card:first-of-type,main > .card:first-of-type,
+  main > section.card:first-of-type
+)::after {
+  animation:cya-fidelity-surface-v55 9.2s ease-in-out infinite alternate !important;
+}
+
+@media (prefers-reduced-motion:reduce) {
+  body[data-cya-module]::before,
+  body[data-cya-module] :where(
+    .focus,.portal-hero,.class-workflow-page .card:first-of-type,
+    .home-grid > .card:first-child,.portal-grid > .card:first-child,
+    .marketing-workspace .card:first-of-type,.admin-page .card:first-of-type,
+    .student-list .student-row:first-child,.agenda-page .card:first-of-type,
+    .agenda-view .card:first-of-type,.teaching-workspace .card:first-of-type,
+    .teaching-page .card:first-of-type,.statistics-page .card:first-of-type,
+    .academy-page .card:first-of-type,.account-page .card:first-of-type,
+    .notifications-page .card:first-of-type,main > .card:first-of-type,
+    main > section.card:first-of-type
+  )::after { animation:none !important; }
+}

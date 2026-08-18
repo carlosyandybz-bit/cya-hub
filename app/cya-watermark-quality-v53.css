@@ -1,0 +1,89 @@
+/* CYA Hub v53 · watermark rendering precision.
+   Keeps v52 module identity while avoiding Safari mask resampling during transform animation.
+   Home keeps its original background signature while restoring the approved embedded focus-card mark. */
+
+/* Keep the mask geometry static. Only opacity breathes; no scale/translation re-rasterization. */
+body[data-cya-module]::before {
+  width:clamp(280px,42vw,520px) !important;
+  transform:rotate(-8deg) translateZ(0) !important;
+  transform-origin:center !important;
+  -webkit-backface-visibility:hidden;
+  backface-visibility:hidden;
+  -webkit-mask-image:url('/cya-logo.png') !important;
+  mask-image:url('/cya-logo.png') !important;
+  -webkit-mask-position:center !important;
+  mask-position:center !important;
+  -webkit-mask-repeat:no-repeat !important;
+  mask-repeat:no-repeat !important;
+  -webkit-mask-size:contain !important;
+  mask-size:contain !important;
+  animation:cya-watermark-opacity-v53 9.5s ease-in-out infinite alternate !important;
+}
+
+@keyframes cya-watermark-opacity-v53 {
+  from { opacity:.028; }
+  to { opacity:.042; }
+}
+
+:where(
+  .focus,
+  .portal-hero,
+  .class-workflow-page .card:first-of-type,
+  .home-grid > .card:first-child,
+  .portal-grid > .card:first-child,
+  .marketing-workspace .card:first-of-type,
+  .admin-page .card:first-of-type,
+  .student-list .student-row:first-child
+)::after {
+  width:clamp(145px,22vw,230px) !important;
+  transform:rotate(-10deg) translateZ(0) !important;
+  transform-origin:center !important;
+  -webkit-backface-visibility:hidden;
+  backface-visibility:hidden;
+  -webkit-mask-image:url('/cya-logo.png') !important;
+  mask-image:url('/cya-logo.png') !important;
+  -webkit-mask-position:center !important;
+  mask-position:center !important;
+  -webkit-mask-repeat:no-repeat !important;
+  mask-repeat:no-repeat !important;
+  -webkit-mask-size:contain !important;
+  mask-size:contain !important;
+  animation:cya-surface-opacity-v53 9s ease-in-out infinite alternate !important;
+}
+
+@keyframes cya-surface-opacity-v53 {
+  from { opacity:.048; }
+  to { opacity:.072; }
+}
+
+/* Inicio already has its own approved large background signature.
+   Suppress only the extra global v52 background layer to avoid duplication.
+   Keep the embedded focus-card logo: that is the approved premium mark. */
+body[data-cya-module="home"]::before {
+  content:none !important;
+  display:none !important;
+  animation:none !important;
+}
+
+/* Do not suppress .focus::after on Home. The focus-card signature is intentional. */
+body[data-cya-module="home"] .home-grid > .card:first-child::after {
+  content:none !important;
+  display:none !important;
+  animation:none !important;
+}
+
+@media (prefers-reduced-motion:reduce) {
+  body[data-cya-module]::before,
+  :where(
+    .focus,
+    .portal-hero,
+    .class-workflow-page .card:first-of-type,
+    .home-grid > .card:first-child,
+    .portal-grid > .card:first-child,
+    .marketing-workspace .card:first-of-type,
+    .admin-page .card:first-of-type,
+    .student-list .student-row:first-child
+  )::after {
+    animation:none !important;
+  }
+}

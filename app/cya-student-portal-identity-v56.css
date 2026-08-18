@@ -1,0 +1,142 @@
+/* CYA Hub v56 · Student portal identity parity + overlay geometry.
+   The student portal owns an opaque CSS-module shell, so the global body watermark
+   is hidden behind it. Re-anchor the real high-resolution CYA artwork inside the
+   portal shell and on one important surface per screen. */
+
+/* Portal root: the direct ancestor that owns Portal CYA navigation. */
+body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) {
+  position: relative;
+  isolation: isolate;
+}
+
+body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"])::before {
+  content: "";
+  position: fixed;
+  z-index: 0;
+  top: clamp(112px, 14vh, 164px);
+  right: clamp(-122px, -8vw, -44px);
+  width: clamp(300px, 72vw, 560px);
+  aspect-ratio: 1;
+  pointer-events: none;
+  background-color: var(--cya-module-accent);
+  background-image: url('/cya-logo.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  background-blend-mode: luminosity;
+  opacity: .05;
+  filter: saturate(.88) contrast(1.1);
+  animation: cya-student-ambient-v56 10.5s ease-in-out infinite alternate;
+}
+
+/* Keep the portal content above the ambient mark without overriding the
+   positioning contracts owned by the portal CSS module. */
+body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) > main {
+  position: relative;
+  z-index: 1;
+}
+body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) > header {
+  z-index: 40;
+}
+body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) > nav[aria-label="Portal CYA"] {
+  z-index: 45;
+}
+body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) > [role="menu"] {
+  z-index: 70;
+}
+
+/* One embedded high-fidelity logo per student screen. CSS-module local class names
+   remain present in production class strings, so these selectors are deterministic. */
+body[data-cya-module="student-home"] section[aria-labelledby="portal-now-title"] [class*="nowItem"]:first-of-type,
+body[data-cya-module="student-progress"] [class*="focusList"] > article:first-of-type,
+body[data-cya-module="student-formation"] [class*="formationAccess"] > button:first-of-type,
+body[data-cya-module="student-discover"] [class*="discoverGrid"] > [class*="discoverCard"]:first-of-type,
+body[data-cya-module="student-missions"] [class*="missionList"] > article:first-of-type {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+/* Content stays above the embedded artwork while the artwork itself remains above
+   the card background. This avoids Safari placing a z-index:-1 pseudo behind the
+   element's own painted background. */
+body[data-cya-module="student-home"] section[aria-labelledby="portal-now-title"] [class*="nowItem"]:first-of-type > *,
+body[data-cya-module="student-progress"] [class*="focusList"] > article:first-of-type > *,
+body[data-cya-module="student-formation"] [class*="formationAccess"] > button:first-of-type > *,
+body[data-cya-module="student-discover"] [class*="discoverGrid"] > [class*="discoverCard"]:first-of-type > *,
+body[data-cya-module="student-missions"] [class*="missionList"] > article:first-of-type > * {
+  position: relative;
+  z-index: 1;
+}
+
+body[data-cya-module="student-home"] section[aria-labelledby="portal-now-title"] [class*="nowItem"]:first-of-type::after,
+body[data-cya-module="student-progress"] [class*="focusList"] > article:first-of-type::after,
+body[data-cya-module="student-formation"] [class*="formationAccess"] > button:first-of-type::after,
+body[data-cya-module="student-discover"] [class*="discoverGrid"] > [class*="discoverCard"]:first-of-type::after,
+body[data-cya-module="student-missions"] [class*="missionList"] > article:first-of-type::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  right: clamp(-64px, -7vw, -24px);
+  bottom: clamp(-62px, -7vw, -26px);
+  width: clamp(180px, 52vw, 270px);
+  aspect-ratio: 1;
+  pointer-events: none;
+  background-color: var(--cya-module-accent);
+  background-image: url('/cya-logo.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  background-blend-mode: luminosity;
+  opacity: .095;
+  filter: saturate(.9) contrast(1.12);
+  animation: cya-student-surface-v56 9.2s ease-in-out infinite alternate;
+}
+
+/* Menus must float above the navigation but remain inside the usable viewport.
+   They may never cover the sticky header or sit under the bottom navigation. */
+body[data-cya-module^="student-"] [role="menu"][aria-label="Apartados de Mi formación"] {
+  position: fixed !important;
+  z-index: 70 !important;
+  max-height: min(52dvh, 410px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 760px) {
+  body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"])::before {
+    top: 108px;
+    right: -112px;
+    width: min(88vw, 410px);
+  }
+
+  body[data-cya-module^="student-"] [role="menu"][aria-label="Apartados de Mi formación"] {
+    top: max(calc(env(safe-area-inset-top) + 76px), 88px);
+    bottom: calc(88px + env(safe-area-inset-bottom));
+    max-height: none;
+  }
+}
+
+@keyframes cya-student-ambient-v56 {
+  from { opacity: .042; }
+  to { opacity: .058; }
+}
+
+@keyframes cya-student-surface-v56 {
+  from { opacity: .078; }
+  to { opacity: .108; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"])::before,
+  body[data-cya-module^="student-"] :where(
+    section[aria-labelledby="portal-now-title"] [class*="nowItem"]:first-of-type,
+    [class*="focusList"] > article:first-of-type,
+    [class*="formationAccess"] > button:first-of-type,
+    [class*="discoverGrid"] > [class*="discoverCard"]:first-of-type,
+    [class*="missionList"] > article:first-of-type
+  )::after {
+    animation: none !important;
+  }
+}

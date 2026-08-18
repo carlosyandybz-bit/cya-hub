@@ -72,7 +72,8 @@
   }
 
   /* Student topbar is a two-edge layout: brand owns the true left edge and
-     notification/account actions own the right edge. */
+     notification/account actions own the right edge. Do not put the brand in a
+     synthetic centre column: that was the source of the half-left misalignment. */
   body:has(nav[aria-label="Portal CYA"]) header[class*="topbar"] {
     position: sticky !important;
     top: 0 !important;
@@ -157,4 +158,32 @@
   .shell .mobile-head button {
     transition: none !important;
   }
+}
+
+/* V1-006 · explicit modal/overlay background scroll lock.
+   A client-side observer owns the lock state because CSS-only overflow locking is
+   not reliable enough on iOS Safari. The body is pinned at the current scrollY,
+   the foreground surface remains scrollable, and the exact document position is
+   restored when the final overlay closes. */
+html.cya-overlay-open {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+body.cya-overlay-open {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: none;
+}
+
+.backdrop {
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.backdrop .modal,
+.live-overlay {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }

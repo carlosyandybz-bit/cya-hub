@@ -1,0 +1,79 @@
+/* v43 · targeted mobile alignment hardening
+   IMPORTANT: this layer intentionally does NOT alter the student portal.
+   It only locks the shared mobile header brand to the physical viewport axis
+   and fixes the professor class disclosure control while preserving its compact look. */
+
+@media (max-width:900px) {
+  /* Header: keep existing side controls/layout, but center the brand against
+     the physical header/viewport rather than against asymmetric grid columns. */
+  .mobile-head {
+    position:relative !important;
+  }
+  .mobile-head-brand {
+    position:absolute !important;
+    left:50% !important;
+    top:50% !important;
+    width:max-content !important;
+    max-width:calc(100% - 184px) !important;
+    margin:0 !important;
+    transform:translate(-50%,-50%) !important;
+    z-index:2 !important;
+  }
+  .mobile-head-actions {
+    position:relative !important;
+    z-index:3 !important;
+  }
+
+  /* PROFESSOR ONLY.
+     The interactive box is 44×44 for touch safety. The visible key remains
+     the original compact 40×20 capsule and occupies the same visual position
+     it had before the previous regression. */
+  .mobile-nav .mobile-nav-secondary {
+    top:-26px !important;
+    left:50% !important;
+    width:44px !important;
+    min-width:44px !important;
+    height:44px !important;
+    min-height:44px !important;
+    padding:0 !important;
+    transform:translateX(-50%) !important;
+    border:0 !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    overflow:visible !important;
+  }
+  .mobile-nav .mobile-nav-secondary::before {
+    content:"";
+    position:absolute;
+    z-index:0;
+    top:12px;
+    left:2px;
+    width:40px;
+    height:20px;
+    border:1px solid rgba(210,181,231,.43);
+    border-radius:18px 18px 10px 10px;
+    background:linear-gradient(180deg,rgba(61,49,72,.99),rgba(29,26,35,.99));
+    box-shadow:0 0 0 2px rgba(9,9,14,.97),0 3px 7px rgba(0,0,0,.27),inset 0 1px 0 rgba(255,255,255,.15);
+    pointer-events:none;
+  }
+  .mobile-nav .mobile-nav-secondary.open::before {
+    background:linear-gradient(180deg,rgba(94,57,119,.99),rgba(42,30,52,.99));
+    border-color:rgba(207,135,255,.58);
+  }
+  .mobile-nav .mobile-nav-secondary svg {
+    position:absolute !important;
+    z-index:1 !important;
+    top:22px !important;
+    left:22px !important;
+    width:13px !important;
+    height:13px !important;
+    margin:0 !important;
+    padding:0 !important;
+    transform:translate(-50%,-50%) !important;
+    transform-origin:center !important;
+  }
+  .mobile-nav .mobile-nav-secondary.open svg {
+    transform:translate(-50%,-50%) rotate(180deg) !important;
+  }
+}

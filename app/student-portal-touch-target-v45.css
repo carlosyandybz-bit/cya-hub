@@ -1,0 +1,53 @@
+/* v45 · Student Portal disclosure touch target.
+   Preserve the approved 40×20 reveal-key appearance while exposing a real
+   44×44 interactive hit area for touch accessibility.
+   Target the disclosure by its semantic accessible name, never DOM position. */
+
+@media (max-width: 900px) {
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] {
+    top: -25px !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 22px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"]::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    left: 2px;
+    width: 40px;
+    height: 20px;
+    pointer-events: none;
+    border: 1px solid rgba(210,181,231,.43);
+    border-radius: 18px 18px 10px 10px;
+    background: linear-gradient(180deg,rgba(61,49,72,.99),rgba(29,26,35,.99));
+    box-shadow: 0 0 0 2px rgba(9,9,14,.97),0 3px 7px rgba(0,0,0,.27),inset 0 1px 0 rgba(255,255,255,.15);
+  }
+
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"][aria-expanded="true"] {
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"][aria-expanded="true"]::before {
+    border-color: rgba(207,135,255,.58);
+    background: linear-gradient(180deg,rgba(94,57,119,.99),rgba(42,30,52,.99));
+  }
+
+  nav[aria-label="Portal CYA"] button[aria-label="Abrir apartados de Mi formación"] svg {
+    z-index: 1;
+  }
+
+  /* V1-013 · Keep student and professor header branding aligned identically.
+     The student brand button owns the left edge; account actions remain on the right. */
+  header button[aria-label="Ir a Inicio"] {
+    margin-left: 0 !important;
+    margin-right: auto !important;
+  }
+}

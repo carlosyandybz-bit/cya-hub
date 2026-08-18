@@ -1,0 +1,211 @@
+/* V1-013 / UX-01 · Professor mobile header mirrors the approved student header.
+   The student portal is the visual source of truth for header branding:
+   CYA logo + CYA Hub at normal size, actions on the right.
+   Carlos & Andy is intentionally not rendered in the mobile header. */
+
+@media (max-width: 900px) {
+  .shell .mobile-head {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 40 !important;
+    min-height: 64px !important;
+    padding: max(10px, env(safe-area-inset-top)) 18px 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    background: rgba(17,19,26,.94) !important;
+    border-bottom: 1px solid var(--cya-line) !important;
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+  }
+
+  .shell .mobile-head-back {
+    display: none !important;
+  }
+
+  .shell:not([data-view="home"]) .mobile-head-back {
+    display: flex !important;
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    order: 0 !important;
+  }
+
+  .shell .mobile-back {
+    position: static !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+
+  .shell .mobile-head-brand {
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    margin: 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    width: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+    pointer-events: none;
+    order: 1 !important;
+  }
+
+  .shell[data-view="home"] .mobile-head-brand {
+    margin-right: auto !important;
+  }
+
+  .shell:not([data-view="home"]) .mobile-head-brand {
+    margin-right: auto !important;
+  }
+
+  .shell .mobile-head-brand .brand {
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    padding: 0 !important;
+    color: var(--cya-text) !important;
+    overflow: visible !important;
+  }
+
+  /* Exact visual proportions from student-portal-prf.module.css */
+  .shell .mobile-head-brand .brand-logo {
+    position: relative !important;
+    width: 57px !important;
+    min-width: 57px !important;
+    max-width: 57px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+    flex: 0 0 57px !important;
+    overflow: hidden !important;
+    filter: drop-shadow(0 5px 9px rgba(141,39,231,.38));
+  }
+
+  .shell .mobile-head-brand .brand-logo img {
+    position: absolute !important;
+    top: -14px !important;
+    left: -3px !important;
+    width: 64px !important;
+    min-width: 64px !important;
+    max-width: none !important;
+    height: 64px !important;
+    min-height: 64px !important;
+    object-fit: initial !important;
+    transform: none !important;
+  }
+
+  .shell .mobile-head-brand .brand-wordmark {
+    display: inline-flex !important;
+    align-items: baseline !important;
+    gap: 5px !important;
+    min-width: 0 !important;
+  }
+
+  .shell .mobile-head-brand .brand-wordmark strong {
+    display: inline !important;
+    color: var(--cya-text) !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    font-weight: 800 !important;
+    letter-spacing: -.045em !important;
+  }
+
+  .shell .mobile-head-brand .brand-wordmark > span {
+    display: inline !important;
+    color: var(--cya-text-secondary) !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+    font-weight: 520 !important;
+    letter-spacing: -.03em !important;
+  }
+
+  .shell .mobile-owner-name {
+    display: none !important;
+  }
+
+  .shell .mobile-owner-name::before,
+  .shell .mobile-owner-name::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  .shell .mobile-head-actions {
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    margin: 0 !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+    order: 2 !important;
+  }
+
+  .shell .mobile-head-actions > .notification-trigger,
+  .shell .mobile-head-actions > [data-cya-account-menu],
+  .shell .mobile-head-actions > [data-cya-account-menu] > button {
+    position: relative !important;
+    inset: auto !important;
+    margin: 0 !important;
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    transform: none !important;
+  }
+
+  .shell[data-view="live"] .mobile-head {
+    background: rgba(8,9,13,.94) !important;
+  }
+}
+
+@media (max-width: 350px) {
+  .shell .mobile-head {
+    padding-inline: 10px !important;
+    gap: 4px !important;
+  }
+
+  .shell .mobile-head-actions {
+    gap: 2px !important;
+  }
+
+  /* Preserve the same student identity; only tighten spacing, never hide CYA Hub. */
+  .shell .mobile-head-brand .brand {
+    gap: 3px !important;
+  }
+
+  .shell .mobile-head-brand .brand-logo {
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    flex-basis: 50px !important;
+  }
+
+  .shell .mobile-head-brand .brand-wordmark strong {
+    font-size: 17px !important;
+  }
+
+  .shell .mobile-head-brand .brand-wordmark > span {
+    font-size: 15px !important;
+  }
+}

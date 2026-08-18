@@ -1,0 +1,105 @@
+/* CYA Hub canonical UI primitives.
+   Stable authority for shared surfaces, cards and form controls.
+   Feature CSS owns layout; this file normalizes material, borders and interaction. */
+
+:where(.card, .quick, .student-row, .agenda-row, .credit-card, .login-card, .focus) {
+  border-color: var(--cya-line) !important;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--cya-surface-elevated) 92%, transparent), var(--cya-surface)) !important;
+  color: var(--cya-text);
+  box-shadow: var(--cya-shadow-soft);
+}
+
+:where(.card, .quick, .student-row, .agenda-row, .credit-card) {
+  border-radius: var(--cya-radius-card);
+}
+
+.focus {
+  border-color: color-mix(in srgb, var(--cya-accent) 28%, var(--cya-line)) !important;
+  background:
+    radial-gradient(circle at 92% 4%, var(--cya-accent-soft), transparent 17rem),
+    linear-gradient(145deg, var(--cya-surface-elevated), var(--cya-surface)) !important;
+}
+
+:where(.quick, .student-row, .agenda-row) {
+  transition:
+    transform var(--cya-motion-fast) var(--cya-ease-standard),
+    border-color var(--cya-motion-base) var(--cya-ease-standard),
+    background-color var(--cya-motion-base) var(--cya-ease-standard),
+    box-shadow var(--cya-motion-base) var(--cya-ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(.quick, .student-row, .agenda-row):hover {
+    border-color: var(--cya-line-strong) !important;
+    background: var(--cya-surface-elevated) !important;
+    transform: translateY(-1px);
+  }
+}
+
+:where(.field input, .field select, .field textarea, .search input, .graph-filterbar input, .graph-filterbar select) {
+  min-height: var(--cya-touch);
+  border: 1px solid var(--cya-line-strong) !important;
+  border-radius: var(--cya-radius-control) !important;
+  background: var(--cya-surface-interactive) !important;
+  color: var(--cya-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025);
+}
+
+:where(.field input, .field select, .field textarea, .search input, .graph-filterbar input, .graph-filterbar select):focus {
+  border-color: var(--cya-focus) !important;
+  outline: none;
+  box-shadow: 0 0 0 4px var(--cya-focus-ring) !important;
+}
+
+:where(.field input, .field select, .field textarea, .search input, .graph-filterbar input, .graph-filterbar select):disabled {
+  border-color: var(--cya-line) !important;
+  background: var(--cya-surface-subtle) !important;
+  color: var(--cya-disabled) !important;
+  cursor: not-allowed;
+  opacity: .72;
+}
+
+:where(input, textarea)::placeholder {
+  color: var(--cya-text-soft) !important;
+  opacity: 1;
+}
+
+.field input:-webkit-autofill,
+.field input:-webkit-autofill:hover,
+.field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--cya-text) !important;
+  caret-color: var(--cya-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--cya-surface-interactive) inset !important;
+  transition: background-color 9999s ease-out 0s;
+}
+
+.empty {
+  border-color: var(--cya-line-strong) !important;
+  background: var(--cya-surface-subtle);
+  color: var(--cya-text-muted);
+}
+
+:where(.error, .success) {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: var(--cya-radius-control);
+}
+
+.error {
+  border-color: color-mix(in srgb, var(--cya-danger) 30%, transparent) !important;
+  background: var(--cya-danger-soft) !important;
+  color: var(--cya-danger) !important;
+}
+
+.success {
+  border-color: color-mix(in srgb, var(--cya-success) 30%, transparent) !important;
+  background: var(--cya-success-soft) !important;
+  color: var(--cya-success) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.quick, .student-row, .agenda-row) {
+    transition-duration: 0.01ms !important;
+    transform: none !important;
+  }
+}
