@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 
 const labels = {
   access_token: "token de acceso de Meta",
+  waba_id: "cuenta de WhatsApp Business (WABA)",
   phone_number_id: "número de WhatsApp Business",
   graph_api_version: "versión de la API de Meta",
   verify_token: "verificación del webhook",
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest) {
         "signed_webhooks",
         "embedded_signup",
         "business_app_coexistence",
+        "canonical_waba",
         "manual_fallback",
       ],
     }, { headers: { "cache-control": "no-store" } });
