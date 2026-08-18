@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 const GRAPH_API_ORIGIN = "https://graph.facebook.com";
 const META_APP_ID = "1585899772877530";
+const META_OAUTH_REDIRECT_URI = "https://app.carlosyandy.com/";
 
 function env(name: string) {
   return process.env[name]?.trim() ?? "";
@@ -21,6 +22,12 @@ type PhoneNumber = {
   code_verification_status?: string;
   platform_type?: string;
   quality_rating?: string;
+};
+
+type OAuthTokenResponse = MetaError & {
+  access_token?: string;
+  token_type?: string;
+  expires_in?: number;
 };
 
 type DebugTokenResponse = MetaError & {
@@ -54,14 +61,31 @@ async function metaFetch<T>(url: string, accessToken?: string, init?: RequestIni
 }
 
 async function graph<T>(path: string, accessToken: string, init?: RequestInit) {
-  const version = env("WHATSAPP_GRAPH_API_VERSION") || "v26.0";
+  const version = env("WHATSAPP_GRAPH_API_VERSION") || "v25.0";
   return metaFetch<T>(`${GRAPH_API_ORIGIN}/${version}/${path}`, accessToken, init);
+}
+
+async function exchangeEmbeddedSignupCode(code: string) {
+  const appSecret = env("WHATSAPP_APP_SECRET");
+  if (!appSecret) throw new Error("WHATSAPP_APP_SECRET no está configurado para completar Embedded Signup.");
+  const version = env("WHATSAPP_GRAPH_API_VERSION") || "v25.0";
+  const query = new URLSearchParams({
+    client_id: META_APP_ID,
+    client_secret: appSecret,
+    code,
+    redirect_uri: META_OAUTH_REDIRECT_URI,
+  });
+  const payload = await metaFetch<OAuthTokenResponse>(
+    `${GRAPH_API_ORIGIN}/${version}/oauth/access_token?${query.toString()}`,
+  );
+  if (!payload?.access_token) throw new Error("Meta no devolvió un token al intercambiar el código de Embedded Signup.");
+  return payload.access_token;
 }
 
 async function discoverWabaIds(oauthUserToken: string) {
   const systemUserToken = env("WHATSAPP_ACCESS_TOKEN");
   if (!systemUserToken) throw new Error("WHATSAPP_ACCESS_TOKEN no está configurado.");
-  const version = env("WHATSAPP_GRAPH_API_VERSION") || "v26.0";
+  const version = env("WHATSAPP_GRAPH_API_VERSION") || "v25.0";
   const query = new URLSearchParams({ input_token: oauthUserToken });
   const debug = await metaFetch<DebugTokenResponse>(
     `${GRAPH_API_ORIGIN}/${version}/debug_token?${query.toString()}`,
@@ -94,32 +118,25 @@ export async function POST(request: NextRequest) {
   try {
     await requireStaff(bearerToken(request));
     const body = await request.json().catch(() => ({})) as {
-      accessToken?: string;
       code?: string;
       wabaId?: string;
       phoneNumberId?: string;
       event?: string;
     };
 
-    const oauthUserToken = String(body.accessToken || "").trim();
+    const code = String(body.code || "").trim();
     const hintedWabaId = String(body.wabaId || "").replace(/\D/g, "");
     const hintedPhoneNumberId = String(body.phoneNumberId || "").replace(/\D/g, "");
     const permanentToken = env("WHATSAPP_ACCESS_TOKEN");
     if (!permanentToken) throw new Error("WHATSAPP_ACCESS_TOKEN no está configurado.");
 
-    // La vía principal ya no intercambia authorization codes. El JavaScript SDK de Meta
-    // entrega un access token de usuario de corta duración y lo usamos directamente para
-    // descubrir los WABA compartidos. Así eliminamos por completo el punto que producía
-    // el error 36008 por discrepancias de redirect_uri.
+    const oauthUserToken = code ? await exchangeEmbeddedSignupCode(code) : "";
     const discoveredWabaIds = oauthUserToken ? await discoverWabaIds(oauthUserToken) : [];
     const candidateWabaIds = [...new Set([hintedWabaId, ...discoveredWabaIds].filter(Boolean))];
 
     if (candidateWabaIds.length === 0) {
-      const legacyCode = String(body.code || "").trim();
       return NextResponse.json({
-        error: legacyCode
-          ? "Meta devolvió un código OAuth pero no un access token utilizable. CYA ya no intercambia ese código para evitar el error de redirect_uri; vuelve a iniciar la coexistencia después del nuevo despliegue."
-          : "Meta terminó el diálogo, pero no devolvió ningún WABA compartido ni access token utilizable.",
+        error: "Meta autorizó Facebook Login, pero no compartió ninguna cuenta de WhatsApp Business con este ajuste. Revisa que el flujo de coexistencia llegue a seleccionar el número de WhatsApp Business.",
       }, { status: 409, headers: { "cache-control": "no-store" } });
     }
 
@@ -171,8 +188,8 @@ export async function POST(request: NextRequest) {
       qualityRating: selected?.quality_rating || null,
       currentConfiguredPhoneNumberId: currentPhoneNumberId || null,
       needsPhoneNumberEnvUpdate: Boolean(selected?.id && currentPhoneNumberId && selected.id !== currentPhoneNumberId),
-      usedAccessToken: Boolean(oauthUserToken),
-      usedOAuthCode: false,
+      usedOAuthCode: Boolean(code),
+      redirectUri: META_OAUTH_REDIRECT_URI,
     }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     return NextResponse.json({
