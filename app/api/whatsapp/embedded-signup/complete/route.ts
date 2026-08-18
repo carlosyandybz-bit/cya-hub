@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 const GRAPH_API_ORIGIN = "https://graph.facebook.com";
 const META_APP_ID = "1585899772877530";
-const FACEBOOK_JSSDK_REDIRECT_URI = "https://www.facebook.com/connect/login_success.html";
+const FACEBOOK_JSSDK_REDIRECT_URI = "https://app.carlosyandy.com/";
 
 function env(name: string) {
   return process.env[name]?.trim() ?? "";
@@ -130,9 +130,9 @@ export async function POST(request: NextRequest) {
     const permanentToken = env("WHATSAPP_ACCESS_TOKEN");
     if (!permanentToken) throw new Error("WHATSAPP_ACCESS_TOKEN no está configurado.");
 
-    // FB.login con response_type=code usa el callback interno del JavaScript SDK.
-    // El intercambio servidor debe repetir exactamente ese redirect_uri o Meta rechaza
-    // el código con "Error validating verification code".
+    // Embedded Signup fuerza un redirect estable bajo el dominio público de CYA.
+    // El intercambio servidor repite exactamente esa misma URI para evitar que Meta
+    // rechace el verification code por una discrepancia de redirect_uri.
     const oauthUserToken = code ? await exchangeEmbeddedSignupCode(code) : "";
     const discoveredWabaIds = oauthUserToken ? await discoverWabaIds(oauthUserToken) : [];
     const candidateWabaIds = [...new Set([hintedWabaId, ...discoveredWabaIds].filter(Boolean))];
