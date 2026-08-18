@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   ChevronRight,
   CircleUserRound,
+  Images,
   LogOut,
   Pencil,
   Settings,
@@ -13,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ExperienceSwitcher } from "./experience-switcher";
 import { P31AppearanceRuntime } from "./p31-appearance-runtime";
+import { StudentPersonalMediaOverlay } from "./student-personal-media";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 import styles from "./account-menu.module.css";
 
@@ -55,6 +57,7 @@ export function AccountMenu({
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [mediaOpen, setMediaOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(null);
 
@@ -64,7 +67,8 @@ export function AccountMenu({
     }
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
-      if (accountOpen) setAccountOpen(false);
+      if (mediaOpen) setMediaOpen(false);
+      else if (accountOpen) setAccountOpen(false);
       else setOpen(false);
     }
     document.addEventListener("pointerdown", onPointerDown);
@@ -73,14 +77,14 @@ export function AccountMenu({
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [accountOpen]);
+  }, [accountOpen, mediaOpen]);
 
   useEffect(() => {
-    if (!accountOpen) return;
+    if (!accountOpen && !mediaOpen) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = previous; };
-  }, [accountOpen]);
+  }, [accountOpen, mediaOpen]);
 
   const displayName = identity.profile_name || identity.display_name;
   const showAvatarImage = Boolean(identity.avatar_url && identity.avatar_url !== failedAvatarUrl);
@@ -150,6 +154,11 @@ export function AccountMenu({
             <ExperienceSwitcher identity={identity} experience={experience} busy={busy} onSelect={changeExperience} />
 
             <div className={styles.separator} />
+            {experience === "student" && identity.person_id ? <button type="button" className={styles.menuRow} onClick={() => { setOpen(false); setMediaOpen(true); }}>
+              <span className={styles.rowIcon}><Images /></span>
+              <span className={styles.rowText}><strong>Mis archivos</strong><small>Fotos y vídeos compartidos directamente contigo</small></span>
+              <ChevronRight />
+            </button> : null}
             <button type="button" className={styles.menuRow} onClick={() => openPage(onOpenProfile)}>
               <span className={styles.rowIcon}><Pencil /></span>
               <span className={styles.rowText}><strong>Editar perfil</strong><small>Foto, nombre y datos personales</small></span>
@@ -193,6 +202,7 @@ export function AccountMenu({
           document.body,
         ) : null}
       </div>
+      {mediaOpen && identity.person_id ? <StudentPersonalMediaOverlay close={() => setMediaOpen(false)} personId={identity.person_id} readOnly /> : null}
     </>
   );
 }
