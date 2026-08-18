@@ -9,7 +9,7 @@ language plpgsql
 set search_path=''
 as $$
 begin
-  if new.self_reported_level_term_id is null or new.level_term_id is distinct from old.level_term_id then
+  if tg_op = 'INSERT' or new.self_reported_level_term_id is null or new.level_term_id is distinct from old.level_term_id then
     new.self_reported_level_term_id := new.level_term_id;
   end if;
   return new;
