@@ -4,6 +4,7 @@ import { Cloud, Mail, Megaphone, MessageCircle, RefreshCw, ShieldCheck } from "l
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { GoogleCalendarSync } from "./google-calendar-sync";
+import { CalendarVisualAdmin } from "./calendar-visual-admin";
 
 type IntegrationRow = {
   integration_key: string;
@@ -84,6 +85,7 @@ export function P31IntegrationsAdmin({ client, integrations, notify }: Props) {
 
     <div className="integration-grid">
       <GoogleCalendarSync client={client} notify={notify} />
+      <CalendarVisualAdmin client={client} notify={notify} />
 
       <article className="card pad">
         <div className="card-head">
