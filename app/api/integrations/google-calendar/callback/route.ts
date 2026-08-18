@@ -1,1 +1,2 @@
-export { dynamic, GET } from "../../../google-calendar/callback/route";
+export const dynamic = "force-dynamic";
+export { GET } from "../../../google-calendar/callback/route";
