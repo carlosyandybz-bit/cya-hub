@@ -50,7 +50,7 @@ export function StudentCardContactActions() {
     let people: ContactPerson[] = [];
 
     const render = () => {
-      if (cancelled || !people.length) return;
+      if (cancelled) return;
       document.querySelectorAll(".student-row").forEach((row) => {
         const actions = row.querySelector(".student-row-actions");
         if (!actions) return;
@@ -70,32 +70,45 @@ export function StudentCardContactActions() {
       });
     };
 
-    const start = async () => {
+    const loadPeople = async () => {
       const client = getRuntimeSupabaseClient();
-      if (!client) {
-        if (!cancelled) retryTimer = setTimeout(() => void start(), 350);
-        return;
-      }
-
+      if (!client) return false;
       const result = await client
         .from("people")
         .select("id,display_name,phone,email,country_code,instagram_handle")
         .eq("active", true);
-      if (cancelled || result.error) return;
+      if (cancelled || result.error) return false;
       people = (result.data ?? []) as ContactPerson[];
       render();
-
-      observer = new MutationObserver(render);
-      observer.observe(document.body, { childList: true, subtree: true });
-      window.addEventListener("cya:person-merged", render);
+      return true;
     };
 
+    const start = async () => {
+      if (!(await loadPeople())) {
+        if (!cancelled) retryTimer = setTimeout(() => void start(), 350);
+        return;
+      }
+
+      observer = new MutationObserver((mutations) => {
+        const studentRowsChanged = mutations.some((mutation) => Array.from(mutation.addedNodes).some((node) =>
+          node instanceof Element && (node.matches(".student-row") || Boolean(node.querySelector(".student-row")))
+        ));
+        if (studentRowsChanged) render();
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    };
+
+    const refresh = () => { void loadPeople(); };
     void start();
+    window.addEventListener("cya:person-merged", refresh);
+    window.addEventListener("cya:student-contact-updated", refresh);
+
     return () => {
       cancelled = true;
       if (retryTimer) clearTimeout(retryTimer);
       observer?.disconnect();
-      window.removeEventListener("cya:person-merged", render);
+      window.removeEventListener("cya:person-merged", refresh);
+      window.removeEventListener("cya:student-contact-updated", refresh);
       document.querySelectorAll(".student-contact-action").forEach((node) => node.remove());
     };
   }, []);
