@@ -21,3 +21,53 @@
   color: var(--cya-text-muted);
   font-size: 14px;
 }
+
+.profileGate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: max(24px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+  background: var(--cya-canvas);
+  color: var(--cya-text);
+}
+
+.profileCard {
+  width: min(100%, 620px);
+  border: 1px solid var(--cya-border);
+  border-radius: 28px;
+  background: var(--cya-surface);
+  padding: clamp(22px, 5vw, 38px);
+  box-shadow: 0 20px 60px rgb(0 0 0 / .16);
+}
+
+.profileIcon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--cya-accent) 14%, transparent);
+  color: var(--cya-accent);
+}
+
+.profileIcon svg { width: 24px; height: 24px; }
+.profileEyebrow { margin: 18px 0 6px; color: var(--cya-accent); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.profileCard h1 { margin: 0; font-size: clamp(26px, 7vw, 38px); line-height: 1.04; letter-spacing: -.04em; }
+.profileIntro { margin: 14px 0 24px; color: var(--cya-text-muted); line-height: 1.55; }
+.profileForm { display: grid; gap: 18px; }
+.profileGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.profileGrid label { display: grid; gap: 7px; min-width: 0; }
+.profileGrid label span { font-size: 13px; font-weight: 700; }
+.profileGrid input { width: 100%; min-height: 48px; border: 1px solid var(--cya-border); border-radius: 14px; background: var(--cya-canvas); color: var(--cya-text); padding: 0 14px; font: inherit; }
+.profileGrid input:focus-visible { outline: 3px solid color-mix(in srgb, var(--cya-accent) 35%, transparent); outline-offset: 2px; }
+.profileGrid input[readonly] { opacity: .72; }
+.profileWide { grid-column: 1 / -1; }
+.profileError { margin: 0; border-radius: 14px; padding: 12px 14px; background: color-mix(in srgb, #dc2626 12%, transparent); color: #dc2626; font-size: 14px; line-height: 1.45; }
+.profileSubmit { min-height: 50px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; border: 0; border-radius: 15px; background: var(--cya-accent); color: #fff; padding: 0 18px; font: inherit; font-weight: 800; cursor: pointer; }
+.profileSubmit:disabled { cursor: wait; opacity: .65; }
+
+@media (max-width: 560px) {
+  .profileCard { border-radius: 24px; }
+  .profileGrid { grid-template-columns: 1fr; }
+  .profileWide { grid-column: auto; }
+}
