@@ -25,16 +25,16 @@ function dateLabel(value: string) {
   return new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
 
-function currentModalPersonId() {
+function currentStudentId() {
   if (typeof window === "undefined") return null;
-  const state = window.history.state as { modalStudentId?: unknown } | null;
-  const value = Number(state?.modalStudentId ?? 0);
+  const state = window.history.state as { selectedId?: unknown; modalStudentId?: unknown } | null;
+  const value = Number(state?.selectedId ?? state?.modalStudentId ?? 0);
   return Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
 export function StudentPersonalMediaOverlay({ close }: { close: () => void }) {
   const client = getRuntimeSupabaseClient();
-  const [personId] = useState<number | null>(() => currentModalPersonId());
+  const [personId] = useState<number | null>(() => currentStudentId());
   const [person, setPerson] = useState<PersonSummary | null>(null);
   const [items, setItems] = useState<StudentMedia[]>([]);
   const [title, setTitle] = useState("");
