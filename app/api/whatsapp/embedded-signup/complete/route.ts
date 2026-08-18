@@ -69,18 +69,22 @@ async function exchangeEmbeddedSignupCode(code: string) {
   if (!appSecret) throw new Error("WHATSAPP_APP_SECRET no está configurado para completar Embedded Signup.");
   const version = env("WHATSAPP_GRAPH_API_VERSION") || "v26.0";
 
-  // Facebook Login for Business + Embedded Signup genera el authorization code desde
-  // FB.login(). En este flujo Meta gestiona internamente el redirect del popup. Reenviar
-  // una redirect_uri inventada o forzada durante el intercambio provoca el error
-  // "redirect_uri is identical to the one you used in the OAuth dialog request".
-  // El intercambio del code se hace únicamente con app id, app secret y code.
-  const query = new URLSearchParams({
-    client_id: META_APP_ID,
-    client_secret: appSecret,
-    code,
-  });
+  // Embedded Signup devuelve un authorization code de Facebook Login for Business.
+  // Se intercambia explícitamente como Authorization Code Grant mediante POST JSON.
+  // No enviamos redirect_uri porque FB.login gestiona internamente el redirect del popup;
+  // forzar uno distinto provoca el subcódigo 36008 de Meta.
   const payload = await metaFetch<OAuthTokenResponse>(
-    `${GRAPH_API_ORIGIN}/${version}/oauth/access_token?${query.toString()}`,
+    `${GRAPH_API_ORIGIN}/${version}/oauth/access_token`,
+    undefined,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        client_id: META_APP_ID,
+        client_secret: appSecret,
+        code,
+        grant_type: "authorization_code",
+      }),
+    },
   );
   if (!payload?.access_token) throw new Error("Meta no devolvió un token al intercambiar el código de Embedded Signup.");
   return payload.access_token;
