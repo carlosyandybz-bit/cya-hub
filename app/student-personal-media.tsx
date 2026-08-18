@@ -32,9 +32,13 @@ function currentStudentId() {
   return Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
-export function StudentPersonalMediaOverlay({ close }: { close: () => void }) {
+export function StudentPersonalMediaOverlay({ close, personId: personIdOverride = null, readOnly = false }: {
+  close: () => void;
+  personId?: number | null;
+  readOnly?: boolean;
+}) {
   const client = getRuntimeSupabaseClient();
-  const [personId] = useState<number | null>(() => currentStudentId());
+  const [personId] = useState<number | null>(() => personIdOverride || currentStudentId());
   const [person, setPerson] = useState<PersonSummary | null>(null);
   const [items, setItems] = useState<StudentMedia[]>([]);
   const [title, setTitle] = useState("");
@@ -61,7 +65,7 @@ export function StudentPersonalMediaOverlay({ close }: { close: () => void }) {
 
   useEffect(() => {
     if (!client || !personId) {
-      setError("No se ha podido identificar la ficha del alumno abierta.");
+      setError("No se ha podido identificar la ficha del alumno.");
       return;
     }
     void load(client, personId).catch((reason) => setError(reason instanceof Error ? reason.message : "No se pudo cargar la multimedia."));
@@ -87,7 +91,7 @@ export function StudentPersonalMediaOverlay({ close }: { close: () => void }) {
   }
 
   async function upload() {
-    if (!client || !personId || !file || busy) return;
+    if (readOnly || !client || !personId || !file || busy) return;
     setBusy(true);
     setError("");
     setMessage("");
@@ -136,11 +140,11 @@ export function StudentPersonalMediaOverlay({ close }: { close: () => void }) {
   return <div className={styles.backdrop} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && close()}>
     <section className={styles.panel} role="dialog" aria-modal="true" aria-labelledby="student-personal-media-title">
       <header className={styles.header}>
-        <div><span>MULTIMEDIA PERSONAL</span><h2 id="student-personal-media-title">{person?.display_name || "Alumno"}</h2><p>Sube una foto o vídeo directamente para esta persona. El archivo vive en Google Drive y CYA Hub conserva únicamente el vínculo seguro.</p></div>
+        <div><span>MULTIMEDIA PERSONAL</span><h2 id="student-personal-media-title">{readOnly ? "Mis archivos" : person?.display_name || "Alumno"}</h2><p>{readOnly ? "Fotos y vídeos que CYA ha compartido directamente contigo." : "Sube una foto o vídeo directamente para esta persona. El archivo vive en Google Drive y CYA Hub conserva únicamente el vínculo seguro."}</p></div>
         <button type="button" onClick={close} aria-label="Cerrar"><X /></button>
       </header>
 
-      <div className={styles.uploadCard}>
+      {!readOnly ? <div className={styles.uploadCard}>
         <div className={styles.uploadIntro}><Upload /><div><strong>Subir contenido para este alumno</strong><span>No necesita pertenecer a una clase ni a un contenido pedagógico existente.</span></div></div>
         <label className={styles.filePicker}><input ref={inputRef} type="file" accept="image/*,video/*" onChange={chooseFile} /><span>{file ? file.name : "Seleccionar foto o vídeo"}</span></label>
         <div className={styles.fields}>
@@ -150,14 +154,14 @@ export function StudentPersonalMediaOverlay({ close }: { close: () => void }) {
         {error ? <p className={styles.error}>{error}</p> : null}
         {message ? <p className={styles.success}>{message}</p> : null}
         <button className={styles.primary} type="button" onClick={() => void upload()} disabled={!file || busy || !personId}>{busy ? "Subiendo a Drive…" : "Guardar para este alumno"}</button>
-      </div>
+      </div> : error ? <p className={styles.error}>{error}</p> : null}
 
       <section className={styles.library}>
-        <div className={styles.libraryHead}><div><span>ASIGNADO DIRECTAMENTE</span><h3>Contenido personal</h3></div><strong>{items.length}</strong></div>
+        <div className={styles.libraryHead}><div><span>{readOnly ? "COMPARTIDO CONTIGO" : "ASIGNADO DIRECTAMENTE"}</span><h3>{readOnly ? "Multimedia personal" : "Contenido personal"}</h3></div><strong>{items.length}</strong></div>
         {items.length ? <div className={styles.grid}>{items.map((item) => <article key={item.id}>
           <SecureDriveAsset fileId={item.external_file_id} mediaType={item.media_type} title={item.title} controls={item.media_type === "video"} className={styles.asset} />
           <div className={styles.meta}><span>{item.media_type === "video" ? <Video /> : <ImageIcon />}{dateLabel(item.created_at)}</span><strong>{item.title || "Sin título"}</strong>{item.note ? <p>{item.note}</p> : null}</div>
-        </article>)}</div> : <div className={styles.empty}><Upload /><span>Aún no has enviado contenido directamente a esta persona.</span></div>}
+        </article>)}</div> : <div className={styles.empty}><Upload /><span>{readOnly ? "Todavía no tienes archivos compartidos directamente contigo." : "Aún no has enviado contenido directamente a esta persona."}</span></div>}
       </section>
     </section>
   </div>;
