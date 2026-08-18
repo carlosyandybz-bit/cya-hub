@@ -18,6 +18,7 @@ import { GoogleCalendarSync } from "./google-calendar-sync";
 
 type CalendarMode = "day" | "week" | "month" | "list";
 type CalendarType = CalendarItem["type"];
+type VisualRow = { external_calendar_id: string; calendar_name: string; icon_storage_path: string | null; color_override: string | null };
 
 type AgendaViewProps = {
   client: SupabaseClient;
@@ -28,6 +29,7 @@ type AgendaViewProps = {
 };
 
 const emptySnapshot: CalendarSnapshot = { classes: [], missions: [], marketing_events: [], external_events: [] };
+const GOOGLE_PALETTE = ["#7986CB", "#33B679", "#8E24AA", "#E67C73", "#F6BF26", "#F4511E", "#039BE5", "#616161", "#3F51B5", "#0B8043", "#D50000"];
 
 function localKey(date: Date, timezone: string) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
@@ -118,25 +120,52 @@ function itemLabel(type: CalendarType) {
   return ({ class: "Clase", mission: "Misión", event: "Evento", external: "Calendario" } as Record<CalendarType, string>)[type];
 }
 
+function publicUrl(client: SupabaseClient, path: string) {
+  return client.storage.from("cya-icons").getPublicUrl(path).data.publicUrl;
+}
+
+function deterministicColor(value: string) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
+  return GOOGLE_PALETTE[Math.abs(hash) % GOOGLE_PALETTE.length];
+}
+
+function calendarColor(item: CalendarItem, visual: VisualRow | undefined) {
+  const metadataColor = item.metadata?.calendar_color;
+  const externalId = item.external_calendar_id || item.metadata?.external_calendar_id || "google";
+  return visual?.color_override || (metadataColor && /^#[0-9a-f]{6}$/i.test(metadataColor) ? metadataColor : deterministicColor(externalId));
+}
+
 export function AgendaView({ client, timezone, schedule, openClass, notify }: AgendaViewProps) {
   const [mode, setMode] = useState<CalendarMode>("week");
   const [key, setKey] = useState(() => localKey(new Date(), timezone));
   const [snapshot, setSnapshot] = useState<CalendarSnapshot>(emptySnapshot);
+  const [visuals, setVisuals] = useState<VisualRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Record<CalendarType, boolean>>({ class: true, mission: true, event: true, external: true });
   const range = useMemo(() => rangeFor(mode, key, timezone), [mode, key, timezone]);
+  const visualByCalendar = useMemo(() => new Map(visuals.map((row) => [row.external_calendar_id, row])), [visuals]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const result = await client.rpc("calendar_snapshot", { p_from: range.from.toISOString(), p_to: range.to.toISOString() });
-    if (result.error) notify(result.error.message);
-    else setSnapshot(result.data as CalendarSnapshot);
+    const [snapshotResult, visualResult] = await Promise.all([
+      client.rpc("calendar_snapshot", { p_from: range.from.toISOString(), p_to: range.to.toISOString() }),
+      client.from("calendar_visual_settings").select("external_calendar_id,calendar_name,icon_storage_path,color_override"),
+    ]);
+    if (snapshotResult.error) notify(snapshotResult.error.message);
+    else setSnapshot(snapshotResult.data as CalendarSnapshot);
+    if (!visualResult.error) setVisuals((visualResult.data ?? []) as VisualRow[]);
     setLoading(false);
   }, [client, notify, range.from, range.to]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
-    return () => clearTimeout(timer);
+    const onVisualsChanged = () => void load();
+    window.addEventListener("cya:calendar-visuals-changed", onVisualsChanged);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("cya:calendar-visuals-changed", onVisualsChanged);
+    };
   }, [load]);
 
   const items = useMemo(() => [
@@ -159,9 +188,28 @@ export function AgendaView({ client, timezone, schedule, openClass, notify }: Ag
 
   function renderItem(item: CalendarItem) {
     const visual = itemVisual(item.type);
-    return <button className={`calendar-item type-${item.type}`} key={`${item.type}-${item.id}`} onClick={() => item.type === "class" && openClass(item.id)}>
-      <span className="calendar-item-icon"><CyaIcon iconKey={visual.iconKey} fallback={visual.fallback} /></span>
-      <span><small>{itemLabel(item.type)}</small><strong>{item.title}</strong><time>{new Intl.DateTimeFormat("es-ES", { timeZone: timezone, hour: "2-digit", minute: "2-digit" }).format(new Date(item.starts_at))}–{new Intl.DateTimeFormat("es-ES", { timeZone: timezone, hour: "2-digit", minute: "2-digit" }).format(new Date(item.ends_at))}</time></span>
+    const externalId = item.external_calendar_id || item.metadata?.external_calendar_id || "";
+    const calendarVisual = externalId ? visualByCalendar.get(externalId) : undefined;
+    const color = item.type === "external" ? calendarColor(item, calendarVisual) : "#6D4AFF";
+    const calendarName = item.metadata?.calendar_name || calendarVisual?.calendar_name || "Google Calendar";
+    const itemStyle = item.type === "external"
+      ? { borderLeft: `4px solid ${color}`, background: `linear-gradient(90deg, ${color}18, transparent 44%)` }
+      : item.type === "class" ? { borderLeft: "4px solid #6D4AFF", background: "linear-gradient(90deg, rgba(109,74,255,.12), transparent 44%)" } : undefined;
+
+    return <button className={`calendar-item type-${item.type}`} style={itemStyle} key={`${item.type}-${item.id}`} onClick={() => item.type === "class" && openClass(item.id)}>
+      <span className="calendar-item-icon" style={{ position: "relative", overflow: "visible", border: `1px solid ${color}44`, color, background: `${color}16` }}>
+        {item.type === "class" ? <>
+          <img src="/cya-logo.png" alt="" style={{ width: 30, height: 30, objectFit: "contain" }} />
+          <span style={{ position: "absolute", right: -5, bottom: -5, display: "grid", placeItems: "center", width: 19, height: 19, borderRadius: 7, border: "2px solid var(--panel,#111)", background: "#6D4AFF", color: "white" }}><CalendarDays size={10} /></span>
+        </> : item.type === "external" && calendarVisual?.icon_storage_path ? <img src={publicUrl(client, calendarVisual.icon_storage_path)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }} />
+          : item.type === "external" ? <strong style={{ fontSize: 18, color }}>{calendarName.trim().charAt(0).toUpperCase() || "C"}</strong>
+          : <CyaIcon iconKey={visual.iconKey} fallback={visual.fallback} />}
+      </span>
+      <span>
+        <small style={item.type === "external" ? { color, fontWeight: 800 } : undefined}>{item.type === "external" ? calendarName : itemLabel(item.type)}</small>
+        <strong>{item.title}</strong>
+        <time>{new Intl.DateTimeFormat("es-ES", { timeZone: timezone, hour: "2-digit", minute: "2-digit" }).format(new Date(item.starts_at))}–{new Intl.DateTimeFormat("es-ES", { timeZone: timezone, hour: "2-digit", minute: "2-digit" }).format(new Date(item.ends_at))}</time>
+      </span>
       {item.type === "class" ? <CyaIcon iconKey="action.forward" fallback={ChevronRight} /> : <CyaIcon iconKey="state.success" fallback={CircleCheck} />}
     </button>;
   }
@@ -177,7 +225,7 @@ export function AgendaView({ client, timezone, schedule, openClass, notify }: Ag
   const monthDays = Array.from({ length: 42 }, (_, index) => addDays(monthGridStart, index));
 
   return <>
-    <header className="page-head agenda-head"><div><p className="eyebrow">Agenda</p><h1>Calendario CYA</h1><p>Clases, misiones, eventos y calendario sincronizado sin duplicar la información pedagógica.</p></div><button className="btn" onClick={schedule}><CyaIcon iconKey="action.add" fallback={Plus} /> Programar clase</button></header>
+    <header className="page-head agenda-head"><div><p className="eyebrow">Agenda</p><h1>Calendario CYA</h1><p>Clases, misiones, eventos y calendarios de Google diferenciados por color e identidad visual.</p></div><button className="btn" onClick={schedule}><CyaIcon iconKey="action.add" fallback={Plus} /> Programar clase</button></header>
     <GoogleCalendarSync client={client} notify={notify} onSynced={load} compact />
     <section className="calendar-toolbar card">
       <div className="calendar-nav"><button className="icon-btn" onClick={() => move(-1)} aria-label="Anterior"><CyaIcon iconKey="action.back" fallback={ChevronLeft} /></button><button className="today-button" onClick={() => setKey(localKey(new Date(), timezone))}>Hoy</button><button className="icon-btn" onClick={() => move(1)} aria-label="Siguiente"><CyaIcon iconKey="action.forward" fallback={ChevronRight} /></button><strong>{modeTitle(mode, key, timezone)}</strong></div>
@@ -190,7 +238,12 @@ export function AgendaView({ client, timezone, schedule, openClass, notify }: Ag
       <div className="month-days">{monthDays.map((dayKey) => {
         const dayItems = groups.get(dayKey) ?? [];
         const inMonth = dayKey.slice(0, 7) === monthFirst.slice(0, 7);
-        return <button key={dayKey} className={`${dayKey === localKey(new Date(), timezone) ? "today" : ""} ${inMonth ? "" : "outside"}`} onClick={() => { setKey(dayKey); setMode("day"); }}><strong>{Number(dayKey.slice(-2))}</strong><span>{dayItems.slice(0, 4).map((item) => <i key={`${item.type}-${item.id}`} className={`type-${item.type}`} />)}</span>{dayItems.length ? <small>{dayItems.length}</small> : null}</button>;
+        return <button key={dayKey} className={`${dayKey === localKey(new Date(), timezone) ? "today" : ""} ${inMonth ? "" : "outside"}`} onClick={() => { setKey(dayKey); setMode("day"); }}><strong>{Number(dayKey.slice(-2))}</strong><span>{dayItems.slice(0, 4).map((item) => {
+          const externalId = item.external_calendar_id || item.metadata?.external_calendar_id || "";
+          const calendarVisual = externalId ? visualByCalendar.get(externalId) : undefined;
+          const dotStyle = item.type === "external" ? { backgroundColor: calendarColor(item, calendarVisual) } : item.type === "class" ? { backgroundColor: "#6D4AFF" } : undefined;
+          return <i key={`${item.type}-${item.id}`} className={`type-${item.type}`} style={dotStyle} />;
+        })}</span>{dayItems.length ? <small>{dayItems.length}</small> : null}</button>;
       })}</div>
     </section> : <section className="calendar-groups">
       {Array.from(groups.entries()).map(([dayKey, dayItems]) => <article className="calendar-day" key={dayKey}><header><span>{new Intl.DateTimeFormat("es-ES", { timeZone: timezone, weekday: "short" }).format(zonedStart(dayKey, timezone))}</span><strong>{new Intl.DateTimeFormat("es-ES", { timeZone: timezone, day: "numeric", month: "long" }).format(zonedStart(dayKey, timezone))}</strong></header><div>{dayItems.map(renderItem)}</div></article>)}
