@@ -44,9 +44,38 @@ Variables requeridas, nunca versionar sus valores reales:
 - `WHATSAPP_VERIFY_TOKEN`
 - `WHATSAPP_APP_SECRET`
 
-## Integraciones ya existentes en staging
+## Email SMTP
 
-Google Drive y Google Calendar ya forman parte del panel de integraciones de staging. Cualquier actualización del panel debe mantenerlas junto con WhatsApp; no sustituir el panel completo por una versión antigua para incorporar cambios parciales.
+Estado funcional preservado:
+
+- Verificación real del servidor SMTP desde backend.
+- Envío de correo de prueba desde Administración > Integraciones.
+- Restricción de las acciones de prueba a roles administrativos.
+- Contraseña SMTP y credenciales solo en servidor.
+- Conexión TLS obligatoria.
+- La interfaz debe mostrar estado real `Verificado/Configurado/No configurado`, no volver a la tarjeta antigua “Sin automatización”.
+
+Archivos protegidos:
+
+- `app/email-smtp-server.ts`
+- `app/email-integration.tsx`
+- `app/api/email/status/route.ts`
+- `app/api/email/test/route.ts`
+- `app/p31-integrations-admin.tsx` — preservar específicamente `EmailIntegration`.
+
+Variables requeridas, nunca versionar sus valores reales:
+
+- `EMAIL_SMTP_HOST`
+- `EMAIL_SMTP_PORT`
+- `EMAIL_SMTP_SECURE`
+- `EMAIL_SMTP_USER`
+- `EMAIL_SMTP_PASSWORD`
+- `EMAIL_FROM_ADDRESS`
+- `EMAIL_FROM_NAME`
+
+## Google Drive y Google Calendar
+
+Google Drive y Google Calendar ya forman parte del panel de integraciones de staging y deben mantenerse junto con Email y WhatsApp. No sustituir el panel completo por una versión antigua para incorporar cambios parciales. Las futuras actualizaciones deben preservar la verificación real de Drive y los flujos de OAuth/sincronización de Calendar ya presentes en staging.
 
 ## Criterio para futuras actualizaciones
 
@@ -54,6 +83,6 @@ Google Drive y Google Calendar ya forman parte del panel de integraciones de sta
 2. Hacer port selectivo de la funcionalidad nueva en vez de reemplazar archivos divergentes completos.
 3. Mantener secretos fuera del repositorio.
 4. No degradar una integración que ya puede demostrar su estado real contra el proveedor a un estado estático/manual.
-5. Probar después de cada cambio: estado de integración, webhook, permisos, teléfono canónico y envío de prueba.
+5. Probar después de cada cambio: estado de integración, webhook, permisos, teléfono canónico, envío de WhatsApp, verificación SMTP y correo de prueba.
 
 Última consolidación: 18 de agosto de 2026.
