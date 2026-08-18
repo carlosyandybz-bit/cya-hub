@@ -9,17 +9,27 @@ import { getRuntimeSupabaseClient, setRuntimeSupabaseClient } from "./supabase-r
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 import styles from "./app-entry-router.module.css";
 
+const WHATSAPP_OAUTH_STATE_PREFIX = "cya_wa_";
+const WHATSAPP_OAUTH_CALLBACK_KEY = "cya:whatsapp:oauth:callback";
+
 let routerClient: SupabaseClient | null = null;
 let routerClientPromise: Promise<SupabaseClient> | null = null;
+
+async function loadRuntimeConfig() {
+  const response = await fetch("/api/runtime-config", { cache: "no-store", headers: { accept: "application/json" } });
+  const config = await response.json().catch(() => null) as { configured?: boolean; supabaseUrl?: string; supabasePublishableKey?: string } | null;
+  if (!response.ok || !config?.configured || !config.supabaseUrl || !config.supabasePublishableKey) {
+    throw new Error("CYA Hub no ha podido conectar con sus datos.");
+  }
+  return config;
+}
 
 async function connectRouterClient() {
   if (routerClient) return routerClient;
   if (!routerClientPromise) {
-    routerClientPromise = fetch("/api/runtime-config", { cache: "no-store", headers: { accept: "application/json" } })
-      .then(async (response) => {
-        const config = await response.json().catch(() => null) as { configured?: boolean; supabaseUrl?: string; supabasePublishableKey?: string } | null;
-        if (!response.ok || !config?.configured || !config.supabaseUrl || !config.supabasePublishableKey) throw new Error("CYA Hub no ha podido conectar con sus datos.");
-        routerClient = createClient(config.supabaseUrl, config.supabasePublishableKey, {
+    routerClientPromise = loadRuntimeConfig()
+      .then((config) => {
+        routerClient = createClient(config.supabaseUrl!, config.supabasePublishableKey!, {
           auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
         });
         setRuntimeSupabaseClient(routerClient);
@@ -31,6 +41,13 @@ async function connectRouterClient() {
       });
   }
   return routerClientPromise;
+}
+
+async function connectOAuthCallbackClient() {
+  const config = await loadRuntimeConfig();
+  return createClient(config.supabaseUrl!, config.supabasePublishableKey!, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+  });
 }
 
 function allowed(identity: IdentityContext, value: ExperienceContext) {
@@ -100,11 +117,42 @@ type RegistrationGateState = {
   status: RegistrationProfileStatus;
 };
 
+type WhatsAppOAuthCallbackPayload = {
+  type: "CYA_WHATSAPP_OAUTH_CALLBACK";
+  ok: boolean;
+  message: string;
+  at: number;
+};
+
+function isWhatsAppOAuthCallback() {
+  if (typeof window === "undefined") return false;
+  const params = new URLSearchParams(window.location.search);
+  return (params.get("state") || "").startsWith(WHATSAPP_OAUTH_STATE_PREFIX);
+}
+
+function publishWhatsAppOAuthCallback(payload: WhatsAppOAuthCallbackPayload) {
+  try {
+    window.localStorage.setItem(WHATSAPP_OAUTH_CALLBACK_KEY, JSON.stringify(payload));
+  } catch {
+    // El postMessage sigue cubriendo la ventana principal aunque localStorage esté restringido.
+  }
+
+  try {
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(payload, window.location.origin);
+    }
+  } catch {
+    // Si el navegador aísla el opener, la señal persistida queda como respaldo.
+  }
+}
+
 export default function AppEntryRouter() {
   const [studentState, setStudentState] = useState<ActiveStudentState | null>(null);
   const [registrationGate, setRegistrationGate] = useState<RegistrationGateState | null>(null);
   const [staffExperience, setStaffExperience] = useState<Exclude<ExperienceContext, "student"> | null>(null);
   const [checking, setChecking] = useState(true);
+  const [whatsappOAuthCallback] = useState(() => isWhatsAppOAuthCallback());
+  const [whatsappOAuthMessage, setWhatsAppOAuthMessage] = useState("Terminando la conexión segura con Meta…");
   const aliveRef = useRef(true);
 
   const inspect = useCallback(async () => {
@@ -162,6 +210,75 @@ export default function AppEntryRouter() {
   }, []);
 
   useEffect(() => {
+    if (!whatsappOAuthCallback) return;
+    let cancelled = false;
+
+    const finish = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const state = params.get("state") || "";
+      const code = params.get("code") || "";
+      const metaError = params.get("error_description") || params.get("error_message") || params.get("error") || "";
+
+      try {
+        if (metaError) throw new Error(metaError);
+        if (!code) throw new Error("Meta volvió a CYA sin un código de autorización.");
+
+        const client = await connectOAuthCallbackClient();
+        const sessionResult = await client.auth.getSession();
+        const token = sessionResult.data.session?.access_token;
+        if (!token) throw new Error("La sesión de CYA Hub no está disponible para terminar la conexión.");
+
+        const response = await fetch("/api/whatsapp/embedded-signup/complete", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${token}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ code, state }),
+          cache: "no-store",
+        });
+        const payload = await response.json().catch(() => null) as {
+          ok?: boolean;
+          error?: string;
+          displayPhoneNumber?: string | null;
+          needsPhoneNumberEnvUpdate?: boolean;
+        } | null;
+        if (!response.ok || !payload?.ok) throw new Error(payload?.error || "Meta terminó OAuth, pero CYA no pudo cerrar la conexión.");
+
+        const message = payload.needsPhoneNumberEnvUpdate
+          ? "Coexistencia completada. Meta ha seleccionado otro Phone Number ID; actualiza WHATSAPP_PHONE_NUMBER_ID antes de enviar."
+          : `Coexistencia de WhatsApp completada${payload.displayPhoneNumber ? ` (${payload.displayPhoneNumber})` : ""}.`;
+        const callbackPayload: WhatsAppOAuthCallbackPayload = {
+          type: "CYA_WHATSAPP_OAUTH_CALLBACK",
+          ok: true,
+          message,
+          at: Date.now(),
+        };
+        publishWhatsAppOAuthCallback(callbackPayload);
+        if (!cancelled) setWhatsAppOAuthMessage(`${message} Ya puedes volver a CYA Hub.`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "No se pudo terminar la conexión con Meta.";
+        publishWhatsAppOAuthCallback({
+          type: "CYA_WHATSAPP_OAUTH_CALLBACK",
+          ok: false,
+          message,
+          at: Date.now(),
+        });
+        if (!cancelled) setWhatsAppOAuthMessage(`${message} Vuelve a CYA Hub para intentarlo de nuevo.`);
+      } finally {
+        window.history.replaceState({}, "", `${window.location.origin}${window.location.pathname}`);
+        if (window.opener && !window.opener.closed) {
+          window.setTimeout(() => window.close(), 700);
+        }
+      }
+    };
+
+    void finish();
+    return () => { cancelled = true; };
+  }, [whatsappOAuthCallback]);
+
+  useEffect(() => {
+    if (whatsappOAuthCallback) return;
     aliveRef.current = true;
     const initialInspection = window.setTimeout(() => void inspect(), 0);
     const onCanonicalContextChange = () => void inspect();
@@ -173,7 +290,7 @@ export default function AppEntryRouter() {
       window.removeEventListener("cya:experience-change", onCanonicalContextChange);
       window.removeEventListener("cya:auth-change", onCanonicalContextChange);
     };
-  }, [inspect]);
+  }, [inspect, whatsappOAuthCallback]);
 
   async function changeExperience(value: ExperienceContext) {
     if (!studentState) return;
@@ -199,6 +316,7 @@ export default function AppEntryRouter() {
     setStudentState((current) => current ? { ...current, identity: { ...current.identity, ...patch } } : current);
   }
 
+  if (whatsappOAuthCallback) return <div className={styles.loading} role="status"><strong>WhatsApp + CYA</strong><span>{whatsappOAuthMessage}</span></div>;
   if (checking) return <div className={styles.loading} role="status"><strong>CYA</strong><span>Preparando tu espacio…</span></div>;
   if (registrationGate) return <RegistrationProfileGate
     client={registrationGate.client}
