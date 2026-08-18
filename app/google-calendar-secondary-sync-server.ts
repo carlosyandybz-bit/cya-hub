@@ -55,7 +55,7 @@ async function listCalendars(googleToken: string) {
     googleToken,
     "/users/me/calendarList?showHidden=true&maxResults=250",
   );
-  return (result.items ?? []).filter((calendar) => calendar.id && !calendar.deleted && calendar.accessRole !== "freeBusyReader");
+  return (result.items ?? []).filter((calendar) => calendar.id && !calendar.deleted && calendar.accessRole === "owner");
 }
 
 async function listEvents(googleToken: string, calendarId: string, from: Date, to: Date) {
