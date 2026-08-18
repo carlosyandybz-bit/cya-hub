@@ -60,30 +60,32 @@ function normalizedLabel(node: Element | null) {
   return (node?.textContent || "").replace(/\s+/g, " ").trim().toLocaleLowerCase("es");
 }
 
+function isActiveControl(button: HTMLButtonElement) {
+  return button.getAttribute("aria-current") === "page"
+    || button.getAttribute("aria-selected") === "true"
+    || button.classList.contains("active")
+    || [...button.classList].some((className) => /(?:^|__)active(?:__|$)/i.test(className) || /active/i.test(className));
+}
+
 function studentTheme(): ModuleTheme | null {
   const portal = document.querySelector<HTMLElement>('nav[aria-label="Portal CYA"]');
   if (!portal || getComputedStyle(portal).display === "none") return null;
   const buttons = [...portal.querySelectorAll<HTMLButtonElement>("button")];
-  const active = buttons.find((button) =>
-    button.getAttribute("aria-current") === "page"
-    || button.getAttribute("aria-selected") === "true"
-    || button.classList.contains("active")
-  );
+  const active = buttons.find(isActiveControl);
   const label = normalizedLabel(active || null) || "inicio";
   return STUDENT_LABEL_THEME[label] ?? "student-home";
 }
 
 function staffThemeFromDom(): ModuleTheme | null {
-  const activeCandidates = [
-    ...document.querySelectorAll<HTMLElement>('nav[aria-label="Módulos principales"] button.active'),
-    ...document.querySelectorAll<HTMLElement>('.mobile-nav button.active'),
-    ...document.querySelectorAll<HTMLElement>('.mobile-nav [aria-current="page"]'),
-    ...document.querySelectorAll<HTMLElement>('.mobile-nav [aria-selected="true"]'),
-  ];
+  const navigations = [
+    document.querySelector<HTMLElement>('nav[aria-label="Módulos principales"]'),
+    document.querySelector<HTMLElement>('.mobile-nav'),
+  ].filter((node): node is HTMLElement => Boolean(node) && getComputedStyle(node).display !== "none");
 
-  for (const candidate of activeCandidates) {
-    if (candidate.closest('nav[aria-label="Portal CYA"]')) continue;
-    const label = normalizedLabel(candidate);
+  for (const navigation of navigations) {
+    const active = [...navigation.querySelectorAll<HTMLButtonElement>("button")].find(isActiveControl);
+    if (!active || active.closest('nav[aria-label="Portal CYA"]')) continue;
+    const label = normalizedLabel(active);
     if (STAFF_LABEL_THEME[label]) return STAFF_LABEL_THEME[label];
   }
   return null;
@@ -101,15 +103,9 @@ function resolveTheme(): ModuleTheme {
   const state = window.history.state as { view?: string; experience?: string } | null;
   if (state?.experience === "admin") return "admin";
 
-  // The rendered active module is the source of truth. During router.refresh(),
-  // history.state can be reconstructed temporarily as "home" while the current
-  // module remains mounted. Reading the active navigation first prevents color drift.
   const renderedTheme = staffThemeFromDom();
   if (renderedTheme) return renderedTheme;
-
   if (state?.view && STAFF_VIEW_THEME[state.view]) return STAFF_VIEW_THEME[state.view];
-
-  // Never flash back to Home while React/Next is rebuilding the same screen.
   return currentTheme() ?? "home";
 }
 
