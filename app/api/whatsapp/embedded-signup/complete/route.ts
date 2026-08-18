@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 const GRAPH_API_ORIGIN = "https://graph.facebook.com";
 const META_APP_ID = "1585899772877530";
+const FACEBOOK_JSSDK_REDIRECT_URI = "https://www.facebook.com/connect/login_success.html";
 
 function env(name: string) {
   return process.env[name]?.trim() ?? "";
@@ -72,6 +73,7 @@ async function exchangeEmbeddedSignupCode(code: string) {
     client_id: META_APP_ID,
     client_secret: appSecret,
     code,
+    redirect_uri: FACEBOOK_JSSDK_REDIRECT_URI,
   });
   const payload = await metaFetch<OAuthTokenResponse>(
     `${GRAPH_API_ORIGIN}/${version}/oauth/access_token?${query.toString()}`,
@@ -128,8 +130,9 @@ export async function POST(request: NextRequest) {
     const permanentToken = env("WHATSAPP_ACCESS_TOKEN");
     if (!permanentToken) throw new Error("WHATSAPP_ACCESS_TOKEN no está configurado.");
 
-    // response_type=code es la vía segura de Embedded Signup: el navegador entrega
-    // un código de un solo uso y el intercambio por token ocurre únicamente aquí.
+    // FB.login con response_type=code usa el callback interno del JavaScript SDK.
+    // El intercambio servidor debe repetir exactamente ese redirect_uri o Meta rechaza
+    // el código con "Error validating verification code".
     const oauthUserToken = code ? await exchangeEmbeddedSignupCode(code) : "";
     const discoveredWabaIds = oauthUserToken ? await discoverWabaIds(oauthUserToken) : [];
     const candidateWabaIds = [...new Set([hintedWabaId, ...discoveredWabaIds].filter(Boolean))];
