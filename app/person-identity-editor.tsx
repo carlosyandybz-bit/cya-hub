@@ -1,8 +1,8 @@
 "use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { FormEvent, useState } from "react";
-import { CheckCircle2, GitMerge, Plus, Search, X } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
+import { CheckCircle2, GitMerge, Instagram, Plus, Search, X } from "lucide-react";
 import { CountrySelect } from "./country-field";
 import { RuntimeForm } from "./runtime-form";
 
@@ -59,6 +59,8 @@ export function StudentIdentityEditor({ client, person, profile, close, saved }:
           onSaved={async () => { await saved(); close(); }}
         />
 
+        <InstagramIdentityField client={client} personId={person.id} saved={saved} />
+
         <div className="actions">
           <button type="button" className="btn ghost" onClick={() => setMergeOpen((value) => !value)}>
             <GitMerge size={17}/> Fusionar
@@ -68,6 +70,62 @@ export function StudentIdentityEditor({ client, person, profile, close, saved }:
       </div>
     </section>
   </div>;
+}
+
+function InstagramIdentityField({ client, personId, saved }: { client: SupabaseClient; personId: number; saved: () => Promise<void> }) {
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    void client.from("people").select("instagram_handle").eq("id", personId).maybeSingle().then(({ data }) => {
+      if (!active) return;
+      setValue(typeof data?.instagram_handle === "string" ? data.instagram_handle : "");
+      setLoaded(true);
+    });
+    return () => { active = false; };
+  }, [client, personId]);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const result = await client.rpc("save_person_instagram", {
+        p_person_id: personId,
+        p_instagram: value.trim() || null,
+      });
+      if (result.error) throw result.error;
+      setValue(typeof result.data === "string" ? result.data : "");
+      setMessage("Instagram guardado.");
+      await saved().catch(() => undefined);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo guardar Instagram.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <form className="form" onSubmit={submit} aria-label="Instagram del alumno">
+    <label className="field field-wide">
+      <span>Instagram</span>
+      <div style={{display:"flex", gap:8, alignItems:"center"}}>
+        <Instagram size={18} aria-hidden="true" />
+        <input
+          value={value}
+          onChange={(event) => { setValue(event.target.value); setMessage(""); setError(""); }}
+          placeholder="@usuario o enlace de Instagram"
+          autoComplete="off"
+          disabled={!loaded || busy}
+        />
+        <button className="btn ghost" disabled={!loaded || busy}>{busy ? "Guardando…" : "Guardar"}</button>
+      </div>
+    </label>
+    {message ? <p className="notice success" role="status">{message}</p> : null}
+    {error ? <p className="error" role="alert">{error}</p> : null}
+  </form>;
 }
 
 function SimpleIdentityMerge({ client, person, saved, close }: { client: SupabaseClient; person: EditablePersonIdentity; saved: () => Promise<void>; close: () => void }) {
