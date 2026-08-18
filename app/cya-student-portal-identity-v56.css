@@ -29,12 +29,22 @@ body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"])::befor
   animation: cya-student-ambient-v56 10.5s ease-in-out infinite alternate;
 }
 
-body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) > header,
-body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) > main,
-body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) > nav,
-body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) > [role="menu"] {
+/* Keep the original positioning contracts from the student portal CSS.
+   Only main needs a positioning context to stay above the ambient mark.
+   Header remains sticky, bottom navigation remains fixed and the formation sheet
+   remains fixed; never coerce them to relative here. */
+body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) > main {
   position: relative;
   z-index: 1;
+}
+body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) > header {
+  z-index: 40;
+}
+body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) > nav[aria-label="Portal CYA"] {
+  z-index: 45;
+}
+body[data-cya-module^="student-"] div:has(> nav[aria-label="Portal CYA"]) > [role="menu"] {
+  z-index: 70;
 }
 
 /* One embedded high-fidelity logo per student screen. CSS-module local class names
@@ -73,9 +83,9 @@ body[data-cya-module="student-missions"] [class*="missionList"] > article:first-
   animation: cya-student-surface-v56 9.2s ease-in-out infinite alternate;
 }
 
-/* Menus must float above the navigation but remain inside the usable viewport.
-   They may never cover the sticky header or sit under the bottom navigation. */
+/* Menus must float above the navigation but remain inside the usable viewport. */
 body[data-cya-module^="student-"] [role="menu"][aria-label="Apartados de Mi formación"] {
+  position: fixed !important;
   z-index: 70 !important;
   max-height: min(52dvh, 410px);
   overflow-y: auto;
