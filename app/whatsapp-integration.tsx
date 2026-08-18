@@ -8,6 +8,7 @@ const META_APP_ID = "1585899772877530";
 const WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID = "886780604243575";
 const META_SDK_VERSION = "v26.0";
 const META_ALLOWED_ORIGIN = "https://app.carlosyandy.com";
+const META_OAUTH_REDIRECT_URI = "https://app.carlosyandy.com/";
 
 type WhatsAppStatus = {
   configured: boolean;
@@ -181,8 +182,6 @@ export function WhatsAppIntegration({ client, notify }: Props) {
       return;
     }
 
-    // El SDK puede quedar cargado en la página por otra integración. Re-inicializarlo aquí
-    // garantiza que FB.login use siempre la app de Meta de CYA y no un contexto anterior.
     if (!initializeFacebookSdk() || !embeddedSignupReady || !window.FB) {
       notify("Meta todavía está cargando el registro insertado. Espera unos segundos y vuelve a intentarlo.");
       return;
@@ -200,9 +199,6 @@ export function WhatsAppIntegration({ client, notify }: Props) {
         return;
       }
 
-      // El código OAuth de un solo uso se manda inmediatamente al servidor. El backend
-      // lo intercambia de forma segura y puede descubrir el WABA aunque Safari entregue
-      // el evento WA_EMBEDDED_SIGNUP después (o no lo exponga al cerrar el popup).
       void completeEmbeddedSignup({ code, result })
         .catch((error) => notify(error instanceof Error ? error.message : "No se pudo completar la coexistencia de WhatsApp."))
         .finally(() => setOnboarding(false));
@@ -210,10 +206,11 @@ export function WhatsAppIntegration({ client, notify }: Props) {
       config_id: WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID,
       response_type: "code",
       override_default_response_type: true,
+      fallback_redirect_uri: META_OAUTH_REDIRECT_URI,
       extras: {
         setup: {},
         featureType: "whatsapp_business_app_onboarding",
-        version: "v3",
+        sessionInfoVersion: "3",
       },
     });
   }, [completeEmbeddedSignup, embeddedSignupReady, notify]);
@@ -258,8 +255,6 @@ export function WhatsAppIntegration({ client, notify }: Props) {
     loadTarget = script;
     loadTarget.addEventListener("load", onLoad);
 
-    // Si otro componente insertó el script antes de montar esta tarjeta, el evento load
-    // puede haberse consumido ya. Este sondeo corto cubre ese caso sin dejar timers vivos.
     let attempts = 0;
     pollTimer = window.setInterval(() => {
       attempts += 1;
