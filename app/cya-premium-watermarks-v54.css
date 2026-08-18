@@ -1,0 +1,172 @@
+/* CYA Hub v54 · premium watermark parity across every module.
+   Mirrors the approved Inicio treatment: one ambient mark + one embedded mark on the primary surface.
+   Uses the current module accent, never introduces a second accent, and avoids duplicate marks. */
+
+/* Ambient signature for every non-Home module. Home keeps its original approved backdrop. */
+body[data-cya-module]:not([data-cya-module="home"])::before {
+  content:"" !important;
+  display:block !important;
+  position:fixed !important;
+  z-index:-1 !important;
+  top:clamp(92px,13vh,156px) !important;
+  right:clamp(-150px,-10vw,-62px) !important;
+  width:clamp(330px,50vw,660px) !important;
+  aspect-ratio:1 !important;
+  background:var(--cya-module-accent) !important;
+  opacity:.032 !important;
+  pointer-events:none !important;
+  transform:rotate(-8deg) translateZ(0) !important;
+  transform-origin:center !important;
+  -webkit-mask:url('/cya-logo.png') center/contain no-repeat !important;
+  mask:url('/cya-logo.png') center/contain no-repeat !important;
+  animation:cya-premium-ambient-v54 10.5s ease-in-out infinite alternate !important;
+}
+
+@keyframes cya-premium-ambient-v54 {
+  from { opacity:.024; }
+  to { opacity:.042; }
+}
+
+/* Primary surfaces that may carry the embedded premium mark.
+   The selector intentionally targets only the first/hero surface so cards are not wallpapered repeatedly. */
+body[data-cya-module] :where(
+  .focus,
+  .portal-hero,
+  .class-workflow-page .card:first-of-type,
+  .home-grid > .card:first-child,
+  .portal-grid > .card:first-child,
+  .marketing-workspace .card:first-of-type,
+  .admin-page .card:first-of-type,
+  .student-list .student-row:first-child,
+  .agenda-page .card:first-of-type,
+  .agenda-view .card:first-of-type,
+  .teaching-workspace .card:first-of-type,
+  .teaching-page .card:first-of-type,
+  .statistics-page .card:first-of-type,
+  .academy-page .card:first-of-type,
+  .account-page .card:first-of-type,
+  .notifications-page .card:first-of-type,
+  main > .card:first-of-type,
+  main > section.card:first-of-type
+) {
+  position:relative !important;
+  isolation:isolate !important;
+  overflow:hidden !important;
+}
+
+body[data-cya-module] :where(
+  .focus,
+  .portal-hero,
+  .class-workflow-page .card:first-of-type,
+  .home-grid > .card:first-child,
+  .portal-grid > .card:first-child,
+  .marketing-workspace .card:first-of-type,
+  .admin-page .card:first-of-type,
+  .student-list .student-row:first-child,
+  .agenda-page .card:first-of-type,
+  .agenda-view .card:first-of-type,
+  .teaching-workspace .card:first-of-type,
+  .teaching-page .card:first-of-type,
+  .statistics-page .card:first-of-type,
+  .academy-page .card:first-of-type,
+  .account-page .card:first-of-type,
+  .notifications-page .card:first-of-type,
+  main > .card:first-of-type,
+  main > section.card:first-of-type
+)::after {
+  content:"" !important;
+  display:block !important;
+  position:absolute !important;
+  z-index:-1 !important;
+  right:clamp(-78px,-7vw,-28px) !important;
+  bottom:clamp(-72px,-7vw,-30px) !important;
+  width:clamp(190px,30vw,310px) !important;
+  aspect-ratio:1 !important;
+  background:var(--cya-module-accent) !important;
+  opacity:.06 !important;
+  pointer-events:none !important;
+  transform:rotate(-10deg) translateZ(0) !important;
+  transform-origin:center !important;
+  -webkit-mask:url('/cya-logo.png') center/contain no-repeat !important;
+  mask:url('/cya-logo.png') center/contain no-repeat !important;
+  animation:cya-premium-surface-v54 9.2s ease-in-out infinite alternate !important;
+}
+
+@keyframes cya-premium-surface-v54 {
+  from { opacity:.045; }
+  to { opacity:.078; }
+}
+
+/* Preserve the special Home composition: one original ambient mark and one focus-card mark only. */
+body[data-cya-module="home"] .home-grid > .card:first-child::after {
+  content:none !important;
+  display:none !important;
+}
+
+/* Dense surfaces receive only a tiny signature detail, never a large background watermark. */
+body[data-cya-module] :where([role="dialog"],.modal,.drawer) > :where(header,.modal-head,.drawer-head)::after {
+  background:var(--cya-module-accent) !important;
+  opacity:.26 !important;
+  -webkit-mask:url('/cya-logo.png') center/contain no-repeat !important;
+  mask:url('/cya-logo.png') center/contain no-repeat !important;
+}
+
+/* Mobile tuning: keep the marks large enough to read as branding, but away from text-heavy left edges. */
+@media (max-width:760px) {
+  body[data-cya-module]:not([data-cya-module="home"])::before {
+    top:118px !important;
+    right:-118px !important;
+    width:min(92vw,430px) !important;
+  }
+
+  body[data-cya-module] :where(
+    .focus,
+    .portal-hero,
+    .class-workflow-page .card:first-of-type,
+    .home-grid > .card:first-child,
+    .portal-grid > .card:first-child,
+    .marketing-workspace .card:first-of-type,
+    .admin-page .card:first-of-type,
+    .student-list .student-row:first-child,
+    .agenda-page .card:first-of-type,
+    .agenda-view .card:first-of-type,
+    .teaching-workspace .card:first-of-type,
+    .teaching-page .card:first-of-type,
+    .statistics-page .card:first-of-type,
+    .academy-page .card:first-of-type,
+    .account-page .card:first-of-type,
+    .notifications-page .card:first-of-type,
+    main > .card:first-of-type,
+    main > section.card:first-of-type
+  )::after {
+    right:-58px !important;
+    bottom:-52px !important;
+    width:clamp(190px,58vw,255px) !important;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  body[data-cya-module]::before,
+  body[data-cya-module] :where(
+    .focus,
+    .portal-hero,
+    .class-workflow-page .card:first-of-type,
+    .home-grid > .card:first-child,
+    .portal-grid > .card:first-child,
+    .marketing-workspace .card:first-of-type,
+    .admin-page .card:first-of-type,
+    .student-list .student-row:first-child,
+    .agenda-page .card:first-of-type,
+    .agenda-view .card:first-of-type,
+    .teaching-workspace .card:first-of-type,
+    .teaching-page .card:first-of-type,
+    .statistics-page .card:first-of-type,
+    .academy-page .card:first-of-type,
+    .account-page .card:first-of-type,
+    .notifications-page .card:first-of-type,
+    main > .card:first-of-type,
+    main > section.card:first-of-type
+  )::after {
+    animation:none !important;
+  }
+}
