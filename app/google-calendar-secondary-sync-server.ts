@@ -94,8 +94,9 @@ export async function syncSecondaryGoogleCalendars(
   const from = new Date(now.getTime() - 30 * 86400000);
   const to = new Date(now.getTime() + 330 * 86400000);
   const calendars = await listCalendars(googleToken);
+  const ownedCalendarIds = new Set(calendars.flatMap((calendar) => calendar.id ? [calendar.id] : []));
   const secondary = calendars.filter((calendar) => calendar.id !== connection.external_calendar_id);
-  metrics.calendars = secondary.length + 1;
+  metrics.calendars = calendars.length;
 
   const existingRows = await supabaseRequest<ExistingExternal[]>(
     `/rest/v1/calendar_events?select=id,external_calendar_id,external_event_id&connection_id=eq.${connection.id}&source_type=eq.external`,
@@ -106,6 +107,19 @@ export async function syncSecondaryGoogleCalendars(
       .filter((row) => row.external_calendar_id && row.external_event_id)
       .map((row) => [`${row.external_calendar_id}:${row.external_event_id}`, row]),
   );
+
+  // If a calendar belongs to another Google account (for example one merely
+  // shared with the connected account), remove any previously imported rows.
+  for (const row of existingRows) {
+    if (!row.external_calendar_id || ownedCalendarIds.has(row.external_calendar_id)) continue;
+    await supabaseRequest(`/rest/v1/calendar_events?id=eq.${row.id}`, accessToken, {
+      method: "PATCH",
+      headers: { prefer: "return=minimal" },
+      body: JSON.stringify({ sync_status: "ignored", deleted_at: new Date().toISOString(), last_synced_at: new Date().toISOString() }),
+    });
+    if (row.external_event_id) existing.delete(`${row.external_calendar_id}:${row.external_event_id}`);
+    metrics.removed += 1;
+  }
 
   for (const calendar of secondary) {
     const calendarId = calendar.id!;
