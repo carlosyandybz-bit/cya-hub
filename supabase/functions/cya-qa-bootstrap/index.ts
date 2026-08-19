@@ -12,6 +12,7 @@ const EXPECTED_STAGING_REF = "refs/heads/staging";
 const EXPECTED_WORKFLOW_REF = `${EXPECTED_REPOSITORY}/.github/workflows/cya-qa-e2e.yml@${EXPECTED_STAGING_REF}`;
 const GITHUB_JWKS_URL = "https://token.actions.githubusercontent.com/.well-known/jwks";
 const ALL_APP_ROLES = ["admin", "teacher_admin", "teacher", "student"] as const;
+const MANUAL_ROTATION_VERSION = 1;
 
 type GitHubClaims = {
   iss?: string;
@@ -36,6 +37,7 @@ type Fixture = {
   displayName: string;
   primaryRole: "teacher" | "student" | "admin";
   roles: Array<"admin" | "teacher" | "student">;
+  source: "qa_automation" | "staging_manual";
 };
 
 const fixtures: Fixture[] = [
@@ -45,6 +47,7 @@ const fixtures: Fixture[] = [
     displayName: "QA · Profesor",
     primaryRole: "teacher",
     roles: ["teacher", "student"],
+    source: "qa_automation",
   },
   {
     role: "student",
@@ -52,6 +55,7 @@ const fixtures: Fixture[] = [
     displayName: "QA · Alumno",
     primaryRole: "student",
     roles: ["student"],
+    source: "qa_automation",
   },
   {
     role: "admin",
@@ -59,14 +63,36 @@ const fixtures: Fixture[] = [
     displayName: "QA · Administrador",
     primaryRole: "admin",
     roles: ["admin", "teacher", "student"],
+    source: "qa_automation",
   },
 ];
 
-const manualAccounts = {
-  teacher: { email: "carlosyandybz+staging-profesor@gmail.com", roles: ["teacher", "student"] },
-  student: { email: "carlosyandybz+staging-alumno@gmail.com", roles: ["student"] },
-  admin: { email: "carlosyandybz+staging-admin@gmail.com", roles: ["admin", "teacher", "student"] },
-} as const;
+const manualFixtures: Fixture[] = [
+  {
+    role: "teacher",
+    email: "carlosyandybz+staging-profesor@gmail.com",
+    displayName: "Staging · Profesor",
+    primaryRole: "teacher",
+    roles: ["teacher", "student"],
+    source: "staging_manual",
+  },
+  {
+    role: "student",
+    email: "carlosyandybz+staging-alumno@gmail.com",
+    displayName: "Staging · Alumno",
+    primaryRole: "student",
+    roles: ["student"],
+    source: "staging_manual",
+  },
+  {
+    role: "admin",
+    email: "carlosyandybz+staging-admin@gmail.com",
+    displayName: "Staging · Profesor administrador",
+    primaryRole: "admin",
+    roles: ["admin", "teacher", "student"],
+    source: "staging_manual",
+  },
+];
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -179,6 +205,10 @@ async function findUserByEmail(admin: ReturnType<typeof createClient>, email: st
 }
 
 async function persistFixture(sql: ReturnType<typeof postgres>, user: User, fixture: Fixture) {
+  const note = fixture.source === "qa_automation"
+    ? "AUTOMATED QA FIXTURE — do not use for real classes or billing."
+    : "STAGING ONLY — persistent manual passwordless access account.";
+
   await sql.begin(async (tx) => {
     await tx`
       insert into public.user_profiles (id, display_name)
@@ -237,8 +267,8 @@ async function persistFixture(sql: ReturnType<typeof postgres>, user: User, fixt
           ${fixture.displayName},
           ${fixture.email},
           'student',
-          'qa_automation',
-          'AUTOMATED QA FIXTURE — do not use for real classes or billing.',
+          ${fixture.source},
+          ${note},
           true,
           ${user.id}::uuid
         )
@@ -251,8 +281,8 @@ async function persistFixture(sql: ReturnType<typeof postgres>, user: User, fixt
         set display_name = ${fixture.displayName},
             email = ${fixture.email},
             crm_stage = 'student',
-            source = 'qa_automation',
-            notes = 'AUTOMATED QA FIXTURE — do not use for real classes or billing.',
+            source = ${fixture.source},
+            notes = ${note},
             active = true,
             updated_at = now()
         where id = ${personId}::bigint
@@ -271,20 +301,22 @@ async function persistFixture(sql: ReturnType<typeof postgres>, user: User, fixt
   });
 }
 
-async function ensureFixture(
+async function ensureAutomationFixture(
   admin: ReturnType<typeof createClient>,
   sql: ReturnType<typeof postgres>,
   fixture: Fixture,
 ) {
   const password = makePassword();
   let user = await findUserByEmail(admin, fixture.email);
+  const appMetadata = { ...(user?.app_metadata ?? {}), cya_qa_fixture: true, cya_staging_manual: false };
+  const userMetadata = { ...(user?.user_metadata ?? {}), full_name: fixture.displayName, cya_qa_fixture: true, cya_staging_manual: false };
 
   if (user) {
     const { data, error } = await admin.auth.admin.updateUserById(user.id, {
       password,
       email_confirm: true,
-      user_metadata: { full_name: fixture.displayName, cya_qa_fixture: true, cya_staging_manual: false },
-      app_metadata: { cya_qa_fixture: true, cya_staging_manual: false },
+      user_metadata: userMetadata,
+      app_metadata: appMetadata,
     });
     if (error || !data.user) throw error ?? new Error(`Unable to update ${fixture.role} fixture user`);
     user = data.user;
@@ -293,8 +325,8 @@ async function ensureFixture(
       email: fixture.email,
       password,
       email_confirm: true,
-      user_metadata: { full_name: fixture.displayName, cya_qa_fixture: true, cya_staging_manual: false },
-      app_metadata: { cya_qa_fixture: true, cya_staging_manual: false },
+      user_metadata: userMetadata,
+      app_metadata: appMetadata,
     });
     if (error || !data.user) throw error ?? new Error(`Unable to create ${fixture.role} fixture user`);
     user = data.user;
@@ -302,6 +334,54 @@ async function ensureFixture(
 
   await persistFixture(sql, user, fixture);
   return { email: fixture.email, password };
+}
+
+async function ensureManualFixture(
+  admin: ReturnType<typeof createClient>,
+  sql: ReturnType<typeof postgres>,
+  fixture: Fixture,
+) {
+  let user = await findUserByEmail(admin, fixture.email);
+  const currentRotation = Number(user?.app_metadata?.cya_staging_manual_rotation ?? 0);
+  const mustRotate = !user || currentRotation < MANUAL_ROTATION_VERSION;
+  const appMetadata = {
+    ...(user?.app_metadata ?? {}),
+    cya_qa_fixture: false,
+    cya_staging_manual: true,
+    cya_staging_manual_auth: "passwordless_email",
+    cya_staging_manual_rotation: MANUAL_ROTATION_VERSION,
+  };
+  const userMetadata = {
+    ...(user?.user_metadata ?? {}),
+    full_name: fixture.displayName,
+    cya_qa_fixture: false,
+    cya_staging_manual: true,
+  };
+
+  if (user) {
+    const attributes: Parameters<typeof admin.auth.admin.updateUserById>[1] = {
+      email_confirm: true,
+      user_metadata: userMetadata,
+      app_metadata: appMetadata,
+    };
+    if (mustRotate) attributes.password = makePassword();
+    const { data, error } = await admin.auth.admin.updateUserById(user.id, attributes);
+    if (error || !data.user) throw error ?? new Error(`Unable to update manual ${fixture.role} staging user`);
+    user = data.user;
+  } else {
+    const { data, error } = await admin.auth.admin.createUser({
+      email: fixture.email,
+      password: makePassword(),
+      email_confirm: true,
+      user_metadata: userMetadata,
+      app_metadata: appMetadata,
+    });
+    if (error || !data.user) throw error ?? new Error(`Unable to create manual ${fixture.role} staging user`);
+    user = data.user;
+  }
+
+  await persistFixture(sql, user, fixture);
+  return { email: fixture.email, roles: fixture.roles, rotated: mustRotate };
 }
 
 Deno.serve(async (request) => {
@@ -330,7 +410,12 @@ Deno.serve(async (request) => {
 
     const credentials: Record<string, { email: string; password: string }> = {};
     for (const fixture of fixtures) {
-      credentials[fixture.role] = await ensureFixture(admin, sql, fixture);
+      credentials[fixture.role] = await ensureAutomationFixture(admin, sql, fixture);
+    }
+
+    const manualAccounts: Record<string, { email: string; roles: Array<"admin" | "teacher" | "student">; rotated: boolean }> = {};
+    for (const fixture of manualFixtures) {
+      manualAccounts[fixture.role] = await ensureManualFixture(admin, sql, fixture);
     }
 
     const runId = claims.run_id ?? crypto.randomUUID();
@@ -341,6 +426,7 @@ Deno.serve(async (request) => {
       run_id: claims.run_id ?? null,
       credentials,
       manual_accounts: manualAccounts,
+      manual_rotation_version: MANUAL_ROTATION_VERSION,
       fixtures: functionalFixtures,
     });
   } catch (error) {
