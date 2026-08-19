@@ -470,7 +470,7 @@ export function StudentMasterDetail({
         <article><WalletCards /><span>Saldo neto</span><strong>{minutesLabel(balance)}</strong>{pendingDebt > 0 ? <small>{minutesLabel(pendingDebt)} pendientes de regularizar</small> : null}</article>
         <article><CalendarDays /><span>Próxima clase</span><strong>{upcoming[0] ? dateLabel(upcoming[0].scheduled_start_at, false) : "Sin programar"}</strong></article>
         <article><BookOpen /><span>En formación</span><strong>{activeAssignments.length}</strong></article>
-        <article><TrendingUp /><span>Evaluación media</span><strong>{averageScore === null ? "Sin evaluar" : `${averageScore}/100`}</strong></article>
+        <article><TrendingUp /><span>Evaluación</span><strong>{evaluations.length ? "Registrada" : "Sin evaluar"}</strong><small>{evaluations.length ? "Ver hitos y evolución" : "Todavía sin referencia"}</small></article>
       </section>
 
       <section className={styles.sectionCard}>
