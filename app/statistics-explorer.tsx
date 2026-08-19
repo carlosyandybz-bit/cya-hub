@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useState } from "react";
 import { statisticBlockLabels, statisticCatalog } from "./statistics-catalog";
 import { calculateStatistic } from "./statistics-engine";
+import { StatisticsCrmDashboard } from "./statistics-crm-dashboard";
 import styles from "./statistics-view.module.css";
 
 type PeriodDays=30|90|365;
@@ -41,7 +42,11 @@ export function StatisticsExplorer({client,leave,notify}:{client:SupabaseClient;
   const blocks=[...new Set(statisticCatalog.map((metric)=>metric.block))];
 
   return <section className={styles.workspace}>
-    <header className={styles.hero}><div><button type="button" onClick={leave}>‹ Volver</button><span>Análisis CYA</span><h1>Todas las estadísticas</h1><p>Consulta aquí todas las métricas disponibles en tu panel.</p></div><BarChart3/></header>
+    <header className={styles.hero}><div><button type="button" onClick={leave}>‹ Volver</button><span>Análisis CYA</span><h1>Todas las estadísticas</h1><p>Consulta las métricas de CYA y crea paneles propios combinando filtros vivos del CRM.</p></div><BarChart3/></header>
+
+    <StatisticsCrmDashboard client={client} notify={notify} />
+
+    <div className={styles.catalogDivider}><span>Catálogo general</span><p>Métricas operativas predefinidas por periodo.</p></div>
     <div className={styles.toolbar}><div className={styles.periods}>{([30,90,365] as PeriodDays[]).map((value)=><button key={value} type="button" className={days===value?styles.activePeriod:""} onClick={()=>setDays(value)}>{value===365?"1 año":`${value} días`}</button>)}</div></div>
     {loading?<div className={styles.loading}>Actualizando estadísticas…</div>:blocks.map((block)=><section key={block}><h2>{statisticBlockLabels[block]}</h2><div className={styles.metricGrid}>{statisticCatalog.filter((metric)=>metric.block===block).map((metric)=><article className={styles.metric} key={metric.key}><div><span>{metric.label}</span><strong>{display(values[metric.key],metric.format)}</strong><small>{metric.description}</small></div></article>)}</div></section>)}
   </section>;
