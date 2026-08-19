@@ -1,7 +1,7 @@
 "use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { Check, GraduationCap, LoaderCircle, ShieldCheck, UserRound } from "lucide-react";
+import { Check, GraduationCap, LoaderCircle, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { useState } from "react";
 import type { ExperienceContext } from "../v14-types";
 import styles from "./staging-account-switcher.module.css";
@@ -70,35 +70,48 @@ export function StagingAccountSwitcher({
   currentEmail: string;
   experience: ExperienceContext;
 }) {
-  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState<AccountKey | null>(null);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   if (!isStagingRuntime(client)) return null;
+
+  async function activateExperience(account: ManualAccount) {
+    window.localStorage.setItem("cya:experience", account.experience);
+    const preference = await client.rpc("set_experience_context", { p_context: account.experience });
+    if (preference.error) throw preference.error;
+    window.dispatchEvent(new CustomEvent("cya:experience-change", { detail: account.experience }));
+    window.dispatchEvent(new CustomEvent("cya:auth-change"));
+    window.location.reload();
+  }
 
   async function switchAccount(account: ManualAccount) {
     if (busy) return;
     setBusy(account.key);
     setError("");
+    setMessage("");
 
     try {
       const normalizedCurrentEmail = currentEmail.trim().toLowerCase();
-      if (normalizedCurrentEmail !== account.email.toLowerCase()) {
-        if (!password) throw new Error("Introduce la contraseña de las cuentas de prueba para cambiar de identidad.");
-        const login = await client.auth.signInWithPassword({ email: account.email, password });
-        if (login.error) throw login.error;
+      if (normalizedCurrentEmail === account.email.toLowerCase()) {
+        await activateExperience(account);
+        return;
       }
 
       window.localStorage.setItem("cya:experience", account.experience);
-      const preference = await client.rpc("set_experience_context", { p_context: account.experience });
-      if (preference.error) throw preference.error;
+      const result = await client.auth.signInWithOtp({
+        email: account.email,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: `${window.location.origin}/staging-lab/accounts`,
+        },
+      });
+      if (result.error) throw result.error;
 
-      setPassword("");
-      window.dispatchEvent(new CustomEvent("cya:experience-change", { detail: account.experience }));
-      window.dispatchEvent(new CustomEvent("cya:auth-change"));
-      window.location.reload();
+      setMessage(`Acceso enviado para ${account.label}. Abre el enlace de un solo uso recibido por email.`);
+      setBusy(null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "No se ha podido cambiar la cuenta de staging.");
+      setError(cause instanceof Error ? cause.message : "No se ha podido preparar el acceso de staging.");
       setBusy(null);
     }
   }
@@ -107,19 +120,9 @@ export function StagingAccountSwitcher({
     <section className={styles.panel} aria-label="Acceso rápido de staging">
       <div className={styles.panelHead}>
         <div><span>Solo staging</span><strong>Cambiar cuenta</strong></div>
-        <small>Identidades fijas de prueba</small>
+        <small>Acceso passwordless · identidades fijas de prueba</small>
       </div>
-      <label className={styles.passwordField}>
-        <span>Contraseña de pruebas</span>
-        <input
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="No se guarda ni se incluye en el código"
-        />
-      </label>
+      <p className={styles.note}>Selecciona una identidad. Si no es tu sesión actual, recibirás un enlace de acceso de un solo uso en el buzón de staging.</p>
       <div className={styles.accounts}>
         {accounts.map((account) => {
           const active = currentEmail.trim().toLowerCase() === account.email.toLowerCase() && experience === account.experience;
@@ -133,15 +136,16 @@ export function StagingAccountSwitcher({
               onClick={() => void switchAccount(account)}
               disabled={Boolean(busy)}
               aria-current={active ? "true" : undefined}
-              aria-label={`Entrar como ${account.label}`}
+              aria-label={active ? `${account.label} activa` : `Acceder como ${account.label}`}
             >
               <span className={styles.icon}>{loading ? <LoaderCircle className={styles.spinner} /> : <Icon />}</span>
               <strong>{account.shortLabel}</strong>
-              {active ? <Check className={styles.check} /> : null}
+              {active ? <Check className={styles.check} /> : <Mail className={styles.check} />}
             </button>
           );
         })}
       </div>
+      {message ? <p className={styles.note} role="status">{message}</p> : null}
       {error ? <p className={styles.error} role="alert">{error}</p> : null}
     </section>
   );

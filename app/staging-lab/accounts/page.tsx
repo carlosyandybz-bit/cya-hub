@@ -23,7 +23,7 @@ export default function StagingAccountsPage() {
       <header className={styles.header}>
         <p>STAGING_ONLY · QA ACCESS</p>
         <h1>Identidades de prueba</h1>
-        <span>El selector vive exclusivamente en staging. La contraseña se introduce en el momento de uso y nunca forma parte del bundle ni del repositorio.</span>
+        <span>El selector vive exclusivamente en staging. Las identidades manuales utilizan acceso passwordless mediante un enlace de un solo uso enviado al buzón de staging; no existe una contraseña manual compartida en el bundle ni en el repositorio.</span>
       </header>
       <StagingAccountAccess />
       <p className={styles.note}>El cambio de vista normal dentro de una misma cuenta sigue disponible en el menú de cuenta del producto. Esta superficie solo cambia entre identidades QA.</p>

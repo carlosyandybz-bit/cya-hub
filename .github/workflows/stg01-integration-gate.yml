@@ -70,6 +70,17 @@ jobs:
           fi
           echo "No embedded staging password constants detected."
 
+      - name: Reject derivable manual staging credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -n -E '(makeManualPassword|manualPassword|fixedPassword|CYA-STAGING-MANUAL-ACCESS|signInWithPassword)' -- 'supabase/functions/cya-qa-bootstrap/index.ts' 'app/staging-lab/staging-account-switcher.tsx' >/tmp/stg01-manual-auth.log 2>/dev/null; then
+            cat /tmp/stg01-manual-auth.log
+            echo "::error::Manual staging authentication must not depend on a repository-derived reusable password."
+            exit 1
+          fi
+          echo "Manual staging access contains no deterministic password generator or password login path."
+
       - name: Lint changed application files
         shell: bash
         run: |
