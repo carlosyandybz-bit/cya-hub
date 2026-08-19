@@ -1,0 +1,48 @@
+name: Apply questionnaire preparation gate
+on:
+  push:
+    branches: [staging]
+    paths: ['.github/workflows/apply-questionnaire-preparation-gate.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: staging }
+      - name: Patch student preparation gate
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/student-portal-prf.tsx')
+          s=p.read_text()
+          old='function PreparationPanel({ client, nextClass, personId, assignments, changed }: {\n  client: SupabaseClient;\n  nextClass: PortalClass;\n  personId: number;\n  assignments: PortalAssignment[];\n  changed: () => Promise<void>;\n}) {'
+          new='function PreparationPanel({ client, nextClass, personId, assignments, changed, openQuestionnaire }: {\n  client: SupabaseClient;\n  nextClass: PortalClass;\n  personId: number;\n  assignments: PortalAssignment[];\n  changed: () => Promise<void>;\n  openQuestionnaire: () => void;\n}) {'
+          assert old in s, 'PreparationPanel signature not found'
+          s=s.replace(old,new,1)
+          old='  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);'
+          new=old+'\n  const [questionnaireFinalized, setQuestionnaireFinalized] = useState<boolean | null>(null);'
+          assert old in s, 'uploadProgress state not found'
+          s=s.replace(old,new,1)
+          old='  useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);'
+          new=old+'\n  useEffect(() => {\n    let active = true;\n    void client.rpc("student_optional_questionnaire_status", { p_person_id: personId }).then(({ data }) => {\n      if (!active) return;\n      const payload = data as { finalized?: boolean } | null;\n      setQuestionnaireFinalized(Boolean(payload?.finalized));\n    });\n    return () => { active = false; };\n  }, [client, personId]);'
+          assert old in s, 'PreparationPanel load effect not found'
+          s=s.replace(old,new,1)
+          old='  const chosenContentIds = new Set(requests.filter((item) => item.request_type === "content" && item.content_id).map((item) => Number(item.content_id)));\n  const contentChoices = assignments.filter((item) => !chosenContentIds.has(item.content_id));\n\n  return <section className={styles.preparePanel} aria-labelledby="prepare-next-class-title">'
+          new='  const chosenContentIds = new Set(requests.filter((item) => item.request_type === "content" && item.content_id).map((item) => Number(item.content_id)));\n  const contentChoices = assignments.filter((item) => !chosenContentIds.has(item.content_id));\n\n  if (questionnaireFinalized === null) return <section className={styles.preparePanel}><p className={styles.prepareEmpty}>Comprobando tu información antes de preparar la clase…</p></section>;\n  if (!questionnaireFinalized) return <section className={styles.preparePanel} aria-labelledby="questionnaire-before-class-title">\n    <div className={styles.prepareIntro}><div><span>ANTES DE PREPARAR TU CLASE</span><h2 id="questionnaire-before-class-title">Cuéntanos un poco sobre ti</h2><p>Antes de preparar tu próxima clase necesitamos que entres al cuestionario y lo finalices. Todas las preguntas son opcionales: puedes dejar campos vacíos.</p></div><Sparkles /></div>\n    <div className={styles.prepareActions}><button type="button" onClick={openQuestionnaire}>Ir al cuestionario</button></div>\n  </section>;\n\n  return <section className={styles.preparePanel} aria-labelledby="prepare-next-class-title">'
+          assert old in s, 'PreparationPanel return anchor not found'
+          s=s.replace(old,new,1)
+          old='{nextClass && snapshot ? <PreparationPanel client={client} nextClass={nextClass} personId={snapshot.profile.id} assignments={snapshot.assignments} changed={load} /> : null}'
+          new='{nextClass && snapshot ? <PreparationPanel client={client} nextClass={nextClass} personId={snapshot.profile.id} assignments={snapshot.assignments} changed={load} openQuestionnaire={() => go("profile")} /> : null}'
+          assert old in s, 'PreparationPanel call not found'
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add app/student-portal-prf.tsx
+          git commit -m "feat(portal): require questionnaire finalization before class preparation"
+          git push origin HEAD:staging
