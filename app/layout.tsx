@@ -6,6 +6,7 @@ import { PullToRefresh } from "./pull-to-refresh";
 import { CyaModuleTheme } from "./cya-module-theme";
 import { StudentCardContactActions } from "./student-card-contact-actions";
 import { ClassMediaUploadGuard } from "./class-media-upload-guard";
+import { ClassConfirmationPrompt } from "./class-confirmation-prompt";
 import { LiveSearchCreateEnhancer } from "./live-search-create-enhancer";
 import "./globals.css";
 import "./visual-audit-v21.css";
@@ -52,6 +53,7 @@ import "./cya-module-interaction-states-v58.css";
 import "./cya-ui-polish-v59.css";
 import "./teaching-block-b.css";
 import "./pull-to-refresh.css";
+import "./class-confirmation-prompt.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -110,6 +112,7 @@ export default function RootLayout({
         <GoogleCalendarAutoSync />
         <StudentCardContactActions />
         <ClassMediaUploadGuard />
+        <ClassConfirmationPrompt />
         <LiveSearchCreateEnhancer />
         {children}
       </body>
