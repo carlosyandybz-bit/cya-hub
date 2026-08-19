@@ -1,0 +1,70 @@
+name: Student portal v121 fix
+on:
+  push:
+    branches: [staging]
+    paths: ['.github/workflows/student-portal-v121-fix.yml']
+permissions:
+  contents: write
+jobs:
+  patch-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: staging }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Patch student evaluation contract and UI
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/cya-app.tsx')
+          s=p.read_text()
+          old='''  evaluations: Array<{ id: number; session_id: number | null; class_id: number | null; score: number; aptitude_term_id: number; aptitude: string; style_term_id: number; style: string; role_term_id: number; role: string; level_term_id: number; level: string; evaluation_kind: string; created_at: string }>;
+  exercises?:'''
+          new='''  evaluations: Array<{ id: number; session_id: number | null; class_id: number | null; aptitude_term_id: number; aptitude: string; style_term_id: number; style: string; role_term_id: number; role: string; level_term_id: number; level: string; evaluation_kind: string; created_at: string }>;
+  evaluation_summary?: { contexts?: Array<{ style_term_id: number; style: string; role_term_id: number; role: string; level_term_id: number; level: string; is_primary: boolean; evaluated_at: string | null; has_evaluation: boolean; items: Array<{ aptitude_term_id: number; aptitude: string; stars: number; total_stars: number; trend: -1 | 0 | 1 | null }> }> };
+  exercises?:'''
+          if old not in s: raise SystemExit('type target not found')
+          s=s.replace(old,new,1)
+          old='''  const orderedEvaluations = [...snapshot.evaluations].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const latestEvaluation = orderedEvaluations[0] ?? null;
+  const contextEvaluations = latestEvaluation ? orderedEvaluations.filter((item) => item.style_term_id === latestEvaluation.style_term_id && item.role_term_id === latestEvaluation.role_term_id && item.level_term_id === latestEvaluation.level_term_id) : orderedEvaluations;
+  const latestScores = contextEvaluations.reduce<Map<string, StudentPortalSnapshot["evaluations"][number]>>((map, item) => map.has(item.aptitude) ? map : map.set(item.aptitude, item), new Map());
+  const totalScore = [...latestScores.values()].reduce((sum,item) => sum + Number(item.score || 0),0);
+  const relativeRadar = [...latestScores.values()].map((item) => ({ label:item.aptitude, value:totalScore ? Number(item.score) / totalScore * 100 : 0 }));
+  const evolutionContextLabel = latestEvaluation ? [latestEvaluation.style, latestEvaluation.role, latestEvaluation.level].filter(Boolean).join(" · ") : "Último contexto";'''
+          new='''  const evaluationContexts = snapshot.evaluation_summary?.contexts ?? [];
+  const publicEvaluationContext = evaluationContexts.find((context) => context.is_primary && context.has_evaluation) ?? evaluationContexts.find((context) => context.has_evaluation) ?? evaluationContexts[0] ?? null;
+  const publicEvaluationItems = publicEvaluationContext?.items ?? [];
+  const relativeRadar = publicEvaluationItems.map((item) => ({ label: item.aptitude, value: item.total_stars > 0 ? Math.max(0, Math.min(100, item.stars / item.total_stars * 100)) : 0 }));
+  const evaluatedAptitudes = publicEvaluationContext?.has_evaluation ? publicEvaluationItems.length : 0;
+  const evolutionContextLabel = publicEvaluationContext ? [publicEvaluationContext.style, publicEvaluationContext.role, publicEvaluationContext.level].filter(Boolean).join(" · ") : "Último contexto";'''
+          if old not in s: raise SystemExit('calc target not found')
+          s=s.replace(old,new,1)
+          old='''<article><TrendingUp /><span>Aptitudes evaluadas</span><strong>{latestScores.size}</strong></article>'''
+          new='''<article><TrendingUp /><span>Aptitudes evaluadas</span><strong>{evaluatedAptitudes}</strong></article>'''
+          if old not in s: raise SystemExit('stat target not found')
+          s=s.replace(old,new,1)
+          old='''<article className="card portal-card"><div className="card-head"><h2>Mi evolución</h2><span>{evolutionContextLabel}</span></div>{relativeRadar.length ? <><RadarChart items={relativeRadar} scaleLabel="Porcentaje de tus puntos totales en cada aptitud" /><div className="evaluation-history">{contextEvaluations.slice(0,12).map((item) => <div key={item.id}><span>{new Intl.DateTimeFormat("es-ES",{ day:"numeric",month:"short",year:"numeric" }).format(new Date(item.created_at))}</span><strong>{item.score}</strong></div>)}</div></> : <div className="compact-empty"><TrendingUp /><span>Tu próxima evaluación aparecerá aquí.</span></div>}</article>'''
+          new='''<article className="card portal-card"><div className="card-head"><h2>Mi evolución</h2><span>{evolutionContextLabel}</span></div>{relativeRadar.length ? <><RadarChart items={relativeRadar} scaleLabel="Progreso dentro de tu nivel actual" /><div className="evaluation-history">{publicEvaluationItems.map((item) => <div key={item.aptitude_term_id}><span>{item.aptitude}</span><strong aria-label={`${item.stars} de ${item.total_stars} estrellas`}>{`${"★".repeat(Math.max(0,item.stars))}${"☆".repeat(Math.max(0,item.total_stars-item.stars))}`} <small>{item.stars}/{item.total_stars}</small></strong><span aria-label={item.trend === 1 ? "Mejorando" : item.trend === -1 ? "Bajando" : "Estable"}>{item.trend === 1 ? "↑" : item.trend === -1 ? "↓" : "→"}</span></div>)}</div><p className="portal-evaluation-note">Estas valoraciones muestran tu progreso dentro de tu nivel actual. No son una comparación con otros alumnos ni una escala absoluta desde principiante hasta avanzado.</p></> : <div className="compact-empty"><TrendingUp /><span>Tu próxima evaluación aparecerá aquí.</span></div>}</article>'''
+          if old not in s: raise SystemExit('render target not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+      - run: npm ci
+      - run: npm run build
+      - name: Commit fix and proof
+        run: |
+          mkdir -p .qa
+          printf 'student-portal-v121 evaluation privacy/render build ok\n' > .qa/student-portal-v121-build-ok.txt
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add app/cya-app.tsx .qa/student-portal-v121-build-ok.txt
+          git commit -m "Use public evaluation summary in student portal"
+          git push origin HEAD:staging
