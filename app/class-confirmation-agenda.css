@@ -1,0 +1,145 @@
+.class-confirmation-agenda {
+  margin: 16px 0 18px;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--cya-accent) 28%, var(--cya-line));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--cya-accent) 8%, var(--cya-surface)), var(--cya-surface) 48%);
+  box-shadow: var(--cya-shadow-raised);
+}
+
+.class-confirmation-agenda-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.class-confirmation-agenda-head > div { min-width: 0; }
+.class-confirmation-agenda-head span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--cya-accent-strong);
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 850;
+  letter-spacing: .09em;
+}
+.class-confirmation-agenda-head h2 {
+  margin: 0;
+  color: var(--cya-text);
+  font-size: 19px;
+  line-height: 1.18;
+  letter-spacing: -.025em;
+}
+.class-confirmation-agenda-head p {
+  max-width: 660px;
+  margin: 7px 0 0;
+  color: var(--cya-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.class-confirmation-agenda-head > strong {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 9px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--cya-line-strong);
+  border-radius: 999px;
+  background: var(--cya-surface-interactive);
+  color: var(--cya-text);
+  font-size: 12px;
+}
+
+.class-confirmation-agenda-list { display: grid; gap: 10px; }
+.class-confirmation-agenda-item {
+  overflow: hidden;
+  border: 1px solid var(--cya-line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--cya-surface-elevated) 84%, transparent);
+}
+
+.class-confirmation-agenda-class {
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 13px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-bottom: 1px solid var(--cya-line);
+  background: transparent;
+  color: var(--cya-text);
+  text-align: left;
+  cursor: pointer;
+}
+.class-confirmation-agenda-class:focus-visible {
+  outline: none;
+  box-shadow: inset var(--cya-focus-ring);
+}
+.class-confirmation-agenda-class > svg:first-child { width: 21px; color: var(--cya-accent-strong); }
+.class-confirmation-agenda-class > svg:last-child { width: 17px; color: var(--cya-text-muted); }
+.class-confirmation-agenda-class > span { min-width: 0; display: grid; gap: 3px; }
+.class-confirmation-agenda-class strong {
+  overflow: hidden;
+  color: var(--cya-text);
+  font-size: 13px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.class-confirmation-agenda-class small { color: var(--cya-text-muted); font-size: 11px; line-height: 1.35; }
+
+.class-confirmation-agenda-people { display: grid; }
+.class-confirmation-agenda-person {
+  min-height: 60px;
+  padding: 9px 12px 9px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--cya-line);
+}
+.class-confirmation-agenda-person:last-child { border-bottom: 0; }
+.class-confirmation-agenda-person > span:first-child { min-width: 0; display: grid; gap: 2px; }
+.class-confirmation-agenda-person > span:first-child strong {
+  overflow: hidden;
+  color: var(--cya-text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.class-confirmation-agenda-person > span:first-child small { color: var(--cya-warning, #f7b955); font-size: 10px; font-weight: 750; }
+.class-confirmation-agenda-person > a {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, #25d366 34%, var(--cya-line));
+  border-radius: 11px;
+  background: color-mix(in srgb, #25d366 12%, var(--cya-surface-interactive));
+  color: color-mix(in srgb, #25d366 72%, white);
+  font-size: 11px;
+  font-weight: 820;
+  text-decoration: none;
+  transition: transform var(--cya-motion-fast) var(--cya-ease-standard), background var(--cya-motion-base) var(--cya-ease-standard);
+}
+.class-confirmation-agenda-person > a:hover { background: color-mix(in srgb, #25d366 18%, var(--cya-surface-interactive)); }
+.class-confirmation-agenda-person > a:active { transform: translateY(1px) scale(.99); }
+.class-confirmation-agenda-person > a:focus-visible { outline: none; box-shadow: var(--cya-focus-ring); }
+.class-confirmation-agenda-person > a svg { width: 16px; height: 16px; }
+.class-confirmation-no-phone { flex: 0 0 auto; color: var(--cya-text-soft); font-size: 10px; }
+
+@media (max-width: 640px) {
+  .class-confirmation-agenda { padding: 14px; border-radius: 18px; }
+  .class-confirmation-agenda-head { gap: 10px; }
+  .class-confirmation-agenda-head h2 { font-size: 17px; }
+  .class-confirmation-agenda-head p { font-size: 11px; }
+  .class-confirmation-agenda-person { align-items: stretch; flex-direction: column; gap: 8px; padding: 11px 12px; }
+  .class-confirmation-agenda-person > a { width: 100%; min-height: 44px; }
+  .class-confirmation-no-phone { min-height: 32px; display: inline-flex; align-items: center; }
+}
