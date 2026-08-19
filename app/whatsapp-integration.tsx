@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const META_APP_ID = "1585899772877530";
-const WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID = "886780604243575";
+const WHATSAPP_EMBEDDED_SIGNUP_CONFIG_ID = "1685844313102933";
 const META_SDK_VERSION = "v25.0";
 const META_ALLOWED_ORIGIN = "https://app.carlosyandy.com";
 
