@@ -1,0 +1,34 @@
+name: V107 final build proof
+on:
+  push:
+    branches: [staging]
+    paths: ['.github/workflows/v107-final-build-proof.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: staging }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Record result
+        if: always()
+        run: |
+          mkdir -p .qa
+          if [ "${{ job.status }}" = "success" ]; then printf 'v107 final build ok\n' > .qa/v107-final-build-result.txt; else printf 'v107 final build failed\n' > .qa/v107-final-build-result.txt; fi
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add .qa/v107-final-build-result.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "Record v107 final build result"
+          git push origin HEAD:staging
