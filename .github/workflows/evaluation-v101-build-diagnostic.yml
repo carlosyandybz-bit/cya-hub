@@ -1,0 +1,46 @@
+name: Evaluation v101 build diagnostic
+on:
+  push:
+    branches: [staging]
+    paths: ['.github/workflows/evaluation-v101-build-diagnostic.yml']
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: staging }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Diagnose build and persist result
+        shell: bash
+        run: |
+          set +e
+          mkdir -p .qa
+          {
+            echo "=== npm ci ==="
+            npm ci
+            ci_code=$?
+            echo "npm_ci_exit=$ci_code"
+            if [ "$ci_code" -eq 0 ]; then
+              echo "=== npm run build ==="
+              npm run build
+              build_code=$?
+            else
+              build_code=99
+            fi
+            echo "npm_build_exit=$build_code"
+          } > .qa/evaluation-v101-build-diagnostic.txt 2>&1
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add .qa/evaluation-v101-build-diagnostic.txt
+          git commit -m "Record evaluation v101 build diagnostic" || true
+          git push origin HEAD:staging
+          exit 0
