@@ -54,6 +54,7 @@ import "./cya-ui-polish-v59.css";
 import "./teaching-block-b.css";
 import "./pull-to-refresh.css";
 import "./class-confirmation-prompt.css";
+import "./class-confirmation-agenda.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
