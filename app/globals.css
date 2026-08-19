@@ -825,3 +825,7 @@ body:has([role="dialog"]){overflow:hidden}
 @media (prefers-reduced-motion: reduce) {
   .mobile-nav .mobile-nav-secondary { transition:none; }
 }
+
+
+/* V108 default class configuration */
+.preference-save-toggle{display:flex;align-items:flex-start;gap:12px;padding:14px 15px;border:1px solid color-mix(in srgb,var(--border, #d9d9df) 82%,transparent);border-radius:16px;background:color-mix(in srgb,var(--surface,#fff) 94%,var(--primary,#6d4aff) 6%);cursor:pointer}.preference-save-toggle input{width:19px;height:19px;min-width:19px;margin:2px 0 0;accent-color:var(--primary,#6d4aff)}.preference-save-toggle span{display:grid;gap:3px;min-width:0}.preference-save-toggle strong{font-size:.93rem;line-height:1.25}.preference-save-toggle small{font-size:.78rem;line-height:1.35;color:var(--text-muted,#70707a)}.preference-save-toggle:has(input:focus-visible){outline:3px solid color-mix(in srgb,var(--primary,#6d4aff) 25%,transparent);outline-offset:2px}.preference-save-toggle:has(input:checked){border-color:color-mix(in srgb,var(--primary,#6d4aff) 45%,var(--border,#d9d9df));background:color-mix(in srgb,var(--surface,#fff) 88%,var(--primary,#6d4aff) 12%)}

@@ -845,7 +845,7 @@ function ManualClassDraft({ students, close, created, refresh }: { students: Per
 
 function ClassSetupStage({ item, students, credits, terms, refresh, notify, back, next }: { item: ClassItem; students: Person[]; credits: CreditItem[]; terms: CatalogTerm[]; refresh: () => Promise<void>; notify: (message:string) => void; back: () => void; next: () => void }) {
   const personIds = useMemo(() => item.class_participants.map((participant) => participant.person_id), [item.class_participants]);
-  const [danceProfiles,setDanceProfiles] = useState<DanceProfileRow[]>([]), [busy,setBusy] = useState(false), [error,setError] = useState(""), [editKnown,setEditKnown] = useState(false);
+  const [danceProfiles,setDanceProfiles] = useState<DanceProfileRow[]>([]), [busy,setBusy] = useState(false), [error,setError] = useState(""), [editKnown,setEditKnown] = useState(false), [saveDefaults,setSaveDefaults] = useState(false);
   const [scheduledText,setScheduledText] = useState(() => localDateTime(new Date(item.scheduled_start_at))), [hoursText,setHoursText] = useState(String(Math.floor(item.duration_minutes/60))), [minutesText,setMinutesText] = useState(String(item.duration_minutes%60));
   const [styleId,setStyleId] = useState(item.style_term_id ? String(item.style_term_id) : ""), [locationText,setLocationText] = useState(item.location_text ?? "");
   const [roles,setRoles] = useState<Record<number,string>>(() => Object.fromEntries(item.class_participants.map((participant) => [participant.person_id, participant.role_term_id ? String(participant.role_term_id) : ""]))), [levels,setLevels] = useState<Record<number,string>>(() => Object.fromEntries(item.class_participants.map((participant) => [participant.person_id, participant.level_term_id ? String(participant.level_term_id) : ""])));
@@ -878,7 +878,19 @@ function ClassSetupStage({ item, students, credits, terms, refresh, notify, back
     setBusy(true); setError("");
     const result = await db.rpc("save_class_setup", { p_class_id:item.id,p_scheduled_start_at:new Date(scheduledText).toISOString(),p_duration_minutes:duration,p_style_term_id:Number(styleId),p_location_text:locationText.trim() || null,p_person_ids:personIds,p_role_term_ids:personIds.map((id) => Number(roles[id]) || null),p_level_term_ids:personIds.map((id) => Number(levels[id]) || null),p_preferred_grant_ids:personIds.map((id) => grants[id] ? Number(grants[id]) : null) });
     if (result.error) { setError(result.error.message); setBusy(false); return; }
-    await refresh(); notify("Datos de la clase preparados."); setBusy(false); next();
+    if (saveDefaults) {
+      for (const personId of personIds) {
+        const partnerId = item.class_type === "pair" ? (personIds.find((id) => id !== personId) ?? null) : null;
+        const preference = await db.rpc("save_student_class_preferences", {
+          p_person_id: personId, p_location_term_id: item.location_term_id, p_location_text: locationText.trim() || null,
+          p_style_term_id: Number(styleId), p_role_term_id: Number(roles[personId]) || null,
+          p_duration_minutes: duration, p_class_type: item.class_type, p_partner_person_id: partnerId,
+          p_set_location: true, p_set_style: true, p_set_role: true, p_set_duration: true, p_set_class_type: true, p_set_partner: true,
+        });
+        if (preference.error) { notify(`La clase se ha preparado, pero no se pudieron guardar todos los valores predeterminados: ${preference.error.message}`); break; }
+      }
+    }
+    await refresh(); notify(saveDefaults ? "Datos de la clase preparados y configuración predeterminada guardada." : "Datos de la clase preparados."); setBusy(false); next();
   }
   const pairAvailable = item.class_type === "pair" && personIds[0] ? compatibleCreditsForClass(item,credits,personIds[0]) : [];
   const setupDuration=Number(hoursText || 0)*60+Number(minutesText || 0);
@@ -892,7 +904,7 @@ function ClassSetupStage({ item, students, credits, terms, refresh, notify, back
     <section className="card pad workflow-card"><div className="card-head"><h2>Clase</h2><span>{item.class_type === "pair" ? "Pareja" : "Individual"}</span></div>{showClassFields ? <div className="fields-2"><label className="field field-wide"><span>Fecha y hora</span><input type="datetime-local" value={scheduledText} onChange={(event) => setScheduledText(event.target.value)} /></label><label className="field"><span>Horas</span><input type="text" inputMode="numeric" pattern="[0-9]*" value={hoursText} onChange={(event) => setHoursText(event.target.value.replace(/\D/g,""))} /></label><label className="field"><span>Minutos</span><input type="text" inputMode="numeric" pattern="[0-9]*" value={minutesText} onChange={(event) => setMinutesText(event.target.value.replace(/\D/g,""))} /></label><label className="field"><span>Estilo</span><select value={styleId} onChange={(event) => setStyleId(event.target.value)}><option value="">Seleccionar</option>{styles.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label className="field"><span>Lugar</span><input value={locationText} onChange={(event) => setLocationText(event.target.value)} placeholder="Opcional" /></label></div> : <div className="prepare-list setup-known-list"><span><strong>Fecha</strong>{dateLabel(scheduledText)}</span><span><strong>Duración</strong>{minutesLabel(setupDuration)}</span><span><strong>Estilo</strong>{selectedStyle?.label || "Pendiente"}</span>{locationText ? <span><strong>Lugar</strong>{locationText}</span> : null}</div>}{item.notes ? <p className="workflow-known-note"><strong>Programación</strong>{item.notes}</p> : null}</section>
     <section className="workflow-people">{item.class_participants.map((participant) => { const student=students.find((person) => person.id===participant.person_id), roleValue=roles[participant.person_id] || "", levelValue=levels[participant.person_id] || "", showContextFields=editKnown || !roleValue || !levelValue, roleLabelValue=roleTerms.find((term) => String(term.id)===roleValue)?.label || "Rol pendiente", levelLabelValue=levelTerms.find((term) => String(term.id)===levelValue)?.label || "Nivel pendiente", selectedGrant=selectedGrantFor(participant.person_id); return <article className="card pad workflow-card" key={participant.person_id}><div className="prepare-summary"><span className="avatar"><UserRound /></span><div><strong>{student?.display_name || "Alumno"}</strong><span>{showContextFields ? "Completa su contexto de baile" : "Contexto ya conocido"}</span></div></div>{showContextFields ? <div className="fields-2 workflow-context-fields"><label className="field"><span>Rol</span><select value={roleValue} onChange={(event) => setRoles((current) => ({...current,[participant.person_id]:event.target.value}))}><option value="">Seleccionar</option>{roleTerms.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label className="field"><span>Nivel</span><select value={levelValue} onChange={(event) => setLevels((current) => ({...current,[participant.person_id]:event.target.value}))}><option value="">Seleccionar</option>{levelTerms.map((term) => <option key={term.id} value={term.id}>{term.label}</option>)}</select></label></div> : <div className="prepare-info setup-known-context"><strong>Contexto</strong><p>{roleLabelValue} · {levelLabelValue}</p></div>}{item.class_type === "individual" ? editKnown ? <label className="field workflow-credit"><span>Bono previsto</span><select value={grants[participant.person_id] || ""} onChange={(event) => setGrant(participant.person_id,event.target.value)}><option value="">Decidir al terminar</option>{compatibleCreditsForClass(item,credits,participant.person_id).map((grant) => <option key={grant.id} value={grant.id}>{grant.label || "Bono individual"} · {minutesLabel(creditBalance(grant))}</option>)}</select></label> : <div className="prepare-info setup-known-credit"><strong>Bono previsto</strong><p>{selectedGrant ? `${selectedGrant.label || "Bono individual"} · ${minutesLabel(creditBalance(selectedGrant))}` : "Se decidirá al terminar"}</p></div> : null}</article>; })}</section>
     {item.class_type === "pair" ? <section className="card pad workflow-card"><div className="card-head"><h2>Bono previsto</h2><span>Opcional</span></div>{editKnown ? <label className="field"><span>Bono de pareja</span><select value={grants[personIds[0]] || ""} onChange={(event) => setGrant(personIds[0],event.target.value)}><option value="">Decidir al terminar</option>{pairAvailable.map((grant) => <option key={grant.id} value={grant.id}>{grant.label || "Bono de pareja"} · {minutesLabel(creditBalance(grant))}</option>)}</select></label> : <div className="prepare-info setup-known-credit"><strong>Bono de pareja</strong><p>{pairSelectedGrant ? `${pairSelectedGrant.label || "Bono de pareja"} · ${minutesLabel(creditBalance(pairSelectedGrant))}` : "Se decidirá al terminar"}</p></div>}</section> : null}
-    {error ? <p className="error">{error}</p> : null}<div className="workflow-footer"><button className="btn ghost" onClick={back}>Volver</button><button className="btn" onClick={() => void save()} disabled={busy}>{busy ? "Guardando…" : <>{classMissing || missingContextIds.length ? "Completar y preparar" : "Todo listo · Preparar clase"} <ArrowRight /></>}</button></div>
+    <label className="preference-save-toggle"><input type="checkbox" checked={saveDefaults} onChange={(event) => setSaveDefaults(event.target.checked)} /><span><strong>Guardar esta configuración como predeterminada</strong><small>Usaremos tipo, duración, estilo, ubicación, rol y pareja disponibles como valores iniciales en próximas clases.</small></span></label>{error ? <p className="error">{error}</p> : null}<div className="workflow-footer"><button className="btn ghost" onClick={back}>Volver</button><button className="btn" onClick={() => void save()} disabled={busy}>{busy ? "Guardando…" : <>{classMissing || missingContextIds.length ? "Completar y preparar" : "Todo listo · Preparar clase"} <ArrowRight /></>}</button></div>
   </div>;
 }
 
@@ -1319,7 +1331,7 @@ function localDateTime(date: Date) {
 }
 
 function ScheduleClass({ students, styles, initialStudentId, close, saved }: { students: Person[]; styles: CatalogTerm[]; initialStudentId?: number | null; close: () => void; saved: () => Promise<void> }) {
-  const [type, setType] = useState<"individual" | "pair">("individual"), [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const [type, setType] = useState<"individual" | "pair">("individual"), [busy, setBusy] = useState(false), [error, setError] = useState(""), [saveDefaults, setSaveDefaults] = useState(false);
   const [initialDate] = useState(() => localDateTime(new Date(Date.now() + 60 * 60 * 1000)));
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!db) return;
@@ -1338,6 +1350,18 @@ function ScheduleClass({ students, styles, initialStudentId, close, saved }: { s
       p_notes: String(form.get("notes") || "").trim() || null,
     });
     if (result.error) { setError(result.error.message); setBusy(false); return; }
+    if (saveDefaults) {
+      const targets: Array<[number, number | null]> = type === "pair" ? [[first, second], [second, first]] : [[first, null]];
+      for (const [personId, partnerId] of targets) {
+        const preference = await db.rpc("save_student_class_preferences", {
+          p_person_id: personId, p_location_term_id: null, p_location_text: null,
+          p_style_term_id: Number(form.get("style_term_id") || 0) || null, p_role_term_id: null,
+          p_duration_minutes: duration, p_class_type: type, p_partner_person_id: partnerId,
+          p_set_location: false, p_set_style: true, p_set_role: false, p_set_duration: true, p_set_class_type: true, p_set_partner: true,
+        });
+        if (preference.error) { window.alert(`La clase se ha programado, pero no se pudieron guardar los valores predeterminados: ${preference.error.message}`); break; }
+      }
+    }
     await saved(); setBusy(false); close();
   }
   return <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}><section className="modal" role="dialog" aria-modal="true">
@@ -1351,6 +1375,7 @@ function ScheduleClass({ students, styles, initialStudentId, close, saved }: { s
         <label className="field"><span>Horas</span><input name="hours" type="text" inputMode="numeric" pattern="[0-8]" defaultValue="1" /></label>
         <label className="field"><span>Minutos</span><input name="minutes" type="text" inputMode="numeric" pattern="[0-5]?[0-9]" defaultValue="" /></label>
         <label className="field field-wide"><span>Estilo *</span><select name="style_term_id" required defaultValue=""><option value="" disabled>Seleccionar estilo</option>{styles.map((style) => <option key={style.id} value={style.id}>{style.label}</option>)}</select></label>
+        <label className="preference-save-toggle field-wide"><input type="checkbox" checked={saveDefaults} onChange={(event) => setSaveDefaults(event.target.checked)} /><span><strong>Guardar esta configuración como predeterminada</strong><small>Se aplicarán tipo de clase, duración, estilo y pareja cuando estén disponibles.</small></span></label>
         <label className="field field-wide"><span>Notas</span><input name="notes" placeholder="Opcional" /></label>
       </div>
       {error ? <p className="error">{error}</p> : null}<div className="actions"><button className="btn ghost" type="button" onClick={close}>Cancelar</button><button className="btn" disabled={busy}>{busy ? "Programando…" : "Programar clase"}</button></div>
