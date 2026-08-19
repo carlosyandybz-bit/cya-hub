@@ -24,6 +24,13 @@ type PersonRow = {
   interested_in_person_classes: boolean;
   primary_no_booking_reason: string | null;
   no_booking_reason_missing: boolean;
+  has_next_class: boolean;
+  interested_in_online_content: boolean;
+  interested_in_teacher_training: boolean;
+  interested_in_wedding: boolean;
+  interested_in_online_feedback: boolean;
+  questionnaire_finalized: boolean;
+  questionnaire_pending_with_next_class: boolean;
 };
 
 type SavedView = {
@@ -65,7 +72,14 @@ function matchesView(row: PersonRow, filters: Record<string, unknown>) {
     if (key === "registered") return row.is_registered === Boolean(expected);
     if (key === "interest_classified") return (Object.keys(row.interest_states ?? {}).length > 0) === Boolean(expected);
     if (key === "interested_in_person_classes") return row.interested_in_person_classes === Boolean(expected);
+    if (key === "interested_in_online_content") return row.interested_in_online_content === Boolean(expected);
+    if (key === "interested_in_teacher_training") return row.interested_in_teacher_training === Boolean(expected);
+    if (key === "interested_in_wedding") return row.interested_in_wedding === Boolean(expected);
+    if (key === "interested_in_online_feedback") return row.interested_in_online_feedback === Boolean(expected);
     if (key === "has_reserved") return row.has_reserved === Boolean(expected);
+    if (key === "has_next_class") return row.has_next_class === Boolean(expected);
+    if (key === "questionnaire_finalized") return row.questionnaire_finalized === Boolean(expected);
+    if (key === "questionnaire_pending_with_next_class") return row.questionnaire_pending_with_next_class === Boolean(expected);
     if (key === "no_booking_reason_missing") return row.no_booking_reason_missing === Boolean(expected);
     if (key === "primary_no_booking_reason") return row.primary_no_booking_reason === expected;
     if (key === "query") return rowSearch(row, String(expected ?? ""));
