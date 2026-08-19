@@ -85,3 +85,4 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "Preload saved class defaults when scheduling"
           git push origin staging
+# trigger: 2
