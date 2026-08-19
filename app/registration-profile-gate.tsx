@@ -15,6 +15,8 @@ export type RegistrationProfileStatus = {
   phone?: string | null;
   country_code?: string | null;
   missing?: string[];
+  merge_required?: boolean;
+  merge_case_id?: number | null;
 };
 
 type Props = {
@@ -50,6 +52,11 @@ export function RegistrationProfileGate({ client, status, email, completed }: Pr
         p_country_code: country,
       });
       if (result.error) throw result.error;
+      const data = result.data as RegistrationProfileStatus | null;
+      if (data?.merge_required) {
+        setError("CYA ha encontrado una ficha anterior que probablemente es tuya. Hemos creado una incidencia de fusión para administración y no vamos a crear otro perfil ni perder los datos anteriores.");
+        return;
+      }
       await completed();
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "No se ha podido completar tu perfil.";
