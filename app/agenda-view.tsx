@@ -6,6 +6,7 @@ import {
   ChevronRight,
   CircleCheck,
   Megaphone,
+  MessageCircle,
   Plus,
   RefreshCw,
   Target,
@@ -19,6 +20,22 @@ import { GoogleCalendarSync } from "./google-calendar-sync";
 type CalendarMode = "day" | "week" | "month" | "list";
 type CalendarType = CalendarItem["type"];
 type VisualRow = { external_calendar_id: string; calendar_name: string; icon_storage_path: string | null; color_override: string | null };
+type PendingParticipant = {
+  person_id: number;
+  display_name: string;
+  phone: string | null;
+  country_code: string | null;
+  confirmation_status: string;
+};
+type PendingConfirmationClass = {
+  class_id: number;
+  scheduled_start_at: string;
+  duration_minutes: number;
+  class_type: string;
+  location_text: string | null;
+  confirmation_opens_at: string;
+  pending_participants: PendingParticipant[];
+};
 
 type AgendaViewProps = {
   client: SupabaseClient;
@@ -30,6 +47,10 @@ type AgendaViewProps = {
 
 const emptySnapshot: CalendarSnapshot = { classes: [], missions: [], marketing_events: [], external_events: [] };
 const GOOGLE_PALETTE = ["#7986CB", "#33B679", "#8E24AA", "#E67C73", "#F6BF26", "#F4511E", "#039BE5", "#616161", "#3F51B5", "#0B8043", "#D50000"];
+const COUNTRY_DIAL_CODES: Record<string, string> = {
+  ES: "34", PT: "351", FR: "33", IT: "39", DE: "49", GB: "44", IE: "353", NL: "31", BE: "32", CH: "41", AT: "43",
+  US: "1", CA: "1", MX: "52", AR: "54", CO: "57", CL: "56", PE: "51", BR: "55", VE: "58", DO: "1", PR: "1",
+};
 
 function localKey(date: Date, timezone: string) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
@@ -136,11 +157,42 @@ function calendarColor(item: CalendarItem, visual: VisualRow | undefined) {
   return visual?.color_override || (metadataColor && /^#[0-9a-f]{6}$/i.test(metadataColor) ? metadataColor : deterministicColor(externalId));
 }
 
+function whatsappNumber(phone: string | null, countryCode: string | null) {
+  if (!phone) return null;
+  const raw = phone.trim();
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (!digits) return null;
+  if (!raw.startsWith("+") && !raw.startsWith("00")) {
+    const normalizedCountry = (countryCode || "").trim().toUpperCase();
+    const dialCode = COUNTRY_DIAL_CODES[normalizedCountry] || (/^\+?\d{1,4}$/.test(normalizedCountry) ? normalizedCountry.replace(/\D/g, "") : "");
+    if (dialCode && !digits.startsWith(dialCode)) digits = `${dialCode}${digits}`;
+  }
+  return digits.length >= 8 ? digits : null;
+}
+
+function confirmationWhatsAppHref(item: PendingConfirmationClass, person: PendingParticipant) {
+  const number = whatsappNumber(person.phone, person.country_code);
+  if (!number) return null;
+  const firstName = person.display_name.trim().split(/\s+/)[0] || "";
+  const when = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(item.scheduled_start_at));
+  const message = `Hola ${firstName}, tienes una clase con Carlos & Andy el ${when}. Cuando puedas, entra en CYA Hub y confirma tu asistencia desde la app: https://app.carlosyandy.com`;
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+}
+
 export function AgendaView({ client, timezone, schedule, openClass, notify }: AgendaViewProps) {
   const [mode, setMode] = useState<CalendarMode>("week");
   const [key, setKey] = useState(() => localKey(new Date(), timezone));
   const [snapshot, setSnapshot] = useState<CalendarSnapshot>(emptySnapshot);
   const [visuals, setVisuals] = useState<VisualRow[]>([]);
+  const [pendingConfirmations, setPendingConfirmations] = useState<PendingConfirmationClass[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Record<CalendarType, boolean>>({ class: true, mission: true, event: true, external: true });
   const range = useMemo(() => rangeFor(mode, key, timezone), [mode, key, timezone]);
@@ -148,23 +200,31 @@ export function AgendaView({ client, timezone, schedule, openClass, notify }: Ag
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [snapshotResult, visualResult] = await Promise.all([
+    const [snapshotResult, visualResult, confirmationResult] = await Promise.all([
       client.rpc("calendar_snapshot", { p_from: range.from.toISOString(), p_to: range.to.toISOString() }),
       client.from("calendar_visual_settings").select("external_calendar_id,calendar_name,icon_storage_path,color_override"),
+      client.rpc("class_confirmation_agenda"),
     ]);
     if (snapshotResult.error) notify(snapshotResult.error.message);
     else setSnapshot(snapshotResult.data as CalendarSnapshot);
     if (!visualResult.error) setVisuals((visualResult.data ?? []) as VisualRow[]);
+    if (confirmationResult.error) notify(confirmationResult.error.message);
+    else setPendingConfirmations((confirmationResult.data ?? []) as PendingConfirmationClass[]);
     setLoading(false);
   }, [client, notify, range.from, range.to]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
+    const confirmationTimer = window.setInterval(() => void load(), 60_000);
     const onVisualsChanged = () => void load();
+    const onClassConfirmed = () => void load();
     window.addEventListener("cya:calendar-visuals-changed", onVisualsChanged);
+    window.addEventListener("cya:class-confirmed", onClassConfirmed);
     return () => {
       clearTimeout(timer);
+      window.clearInterval(confirmationTimer);
       window.removeEventListener("cya:calendar-visuals-changed", onVisualsChanged);
+      window.removeEventListener("cya:class-confirmed", onClassConfirmed);
     };
   }, [load]);
 
@@ -227,6 +287,28 @@ export function AgendaView({ client, timezone, schedule, openClass, notify }: Ag
   return <>
     <header className="page-head agenda-head"><div><p className="eyebrow">Agenda</p><h1>Calendario CYA</h1><p>Clases, misiones, eventos y calendarios de Google diferenciados por color e identidad visual.</p></div><button className="btn" onClick={schedule}><CyaIcon iconKey="action.add" fallback={Plus} /> Programar clase</button></header>
     <GoogleCalendarSync client={client} notify={notify} onSynced={load} compact />
+
+    {pendingConfirmations.length ? <section className="class-confirmation-agenda card" aria-labelledby="class-confirmation-agenda-title">
+      <header className="class-confirmation-agenda-head">
+        <div><span>POR CONFIRMAR</span><h2 id="class-confirmation-agenda-title">Clases esperando confirmación</h2><p>Aparecen desde las 08:00 del día anterior. Puedes recordar al alumno que confirme directamente desde CYA Hub.</p></div>
+        <strong>{pendingConfirmations.length}</strong>
+      </header>
+      <div className="class-confirmation-agenda-list">{pendingConfirmations.map((item) => <article key={item.class_id} className="class-confirmation-agenda-item">
+        <button type="button" className="class-confirmation-agenda-class" onClick={() => openClass(item.class_id)}>
+          <CalendarDays />
+          <span><strong>{new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(item.scheduled_start_at))}</strong><small>{item.duration_minutes} min{item.location_text ? ` · ${item.location_text}` : ""}</small></span>
+          <ChevronRight />
+        </button>
+        <div className="class-confirmation-agenda-people">{item.pending_participants.map((person) => {
+          const href = confirmationWhatsAppHref(item, person);
+          return <div key={person.person_id} className="class-confirmation-agenda-person">
+            <span><strong>{person.display_name}</strong><small>Pendiente de confirmar</small></span>
+            {href ? <a href={href} target="_blank" rel="noopener noreferrer"><MessageCircle /> Pedir por WhatsApp</a> : <span className="class-confirmation-no-phone">Sin teléfono</span>}
+          </div>;
+        })}</div>
+      </article>)}</div>
+    </section> : null}
+
     <section className="calendar-toolbar card">
       <div className="calendar-nav"><button className="icon-btn" onClick={() => move(-1)} aria-label="Anterior"><CyaIcon iconKey="action.back" fallback={ChevronLeft} /></button><button className="today-button" onClick={() => setKey(localKey(new Date(), timezone))}>Hoy</button><button className="icon-btn" onClick={() => move(1)} aria-label="Siguiente"><CyaIcon iconKey="action.forward" fallback={ChevronRight} /></button><strong>{modeTitle(mode, key, timezone)}</strong></div>
       <div className="calendar-modes">{(["day", "week", "month", "list"] as CalendarMode[]).map((value) => <button key={value} className={mode === value ? "active" : ""} onClick={() => setMode(value)}>{value === "day" ? "Día" : value === "week" ? "Semana" : value === "month" ? "Mes" : "Lista"}</button>)}</div>
