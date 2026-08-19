@@ -1,0 +1,32 @@
+name: Mount evaluation trend settings
+on:
+  push:
+    branches: [staging]
+    paths: ['.github/workflows/mount-evaluation-trend-settings.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: staging }
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/evaluation-settings/evaluation-settings-client.tsx')
+          s=p.read_text()
+          anchor='import styles from "./evaluation-settings.module.css";'
+          if 'EvaluationTrendSettings' not in s:
+              s=s.replace(anchor,'import { EvaluationTrendSettings } from "../evaluation-trend-settings";\n'+anchor,1)
+          target='    <section className={styles.contextCard}><div><strong>Contexto pedagógico</strong>'
+          if target not in s: raise SystemExit('render anchor missing')
+          s=s.replace(target,'    <EvaluationTrendSettings client={client!} />\n\n'+target,1)
+          p.write_text(s)
+          PY
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add app/evaluation-settings/evaluation-settings-client.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Expose evaluation trend configuration in admin"
+          git push origin HEAD:staging
