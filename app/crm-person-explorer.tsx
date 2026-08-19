@@ -1,7 +1,7 @@
 "use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { BookmarkPlus, Filter, RefreshCw, Search, Trash2, UsersRound } from "lucide-react";
+import { BookmarkPlus, Filter, RefreshCw, Search, Settings2, Trash2, UsersRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./crm-person-explorer.module.css";
 
@@ -45,6 +45,32 @@ type SavedView = {
 
 type Props = { db: SupabaseClient; refreshToken?: unknown; notify?: (message: string) => void };
 
+type ColumnKey =
+  | "display_name" | "internal_alias" | "phone" | "email" | "location" | "age"
+  | "reservation" | "next_class" | "last_class" | "interest" | "online_content"
+  | "teacher_training" | "questionnaire" | "no_booking_reason";
+
+const defaultColumns: ColumnKey[] = ["display_name", "phone", "reservation", "interest", "no_booking_reason"];
+
+const columnCatalog: Array<{ key: ColumnKey; label: string; group: string }> = [
+  { key: "display_name", label: "Nombre", group: "Identidad" },
+  { key: "internal_alias", label: "Alias interno", group: "Identidad" },
+  { key: "phone", label: "Teléfono", group: "Contacto" },
+  { key: "email", label: "Email", group: "Contacto" },
+  { key: "location", label: "Localidad / país", group: "Datos personales" },
+  { key: "age", label: "Edad", group: "Datos personales" },
+  { key: "reservation", label: "Reserva real", group: "Clases" },
+  { key: "next_class", label: "Próxima clase", group: "Clases" },
+  { key: "last_class", label: "Última clase", group: "Clases" },
+  { key: "interest", label: "Interés en clases", group: "CRM" },
+  { key: "online_content", label: "Interés contenido online", group: "CRM" },
+  { key: "teacher_training", label: "Interés formación profesores", group: "CRM" },
+  { key: "questionnaire", label: "Cuestionario opcional", group: "Seguimiento" },
+  { key: "no_booking_reason", label: "Motivo de no reserva", group: "CRM" },
+];
+
+const validColumnKeys = new Set<ColumnKey>(columnCatalog.map((column) => column.key));
+
 const reasonLabels: Record<string, string> = {
   price: "Precio",
   own_availability: "Disponibilidad del alumno",
@@ -58,6 +84,11 @@ const reasonLabels: Record<string, string> = {
   no_response: "No responde",
   other: "Otro",
 };
+
+function normalizeColumns(columns: string[] | null | undefined): ColumnKey[] {
+  const result = (columns ?? []).filter((key): key is ColumnKey => validColumnKeys.has(key as ColumnKey));
+  return result.length ? Array.from(new Set(result)) : defaultColumns;
+}
 
 function rowSearch(row: PersonRow, needle: string) {
   const normalized = needle.trim().toLocaleLowerCase("es");
@@ -108,6 +139,8 @@ export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
   const [rows, setRows] = useState<PersonRow[]>([]);
   const [views, setViews] = useState<SavedView[]>([]);
   const [activeView, setActiveView] = useState<string>("system:interested_no_booking");
+  const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>(defaultColumns);
+  const [showColumns, setShowColumns] = useState(false);
   const [query, setQuery] = useState("");
   const [reservation, setReservation] = useState<"all" | "yes" | "no">("all");
   const [interest, setInterest] = useState<"all" | "interested" | "not_interested" | "unknown">("all");
@@ -132,8 +165,11 @@ export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
       setLoading(false);
       return;
     }
+    const nextViews = (viewsResult.data ?? []) as SavedView[];
     setRows((peopleResult.data ?? []) as PersonRow[]);
-    setViews((viewsResult.data ?? []) as SavedView[]);
+    setViews(nextViews);
+    const current = nextViews.find((view) => viewToken(view) === activeView);
+    if (current) setVisibleColumns(normalizeColumns(current.columns));
     setLoading(false);
   }
 
@@ -148,6 +184,20 @@ export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
   function activateView(token: string) {
     setActiveView(token);
     resetManualFilters();
+    const view = views.find((candidate) => viewToken(candidate) === token);
+    setVisibleColumns(view ? normalizeColumns(view.columns) : defaultColumns);
+  }
+
+  function toggleColumn(key: ColumnKey) {
+    setVisibleColumns((current) => {
+      if (key === "display_name" && current.includes(key)) return current;
+      if (current.includes(key)) {
+        const next = current.filter((column) => column !== key);
+        return next.length ? next : ["display_name"];
+      }
+      const next = [...current, key];
+      return columnCatalog.filter((column) => next.includes(column.key)).map((column) => column.key);
+    });
   }
 
   const manualFilters = useMemo<Record<string, unknown>>(() => ({
@@ -171,7 +221,7 @@ export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
       p_view_id: null,
       p_name: name,
       p_filters: effectiveFilters,
-      p_columns: ["display_name", "reservation", "interest", "no_booking_reason"],
+      p_columns: visibleColumns,
       p_sort: [{ field: "display_name", direction: "asc" }],
     });
     if (result.error) setError(result.error.message);
@@ -213,21 +263,46 @@ export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
     setBusyPerson(null);
   }
 
+  function renderValue(row: PersonRow, key: ColumnKey) {
+    const classInterest = row.interest_states?.in_person_classes ?? "unknown";
+    if (key === "display_name") return <div className={styles.identity}><strong>{row.display_name}</strong></div>;
+    if (key === "internal_alias") return row.internal_alias || "—";
+    if (key === "phone") return row.phone || "—";
+    if (key === "email") return row.email || "—";
+    if (key === "location") return [row.city, row.country_code].filter(Boolean).join(" · ") || "—";
+    if (key === "age") return row.age === null ? "—" : `${row.age} años`;
+    if (key === "reservation") return <span className={row.has_reserved ? styles.positive : ""}>{row.has_reserved ? `Sí · ${row.reservation_count}` : "No"}</span>;
+    if (key === "next_class") return dateLabel(row.next_class_at);
+    if (key === "last_class") return dateLabel(row.last_class_at);
+    if (key === "online_content") return row.interested_in_online_content ? "Sí" : "No / sin clasificar";
+    if (key === "teacher_training") return row.interested_in_teacher_training ? "Sí" : "No / sin clasificar";
+    if (key === "questionnaire") return row.questionnaire_finalized ? "Finalizado" : row.questionnaire_pending_with_next_class ? "Pendiente · próxima clase" : "Pendiente";
+    if (key === "interest") return <select className={styles.inlineSelect} disabled={busyPerson === row.person_id} value={classInterest} onChange={(event) => void setClassInterest(row.person_id, event.target.value as "unknown" | "interested" | "not_interested")}><option value="unknown">No sabemos</option><option value="interested">Sí</option><option value="not_interested">No</option></select>;
+    if (key === "no_booking_reason") return <select className={styles.inlineSelect} disabled={busyPerson === row.person_id || row.has_reserved || classInterest !== "interested"} value={row.primary_no_booking_reason ?? ""} onChange={(event) => void setReason(row.person_id, event.target.value)}><option value="">{row.has_reserved ? "Ya reservó" : classInterest !== "interested" ? "No aplica" : "Seleccionar…"}</option>{Object.entries(reasonLabels).map(([reason, label]) => <option key={reason} value={reason}>{label}</option>)}</select>;
+    return "—";
+  }
+
   const systemViews = views.filter((view) => view.is_system);
   const personalViews = views.filter((view) => !view.is_system);
 
   return <section className={styles.shell} aria-labelledby="crm-explorer-title">
     <header className={styles.header}>
-      <div><span className={styles.eyebrow}>CRM transversal</span><h2 id="crm-explorer-title"><UsersRound /> Personas y datos</h2><p>Listas vivas construidas desde los datos reales de CYA. Reservas, edades e históricos se derivan de sus fuentes de verdad.</p></div>
+      <div><span className={styles.eyebrow}>CRM transversal</span><h2 id="crm-explorer-title"><UsersRound /> Personas y datos</h2><p>Elige qué datos quieres ver y guarda la combinación como una lista viva. Los hechos reales se recalculan desde sus fuentes de verdad.</p></div>
       <div className={styles.headerActions}>
+        <button type="button" className={styles.columnsButton} onClick={() => setShowColumns((value) => !value)} aria-expanded={showColumns}><Settings2 /> <span>Parámetros</span></button>
         <button type="button" className={styles.saveButton} onClick={() => setShowSave((value) => !value)} aria-expanded={showSave}><BookmarkPlus /> <span>Guardar vista</span></button>
         <button type="button" className={styles.refresh} onClick={() => void load()} disabled={loading} aria-label="Actualizar CRM"><RefreshCw className={loading ? styles.spin : ""} /></button>
       </div>
     </header>
 
+    {showColumns ? <div className={styles.columnPicker}>
+      <div><strong>Parámetros visibles</strong><span>{visibleColumns.length} seleccionados</span></div>
+      <div className={styles.columnOptions}>{columnCatalog.map((column) => <label key={column.key}><input type="checkbox" checked={visibleColumns.includes(column.key)} disabled={column.key === "display_name"} onChange={() => toggleColumn(column.key)} /><span><strong>{column.label}</strong><small>{column.group}</small></span></label>)}</div>
+    </div> : null}
+
     {showSave ? <div className={styles.saveBar}>
       <label><span>Nombre de la vista</span><input value={saveName} onChange={(event) => setSaveName(event.target.value)} placeholder="Ej. Mayores de 30 sin reserva" /></label>
-      <button type="button" onClick={() => void saveCurrentView()} disabled={busyView || !saveName.trim()}>Guardar estos filtros</button>
+      <button type="button" onClick={() => void saveCurrentView()} disabled={busyView || !saveName.trim()}>Guardar filtros + parámetros</button>
     </div> : null}
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
 
@@ -236,10 +311,7 @@ export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
       {systemViews.map((view) => <button type="button" key={view.id} className={activeView === viewToken(view) ? styles.activeView : ""} onClick={() => activateView(viewToken(view))}><span>{view.name}</span><strong>{counts.get(viewToken(view)) ?? 0}</strong></button>)}
     </div>
 
-    {personalViews.length ? <div className={styles.personalViews} aria-label="Mis vistas CRM">
-      <span>Mis vistas</span>
-      <div>{personalViews.map((view) => <span className={styles.personalView} key={view.id}><button type="button" className={activeView === viewToken(view) ? styles.activeView : ""} onClick={() => activateView(viewToken(view))}>{view.name} <strong>{counts.get(viewToken(view)) ?? 0}</strong></button><button type="button" className={styles.deleteView} onClick={() => void deleteView(view)} disabled={busyView} aria-label={`Eliminar vista ${view.name}`}><Trash2 /></button></span>)}</div>
-    </div> : null}
+    {personalViews.length ? <div className={styles.personalViews} aria-label="Mis vistas CRM"><span>Mis vistas</span><div>{personalViews.map((view) => <span className={styles.personalView} key={view.id}><button type="button" className={activeView === viewToken(view) ? styles.activeView : ""} onClick={() => activateView(viewToken(view))}>{view.name} <strong>{counts.get(viewToken(view)) ?? 0}</strong></button><button type="button" className={styles.deleteView} onClick={() => void deleteView(view)} disabled={busyView} aria-label={`Eliminar vista ${view.name}`}><Trash2 /></button></span>)}</div></div> : null}
 
     <div className={styles.filters}>
       <label className={styles.search}><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre, alias, email o teléfono" /></label>
@@ -252,18 +324,11 @@ export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
 
     <div className={styles.resultHeader}><span><Filter /> {visibleRows.length} persona{visibleRows.length === 1 ? "" : "s"}</span>{selectedView ? <strong>{selectedView.name}</strong> : <strong>Vista completa</strong>}</div>
 
-    <div className={styles.list}>
+    <div className={styles.dataTable} style={{ "--crm-columns": visibleColumns.length } as React.CSSProperties}>
+      <div className={styles.tableHeader}>{visibleColumns.map((key) => <span key={key}>{columnCatalog.find((column) => column.key === key)?.label ?? key}</span>)}</div>
       {loading ? <div className={styles.empty}>Actualizando datos…</div> : null}
       {!loading && !visibleRows.length ? <div className={styles.empty}>No hay personas que cumplan estos filtros.</div> : null}
-      {visibleRows.map((row) => {
-        const classInterest = row.interest_states?.in_person_classes ?? "unknown";
-        return <article className={styles.row} key={row.person_id}>
-          <div className={styles.identity}><strong>{row.display_name}</strong>{row.internal_alias ? <small>Alias: {row.internal_alias}</small> : null}<span>{[row.city, row.country_code, row.age !== null ? `${row.age} años` : null].filter(Boolean).join(" · ") || "Sin datos demográficos"}</span></div>
-          <div className={styles.fact}><span>Reserva real</span><strong className={row.has_reserved ? styles.positive : ""}>{row.has_reserved ? `Sí · ${row.reservation_count}` : "No"}</strong><small>{row.next_class_at ? `Próxima ${dateLabel(row.next_class_at)}` : row.last_class_at ? `Última ${dateLabel(row.last_class_at)}` : "Sin clases"}</small></div>
-          <label className={styles.action}><span>Interés clases</span><select disabled={busyPerson === row.person_id} value={classInterest} onChange={(event) => void setClassInterest(row.person_id, event.target.value as "unknown" | "interested" | "not_interested")}><option value="unknown">No sabemos</option><option value="interested">Sí</option><option value="not_interested">No</option></select></label>
-          <label className={styles.action}><span>Motivo sin reserva</span><select disabled={busyPerson === row.person_id || row.has_reserved || classInterest !== "interested"} value={row.primary_no_booking_reason ?? ""} onChange={(event) => void setReason(row.person_id, event.target.value)}><option value="">{row.has_reserved ? "Ya reservó" : classInterest !== "interested" ? "No aplica" : "Seleccionar…"}</option>{Object.entries(reasonLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-        </article>;
-      })}
+      {!loading && visibleRows.map((row) => <article className={styles.dataRow} key={row.person_id}>{visibleColumns.map((key) => <div className={styles.dataCell} key={key} data-label={columnCatalog.find((column) => column.key === key)?.label ?? key}>{renderValue(row, key)}</div>)}</article>)}
     </div>
   </section>;
 }
