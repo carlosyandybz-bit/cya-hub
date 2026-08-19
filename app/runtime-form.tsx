@@ -48,6 +48,7 @@ type Props = {
   mode?: RuntimeFormMode;
   submitLabel?: string;
   compact?: boolean;
+  allowEmptySubmit?: boolean;
   unavailableFallback?: ReactNode;
   onSaved?: (result: Record<string, unknown>) => Promise<void> | void;
 };
@@ -93,7 +94,7 @@ function runtimeUnavailable(error: { code?: string | null; message?: string | nu
   return error.code === "PGRST202" || (message.includes("form_runtime") && (message.includes("could not find") || message.includes("schema cache")));
 }
 
-export function RuntimeForm({ client, formKey, personId = null, mode = "complete_missing", submitLabel = "Guardar", compact = false, unavailableFallback = null, onSaved }: Props) {
+export function RuntimeForm({ client, formKey, personId = null, mode = "complete_missing", submitLabel = "Guardar", compact = false, allowEmptySubmit = false, unavailableFallback = null, onSaved }: Props) {
   const [runtime, setRuntime] = useState<RuntimeFormPayload | null>(null);
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [dirty, setDirty] = useState<Set<string>>(new Set());
@@ -128,8 +129,27 @@ export function RuntimeForm({ client, formKey, personId = null, mode = "complete
 
   function change(field: RuntimeFormField, value: unknown) {
     if (!field.writable) return;
-    setValues((current) => ({ ...current, [field.field_key]: value }));
-    setDirty((current) => new Set(current).add(field.field_key));
+    setValues((current) => {
+      const next = { ...current, [field.field_key]: value };
+      if (field.field_key === "desired_styles") {
+        const allowed = new Set((Array.isArray(value) ? value : []).map(String));
+        const chosen = Array.isArray(current.starting_styles) ? current.starting_styles.map(String) : [];
+        next.starting_styles = chosen.filter((item) => allowed.has(item));
+      }
+      if (field.field_key === "desired_styles_unknown" && value === true) {
+        next.desired_styles = [];
+        next.starting_styles = [];
+      }
+      if (field.field_key === "starting_styles_unknown" && value === true) next.starting_styles = [];
+      return next;
+    });
+    setDirty((current) => {
+      const next = new Set(current).add(field.field_key);
+      if (field.field_key === "desired_styles") next.add("starting_styles");
+      if (field.field_key === "desired_styles_unknown" && value === true) { next.add("desired_styles"); next.add("starting_styles"); }
+      if (field.field_key === "starting_styles_unknown" && value === true) next.add("starting_styles");
+      return next;
+    });
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -154,14 +174,14 @@ export function RuntimeForm({ client, formKey, personId = null, mode = "complete
       <CheckCircle2 size={17}/><span>CYA ya conoce {hiddenKnown} {hiddenKnown === 1 ? "dato" : "datos"}</span>{showKnown ? <ChevronUp size={17}/> : <ChevronDown size={17}/>}<small>{showKnown ? "Ocultar datos conocidos" : "Ver o corregir"}</small>
     </button> : null}
     <div className="fields-2">
-      {visibleFields.map((field) => <RuntimeField key={field.field_key} field={field} value={values[field.field_key]} change={(value) => change(field, value)} />)}
+      {visibleFields.map((field) => <RuntimeField key={field.field_key} field={field} value={values[field.field_key]} values={values} change={(value) => change(field, value)} />)}
     </div>
     {error ? <p className="error" role="alert">{error}</p> : null}
-    {mode !== "review" ? <div className="actions"><button className="btn" disabled={busy || dirty.size === 0}><CheckCircle2 size={17}/>{busy ? "Guardando…" : submitLabel}</button></div> : null}
+    {mode !== "review" ? <div className="actions"><button className="btn" disabled={busy || (!allowEmptySubmit && dirty.size === 0)}><CheckCircle2 size={17}/>{busy ? "Guardando…" : submitLabel}</button></div> : null}
   </form>;
 }
 
-function RuntimeField({ field, value, change }: { field: RuntimeFormField; value: unknown; change: (value: unknown) => void }) {
+function RuntimeField({ field, value, values, change }: { field: RuntimeFormField; value: unknown; values: Record<string, unknown>; change: (value: unknown) => void }) {
   const common = { name: field.field_key, disabled: !field.writable };
   if (field.field_type === "information") return <div className={`${styles.info} field-wide`}><strong>{field.label}</strong>{field.help_text ? <span>{field.help_text}</span> : null}</div>;
   if (field.field_type === "hidden") return <input type="hidden" name={field.field_key} value={scalar(value)} />;
@@ -173,7 +193,11 @@ function RuntimeField({ field, value, change }: { field: RuntimeFormField; value
   if (field.field_type === "select") return <label className="field">{label}<select {...common} value={scalar(value)} onChange={(event) => change(event.target.value)}><option value="">Seleccionar</option>{field.options.map((option) => <option key={String(optionValue(option))} value={String(optionValue(option))}>{optionLabel(option)}</option>)}</select></label>;
   if (field.field_type === "multiselect") {
     const selected = Array.isArray(value) ? value.map(String) : [];
-    return <fieldset className={`${styles.multi} field-wide`} disabled={!field.writable}><legend>{field.label}{field.required ? " *" : ""}</legend>{field.help_text ? <small>{field.help_text}</small> : null}<div>{field.options.map((option) => { const raw = String(optionValue(option)); return <label key={raw}><input type="checkbox" checked={selected.includes(raw)} onChange={(event) => change(event.target.checked ? [...selected, raw] : selected.filter((item) => item !== raw))}/><span>{optionLabel(option)}</span></label>; })}</div></fieldset>;
+    const sourceField = typeof field.validation?.filter_options_from_field === "string" ? field.validation.filter_options_from_field : "";
+    const allowed = sourceField && Array.isArray(values[sourceField]) ? new Set((values[sourceField] as unknown[]).map(String)) : null;
+    const options = allowed ? field.options.filter((option) => allowed.has(String(optionValue(option)))) : field.options;
+    if (sourceField && options.length === 0) return null;
+    return <fieldset className={`${styles.multi} field-wide`} disabled={!field.writable}><legend>{field.label}{field.required ? " *" : ""}</legend>{field.help_text ? <small>{field.help_text}</small> : null}<div>{options.map((option) => { const raw = String(optionValue(option)); return <label key={raw}><input type="checkbox" checked={selected.includes(raw)} onChange={(event) => change(event.target.checked ? [...selected, raw] : selected.filter((item) => item !== raw))}/><span>{optionLabel(option)}</span></label>; })}</div></fieldset>;
   }
 
   const validation = field.validation ?? {};
