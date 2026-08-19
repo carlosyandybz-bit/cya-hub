@@ -9,6 +9,10 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      CI: "true"
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.CYA_QA_SUPABASE_URL || 'https://qlngfkzmncihtdzktcmd.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.CYA_QA_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW' }}
     steps:
       - uses: actions/checkout@v4
         with:
