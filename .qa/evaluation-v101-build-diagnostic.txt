@@ -1,0 +1,87 @@
+=== npm ci ===
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+
+added 521 packages in 12s
+npm_ci_exit=0
+=== npm run build ===
+
+> cya-hub-web@0.2.0 prebuild
+> node scripts/assert-environment-boundary.mjs && node scripts/assert-visual-contract.mjs && node --test tests/staging-integrations-regression.test.mjs
+
+[CYA environment boundary] Staging verificado contra qlngfkzmncihtdzktcmd. Recursos protegidos: 9.
+[CYA visual contract] OK: profesor intacto y Mi formación reserva la columna central sin solapar Descubre.
+TAP version 13
+# Subtest: staging preserves all integration implementation files
+ok 1 - staging preserves all integration implementation files
+  ---
+  duration_ms: 1.507456
+  ...
+# Subtest: integration admin renders the real integration components
+ok 2 - integration admin renders the real integration components
+  ---
+  duration_ms: 1.094363
+  ...
+# Subtest: email remains a real verified SMTP integration
+ok 3 - email remains a real verified SMTP integration
+  ---
+  duration_ms: 0.237535
+  ...
+# Subtest: Google Drive keeps verification, managed folders and protected media support
+ok 4 - Google Drive keeps verification, managed folders and protected media support
+  ---
+  duration_ms: 0.238407
+  ...
+# Subtest: Google Calendar keeps OAuth, bidirectional sync and conflict handling
+ok 5 - Google Calendar keeps OAuth, bidirectional sync and conflict handling
+  ---
+  duration_ms: 0.37864
+  ...
+# Subtest: WhatsApp keeps signed webhook, server send and canonical self-test
+ok 6 - WhatsApp keeps signed webhook, server send and canonical self-test
+  ---
+  duration_ms: 0.503875
+  ...
+# Subtest: environment contract contains every protected integration variable without secrets
+ok 7 - environment contract contains every protected integration variable without secrets
+  ---
+  duration_ms: 0.430608
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 58.985356
+
+> cya-hub-web@0.2.0 build
+> next build
+
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+▲ Next.js 16.2.6 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 10.4s
+  Running TypeScript ...
+Failed to type check.
+
+./app/student-detail.tsx:473:70
+Type error: Cannot find name 'averageScore'.
+
+  [90m471 |[0m ...[33mDays[0m /><span>[33mPróxima[0m clase<[35m/span><strong>{upcoming[0] ? dateLabel(upcoming[0].schedule...[0m
+  [90m472 |[0m ... /><span>[33mEn[0m formación<[35m/span><strong>{activeAssignments.length}</strong[0m></article>
+[31m[1m>[0m [90m473 |[0m ...[33mUp[0m /><span>[33mEvaluación[0m media<[35m/span><strong>{averageScore === null ? "Sin evaluar" : `${...[0m
+  [90m    |[0m                                              [31m[1m^[0m
+  [90m474 |[0m ...
+  [90m475 |[0m ...
+  [90m476 |[0m ...[32mstyles.sectionCard}>[0m
+Next.js build worker exited with code: 1 and signal: null
+npm_build_exit=1
