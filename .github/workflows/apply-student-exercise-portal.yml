@@ -1,0 +1,56 @@
+name: Apply student exercise portal
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - '.github/workflows/apply-student-exercise-portal.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+      - name: Connect derived exercises to student portal
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/cya-app.tsx')
+          s=p.read_text()
+
+          anchor='import { StatisticsView } from "./statistics-view";'
+          replacement=anchor+'\nimport { StudentExercisesPanel } from "./student-exercises-panel";'
+          if 'StudentExercisesPanel' not in s:
+              if anchor not in s:
+                  raise SystemExit('import anchor not found')
+              s=s.replace(anchor,replacement,1)
+
+          type_anchor='  evaluations: Array<{ id: number; session_id: number | null; class_id: number | null; score: number; aptitude_term_id: number; aptitude: string; style_term_id: number; style: string; role_term_id: number; role: string; level_term_id: number; level: string; evaluation_kind: string; created_at: string }>;'
+          type_replacement=type_anchor+'\n  exercises?: Array<{ exercise_id: number; title: string; summary: string | null; description: string | null; requires_partner: boolean; state: "active" | "history"; parent_type: "correction" | "explanation"; parent_content_id: number; parent_title: string; parent_status: string; parent_level: string | null; current_level: string | null; updated_at: string; context_label: string }>;'
+          if 'exercises?: Array<{ exercise_id:' not in s:
+              if type_anchor not in s:
+                  raise SystemExit('snapshot type anchor not found')
+              s=s.replace(type_anchor,type_replacement,1)
+
+          jsx_anchor='    <BZPointsPanel client={client} assignments={snapshot.assignments} />'
+          jsx_replacement=jsx_anchor+'\n    <StudentExercisesPanel exercises={snapshot.exercises ?? []} />'
+          if '<StudentExercisesPanel exercises={snapshot.exercises ?? []} />' not in s:
+              if jsx_anchor not in s:
+                  raise SystemExit('portal jsx anchor not found')
+              s=s.replace(jsx_anchor,jsx_replacement,1)
+
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add app/cya-app.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Show derived exercises in student portal"
+          git push origin HEAD:staging
