@@ -248,12 +248,13 @@ function missionStateLabel(mission: Mission) {
   return "Disponible";
 }
 
-function PreparationPanel({ client, nextClass, personId, assignments, changed }: {
+function PreparationPanel({ client, nextClass, personId, assignments, changed, openQuestionnaire }: {
   client: SupabaseClient;
   nextClass: PortalClass;
   personId: number;
   assignments: PortalAssignment[];
   changed: () => Promise<void>;
+  openQuestionnaire: () => void;
 }) {
   const [requests, setRequests] = useState<PreparationRequest[]>([]);
   const [focusText, setFocusText] = useState("");
@@ -266,6 +267,7 @@ function PreparationPanel({ client, nextClass, personId, assignments, changed }:
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingBody, setEditingBody] = useState("");
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
+  const [questionnaireFinalized, setQuestionnaireFinalized] = useState<boolean | null>(null);
 
   const load = useCallback(async () => {
     const result = await client.from("class_preparation_requests")
@@ -278,6 +280,15 @@ function PreparationPanel({ client, nextClass, personId, assignments, changed }:
   }, [client, nextClass.id, personId]);
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
+  useEffect(() => {
+    let active = true;
+    void client.rpc("student_optional_questionnaire_status", { p_person_id: personId }).then(({ data }) => {
+      if (!active) return;
+      const payload = data as { finalized?: boolean } | null;
+      setQuestionnaireFinalized(Boolean(payload?.finalized));
+    });
+    return () => { active = false; };
+  }, [client, personId]);
 
   async function insertText(type: "focus" | "comment", value: string) {
     const body = value.trim();
@@ -367,6 +378,12 @@ function PreparationPanel({ client, nextClass, personId, assignments, changed }:
 
   const chosenContentIds = new Set(requests.filter((item) => item.request_type === "content" && item.content_id).map((item) => Number(item.content_id)));
   const contentChoices = assignments.filter((item) => !chosenContentIds.has(item.content_id));
+
+  if (questionnaireFinalized === null) return <section className={styles.preparePanel}><p className={styles.prepareEmpty}>Comprobando tu información antes de preparar la clase…</p></section>;
+  if (!questionnaireFinalized) return <section className={styles.preparePanel} aria-labelledby="questionnaire-before-class-title">
+    <div className={styles.prepareIntro}><div><span>ANTES DE PREPARAR TU CLASE</span><h2 id="questionnaire-before-class-title">Cuéntanos un poco sobre ti</h2><p>Antes de preparar tu próxima clase necesitamos que entres al cuestionario y lo finalices. Todas las preguntas son opcionales: puedes dejar campos vacíos.</p></div><Sparkles /></div>
+    <div className={styles.prepareActions}><button type="button" onClick={openQuestionnaire}>Ir al cuestionario</button></div>
+  </section>;
 
   return <section className={styles.preparePanel} aria-labelledby="prepare-next-class-title">
     <div className={styles.prepareIntro}>
@@ -581,7 +598,7 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
           <div><span>FEEDBACK ONLINE</span><h2>¿Quieres que veamos tu baile?</h2><p>Envíanos un vídeo cuando te venga bien. Te diremos qué vemos y dónde puedes poner el foco.</p></div><button type="button" onClick={() => go("feedback")}><Video /> Enviar vídeo</button>
         </section>
 
-        {nextClass && snapshot ? <PreparationPanel client={client} nextClass={nextClass} personId={snapshot.profile.id} assignments={snapshot.assignments} changed={load} /> : null}
+        {nextClass && snapshot ? <PreparationPanel client={client} nextClass={nextClass} personId={snapshot.profile.id} assignments={snapshot.assignments} changed={load} openQuestionnaire={() => go("profile")} /> : null}
 
         <section className={styles.homeColumns}>
           <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>NOVEDADES PARA TI</span><h2>Lo último en tu formación</h2></div><button type="button" onClick={() => goFormation("content")}>Ver contenido</button></div>{latestAssignments.length ? <div className={styles.simpleList}>{latestAssignments.map((item) => <button type="button" key={item.id} onClick={() => goFormation("content")}><BookOpen /><span><strong>{item.title}</strong><small>{contentTypeLabels[item.content_type] ?? item.content_type} · {assignmentStateLabels[item.assignment_status] ?? item.assignment_status}</small></span><ChevronRight /></button>)}</div> : <p className={styles.emptyText}>Todavía no tienes contenido guardado. Poco a poco iremos llenando este espacio contigo.</p>}</article>
