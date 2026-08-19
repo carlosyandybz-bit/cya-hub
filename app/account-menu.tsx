@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ExperienceSwitcher } from "./experience-switcher";
 import { P31AppearanceRuntime } from "./p31-appearance-runtime";
+import { StagingAccountSwitcher, StagingHeaderIndicator } from "./staging-lab/staging-account-switcher";
 import { StudentPersonalMediaOverlay } from "./student-personal-media";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 import styles from "./account-menu.module.css";
@@ -132,6 +133,7 @@ export function AccountMenu({
         data-cya-account-menu
         data-experience={experience}
       >
+        {variant === "header" ? <StagingHeaderIndicator client={client} /> : null}
         {variant === "sidebar" ? (
           <button type="button" className={styles.sidebarTrigger} aria-label="Abrir cuenta y preferencias" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
             {avatar(styles.sidebarAvatar)}
@@ -151,6 +153,7 @@ export function AccountMenu({
               <div><strong>{displayName}</strong><span>{email || "Cuenta CYA"}</span></div>
             </div>
 
+            <StagingAccountSwitcher client={client} currentEmail={email} experience={experience} />
             <ExperienceSwitcher identity={identity} experience={experience} busy={busy} onSelect={changeExperience} />
 
             <div className={styles.separator} />

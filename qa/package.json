@@ -1,0 +1,13 @@
+{
+  "name": "cya-hub-qa",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:visual": "playwright test --config=playwright.visual.config.ts chrome-visual-review.spec.ts canonical-ui-primitives.spec.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.0"
+  }
+}

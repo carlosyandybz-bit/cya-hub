@@ -1,0 +1,58 @@
+name: Staging Lab boundary proof
+
+on:
+  push:
+    branches: [staging]
+  pull_request:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prove-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Staging build boundary must pass
+        env:
+          CI: "true"
+          NEXT_PUBLIC_SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+          CYA_DEPLOY_ENV: staging
+        run: npm run boundary:check
+
+      - name: Production simulation must reject STAGING_ONLY
+        shell: bash
+        env:
+          CI: "true"
+          NEXT_PUBLIC_SUPABASE_URL: https://ldvyeyhzrepaaouzavgs.supabase.co
+          CYA_DEPLOY_ENV: production
+        run: |
+          set -euo pipefail
+          if npm run boundary:check > /tmp/cya-boundary.log 2>&1; then
+            cat /tmp/cya-boundary.log
+            echo "::error::Production simulation accepted STAGING_ONLY infrastructure."
+            exit 1
+          fi
+          cat /tmp/cya-boundary.log
+          grep -q "BUILD BLOQUEADO" /tmp/cya-boundary.log
+          echo "Production isolation proof passed."
+
+      - name: Verify manifest contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f STAGING_ONLY.manifest.json
+          test -d staging-lab
+          test -d app/staging-lab
+          node -e 'const m=require("./STAGING_ONLY.manifest.json"); if (!m.resources.includes("app/staging-lab")) process.exit(1)'
