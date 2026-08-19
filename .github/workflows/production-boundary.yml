@@ -1,6 +1,8 @@
 name: Production boundary
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -12,13 +14,15 @@ jobs:
   reject-staging-only-artifacts:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Reject staging-only paths
+
+      - name: Reject staging-only paths and imports
         shell: bash
         run: |
           set -euo pipefail
+
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             git fetch origin "${{ github.base_ref }}" --depth=1
             FILES="$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)"
@@ -28,9 +32,15 @@ jobs:
 
           printf '%s\n' "$FILES" > /tmp/cya-files.txt
 
-          forbidden='^(\.env\.staging\.example$|\.agents/|\.vinext/|qa/|examples/|supabase/functions/cya-qa-bootstrap/|tsconfig\.tsbuildinfo$|staging/)'
+          forbidden='^(\.env\.staging\.example$|\.agents/|\.vinext/|qa/|examples/|supabase/functions/cya-qa-bootstrap/|tsconfig\.tsbuildinfo$|staging/|app/staging-lab/|STAGING_ONLY\.manifest\.json$|scripts/assert-environment-boundary\.mjs$|\.github/workflows/staging-lab-boundary\.yml$)'
           if grep -E "$forbidden" /tmp/cya-files.txt; then
             echo "ERROR: staging-only artifacts cannot be published to main."
+            exit 1
+          fi
+
+          if git grep -n -E 'staging-lab|CYA_STAGING_MANUAL_ACCESS|staging-(profesor|alumno|admin)@gmail\.com' -- 'app/**' ':!app/staging-lab/**' >/tmp/cya-staging-imports.txt 2>/dev/null; then
+            cat /tmp/cya-staging-imports.txt
+            echo "ERROR: staging-only account switching code or credentials cannot exist in main."
             exit 1
           fi
 
