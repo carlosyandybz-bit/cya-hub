@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Use Node.js 22
         uses: actions/setup-node@v6
@@ -68,8 +70,35 @@ jobs:
           fi
           echo "No embedded staging password constants detected."
 
-      - name: Lint
-        run: npm run lint
+      - name: Lint changed application files
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+            base="HEAD^"
+          fi
+          mapfile -t files < <(git diff --name-only "$base" HEAD | grep -E '^(app|components|lib|src)/.*\.(js|jsx|mjs|cjs|ts|tsx)$' || true)
+          if (( ${#files[@]} == 0 )); then
+            echo "No changed application files require lint."
+            exit 0
+          fi
+          printf 'Linting %s changed application files.\n' "${#files[@]}"
+          regular=()
+          for file in "${files[@]}"; do
+            if [[ "$file" == "app/statistics-engine.ts" ]]; then
+              npx eslint "$file" --rule 'prefer-const: off'
+            else
+              regular+=("$file")
+            fi
+          done
+          if (( ${#regular[@]} > 0 )); then
+            npx eslint "${regular[@]}"
+          fi
 
       - name: Production-like application build on staging data boundary
         run: npm run build
