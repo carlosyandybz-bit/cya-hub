@@ -12,6 +12,7 @@ type ScheduledClass = {
   style?: string | null;
   confirmation_status?: "pending" | "confirmed" | string;
   confirmed_at?: string | null;
+  confirmation_opens_at?: string | null;
 };
 
 type StudentPortalSnapshot = {
@@ -19,6 +20,7 @@ type StudentPortalSnapshot = {
 };
 
 const DISMISSED_KEY = "cya:class-confirmation:dismissed";
+const PREPARE_AFTER_CONFIRM_KEY = "cya:class-confirmation:prepare-next";
 
 function formatClassDate(value: string) {
   return new Intl.DateTimeFormat("es-ES", {
@@ -37,6 +39,32 @@ function isStudentExperience() {
   } catch {
     return false;
   }
+}
+
+function openPreparationWhenReady() {
+  let attempts = 0;
+  let homeRequested = false;
+  const timer = window.setInterval(() => {
+    attempts += 1;
+    const target = document.getElementById("prepare-next-class-title");
+    if (target) {
+      window.clearInterval(timer);
+      try { window.sessionStorage.removeItem(PREPARE_AFTER_CONFIRM_KEY); } catch { /* noop */ }
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    if (!homeRequested) {
+      const homeButton = Array.from(document.querySelectorAll<HTMLButtonElement>('nav[aria-label="Portal CYA"] button'))
+        .find((button) => button.textContent?.trim().includes("Inicio"));
+      if (homeButton) {
+        homeRequested = true;
+        homeButton.click();
+      }
+    }
+
+    if (attempts >= 40) window.clearInterval(timer);
+  }, 100);
 }
 
 export function ClassConfirmationPrompt() {
@@ -72,6 +100,7 @@ export function ClassConfirmationPrompt() {
       .filter((item) => item.status === "scheduled")
       .filter((item) => new Date(item.scheduled_start_at).getTime() > now)
       .filter((item) => item.confirmation_status !== "confirmed")
+      .filter((item) => Boolean(item.confirmation_opens_at) && new Date(item.confirmation_opens_at as string).getTime() <= now)
       .sort((a, b) => new Date(a.scheduled_start_at).getTime() - new Date(b.scheduled_start_at).getTime());
 
     setPending(classes);
@@ -91,10 +120,11 @@ export function ClassConfirmationPrompt() {
     const tryLoad = () => {
       attempts += 1;
       void load().then((resolved) => {
-        if (resolved || attempts >= 40) window.clearInterval(timer);
+        if (resolved || attempts >= 40) window.clearInterval(startupTimer);
       });
     };
-    const timer = window.setInterval(tryLoad, 250);
+    const startupTimer = window.setInterval(tryLoad, 250);
+    const eligibilityTimer = window.setInterval(() => void load(), 60_000);
     tryLoad();
 
     const refresh = () => void load();
@@ -102,12 +132,19 @@ export function ClassConfirmationPrompt() {
     window.addEventListener("cya:experience-change", refresh);
     window.addEventListener("cya:refresh", refresh);
     return () => {
-      window.clearInterval(timer);
+      window.clearInterval(startupTimer);
+      window.clearInterval(eligibilityTimer);
       window.removeEventListener("cya:auth-change", refresh);
       window.removeEventListener("cya:experience-change", refresh);
       window.removeEventListener("cya:refresh", refresh);
     };
   }, [load]);
+
+  useEffect(() => {
+    let shouldPrepare = false;
+    try { shouldPrepare = Boolean(window.sessionStorage.getItem(PREPARE_AFTER_CONFIRM_KEY)); } catch { /* noop */ }
+    if (shouldPrepare) openPreparationWhenReady();
+  }, []);
 
   const remainingLabel = useMemo(() => {
     if (pending.length <= 1) return "";
@@ -131,12 +168,19 @@ export function ClassConfirmationPrompt() {
       return;
     }
 
-    try { window.sessionStorage.removeItem(DISMISSED_KEY); } catch { /* noop */ }
     const remaining = pending.filter((item) => item.id !== current.id);
+    try {
+      window.sessionStorage.setItem(PREPARE_AFTER_CONFIRM_KEY, String(current.id));
+      if (remaining.length) window.sessionStorage.setItem(DISMISSED_KEY, String(remaining[0].id));
+      else window.sessionStorage.removeItem(DISMISSED_KEY);
+    } catch { /* noop */ }
+
     setPending(remaining);
-    setVisible(Boolean(remaining.length));
+    setVisible(false);
     setSaving(false);
+    window.dispatchEvent(new CustomEvent("cya:class-confirmed", { detail: { classId: current.id } }));
     window.dispatchEvent(new CustomEvent("cya:refresh"));
+    openPreparationWhenReady();
   }
 
   function dismiss() {
@@ -155,7 +199,7 @@ export function ClassConfirmationPrompt() {
         <span>CLASE PROGRAMADA{remainingLabel}</span>
         <h2 id="cya-class-confirmation-title">Confirma que vienes a clase</h2>
         <p><strong>{current.style || "Clase con Carlos & Andy"}</strong><br />{formatClassDate(current.scheduled_start_at)} · {current.duration_minutes} min</p>
-        <small>Si todavía no lo sabes, puedes cerrarlo y confirmarlo más tarde. El día anterior avisaremos al profesor si sigue pendiente.</small>
+        <small>La confirmación se abre a las 08:00 del día anterior. Si todavía no lo sabes, puedes cerrarla y volver más tarde. Al confirmar te llevaremos directamente a preparar la clase.</small>
         {error ? <div className="cya-class-confirmation-error" role="alert">{error}</div> : null}
       </div>
       <button className="cya-class-confirmation-action" type="button" disabled={saving} onClick={() => void confirmCurrent()}>
