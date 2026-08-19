@@ -1,0 +1,142 @@
+=== Dark Class safe-area contract ===
+  viewportFit: "cover",
+@supports (padding-top: env(safe-area-inset-top)) {
+    padding-top:calc(12px + env(safe-area-inset-top));
+  .p0f-sticky-search{top:env(safe-area-inset-top)}
+  .p0f-content-tabs{top:calc(62px + env(safe-area-inset-top))}
+  @supports (padding-top: env(safe-area-inset-top)) {
+    .p0f-content-tabs{top:calc(62px + env(safe-area-inset-top))}
+  .p0f-sticky-search{top:env(safe-area-inset-top)}
+  .p0f-content-tabs{top:calc(62px + env(safe-area-inset-top))}
+    .p0f-content-tabs{top:calc(62px + env(safe-area-inset-top))}
+safe_area_exit=0
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+
+added 522 packages in 19s
+npm_ci_exit=0
+
+> cya-hub-web@0.2.0 prebuild
+> node scripts/assert-environment-boundary.mjs && node scripts/assert-visual-contract.mjs && node --test tests/staging-integrations-regression.test.mjs
+
+[CYA environment boundary] Staging verificado contra qlngfkzmncihtdzktcmd. Recursos protegidos: 9.
+[CYA visual contract] OK: profesor intacto y Mi formación reserva la columna central sin solapar Descubre.
+TAP version 13
+# Subtest: staging preserves all integration implementation files
+ok 1 - staging preserves all integration implementation files
+  ---
+  duration_ms: 1.753403
+  type: 'test'
+  ...
+# Subtest: integration admin renders the real integration components
+ok 2 - integration admin renders the real integration components
+  ---
+  duration_ms: 0.35873
+  type: 'test'
+  ...
+# Subtest: email remains a real verified SMTP integration
+ok 3 - email remains a real verified SMTP integration
+  ---
+  duration_ms: 0.318634
+  type: 'test'
+  ...
+# Subtest: Google Drive keeps verification, managed folders and protected media support
+ok 4 - Google Drive keeps verification, managed folders and protected media support
+  ---
+  duration_ms: 0.249195
+  type: 'test'
+  ...
+# Subtest: Google Calendar keeps OAuth, bidirectional sync and conflict handling
+ok 5 - Google Calendar keeps OAuth, bidirectional sync and conflict handling
+  ---
+  duration_ms: 0.374769
+  type: 'test'
+  ...
+# Subtest: WhatsApp keeps signed webhook, server send and canonical self-test
+ok 6 - WhatsApp keeps signed webhook, server send and canonical self-test
+  ---
+  duration_ms: 0.503078
+  type: 'test'
+  ...
+# Subtest: environment contract contains every protected integration variable without secrets
+ok 7 - environment contract contains every protected integration variable without secrets
+  ---
+  duration_ms: 0.357257
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 67.865267
+
+> cya-hub-web@0.2.0 build
+> next build
+
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+▲ Next.js 16.2.6 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 10.9s
+  Running TypeScript ...
+  Finished TypeScript in 17.5s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/5) ...
+  Generating static pages using 3 workers (1/5) 
+  Generating static pages using 3 workers (2/5) 
+  Generating static pages using 3 workers (3/5) 
+✓ Generating static pages using 3 workers (5/5) in 212ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /api/appearance
+├ ƒ /api/appearance/icons
+├ ƒ /api/build-info
+├ ƒ /api/class-preparation/upload
+├ ƒ /api/email/status
+├ ƒ /api/email/test
+├ ƒ /api/feedback-online/upload
+├ ƒ /api/google-calendar/callback
+├ ƒ /api/google-calendar/connect
+├ ƒ /api/google-calendar/disconnect
+├ ƒ /api/google-calendar/resolve
+├ ƒ /api/google-calendar/status
+├ ƒ /api/google-calendar/sync
+├ ƒ /api/google-drive/media
+├ ƒ /api/google-drive/media-ticket
+├ ƒ /api/google-drive/status
+├ ƒ /api/google-drive/upload
+├ ƒ /api/google-drive/upload-session
+├ ƒ /api/integrations/whatsapp/webhook
+├ ƒ /api/runtime-config
+├ ƒ /api/whatsapp/send
+├ ƒ /api/whatsapp/status
+├ ƒ /api/whatsapp/test-self
+├ ƒ /api/whatsapp/webhook
+├ ƒ /evaluation-history
+├ ƒ /evaluation-settings
+├ ○ /manifest.webmanifest
+├ ƒ /progress-summary
+├ ƒ /staging-lab
+├ ○ /staging-lab/design-system
+├ ƒ /staging-lab/header-playground
+├ ○ /staging-lab/module-identity
+└ ƒ /staging-lab/pull-refresh-playground
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+npm_build_exit=0
+VERIFICATION=PASS
