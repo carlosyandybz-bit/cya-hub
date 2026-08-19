@@ -1,0 +1,82 @@
+name: Apply default class configuration v108
+on:
+  push:
+    branches: [staging]
+    paths: ['.github/workflows/apply-default-class-config-v108.yml']
+permissions:
+  contents: write
+jobs:
+  patch-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: staging }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Apply targeted UI patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/cya-app.tsx')
+          s=p.read_text()
+
+          # Programar clase: estado + casilla general + guardado de la configuración disponible.
+          start=s.index('function ScheduleClass(')
+          end=s.index('\nfunction ', start+20)
+          seg=s[start:end]
+          old='  const [type, setType] = useState<"individual" | "pair">("individual"), [busy, setBusy] = useState(false), [error, setError] = useState("");'
+          new='  const [type, setType] = useState<"individual" | "pair">("individual"), [busy, setBusy] = useState(false), [error, setError] = useState(""), [saveDefaults, setSaveDefaults] = useState(false);'
+          assert old in seg, 'ScheduleClass state anchor missing'
+          seg=seg.replace(old,new,1)
+          old='        <label className="field field-wide"><span>Notas</span><input name="notes" placeholder="Opcional" /></label>'
+          new='        <label className="preference-save-toggle field-wide"><input type="checkbox" checked={saveDefaults} onChange={(event) => setSaveDefaults(event.target.checked)} /><span><strong>Guardar esta configuración como predeterminada</strong><small>Se aplicarán tipo de clase, duración, estilo y pareja cuando estén disponibles.</small></span></label>\n'+old
+          assert old in seg, 'ScheduleClass notes anchor missing'
+          seg=seg.replace(old,new,1)
+          anchor='    if (result.error) { setError(result.error.message); setBusy(false); return; }\n'
+          assert anchor in seg, 'ScheduleClass result anchor missing'
+          injection=anchor+'    if (saveDefaults) {\n      const targets: Array<[number, number | null]> = type === "pair" ? [[first, second], [second, first]] : [[first, null]];\n      for (const [personId, partnerId] of targets) {\n        const preference = await db.rpc("save_student_class_preferences", {\n          p_person_id: personId, p_location_term_id: null, p_location_text: null,\n          p_style_term_id: Number(form.get("style_term_id") || 0) || null, p_role_term_id: null,\n          p_duration_minutes: duration, p_class_type: type, p_partner_person_id: partnerId,\n          p_set_location: false, p_set_style: true, p_set_role: false, p_set_duration: true, p_set_class_type: true, p_set_partner: true,\n        });\n        if (preference.error) { window.alert(`La clase se ha programado, pero no se pudieron guardar los valores predeterminados: ${preference.error.message}`); break; }\n      }\n    }\n'
+          seg=seg.replace(anchor,injection,1)
+          s=s[:start]+seg+s[end:]
+
+          # Datos / preparación de clase: misma casilla, ahora incluyendo ubicación y rol individual por alumno.
+          start=s.index('function ClassSetupStage(')
+          end=s.index('\nfunction ', start+20)
+          seg=s[start:end]
+          old='  const [danceProfiles,setDanceProfiles] = useState<DanceProfileRow[]>([]), [busy,setBusy] = useState(false), [error,setError] = useState(""), [editKnown,setEditKnown] = useState(false);'
+          new='  const [danceProfiles,setDanceProfiles] = useState<DanceProfileRow[]>([]), [busy,setBusy] = useState(false), [error,setError] = useState(""), [editKnown,setEditKnown] = useState(false), [saveDefaults,setSaveDefaults] = useState(false);'
+          assert old in seg, 'ClassSetupStage state anchor missing'
+          seg=seg.replace(old,new,1)
+          anchor='    if (result.error) { setError(result.error.message); setBusy(false); return; }\n    await refresh(); notify("Datos de la clase preparados."); setBusy(false); next();'
+          assert anchor in seg, 'ClassSetupStage save anchor missing'
+          replacement='    if (result.error) { setError(result.error.message); setBusy(false); return; }\n    if (saveDefaults) {\n      for (const personId of personIds) {\n        const partnerId = item.class_type === "pair" ? (personIds.find((id) => id !== personId) ?? null) : null;\n        const preference = await db.rpc("save_student_class_preferences", {\n          p_person_id: personId, p_location_term_id: item.location_term_id, p_location_text: locationText.trim() || null,\n          p_style_term_id: Number(styleId), p_role_term_id: Number(roles[personId]) || null,\n          p_duration_minutes: duration, p_class_type: item.class_type, p_partner_person_id: partnerId,\n          p_set_location: true, p_set_style: true, p_set_role: true, p_set_duration: true, p_set_class_type: true, p_set_partner: true,\n        });\n        if (preference.error) { notify(`La clase se ha preparado, pero no se pudieron guardar todos los valores predeterminados: ${preference.error.message}`); break; }\n      }\n    }\n    await refresh(); notify(saveDefaults ? "Datos de la clase preparados y configuración predeterminada guardada." : "Datos de la clase preparados."); setBusy(false); next();'
+          seg=seg.replace(anchor,replacement,1)
+          anchor='{error ? <p className="error">{error}</p> : null}<div className="workflow-footer">'
+          assert anchor in seg, 'ClassSetupStage footer anchor missing'
+          toggle='<label className="preference-save-toggle"><input type="checkbox" checked={saveDefaults} onChange={(event) => setSaveDefaults(event.target.checked)} /><span><strong>Guardar esta configuración como predeterminada</strong><small>Usaremos tipo, duración, estilo, ubicación, rol y pareja disponibles como valores iniciales en próximas clases.</small></span></label>'
+          seg=seg.replace(anchor,toggle+anchor,1)
+          s=s[:start]+seg+s[end:]
+          p.write_text(s)
+
+          css=Path('app/globals.css')
+          c=css.read_text()
+          marker='/* V108 default class configuration */'
+          if marker not in c:
+            c += '''\n\n/* V108 default class configuration */\n.preference-save-toggle{display:flex;align-items:flex-start;gap:12px;padding:14px 15px;border:1px solid color-mix(in srgb,var(--border, #d9d9df) 82%,transparent);border-radius:16px;background:color-mix(in srgb,var(--surface,#fff) 94%,var(--primary,#6d4aff) 6%);cursor:pointer}.preference-save-toggle input{width:19px;height:19px;min-width:19px;margin:2px 0 0;accent-color:var(--primary,#6d4aff)}.preference-save-toggle span{display:grid;gap:3px;min-width:0}.preference-save-toggle strong{font-size:.93rem;line-height:1.25}.preference-save-toggle small{font-size:.78rem;line-height:1.35;color:var(--text-muted,#70707a)}.preference-save-toggle:has(input:focus-visible){outline:3px solid color-mix(in srgb,var(--primary,#6d4aff) 25%,transparent);outline-offset:2px}.preference-save-toggle:has(input:checked){border-color:color-mix(in srgb,var(--primary,#6d4aff) 45%,var(--border,#d9d9df));background:color-mix(in srgb,var(--surface,#fff) 88%,var(--primary,#6d4aff) 12%)}\n'''
+            css.write_text(c)
+          PY
+      - run: npm ci
+      - run: npm run build
+      - name: Commit validated patch
+        run: |
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add app/cya-app.tsx app/globals.css
+          git diff --cached --quiet && exit 0
+          git commit -m "feat(classes): save full class setup as defaults"
+          git push origin HEAD:staging
