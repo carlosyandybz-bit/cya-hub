@@ -36,6 +36,7 @@ type Fixture = {
   displayName: string;
   primaryRole: "teacher" | "student" | "admin";
   roles: Array<"admin" | "teacher" | "student">;
+  source: "qa_automation" | "staging_manual";
 };
 
 const fixtures: Fixture[] = [
@@ -45,6 +46,7 @@ const fixtures: Fixture[] = [
     displayName: "QA · Profesor",
     primaryRole: "teacher",
     roles: ["teacher", "student"],
+    source: "qa_automation",
   },
   {
     role: "student",
@@ -52,6 +54,7 @@ const fixtures: Fixture[] = [
     displayName: "QA · Alumno",
     primaryRole: "student",
     roles: ["student"],
+    source: "qa_automation",
   },
   {
     role: "admin",
@@ -59,6 +62,34 @@ const fixtures: Fixture[] = [
     displayName: "QA · Administrador",
     primaryRole: "admin",
     roles: ["admin", "teacher", "student"],
+    source: "qa_automation",
+  },
+];
+
+const manualFixtures: Fixture[] = [
+  {
+    role: "teacher",
+    email: "carlosyandybz+staging-profesor@gmail.com",
+    displayName: "Staging · Profesor",
+    primaryRole: "teacher",
+    roles: ["teacher", "student"],
+    source: "staging_manual",
+  },
+  {
+    role: "student",
+    email: "carlosyandybz+staging-alumno@gmail.com",
+    displayName: "Staging · Alumno",
+    primaryRole: "student",
+    roles: ["student"],
+    source: "staging_manual",
+  },
+  {
+    role: "admin",
+    email: "carlosyandybz+staging-admin@gmail.com",
+    displayName: "Staging · Profesor administrador",
+    primaryRole: "admin",
+    roles: ["admin", "teacher", "student"],
+    source: "staging_manual",
   },
 ];
 
@@ -147,6 +178,17 @@ function makePassword() {
   return `CyaQA!${token}`;
 }
 
+function makeManualPassword() {
+  const seed = "CYA-STAGING-MANUAL-ACCESS-2026";
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  const token = (hash >>> 0).toString(36).padStart(7, "0");
+  return `CyaStg!${token}2026`;
+}
+
 function secretKeyFromEnvironment() {
   const modern = Deno.env.get("SUPABASE_SECRET_KEYS");
   if (modern) {
@@ -173,6 +215,10 @@ async function findUserByEmail(admin: ReturnType<typeof createClient>, email: st
 }
 
 async function persistFixture(sql: ReturnType<typeof postgres>, user: User, fixture: Fixture) {
+  const note = fixture.source === "qa_automation"
+    ? "AUTOMATED QA FIXTURE — do not use for real classes or billing."
+    : "STAGING ONLY — persistent manual access account.";
+
   await sql.begin(async (tx) => {
     await tx`
       insert into public.user_profiles (id, display_name)
@@ -231,8 +277,8 @@ async function persistFixture(sql: ReturnType<typeof postgres>, user: User, fixt
           ${fixture.displayName},
           ${fixture.email},
           'student',
-          'qa_automation',
-          'AUTOMATED QA FIXTURE — do not use for real classes or billing.',
+          ${fixture.source},
+          ${note},
           true,
           ${user.id}::uuid
         )
@@ -245,15 +291,15 @@ async function persistFixture(sql: ReturnType<typeof postgres>, user: User, fixt
         set display_name = ${fixture.displayName},
             email = ${fixture.email},
             crm_stage = 'student',
-            source = 'qa_automation',
-            notes = 'AUTOMATED QA FIXTURE — do not use for real classes or billing.',
+            source = ${fixture.source},
+            notes = ${note},
             active = true,
             updated_at = now()
         where id = ${personId}::bigint
       `;
     }
 
-    if (!personId) throw new Error(`Unable to persist ${fixture.role} QA person`);
+    if (!personId) throw new Error(`Unable to persist ${fixture.role} fixture person`);
 
     await tx`
       insert into public.student_profiles (person_id, active, created_by)
@@ -269,28 +315,29 @@ async function ensureFixture(
   admin: ReturnType<typeof createClient>,
   sql: ReturnType<typeof postgres>,
   fixture: Fixture,
+  fixedPassword?: string,
 ) {
-  const password = makePassword();
+  const password = fixedPassword ?? makePassword();
   let user = await findUserByEmail(admin, fixture.email);
 
   if (user) {
     const { data, error } = await admin.auth.admin.updateUserById(user.id, {
       password,
       email_confirm: true,
-      user_metadata: { full_name: fixture.displayName, cya_qa_fixture: true },
-      app_metadata: { cya_qa_fixture: true },
+      user_metadata: { full_name: fixture.displayName, cya_qa_fixture: fixture.source === "qa_automation", cya_staging_manual: fixture.source === "staging_manual" },
+      app_metadata: { cya_qa_fixture: fixture.source === "qa_automation", cya_staging_manual: fixture.source === "staging_manual" },
     });
-    if (error || !data.user) throw error ?? new Error(`Unable to update ${fixture.role} QA user`);
+    if (error || !data.user) throw error ?? new Error(`Unable to update ${fixture.role} fixture user`);
     user = data.user;
   } else {
     const { data, error } = await admin.auth.admin.createUser({
       email: fixture.email,
       password,
       email_confirm: true,
-      user_metadata: { full_name: fixture.displayName, cya_qa_fixture: true },
-      app_metadata: { cya_qa_fixture: true },
+      user_metadata: { full_name: fixture.displayName, cya_qa_fixture: fixture.source === "qa_automation", cya_staging_manual: fixture.source === "staging_manual" },
+      app_metadata: { cya_qa_fixture: fixture.source === "qa_automation", cya_staging_manual: fixture.source === "staging_manual" },
     });
-    if (error || !data.user) throw error ?? new Error(`Unable to create ${fixture.role} QA user`);
+    if (error || !data.user) throw error ?? new Error(`Unable to create ${fixture.role} fixture user`);
     user = data.user;
   }
 
@@ -327,6 +374,13 @@ Deno.serve(async (request) => {
       credentials[fixture.role] = await ensureFixture(admin, sql, fixture);
     }
 
+    const manualPassword = makeManualPassword();
+    const manualAccounts: Record<string, { email: string; roles: Array<"admin" | "teacher" | "student"> }> = {};
+    for (const fixture of manualFixtures) {
+      await ensureFixture(admin, sql, fixture, manualPassword);
+      manualAccounts[fixture.role] = { email: fixture.email, roles: fixture.roles };
+    }
+
     const runId = claims.run_id ?? crypto.randomUUID();
     const functionalFixtures = await seedFunctionalQaFixtures(sql, runId);
 
@@ -334,6 +388,7 @@ Deno.serve(async (request) => {
       ok: true,
       run_id: claims.run_id ?? null,
       credentials,
+      manual_accounts: manualAccounts,
       fixtures: functionalFixtures,
     });
   } catch (error) {
