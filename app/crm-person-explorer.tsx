@@ -1,7 +1,7 @@
 "use client";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { Filter, RefreshCw, Search, UsersRound } from "lucide-react";
+import { BookmarkPlus, Filter, RefreshCw, Search, Trash2, UsersRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import styles from "./crm-person-explorer.module.css";
 
@@ -52,6 +52,14 @@ const reasonLabels: Record<string, string> = {
   other: "Otro",
 };
 
+function rowSearch(row: PersonRow, needle: string) {
+  const normalized = needle.trim().toLocaleLowerCase("es");
+  if (!normalized) return true;
+  return [row.display_name, row.internal_alias, row.email, row.phone]
+    .filter(Boolean)
+    .some((value) => String(value).toLocaleLowerCase("es").includes(normalized));
+}
+
 function matchesView(row: PersonRow, filters: Record<string, unknown>) {
   return Object.entries(filters).every(([key, expected]) => {
     if (key === "registered") return row.is_registered === Boolean(expected);
@@ -60,6 +68,15 @@ function matchesView(row: PersonRow, filters: Record<string, unknown>) {
     if (key === "has_reserved") return row.has_reserved === Boolean(expected);
     if (key === "no_booking_reason_missing") return row.no_booking_reason_missing === Boolean(expected);
     if (key === "primary_no_booking_reason") return row.primary_no_booking_reason === expected;
+    if (key === "query") return rowSearch(row, String(expected ?? ""));
+    if (key === "reservation") return expected === "all" || row.has_reserved === (expected === "yes");
+    if (key === "class_interest") return expected === "all" || (row.interest_states?.in_person_classes ?? "unknown") === expected;
+    if (key === "min_age") return expected === null || expected === "" || (row.age !== null && row.age >= Number(expected));
+    if (key === "max_age") return expected === null || expected === "" || (row.age !== null && row.age <= Number(expected));
+    if (key === "location") {
+      const place = String(expected ?? "").trim().toLocaleLowerCase("es");
+      return !place || `${row.city ?? ""} ${row.country_code ?? ""}`.toLocaleLowerCase("es").includes(place);
+    }
     return true;
   });
 }
@@ -69,17 +86,24 @@ function dateLabel(value: string | null) {
   return new Intl.DateTimeFormat("es-ES", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
 }
 
+function viewToken(view: SavedView) {
+  return view.is_system ? `system:${view.view_key}` : `personal:${view.id}`;
+}
+
 export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
   const [rows, setRows] = useState<PersonRow[]>([]);
   const [views, setViews] = useState<SavedView[]>([]);
-  const [activeView, setActiveView] = useState<string>("interested_no_booking");
+  const [activeView, setActiveView] = useState<string>("system:interested_no_booking");
   const [query, setQuery] = useState("");
   const [reservation, setReservation] = useState<"all" | "yes" | "no">("all");
-  const [interest, setInterest] = useState<"all" | "yes" | "no" | "unknown">("all");
+  const [interest, setInterest] = useState<"all" | "interested" | "not_interested" | "unknown">("all");
   const [minAge, setMinAge] = useState("");
   const [maxAge, setMaxAge] = useState("");
   const [location, setLocation] = useState("");
+  const [saveName, setSaveName] = useState("");
+  const [showSave, setShowSave] = useState(false);
   const [busyPerson, setBusyPerson] = useState<number | null>(null);
+  const [busyView, setBusyView] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -101,30 +125,62 @@ export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
 
   useEffect(() => { void load(); }, [db, refreshToken]);
 
-  const selectedView = views.find((view) => view.view_key === activeView) ?? null;
+  const selectedView = views.find((view) => viewToken(view) === activeView) ?? null;
 
-  const visibleRows = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase("es");
-    const place = location.trim().toLocaleLowerCase("es");
-    const minimum = minAge ? Number(minAge) : null;
-    const maximum = maxAge ? Number(maxAge) : null;
-    return rows.filter((row) => {
-      if (selectedView && !matchesView(row, selectedView.filters ?? {})) return false;
-      if (needle && ![row.display_name, row.internal_alias, row.email, row.phone].filter(Boolean).some((value) => String(value).toLocaleLowerCase("es").includes(needle))) return false;
-      if (reservation === "yes" && !row.has_reserved) return false;
-      if (reservation === "no" && row.has_reserved) return false;
-      const classState = row.interest_states?.in_person_classes ?? "unknown";
-      if (interest === "yes" && classState !== "interested") return false;
-      if (interest === "no" && classState !== "not_interested") return false;
-      if (interest === "unknown" && classState !== "unknown") return false;
-      if (minimum !== null && (row.age === null || row.age < minimum)) return false;
-      if (maximum !== null && (row.age === null || row.age > maximum)) return false;
-      if (place && !`${row.city ?? ""} ${row.country_code ?? ""}`.toLocaleLowerCase("es").includes(place)) return false;
-      return true;
+  function resetManualFilters() {
+    setQuery(""); setReservation("all"); setInterest("all"); setMinAge(""); setMaxAge(""); setLocation("");
+  }
+
+  function activateView(token: string) {
+    setActiveView(token);
+    resetManualFilters();
+  }
+
+  const manualFilters = useMemo<Record<string, unknown>>(() => ({
+    ...(query.trim() ? { query: query.trim() } : {}),
+    ...(reservation !== "all" ? { reservation } : {}),
+    ...(interest !== "all" ? { class_interest: interest } : {}),
+    ...(minAge ? { min_age: Number(minAge) } : {}),
+    ...(maxAge ? { max_age: Number(maxAge) } : {}),
+    ...(location.trim() ? { location: location.trim() } : {}),
+  }), [interest, location, maxAge, minAge, query, reservation]);
+
+  const effectiveFilters = useMemo(() => ({ ...(selectedView?.filters ?? {}), ...manualFilters }), [manualFilters, selectedView]);
+  const visibleRows = useMemo(() => rows.filter((row) => matchesView(row, effectiveFilters)), [effectiveFilters, rows]);
+  const counts = useMemo(() => new Map(views.map((view) => [viewToken(view), rows.filter((row) => matchesView(row, view.filters ?? {})).length])), [rows, views]);
+
+  async function saveCurrentView() {
+    const name = saveName.trim();
+    if (!name) return;
+    setBusyView(true); setError("");
+    const result = await db.rpc("save_crm_saved_view", {
+      p_view_id: null,
+      p_name: name,
+      p_filters: effectiveFilters,
+      p_columns: ["display_name", "reservation", "interest", "no_booking_reason"],
+      p_sort: [{ field: "display_name", direction: "asc" }],
     });
-  }, [activeView, interest, location, maxAge, minAge, query, reservation, rows, selectedView]);
+    if (result.error) setError(result.error.message);
+    else {
+      notify?.("Vista CRM guardada");
+      setSaveName(""); setShowSave(false);
+      await load();
+    }
+    setBusyView(false);
+  }
 
-  const counts = useMemo(() => new Map(views.map((view) => [view.view_key, rows.filter((row) => matchesView(row, view.filters ?? {})).length])), [rows, views]);
+  async function deleteView(view: SavedView) {
+    if (view.is_system) return;
+    setBusyView(true); setError("");
+    const result = await db.rpc("delete_crm_saved_view", { p_view_id: view.id });
+    if (result.error) setError(result.error.message);
+    else {
+      if (activeView === viewToken(view)) activateView("");
+      notify?.("Vista CRM eliminada");
+      await load();
+    }
+    setBusyView(false);
+  }
 
   async function setClassInterest(personId: number, status: "unknown" | "interested" | "not_interested") {
     setBusyPerson(personId);
@@ -143,23 +199,38 @@ export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
     setBusyPerson(null);
   }
 
+  const systemViews = views.filter((view) => view.is_system);
+  const personalViews = views.filter((view) => !view.is_system);
+
   return <section className={styles.shell} aria-labelledby="crm-explorer-title">
     <header className={styles.header}>
       <div><span className={styles.eyebrow}>CRM transversal</span><h2 id="crm-explorer-title"><UsersRound /> Personas y datos</h2><p>Listas vivas construidas desde los datos reales de CYA. Reservas, edades e históricos se derivan de sus fuentes de verdad.</p></div>
-      <button type="button" className={styles.refresh} onClick={() => void load()} disabled={loading} aria-label="Actualizar CRM"><RefreshCw className={loading ? styles.spin : ""} /></button>
+      <div className={styles.headerActions}>
+        <button type="button" className={styles.saveButton} onClick={() => setShowSave((value) => !value)} aria-expanded={showSave}><BookmarkPlus /> <span>Guardar vista</span></button>
+        <button type="button" className={styles.refresh} onClick={() => void load()} disabled={loading} aria-label="Actualizar CRM"><RefreshCw className={loading ? styles.spin : ""} /></button>
+      </div>
     </header>
 
+    {showSave ? <div className={styles.saveBar}>
+      <label><span>Nombre de la vista</span><input value={saveName} onChange={(event) => setSaveName(event.target.value)} placeholder="Ej. Mayores de 30 sin reserva" /></label>
+      <button type="button" onClick={() => void saveCurrentView()} disabled={busyView || !saveName.trim()}>Guardar estos filtros</button>
+    </div> : null}
     {error ? <p className={styles.error} role="alert">{error}</p> : null}
 
     <div className={styles.views} aria-label="Listas CRM">
-      <button type="button" className={!activeView ? styles.activeView : ""} onClick={() => setActiveView("")}>Todas <strong>{rows.length}</strong></button>
-      {views.filter((view) => view.is_system).map((view) => <button type="button" key={view.id} className={activeView === view.view_key ? styles.activeView : ""} onClick={() => setActiveView(view.view_key ?? "")}><span>{view.name}</span><strong>{counts.get(view.view_key) ?? 0}</strong></button>)}
+      <button type="button" className={!activeView ? styles.activeView : ""} onClick={() => activateView("")}>Todas <strong>{rows.length}</strong></button>
+      {systemViews.map((view) => <button type="button" key={view.id} className={activeView === viewToken(view) ? styles.activeView : ""} onClick={() => activateView(viewToken(view))}><span>{view.name}</span><strong>{counts.get(viewToken(view)) ?? 0}</strong></button>)}
     </div>
+
+    {personalViews.length ? <div className={styles.personalViews} aria-label="Mis vistas CRM">
+      <span>Mis vistas</span>
+      <div>{personalViews.map((view) => <span className={styles.personalView} key={view.id}><button type="button" className={activeView === viewToken(view) ? styles.activeView : ""} onClick={() => activateView(viewToken(view))}>{view.name} <strong>{counts.get(viewToken(view)) ?? 0}</strong></button><button type="button" className={styles.deleteView} onClick={() => void deleteView(view)} disabled={busyView} aria-label={`Eliminar vista ${view.name}`}><Trash2 /></button></span>)}</div>
+    </div> : null}
 
     <div className={styles.filters}>
       <label className={styles.search}><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre, alias, email o teléfono" /></label>
       <label><span>Reserva</span><select value={reservation} onChange={(event) => setReservation(event.target.value as typeof reservation)}><option value="all">Todas</option><option value="yes">Con reserva real</option><option value="no">Sin reserva real</option></select></label>
-      <label><span>Interés en clases</span><select value={interest} onChange={(event) => setInterest(event.target.value as typeof interest)}><option value="all">Todos</option><option value="yes">Sí</option><option value="no">No</option><option value="unknown">No sabemos</option></select></label>
+      <label><span>Interés en clases</span><select value={interest} onChange={(event) => setInterest(event.target.value as typeof interest)}><option value="all">Todos</option><option value="interested">Sí</option><option value="not_interested">No</option><option value="unknown">No sabemos</option></select></label>
       <label><span>Edad mín.</span><input type="number" min="0" max="120" value={minAge} onChange={(event) => setMinAge(event.target.value)} /></label>
       <label><span>Edad máx.</span><input type="number" min="0" max="120" value={maxAge} onChange={(event) => setMaxAge(event.target.value)} /></label>
       <label><span>Localidad / país</span><input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Málaga, FR…" /></label>
