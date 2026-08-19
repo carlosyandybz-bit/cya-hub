@@ -1,0 +1,87 @@
+name: Preload saved class defaults v109
+on:
+  push:
+    branches: [staging]
+    paths: ['.github/workflows/preload-class-defaults-v109.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+      - name: Patch scheduling defaults
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/cya-app.tsx')
+          s = p.read_text()
+
+          old = '''function ScheduleClass({ students, styles, initialStudentId, close, saved }: { students: Person[]; styles: CatalogTerm[]; initialStudentId?: number | null; close: () => void; saved: () => Promise<void> }) {
+  const [type, setType] = useState<\"individual\" | \"pair\">(\"individual\"), [busy, setBusy] = useState(false), [error, setError] = useState(\"\"), [saveDefaults, setSaveDefaults] = useState(false);
+  const [initialDate] = useState(() => localDateTime(new Date(Date.now() + 60 * 60 * 1000)));
+'''
+          new = '''function ScheduleClass({ students, styles, initialStudentId, close, saved }: { students: Person[]; styles: CatalogTerm[]; initialStudentId?: number | null; close: () => void; saved: () => Promise<void> }) {
+  const [type, setType] = useState<\"individual\" | \"pair\">(\"individual\"), [busy, setBusy] = useState(false), [error, setError] = useState(\"\"), [saveDefaults, setSaveDefaults] = useState(false);
+  const [firstStudentId,setFirstStudentId] = useState(initialStudentId ? String(initialStudentId) : \"\"), [secondStudentId,setSecondStudentId] = useState(\"\");
+  const [hoursText,setHoursText] = useState(\"1\"), [minutesText,setMinutesText] = useState(\"\"), [styleId,setStyleId] = useState(\"\"), [loadingDefaults,setLoadingDefaults] = useState(false);
+  const [initialDate] = useState(() => localDateTime(new Date(Date.now() + 60 * 60 * 1000)));
+  useEffect(() => {
+    if (!db || !firstStudentId) return;
+    let alive = true;
+    setLoadingDefaults(true);
+    void db.from(\"student_class_preferences\")
+      .select(\"default_style_term_id,default_duration_minutes,default_class_type,default_partner_person_id\")
+      .eq(\"person_id\",Number(firstStudentId)).maybeSingle()
+      .then((result) => {
+        if (!alive) return;
+        if (!result.error && result.data) {
+          const pref = result.data as { default_style_term_id:number|null; default_duration_minutes:number|null; default_class_type:\"individual\"|\"pair\"|null; default_partner_person_id:number|null };
+          if (pref.default_class_type === \"individual\" || pref.default_class_type === \"pair\") setType(pref.default_class_type);
+          if (pref.default_duration_minutes && pref.default_duration_minutes > 0) {
+            setHoursText(String(Math.floor(pref.default_duration_minutes / 60)));
+            setMinutesText(pref.default_duration_minutes % 60 ? String(pref.default_duration_minutes % 60) : \"\");
+          }
+          if (pref.default_style_term_id && styles.some((style) => style.id === pref.default_style_term_id)) setStyleId(String(pref.default_style_term_id));
+          if (pref.default_class_type === \"pair\" && pref.default_partner_person_id && students.some((student) => student.id === pref.default_partner_person_id && student.id !== Number(firstStudentId))) setSecondStudentId(String(pref.default_partner_person_id));
+          else if (pref.default_class_type === \"individual\") setSecondStudentId(\"\");
+        }
+        setLoadingDefaults(false);
+      });
+    return () => { alive = false; };
+  }, [firstStudentId,students,styles]);
+'''
+          if old not in s:
+              raise SystemExit('ScheduleClass state block not found')
+          s = s.replace(old,new,1)
+
+          replacements = {
+'''<select name=\"student_1\" required defaultValue={initialStudentId ? String(initialStudentId) : \"\"}>''': '''<select name=\"student_1\" required value={firstStudentId} onChange={(event) => { setFirstStudentId(event.target.value); setSecondStudentId(\"\"); }}>''',
+'''<select name=\"student_2\" required defaultValue=\"\">''': '''<select name=\"student_2\" required value={secondStudentId} onChange={(event) => setSecondStudentId(event.target.value)}>''',
+'''<input name=\"hours\" type=\"text\" inputMode=\"numeric\" pattern=\"[0-8]\" defaultValue=\"1\" />''': '''<input name=\"hours\" type=\"text\" inputMode=\"numeric\" pattern=\"[0-8]\" value={hoursText} onChange={(event) => setHoursText(event.target.value.replace(/\\D/g,\"\"))} />''',
+'''<input name=\"minutes\" type=\"text\" inputMode=\"numeric\" pattern=\"[0-5]?[0-9]\" defaultValue=\"\" />''': '''<input name=\"minutes\" type=\"text\" inputMode=\"numeric\" pattern=\"[0-5]?[0-9]\" value={minutesText} onChange={(event) => setMinutesText(event.target.value.replace(/\\D/g,\"\"))} />''',
+'''<select name=\"style_term_id\" required defaultValue=\"\">''': '''<select name=\"style_term_id\" required value={styleId} onChange={(event) => setStyleId(event.target.value)}>'''
+          }
+          for a,b in replacements.items():
+              if a not in s:
+                  raise SystemExit(f'Expected form fragment not found: {a[:60]}')
+              s = s.replace(a,b,1)
+
+          marker = '''        <label className=\"preference-save-toggle field-wide\"><input type=\"checkbox\" checked={saveDefaults}'''
+          notice = '''        {loadingDefaults ? <p className=\"field-wide preference-defaults-status\">Aplicando configuración predeterminada del alumno…</p> : firstStudentId ? <p className=\"field-wide preference-defaults-status\">Los valores guardados del alumno se aplican automáticamente y puedes modificarlos para esta clase.</p> : null}\n'''
+          if marker not in s:
+              raise SystemExit('Preference toggle marker not found')
+          s = s.replace(marker,notice+marker,1)
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/cya-app.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Preload saved class defaults when scheduling"
+          git push origin staging
