@@ -7,6 +7,7 @@ import { StudentCardContactActions } from "./student-card-contact-actions";
 import { ClassMediaUploadGuard } from "./class-media-upload-guard";
 import { LiveSearchCreateEnhancer } from "./live-search-create-enhancer";
 import { ClassDefaultsHydrator } from "./class-defaults-hydrator";
+import { StudentMasterStaffControls } from "./student-master-staff-controls";
 import "./globals.css";
 import "./visual-audit-v21.css";
 import "./visual-density-v22.css";
@@ -110,6 +111,7 @@ export default function RootLayout({
         <StudentCardContactActions />
         <LiveSearchCreateEnhancer />
         <ClassDefaultsHydrator />
+        <StudentMasterStaffControls />
         {children}
       </body>
     </html>
