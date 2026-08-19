@@ -1,0 +1,40 @@
+name: Apply pull refresh surfaces
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'scripts/apply-pull-refresh-surface-listeners.mjs'
+      - '.github/workflows/apply-pull-refresh-surfaces.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: staging
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Apply active-surface listeners
+        run: node scripts/apply-pull-refresh-surface-listeners.mjs
+      - name: Verify intended files
+        shell: bash
+        run: |
+          changed="$(git diff --name-only)"
+          printf '%s\n' "$changed"
+          expected=$'app/academy-online-teacher.tsx\napp/admin-view.tsx\napp/agenda-view.tsx\napp/home-view.tsx\napp/notifications-view.tsx\napp/statistics-explorer.tsx'
+          test "$changed" = "$expected"
+      - name: Commit surface listeners
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/academy-online-teacher.tsx app/admin-view.tsx app/agenda-view.tsx app/home-view.tsx app/notifications-view.tsx app/statistics-explorer.tsx
+          git commit -m 'staging: refresh active portal surfaces on pull gesture'
+          git push origin HEAD:staging

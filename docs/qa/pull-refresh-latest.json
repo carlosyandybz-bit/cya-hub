@@ -1,0 +1,10 @@
+{
+  "status": "FAIL",
+  "tested_commit": "39ca233c1052038ea4653cbbd859618fa704b856",
+  "viewport": "390x844",
+  "build": "success",
+  "playground": "success",
+  "gesture": "failure",
+  "gesture_stage": "after-moves-idle",
+  "screenshots_generated": false
+}

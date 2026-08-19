@@ -2,7 +2,7 @@ name: Validate P16 RLS hotfix
 
 on:
   pull_request:
-    branches: [main]
+    branches: [staging]
     paths:
       - "supabase/v42-rls-student-class-correlation.sql"
       - "tests/rls-class-correlation-p16.test.mjs"
@@ -17,8 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22.13.0
           cache: npm

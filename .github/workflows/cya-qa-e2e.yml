@@ -1,24 +1,25 @@
-name: CYA QA E2E
+name: CYA QA E2E — Staging
 
 on:
+  push:
+    branches:
+      - staging
   pull_request:
     branches:
-      - main
+      - staging
   workflow_dispatch:
 
 permissions:
   contents: read
   id-token: write
 
-# Shared QA identities are rotated by the bootstrap, so browser QA remains mutually
-# exclusive. The newest run is authoritative: stale runs must never starve the queue.
 concurrency:
-  group: cya-qa-shared-identities
+  group: cya-qa-staging-shared-identities
   cancel-in-progress: true
 
 jobs:
   browser-qa:
-    name: Browser QA
+    name: Browser QA — Staging
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
@@ -28,6 +29,17 @@ jobs:
       CYA_QA_BOOTSTRAP_URL: https://qlngfkzmncihtdzktcmd.supabase.co/functions/v1/cya-qa-bootstrap
 
     steps:
+      - name: Refuse non-staging branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            [[ "${GITHUB_BASE_REF}" == "staging" ]] || { echo "Browser QA is restricted to PRs targeting staging." >&2; exit 1; }
+          elif [[ "${GITHUB_REF_NAME}" != "staging" ]]; then
+            echo "Browser QA is restricted to the staging branch." >&2
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v6
 
@@ -41,14 +53,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${NEXT_PUBLIC_SUPABASE_URL}" == "https://ldvyeyhzrepaaouzavgs.supabase.co" ]]; then
-            echo "QA must never target production Supabase" >&2
-            exit 1
-          fi
-          if [[ "${CYA_QA_BOOTSTRAP_URL}" == *"ldvyeyhzrepaaouzavgs"* ]]; then
-            echo "QA bootstrap must never target production Supabase" >&2
-            exit 1
-          fi
+          [[ "${NEXT_PUBLIC_SUPABASE_URL}" != "https://ldvyeyhzrepaaouzavgs.supabase.co" ]] || { echo "QA must never target production Supabase" >&2; exit 1; }
+          [[ "${CYA_QA_BOOTSTRAP_URL}" != *"ldvyeyhzrepaaouzavgs"* ]] || { echo "QA bootstrap must never target production Supabase" >&2; exit 1; }
+          [[ "${NEXT_PUBLIC_SUPABASE_URL}" == "https://qlngfkzmncihtdzktcmd.supabase.co" ]] || { echo "QA must target the dedicated CYA Hub Staging Supabase project." >&2; exit 1; }
 
       - name: Validate canonical documentation sequence
         run: node --test tests/documentation-consistency.test.mjs
@@ -57,20 +64,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          oidc_json="$(curl --fail --silent --show-error \
-            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=cya-hub-qa")"
+          oidc_json="$(curl --fail --silent --show-error -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=cya-hub-qa")"
           oidc_token="$(jq -er '.value' <<<"${oidc_json}")"
-
-          bootstrap_json="$(curl --fail --silent --show-error \
-            -X POST \
-            -H "Authorization: Bearer ${oidc_token}" \
-            -H "Content-Type: application/json" \
-            "${CYA_QA_BOOTSTRAP_URL}")"
-
+          bootstrap_json="$(curl --fail --silent --show-error -X POST -H "Authorization: Bearer ${oidc_token}" -H "Content-Type: application/json" "${CYA_QA_BOOTSTRAP_URL}")"
           jq -e --arg run_id "${GITHUB_RUN_ID}" '.ok == true and .run_id == $run_id' <<<"${bootstrap_json}" >/dev/null
           jq -e '.fixtures.studentName and .fixtures.projects["iphone-large-chromium"].classId and .fixtures.projects["desktop-chromium"].classId' <<<"${bootstrap_json}" >/dev/null
-
           for role in teacher student admin; do
             upper_role="$(printf '%s' "${role}" | tr '[:lower:]' '[:upper:]')"
             email="$(jq -er ".credentials.${role}.email" <<<"${bootstrap_json}")"
@@ -79,7 +77,6 @@ jobs:
             printf 'QA_%s_EMAIL=%s\n' "${upper_role}" "${email}" >> "${GITHUB_ENV}"
             printf 'QA_%s_PASSWORD=%s\n' "${upper_role}" "${password}" >> "${GITHUB_ENV}"
           done
-
           printf 'QA_FIXTURES_JSON=%s\n' "$(jq -c '.fixtures' <<<"${bootstrap_json}")" >> "${GITHUB_ENV}"
           printf 'QA_RUN_ID=%s\n' "${GITHUB_RUN_ID}" >> "${GITHUB_ENV}"
 
@@ -132,6 +129,10 @@ jobs:
           cat qa/app-server.log
           exit 1
 
+      - name: Run fast visual design gate
+        working-directory: qa
+        run: npm run test:visual
+
       - name: Run browser QA
         working-directory: qa
         run: npm run test:e2e
@@ -140,11 +141,14 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v5
         with:
-          name: cya-browser-qa-${{ github.run_id }}
+          name: cya-browser-qa-staging-${{ github.run_id }}
           path: |
             playwright-report/
             test-results/
-            qa/app-server.log
+            test-results-visual/
+            qa/playwright-report/
+            qa/test-results/
             qa/lint.log
+            qa/app-server.log
           if-no-files-found: warn
           retention-days: 14

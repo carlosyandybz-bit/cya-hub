@@ -1,0 +1,28 @@
+=== Dark Class safe-area contract ===
+  viewportFit: "cover",
+@supports (padding-top: env(safe-area-inset-top)) {
+    padding-top:calc(12px + env(safe-area-inset-top));
+  .p0f-sticky-search{top:env(safe-area-inset-top)}
+  .p0f-content-tabs{top:calc(62px + env(safe-area-inset-top))}
+  @supports (padding-top: env(safe-area-inset-top)) {
+    .p0f-content-tabs{top:calc(62px + env(safe-area-inset-top))}
+  .p0f-sticky-search{top:env(safe-area-inset-top)}
+  .p0f-content-tabs{top:calc(62px + env(safe-area-inset-top))}
+    .p0f-content-tabs{top:calc(62px + env(safe-area-inset-top))}
+safe_area_exit=0
+=== npm ci ===
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+
+added 522 packages in 20s
+npm_ci_exit=0
+=== npm run build ===
+
+> cya-hub-web@0.2.0 prebuild
+> node scripts/assert-environment-boundary.mjs && node scripts/assert-visual-contract.mjs && node --test tests/staging-integrations-regression.test.mjs
+
+
+[CYA environment boundary] No se puede verificar el entorno. Define NEXT_PUBLIC_SUPABASE_URL con el proyecto staging/production correcto o usa CYA_ALLOW_UNVERIFIED_LOCAL_BUILD=1 únicamente para un build local no CI.
+
+npm_build_exit=1
+VERIFICATION=FAIL

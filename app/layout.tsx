@@ -1,13 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { GoogleCalendarAutoSync } from "./google-calendar-auto-sync";
 import { ModalScrollLock } from "./modal-scroll-lock";
 import { PullToRefresh } from "./pull-to-refresh";
 import { CyaModuleTheme } from "./cya-module-theme";
 import { StudentCardContactActions } from "./student-card-contact-actions";
 import { ClassMediaUploadGuard } from "./class-media-upload-guard";
-import { ClassConfirmationPrompt } from "./class-confirmation-prompt";
 import { LiveSearchCreateEnhancer } from "./live-search-create-enhancer";
+import { ClassDefaultsHydrator } from "./class-defaults-hydrator";
+import { StudentMasterStaffControls } from "./student-master-staff-controls";
+import { StudentMasterEvaluationAccess } from "./student-master-evaluation-access";
+import { GoogleCalendarAutoSync } from "./google-calendar-auto-sync";
+import { ClassConfirmationPrompt } from "./class-confirmation-prompt";
 import "./globals.css";
 import "./visual-audit-v21.css";
 import "./visual-density-v22.css";
@@ -27,8 +30,10 @@ import "./cya-game-ux-system.css";
 import "./p36-professor-home.css";
 import "./p36-students.css";
 import "./p36-agenda.css";
-import "./calendar-visual-main.css";
 import "./calendar-identity-polish.css";
+import "./calendar-visual-main.css";
+import "./class-confirmation-prompt.css";
+import "./class-confirmation-agenda.css";
 import "./p36-live-class.css";
 import "./p36-teaching.css";
 import "./p36-marketing.css";
@@ -53,8 +58,6 @@ import "./cya-module-interaction-states-v58.css";
 import "./cya-ui-polish-v59.css";
 import "./teaching-block-b.css";
 import "./pull-to-refresh.css";
-import "./class-confirmation-prompt.css";
-import "./class-confirmation-agenda.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -110,11 +113,14 @@ export default function RootLayout({
         <CyaModuleTheme />
         <ModalScrollLock />
         <PullToRefresh />
-        <GoogleCalendarAutoSync />
-        <StudentCardContactActions />
         <ClassMediaUploadGuard />
-        <ClassConfirmationPrompt />
+        <StudentCardContactActions />
         <LiveSearchCreateEnhancer />
+        <ClassDefaultsHydrator />
+        <StudentMasterStaffControls />
+        <StudentMasterEvaluationAccess />
+        <GoogleCalendarAutoSync />
+        <ClassConfirmationPrompt />
         {children}
       </body>
     </html>

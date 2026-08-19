@@ -1,0 +1,129 @@
+name: CYA Design System v51 proof
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'app/cya-design-system-v51.css'
+      - 'app/staging-lab/design-system/**'
+      - 'app/layout.tsx'
+      - '.github/workflows/design-system-v51-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      NEXT_PUBLIC_SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: staging
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install app
+        run: npm ci
+      - name: Verify production build
+        id: build
+        continue-on-error: true
+        run: npm run build
+      - name: Install Playwright harness
+        working-directory: qa
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium
+        working-directory: qa
+        run: npx playwright install --with-deps chromium
+      - name: Start design-system playground
+        id: playground
+        continue-on-error: true
+        shell: bash
+        run: |
+          npm run dev > /tmp/v51.log 2>&1 &
+          for i in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3000/staging-lab/design-system >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/v51.log
+          exit 1
+      - name: Validate v51 primitives
+        id: visual
+        if: steps.playground.outcome == 'success'
+        continue-on-error: true
+        working-directory: qa
+        shell: bash
+        run: |
+          node --input-type=module <<'EOF'
+          import { chromium } from '@playwright/test';
+          const browser = await chromium.launch({headless:true});
+          for (const viewport of [{width:390,height:844},{width:1280,height:900}]) {
+            const context = await browser.newContext({viewport});
+            const page = await context.newPage();
+            const errors=[];
+            page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text())});
+            await page.goto('http://127.0.0.1:3000/staging-lab/design-system',{waitUntil:'networkidle'});
+            if (!(await page.getByTestId('v51-playground').isVisible())) throw new Error('playground missing');
+            const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+            if (overflow>1) throw new Error(`horizontal overflow ${overflow}px at ${viewport.width}`);
+            const targets=await page.locator('button:visible').evaluateAll(nodes=>nodes.map(el=>{const r=el.getBoundingClientRect();return {text:(el.textContent||el.getAttribute('aria-label')||'').trim(),w:r.width,h:r.height}}));
+            const bad=targets.filter(t=>t.w<44||t.h<44);
+            if (bad.length) throw new Error(`undersized targets at ${viewport.width}: ${JSON.stringify(bad)}`);
+            const field=page.getByLabel('Nombre');
+            await field.focus();
+            const focused=await field.evaluate(el=>({shadow:getComputedStyle(el).boxShadow,border:getComputedStyle(el).borderColor}));
+            if (!focused.shadow || focused.shadow==='none') throw new Error('field focus ring missing');
+            const activity=page.getByRole('button',{name:'Actividad'});
+            await activity.click();
+            if (!(await activity.getAttribute('class'))?.includes('active')) throw new Error('active tab state missing');
+            await page.getByRole('button',{name:'Abrir prueba'}).click();
+            const modal=page.getByRole('dialog',{name:'Modal de prueba'});
+            const box=await modal.boundingBox();
+            if(!box) throw new Error('modal missing');
+            if(box.x<0||box.y<0||box.x+box.width>viewport.width+1||box.y+box.height>viewport.height+1) throw new Error(`modal outside viewport ${viewport.width}`);
+            if(errors.length) throw new Error(`console errors: ${errors.join(' | ')}`);
+            await context.close();
+          }
+          const reduced=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
+          const reducedPage=await reduced.newPage();
+          await reducedPage.goto('http://127.0.0.1:3000/staging-lab/design-system',{waitUntil:'networkidle'});
+          const duration=await reducedPage.getByRole('button',{name:'Acción principal'}).evaluate(el=>getComputedStyle(el).transitionDuration);
+          if(!duration.includes('0.01ms')&&!duration.includes('0s')) throw new Error(`reduced motion not respected: ${duration}`);
+          await reduced.close();
+          await browser.close();
+          console.log('CYA_V51_PROOF=PASS');
+          EOF
+      - name: Record v51 QA result
+        if: always()
+        shell: bash
+        env:
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PLAYGROUND_OUTCOME: ${{ steps.playground.outcome }}
+          VISUAL_OUTCOME: ${{ steps.visual.outcome }}
+        run: |
+          status=PASS
+          if [ "$BUILD_OUTCOME" != success ] || [ "$PLAYGROUND_OUTCOME" != success ] || [ "$VISUAL_OUTCOME" != success ]; then status=FAIL; fi
+          mkdir -p docs/qa
+          cat > docs/qa/design-system-v51-latest.json <<EOF
+          {
+            "status": "$status",
+            "tested_commit": "$(git rev-parse HEAD)",
+            "build": "$BUILD_OUTCOME",
+            "playground": "$PLAYGROUND_OUTCOME",
+            "playwright": "$VISUAL_OUTCOME",
+            "viewports": ["390x844", "1280x900"],
+            "screenshots_generated": false
+          }
+          EOF
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/qa/design-system-v51-latest.json
+          git commit -m "qa(staging): record design-system-v51 $status" || exit 0
+          git push origin HEAD:staging
+          test "$status" = PASS

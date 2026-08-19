@@ -19,9 +19,9 @@ const moduleGates = [
 
 const p32 = readFileSync(".github/workflows/p32-release-qa.yml", "utf8");
 const e2e = readFileSync(".github/workflows/cya-qa-e2e.yml", "utf8");
-const mainGate = readFileSync(".github/workflows/validate-evaluation-v35.yml", "utf8");
+const stagingGate = readFileSync(".github/workflows/validate-evaluation-v35.yml", "utf8");
 
-test("module regression gates do not duplicate every pull request to main", () => {
+test("module regression gates remain manually dispatchable without duplicating every staging PR", () => {
   for (const path of moduleGates) {
     const workflow = readFileSync(path, "utf8");
     assert.doesNotMatch(workflow, /\bpull_request\s*:/, path);
@@ -29,19 +29,22 @@ test("module regression gates do not duplicate every pull request to main", () =
   }
 });
 
-test("P32 is the canonical contract gate for pull requests to main", () => {
-  assert.match(p32, /pull_request:\s*\n\s*branches: \[main\]/);
+test("P32 is the canonical contract gate for pull requests to staging", () => {
+  assert.match(p32, /pull_request:\s*\n\s*branches: \[staging\]/);
+  assert.doesNotMatch(p32, /branches: \[main\]/);
   assert.match(p32, /tests\/postrelease-teacher-invite\.test\.mjs/);
 });
 
-test("browser QA runs once per PR and remains dispatchable for main", () => {
-  assert.doesNotMatch(e2e, /^\s*push\s*:/m);
-  assert.match(e2e, /pull_request:\s*\n\s*branches:\s*\n\s*- main/);
+test("browser QA runs on staging pushes and PRs and remains manually dispatchable", () => {
+  assert.match(e2e, /push:\s*\n\s*branches:\s*\n\s*- staging/);
+  assert.match(e2e, /pull_request:\s*\n\s*branches:\s*\n\s*- staging/);
+  assert.doesNotMatch(e2e, /\n\s*- main\s*$/m);
   assert.match(e2e, /workflow_dispatch\s*:/);
 });
 
-test("main always receives one canonical build validation", () => {
-  assert.match(mainGate, /push:\s*\n\s*branches: \[main\]/);
-  assert.doesNotMatch(mainGate, /\n\s*paths\s*:/);
-  assert.match(mainGate, /npm run build/);
+test("staging always receives one canonical build validation", () => {
+  assert.match(stagingGate, /push:\s*\n\s*branches: \[staging\]/);
+  assert.doesNotMatch(stagingGate, /branches: \[main\]/);
+  assert.doesNotMatch(stagingGate, /\n\s*paths\s*:/);
+  assert.match(stagingGate, /npm run build/);
 });

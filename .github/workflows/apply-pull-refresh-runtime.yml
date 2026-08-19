@@ -1,0 +1,39 @@
+name: Apply pull refresh runtime
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'scripts/apply-pull-refresh-runtime.mjs'
+      - '.github/workflows/apply-pull-refresh-runtime.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: staging
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Apply deterministic runtime bridge
+        run: node scripts/apply-pull-refresh-runtime.mjs
+      - name: Verify only intended runtime files changed
+        shell: bash
+        run: |
+          changed="$(git diff --name-only)"
+          printf '%s\n' "$changed"
+          test "$changed" = $'app/cya-app.tsx\napp/student-portal-prf.tsx'
+      - name: Commit runtime bridge
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/cya-app.tsx app/student-portal-prf.tsx
+          git commit -m 'staging: connect pull refresh to live portal data'
+          git push origin HEAD:staging

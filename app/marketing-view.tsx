@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useMemo, useState } from "react";
+import { CrmPersonExplorer } from "./crm-person-explorer";
 import {
   MarketingView as LegacyMarketingView,
   type CampaignMetric,
@@ -121,6 +122,7 @@ export function MarketingView(props: {
   const visibleBonuses = bonuses.filter((bonus) => bonus.active_grant_count > 0 || bonus.latest_grant_label);
 
   return <>
+    <CrmPersonExplorer db={props.db} refreshToken={contacts.length} notify={props.notify} />
     {visibleBonuses.length ? <details className="card pad p29-bonus-summary">
       <summary>Bonos vinculados al CRM · {visibleBonuses.length}</summary>
       <div className="p29-bonus-list">

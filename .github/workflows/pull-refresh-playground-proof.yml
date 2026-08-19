@@ -1,0 +1,199 @@
+name: Pull refresh Playground proof
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'app/pull-to-refresh.tsx'
+      - 'app/pull-to-refresh.css'
+      - 'app/layout.tsx'
+      - 'app/cya-app.tsx'
+      - 'app/student-portal-prf.tsx'
+      - 'app/home-view.tsx'
+      - 'app/agenda-view.tsx'
+      - 'app/notifications-view.tsx'
+      - 'app/admin-view.tsx'
+      - 'app/academy-online-teacher.tsx'
+      - 'app/statistics-explorer.tsx'
+      - 'app/staging-lab/pull-refresh-playground/**'
+      - '.github/workflows/pull-refresh-playground-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      NEXT_PUBLIC_SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: staging
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install app
+        run: npm ci
+      - name: Verify production build
+        id: build
+        continue-on-error: true
+        run: npm run build
+      - name: Install Playwright harness
+        working-directory: qa
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium
+        working-directory: qa
+        run: npx playwright install --with-deps chromium
+      - name: Start playground
+        id: playground
+        continue-on-error: true
+        shell: bash
+        run: |
+          npm run dev > /tmp/pull-refresh-playground.log 2>&1 &
+          for i in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3000/staging-lab/pull-refresh-playground >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/pull-refresh-playground.log
+          exit 1
+      - name: Exercise pull gesture and context preservation
+        id: gesture
+        if: steps.playground.outcome == 'success'
+        continue-on-error: true
+        working-directory: qa
+        shell: bash
+        run: |
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+          import { chromium } from '@playwright/test';
+          const mark = (value) => fs.writeFileSync('/tmp/pull-refresh-stage', value);
+          mark('launch');
+          const browser = await chromium.launch({headless:true});
+          const context = await browser.newContext({viewport:{width:390,height:844}, isMobile:true, hasTouch:true, deviceScaleFactor:1});
+          const page = await context.newPage();
+          const errors = [];
+          page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
+          const url = 'http://127.0.0.1:3000/staging-lab/pull-refresh-playground?tab=progress';
+          mark('navigation');
+          await page.goto(url, {waitUntil:'networkidle'});
+          if (!(await page.getByTestId('pull-refresh-playground').isVisible())) throw new Error('Playground did not render');
+          mark('playground-visible');
+          const indicator = page.getByTestId('cya-pull-refresh');
+          const input = page.getByTestId('context-input');
+          const stamp = page.getByTestId('server-stamp');
+          const beforeStamp = await stamp.textContent();
+          await input.fill('Borrador preservado');
+          await input.blur();
+          await page.evaluate(() => window.scrollTo(0, 0));
+          await page.waitForFunction(() => window.scrollY === 0 && document.documentElement.scrollTop === 0 && document.body.scrollTop === 0);
+          mark('exact-scroll-top');
+
+          const beginPull = async (fromY, toY) => page.evaluate(async ({fromY, toY}) => {
+            const target = document.body;
+            const dispatch = (type, y) => target.dispatchEvent(new PointerEvent(type, {
+              bubbles: true,
+              cancelable: true,
+              pointerId: 7,
+              pointerType: 'touch',
+              isPrimary: true,
+              clientX: 195,
+              clientY: y,
+              screenX: 195,
+              screenY: y,
+              buttons: type === 'pointerup' ? 0 : 1,
+              pressure: type === 'pointerup' ? 0 : .5,
+            }));
+            dispatch('pointerdown', fromY);
+            let phase = document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') ?? 'missing';
+            for (const y of [fromY + 50, fromY + 100, fromY + 150, toY]) {
+              dispatch('pointermove', y);
+              await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+              await new Promise((resolve) => setTimeout(resolve, 35));
+              phase = document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') ?? 'missing';
+            }
+            return phase;
+          }, {fromY, toY});
+
+          const endPull = async (toY) => page.evaluate((toY) => {
+            document.body.dispatchEvent(new PointerEvent('pointerup', {
+              bubbles: true,
+              cancelable: true,
+              pointerId: 7,
+              pointerType: 'touch',
+              isPrimary: true,
+              clientX: 195,
+              clientY: toY,
+              screenX: 195,
+              screenY: toY,
+              buttons: 0,
+              pressure: 0,
+            }));
+          }, toY);
+
+          mark('first-pull-moves');
+          const armedPhase = await beginPull(80, 280);
+          mark(`after-moves-${armedPhase}`);
+          if (armedPhase !== 'armed') throw new Error(`Pull did not arm; phase=${armedPhase}`);
+          await endPull(280);
+          mark('wait-success-state');
+          await page.waitForFunction(() => document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') === 'success', null, {timeout:7000});
+          mark('success-state');
+          if (!(await indicator.textContent())?.includes('Actualizado')) throw new Error('Success label missing');
+          mark('wait-server-refresh');
+          await page.waitForFunction((oldStamp) => document.querySelector('[data-testid="server-stamp"]')?.textContent !== oldStamp, beforeStamp, {timeout:7000});
+          mark('server-refreshed');
+          if (await input.inputValue() !== 'Borrador preservado') throw new Error('Client context reset');
+          mark('context-preserved');
+          if (page.url() !== url) throw new Error(`URL changed: ${page.url()}`);
+          mark('url-preserved');
+
+          await page.waitForFunction(() => document.querySelector('[data-testid="cya-pull-refresh"]')?.getAttribute('data-phase') === 'idle', null, {timeout:3000});
+          await page.evaluate(() => window.scrollTo(0, 700));
+          await page.waitForFunction(() => window.scrollY > 0);
+          const scrolledStamp = await stamp.textContent();
+          mark('scrolled-pull');
+          const scrolledPhase = await beginPull(120, 320);
+          await endPull(320);
+          await new Promise(r => setTimeout(r, 650));
+          if (scrolledPhase === 'armed' || await stamp.textContent() !== scrolledStamp) throw new Error(`Refresh activated away from scroll top; phase=${scrolledPhase}`);
+          mark('scroll-guard');
+          if (errors.length) throw new Error(`Console errors: ${errors.join(' | ')}`);
+          mark('complete');
+          await browser.close();
+          EOF
+      - name: Record QA outcome
+        if: always()
+        shell: bash
+        env:
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PLAYGROUND_OUTCOME: ${{ steps.playground.outcome }}
+          GESTURE_OUTCOME: ${{ steps.gesture.outcome }}
+        run: |
+          status=PASS
+          if [ "$BUILD_OUTCOME" != success ] || [ "$PLAYGROUND_OUTCOME" != success ] || [ "$GESTURE_OUTCOME" != success ]; then status=FAIL; fi
+          stage="$(cat /tmp/pull-refresh-stage 2>/dev/null || echo not-started)"
+          mkdir -p docs/qa
+          cat > docs/qa/pull-refresh-latest.json <<EOF
+          {
+            "status": "$status",
+            "tested_commit": "$(git rev-parse HEAD)",
+            "viewport": "390x844",
+            "build": "$BUILD_OUTCOME",
+            "playground": "$PLAYGROUND_OUTCOME",
+            "gesture": "$GESTURE_OUTCOME",
+            "gesture_stage": "$stage",
+            "screenshots_generated": false
+          }
+          EOF
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/qa/pull-refresh-latest.json
+          git commit -m "qa(staging): record pull-refresh $status at $stage" || exit 0
+          git push origin HEAD:staging
+          test "$status" = PASS

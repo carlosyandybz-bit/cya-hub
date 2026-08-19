@@ -1,0 +1,76 @@
+name: Header Playground visual proof
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'app/canonical-app-chrome.css'
+      - 'app/staging-lab/header-playground/**'
+      - 'qa/tests/student-header-playground.spec.ts'
+      - '.github/workflows/header-playground-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CI: 'true'
+      NEXT_PUBLIC_SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install app
+        run: npm ci
+      - name: Install Playwright harness
+        working-directory: qa
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium
+        working-directory: qa
+        run: npx playwright install --with-deps chromium
+      - name: Start playground
+        shell: bash
+        run: |
+          npm run dev > /tmp/header-playground.log 2>&1 &
+          for i in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3000/staging-lab/header-playground >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/header-playground.log
+          exit 1
+      - name: Render and measure playground
+        working-directory: qa
+        shell: bash
+        run: |
+          node --input-type=module <<'EOF'
+          import { chromium } from '@playwright/test';
+          import fs from 'node:fs';
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({viewport:{width:390,height:844}, deviceScaleFactor:1});
+          await page.goto('http://127.0.0.1:3000/staging-lab/header-playground', {waitUntil:'networkidle'});
+          const header = page.getByTestId('student-header-playground');
+          const brand = header.getByRole('button', {name:'Ir a Inicio'});
+          const hb = await header.boundingBox();
+          const bb = await brand.boundingBox();
+          if (!hb || !bb) throw new Error('Header/brand bounding box unavailable');
+          const inset = bb.x - hb.x;
+          console.log(`HEADER_PLAYGROUND_INSET=${inset}`);
+          if (inset < 8 || inset > 12) throw new Error(`Brand inset must be 8-12px, got ${inset}`);
+          fs.mkdirSync('test-results-visual', {recursive:true});
+          await page.screenshot({path:'test-results-visual/header-playground-390x844.png', fullPage:false});
+          await browser.close();
+          EOF
+      - name: Upload screenshot proof
+        uses: actions/upload-artifact@v5
+        with:
+          name: header-playground-proof-${{ github.run_id }}
+          path: qa/test-results-visual/header-playground-390x844.png
+          if-no-files-found: error
+          retention-days: 7

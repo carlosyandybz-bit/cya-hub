@@ -1,0 +1,28 @@
+name: Fix evaluation summary metric v101
+on:
+  push:
+    branches: [staging]
+    paths: ['.github/workflows/fix-evaluation-summary-metric-v101.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: staging }
+      - run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('app/student-detail.tsx')
+          s=p.read_text()
+          old='<article><TrendingUp /><span>Evaluación media</span><strong>{averageScore === null ? "Sin evaluar" : `${averageScore}/100`}</strong></article>'
+          new='<article><TrendingUp /><span>Evaluación</span><strong>{evaluations.length ? "Registrada" : "Sin evaluar"}</strong><small>{evaluations.length ? "Ver hitos y evolución" : "Todavía sin referencia"}</small></article>'
+          if old not in s: raise SystemExit('old summary metric missing')
+          p.write_text(s.replace(old,new,1))
+          PY
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add app/student-detail.tsx
+          git commit -m "Remove obsolete average evaluation metric"
+          git push origin HEAD:staging

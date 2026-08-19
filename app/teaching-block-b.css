@@ -30,6 +30,19 @@
 .teaching-graph-shell .flow-node.selected{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.12),0 15px 38px rgba(0,0,0,.24)}
 .teaching-graph-shell .flow-node .react-flow__handle{width:8px;height:8px;border:2px solid #10141a;background:rgba(255,255,255,.9)}
 
+.teaching-graph-shell .level-band-node{pointer-events:none!important;border:0!important;background:transparent!important;box-shadow:none!important}
+.teaching-graph-shell .graph-level-band{position:relative;width:100%;height:100%;box-sizing:border-box;border:1px solid;border-radius:30px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025);pointer-events:none;overflow:hidden}
+.teaching-graph-shell .graph-level-band::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.018),transparent 45%);pointer-events:none}
+.teaching-graph-shell .graph-level-band>strong{position:absolute;left:22px;top:18px;z-index:1;font-size:15px;font-weight:860;letter-spacing:.015em}
+.teaching-graph-shell .graph-level-band>span{position:absolute;left:23px;top:40px;z-index:1;font-size:9px;font-weight:760;letter-spacing:.14em;text-transform:uppercase;opacity:.58}
+.teaching-graph-shell .graph-tree-scope-hint{display:flex;align-items:center;gap:8px;margin:0 0 10px;padding:9px 11px;border:1px solid color-mix(in srgb,var(--cya-module-accent) 20%,var(--cya-line));border-radius:12px;background:color-mix(in srgb,var(--cya-module-accent) 5%,transparent);color:var(--cya-text-muted);font-size:10.5px;line-height:1.4}
+.teaching-graph-shell .graph-tree-scope-hint svg{width:15px;height:15px;color:var(--cya-module-accent);flex:0 0 auto}
+.teaching-graph-shell .graph-tree-error{margin:0 0 10px}
+.teaching-graph-shell .graph-tree-mandatory-control{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 11px;padding:11px 12px;border:1px solid rgba(232,184,77,.22);border-radius:13px;background:rgba(232,184,77,.055)}
+.teaching-graph-shell .graph-tree-mandatory-control>div{display:grid;gap:3px;min-width:0}.teaching-graph-shell .graph-tree-mandatory-control strong{font-size:11px;color:var(--cya-text)}.teaching-graph-shell .graph-tree-mandatory-control small{font-size:9.5px;line-height:1.35;color:var(--cya-text-muted)}
+.teaching-graph-shell .graph-tree-mandatory-control button{flex:0 0 auto;min-height:34px;padding:0 10px;border:1px solid rgba(232,184,77,.28);border-radius:9px;background:rgba(232,184,77,.08);color:#e8c56d;font-size:9.5px;font-weight:820;cursor:pointer}
+.teaching-graph-shell .graph-tree-mandatory-control button.active{background:rgba(232,184,77,.18);border-color:rgba(232,184,77,.45);color:#ffdc85}.teaching-graph-shell .graph-tree-mandatory-control button:disabled{opacity:.45;cursor:not-allowed}
+
 .teaching-graph-shell .flow-edge .react-flow__edge-path{stroke:rgba(157,168,182,.62);stroke-width:1.75;fill:none;stroke-linejoin:round;stroke-linecap:round}
 .teaching-graph-shell .flow-edge.relation-prerequisite .react-flow__edge-path{stroke:rgba(207,218,229,.88);stroke-width:2.3}
 .teaching-graph-shell .flow-edge.relation-exercise_explanation .react-flow__edge-path,.teaching-graph-shell .flow-edge.relation-exercise_correction .react-flow__edge-path,.teaching-graph-shell .flow-edge.relation-related .react-flow__edge-path,.teaching-graph-shell .flow-edge.relation-counterpart .react-flow__edge-path,.teaching-graph-shell .flow-edge.relation-sequence_item .react-flow__edge-path{stroke:rgba(133,147,162,.52);stroke-width:1.35}
@@ -55,5 +68,5 @@
 .teaching-mandatory-toggle>input{width:20px!important;height:20px!important;min-height:0!important;margin:0;accent-color:#d5a843}
 .teaching-mandatory-toggle>span{display:grid;gap:2px}.teaching-mandatory-toggle strong{color:var(--cya-text);font-size:12px}.teaching-mandatory-toggle small{color:var(--cya-text-muted);font-size:10.5px;line-height:1.35}
 
-@media(max-width:760px){.teaching-graph-shell .flow-node{width:225px;min-height:134px;padding:13px 14px}.teaching-graph-shell .flow-node>strong{font-size:12.5px}.teaching-graph-shell .flow-node-summary{-webkit-line-clamp:3}.derived-chain-bar{align-items:stretch;flex-direction:column}.derived-chain-bar button{justify-content:center}}
+@media(max-width:760px){.teaching-graph-shell .flow-node{width:225px;min-height:134px;padding:13px 14px}.teaching-graph-shell .flow-node>strong{font-size:12.5px}.teaching-graph-shell .flow-node-summary{-webkit-line-clamp:3}.derived-chain-bar{align-items:stretch;flex-direction:column}.derived-chain-bar button{justify-content:center}.teaching-graph-shell .graph-tree-mandatory-control{align-items:stretch;flex-direction:column}.teaching-graph-shell .graph-tree-mandatory-control button{width:100%}}
 @media(prefers-reduced-motion:reduce){.teaching-graph-shell .flow-node{transition:none}}

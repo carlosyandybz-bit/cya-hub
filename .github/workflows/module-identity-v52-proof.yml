@@ -1,0 +1,139 @@
+name: CYA Module Identity v52 proof
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'app/cya-module-theme.tsx'
+      - 'app/cya-module-identity-v52.css'
+      - 'app/staging-lab/module-identity/**'
+      - 'app/layout.tsx'
+      - '.github/workflows/module-identity-v52-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      NEXT_PUBLIC_SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: staging
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install app
+        run: npm ci
+      - name: Verify production build
+        id: build
+        continue-on-error: true
+        run: npm run build
+      - name: Install Playwright harness
+        working-directory: qa
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium
+        working-directory: qa
+        run: npx playwright install --with-deps chromium
+      - name: Start playground
+        id: playground
+        continue-on-error: true
+        shell: bash
+        run: |
+          npm run dev > /tmp/v52.log 2>&1 &
+          for i in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:3000/staging-lab/module-identity >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/v52.log
+          exit 1
+      - name: Validate module identity
+        id: visual
+        if: steps.playground.outcome == 'success'
+        continue-on-error: true
+        working-directory: qa
+        shell: bash
+        run: |
+          node --input-type=module <<'EOF'
+          import { chromium } from '@playwright/test';
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({viewport:{width:390,height:844}});
+          const page=await context.newPage();
+          const errors=[];
+          page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text())});
+          await page.goto('http://127.0.0.1:3000/staging-lab/module-identity',{waitUntil:'networkidle'});
+          const root=page.getByTestId('module-identity-playground');
+          if(!(await root.isVisible())) throw new Error('playground missing');
+          const labels=['Inicio','Alumnado','Dar clase','Enseñanza','Marketing','Administración','Progreso alumno','Mi formación','Descubre','Misiones'];
+          const seen=new Set();
+          for(const label of labels){
+            await page.getByRole('tab',{name:label}).click();
+            const result=await page.evaluate(()=>{
+              const body=getComputedStyle(document.body);
+              const btn=document.querySelector('.btn:not(.ghost)');
+              const central=document.querySelector('.mobile-nav button.primary');
+              return {
+                module:document.body.dataset.cyaModule,
+                accent:body.getPropertyValue('--cya-module-accent').trim(),
+                btnBg:btn?getComputedStyle(btn).backgroundImage:'',
+                centralBg:central?getComputedStyle(central).backgroundImage:'',
+                overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
+              };
+            });
+            if(!result.module||!result.accent) throw new Error(`theme missing for ${label}`);
+            if(seen.has(result.accent)) throw new Error(`duplicate module accent ${result.accent}`);
+            seen.add(result.accent);
+            if(result.overflow>1) throw new Error(`overflow ${result.overflow}px in ${label}`);
+            if(!result.btnBg.includes('gradient')) throw new Error(`primary button not themed in ${label}`);
+            if(!result.centralBg.includes('gradient')) throw new Error(`central control not themed in ${label}`);
+          }
+          const mark=await page.evaluate(()=>getComputedStyle(document.body,'::before').webkitMaskImage || getComputedStyle(document.body,'::before').maskImage);
+          if(!mark.includes('cya-logo.png')) throw new Error('global CYA watermark missing');
+          const focus=await page.getByLabel('Campo de prueba').evaluate(el=>{el.focus();return getComputedStyle(el).boxShadow});
+          if(!focus||focus==='none') throw new Error('focus accent missing');
+          if(errors.length) throw new Error(errors.join(' | '));
+          await context.close();
+          const reduced=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
+          const rp=await reduced.newPage();
+          await rp.goto('http://127.0.0.1:3000/staging-lab/module-identity',{waitUntil:'networkidle'});
+          const animation=await rp.evaluate(()=>getComputedStyle(document.body,'::before').animationName);
+          if(animation!=='none') throw new Error(`watermark animation not reduced: ${animation}`);
+          await reduced.close();
+          await browser.close();
+          console.log('CYA_V52_PROOF=PASS');
+          EOF
+      - name: Record result
+        if: always()
+        shell: bash
+        env:
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PLAYGROUND_OUTCOME: ${{ steps.playground.outcome }}
+          VISUAL_OUTCOME: ${{ steps.visual.outcome }}
+        run: |
+          status=PASS
+          if [ "$BUILD_OUTCOME" != success ] || [ "$PLAYGROUND_OUTCOME" != success ] || [ "$VISUAL_OUTCOME" != success ]; then status=FAIL; fi
+          mkdir -p docs/qa
+          cat > docs/qa/module-identity-v52-latest.json <<EOF
+          {
+            "status": "$status",
+            "tested_commit": "$(git rev-parse HEAD)",
+            "build": "$BUILD_OUTCOME",
+            "playground": "$PLAYGROUND_OUTCOME",
+            "playwright": "$VISUAL_OUTCOME",
+            "viewport": "390x844",
+            "screenshots_generated": false
+          }
+          EOF
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/qa/module-identity-v52-latest.json
+          git commit -m "qa(staging): record module identity v52 $status" || exit 0
+          git push origin HEAD:staging
+          test "$status" = PASS

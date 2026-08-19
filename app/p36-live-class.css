@@ -14,3 +14,24 @@
 @media(max-width:760px){.live-body{padding-inline:10px}.student-context{padding:10px 11px}.p0f-primary-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.p0f-primary-tabs>button{min-height:44px;font-size:11.5px}.p0f-content-tabs{top:62px;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.p0f-content-tabs>button{min-height:44px;font-size:11.5px}.live-card{padding:14px!important}.unified-result{grid-template-columns:minmax(0,1fr);gap:7px}.unified-result-actions{width:100%}.unified-result-actions>.btn,.unified-result-actions>select{min-height:44px}.workflow-footer{display:grid;grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr);gap:7px}.workflow-footer .btn{width:100%}}
 @media(max-width:420px){.live-body{padding-inline:8px}.live-search{min-height:48px}.p0f-primary-tabs>button,.p0f-content-tabs>button{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.live-dot{animation:none!important}.live-card,.unified-result,.p0f-primary-tabs>button,.p0f-content-tabs>button{transition:none!important}}
+
+/* iPhone/PWA: Dark Class owns the full viewport, but interactive controls must stay inside the usable safe area. */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .live-shell,.class-workflow-page{min-height:100dvh}
+  .live-top{
+    padding-top:calc(12px + env(safe-area-inset-top));
+    padding-right:max(14px,env(safe-area-inset-right));
+    padding-left:max(14px,env(safe-area-inset-left));
+  }
+  .p0f-sticky-search{top:env(safe-area-inset-top)}
+  .p0f-content-tabs{top:calc(62px + env(safe-area-inset-top))}
+  .workflow-footer{
+    padding-right:max(4px,env(safe-area-inset-right));
+    padding-left:max(4px,env(safe-area-inset-left));
+  }
+}
+@media(max-width:760px){
+  @supports (padding-top: env(safe-area-inset-top)) {
+    .p0f-content-tabs{top:calc(62px + env(safe-area-inset-top))}
+  }
+}
