@@ -42,6 +42,7 @@ import { AcademyOnlineTeacherView } from "./academy-online-teacher";
 import { AcademyOnlineStudentComingSoon } from "./academy-online-student";
 import { DesktopPrimaryNavigation } from "./primary-navigation";
 import { StatisticsView } from "./statistics-view";
+import { StudentExercisesPanel } from "./student-exercises-panel";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 
 const TeachingGraph = lazy(() => import("./teaching-graph").then((module) => ({ default: module.TeachingGraph })));
@@ -132,6 +133,7 @@ type StudentPortalSnapshot = {
     media: TeachingCardMedia[];
   }>;
   evaluations: Array<{ id: number; session_id: number | null; class_id: number | null; score: number; aptitude_term_id: number; aptitude: string; style_term_id: number; style: string; role_term_id: number; role: string; level_term_id: number; level: string; evaluation_kind: string; created_at: string }>;
+  exercises?: Array<{ exercise_id: number; title: string; summary: string | null; description: string | null; requires_partner: boolean; state: "active" | "history"; parent_type: "correction" | "explanation"; parent_content_id: number; parent_title: string; parent_status: string; parent_level: string | null; current_level: string | null; updated_at: string; context_label: string }>;
   class_activity?: Array<{ id: number; class_id: number; content_id: number; title: string; content_type: string; event_type: string; created_at: string }>;
   class_summaries?: Array<{ class_id: number; student_message: string | null; closed_at: string }>;
   class_media?: ClassMediaSnapshot[];
@@ -1472,6 +1474,7 @@ function StudentPortal({ identity, experience, onExperience, client, email, onId
     {pendingDebt > 0 ? <section className="card portal-next"><div><p className="eyebrow">Saldo pendiente</p><h2>{minutesLabel(pendingDebt)} por regularizar</h2><p>Una o más clases quedaron sin saldo suficiente. El profesor puede regularizarlas con un bono o dejar constancia de otra decisión.</p></div><AlertTriangle /></section> : null}
     {nextClass ? <section className="card portal-next"><div><p className="eyebrow">Próxima clase</p><h2>{nextClass.style || "Clase privada"}</h2><p>{dateLabel(nextClass.scheduled_start_at)} · {minutesLabel(nextClass.duration_minutes)}</p></div><div><span>{nextClass.role || "Rol por confirmar"}</span><span>{nextClass.level || "Nivel por confirmar"}</span></div></section> : null}
     <BZPointsPanel client={client} assignments={snapshot.assignments} />
+    <StudentExercisesPanel exercises={snapshot.exercises ?? []} />
     <FeedbackOnlineStudentPanel client={client} />
     <AcademyOnlineStudentComingSoon />
     <section className="portal-grid"><article className="card portal-card"><div className="card-head"><h2>Mi formación</h2><span>{snapshot.assignments.length}</span></div>{snapshot.assignments.length ? <div className="portal-learning-list">{snapshot.assignments.map((assignment) => <TeachingContentCard
