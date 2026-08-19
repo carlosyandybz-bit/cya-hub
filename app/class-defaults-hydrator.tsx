@@ -15,13 +15,10 @@ type ClassPreference = {
   default_partner_person_id: number | null;
 };
 
-type ClassParticipantLite = {
-  person_id: number;
-  role_term_id: number | null;
-};
+type PersonLite = { id: number; display_name: string };
 
 const hydratedSchedule = new WeakMap<Element, number>();
-const hydratedSetup = new WeakMap<Element, number>();
+const hydratedSetup = new WeakMap<Element, string>();
 
 function text(node: Element | null) {
   return node?.textContent?.trim() ?? "";
@@ -56,8 +53,7 @@ async function getPreferences(client: SupabaseClient, personIds: number[]) {
     .from("student_class_preferences")
     .select("person_id,default_location_term_id,default_location_text,default_style_term_id,default_role_term_id,default_duration_minutes,default_class_type,default_partner_person_id")
     .in("person_id", personIds);
-  if (result.error) return [] as ClassPreference[];
-  return (result.data ?? []) as ClassPreference[];
+  return result.error ? [] as ClassPreference[] : (result.data ?? []) as ClassPreference[];
 }
 
 async function hydrateScheduleModal(client: SupabaseClient, modal: Element) {
@@ -70,10 +66,9 @@ async function hydrateScheduleModal(client: SupabaseClient, modal: Element) {
   const [preference] = await getPreferences(client, [personId]);
   if (!preference || !document.contains(modal) || Number(first.value) !== personId) return;
 
-  const segmented = Array.from(modal.querySelectorAll(".segmented button"));
   if (preference.default_class_type) {
     const wanted = preference.default_class_type === "pair" ? "Pareja" : "Individual";
-    const button = segmented.find((item) => text(item) === wanted) as HTMLButtonElement | undefined;
+    const button = Array.from(modal.querySelectorAll(".segmented button")).find((item) => text(item) === wanted) as HTMLButtonElement | undefined;
     if (button && !button.classList.contains("active")) button.click();
   }
 
@@ -110,49 +105,51 @@ async function resolveLocation(client: SupabaseClient, preference: ClassPreferen
   return result.error ? null : String(result.data?.label ?? "").trim() || null;
 }
 
+async function resolveVisiblePeople(client: SupabaseClient, page: Element) {
+  const heading = text(page.querySelector(".workflow-head h1"));
+  const visibleNames = heading.split(" + ").map((value) => value.trim()).filter(Boolean);
+  if (!visibleNames.length || new Set(visibleNames).size !== visibleNames.length) return [] as PersonLite[];
+  const result = await client.from("people").select("id,display_name").in("display_name", visibleNames).eq("active", true);
+  if (result.error) return [] as PersonLite[];
+  const rows = (result.data ?? []) as PersonLite[];
+  if (rows.length !== visibleNames.length) return [] as PersonLite[];
+  if (new Set(rows.map((row) => row.display_name.trim())).size !== rows.length) return [] as PersonLite[];
+  return rows;
+}
+
 async function hydrateSetupPage(client: SupabaseClient, page: Element) {
-  const state = window.history.state as { liveClassId?: number | null } | null;
-  const classId = Number(state?.liveClassId ?? 0);
-  if (!classId || hydratedSetup.get(page) === classId) return;
-  hydratedSetup.set(page, classId);
+  const heading = text(page.querySelector(".workflow-head h1"));
+  if (!heading || hydratedSetup.get(page) === heading) return;
+  hydratedSetup.set(page, heading);
 
-  const classResult = await client
-    .from("classes")
-    .select("id,location_text,class_participants(person_id,role_term_id)")
-    .eq("id", classId)
-    .maybeSingle();
-  if (classResult.error || !classResult.data || !document.contains(page)) return;
-
-  const row = classResult.data as unknown as { id: number; location_text: string | null; class_participants: ClassParticipantLite[] };
-  const participants = row.class_participants ?? [];
-  const personIds = participants.map((participant) => participant.person_id);
-  const preferences = await getPreferences(client, personIds);
+  const people = await resolveVisiblePeople(client, page);
+  if (!people.length || !document.contains(page)) return;
+  const preferences = await getPreferences(client, people.map((person) => person.id));
   if (!preferences.length || !document.contains(page)) return;
 
-  if (!row.location_text?.trim()) {
-    const resolved = await Promise.all(preferences.map((preference) => resolveLocation(client, preference)));
-    const locations = [...new Set(resolved.filter((value): value is string => Boolean(value)))];
-    if (locations.length === 1) {
-      const locationControl = labelControl(page, "Lugar");
-      if (locationControl && !locationControl.value.trim()) setNativeValue(locationControl, locations[0]);
+  const resolved = await Promise.all(preferences.map((preference) => resolveLocation(client, preference)));
+  const locations = [...new Set(resolved.filter((value): value is string => Boolean(value)))];
+  if (locations.length === 1) {
+    let locationControl = labelControl(page, "Lugar");
+    if (!locationControl) {
+      const knownLocation = Array.from(page.querySelectorAll(".setup-known-list span")).some((item) => text(item.querySelector("strong")) === "Lugar");
+      if (!knownLocation) {
+        const edit = page.querySelector(".workflow-edit-data") as HTMLButtonElement | null;
+        if (edit && text(edit).includes("Editar")) {
+          edit.click();
+          await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+          locationControl = labelControl(page, "Lugar");
+        }
+      }
     }
+    if (locationControl && !locationControl.value.trim()) setNativeValue(locationControl, locations[0]);
   }
 
-  const namesResult = await client.from("people").select("id,display_name").in("id", personIds);
-  if (namesResult.error) return;
-  const names = new Map(((namesResult.data ?? []) as Array<{ id: number; display_name: string }>).map((person) => [person.id, person.display_name.trim()]));
-  const duplicateNames = new Set<string>();
-  const seenNames = new Set<string>();
-  names.forEach((name) => { if (seenNames.has(name)) duplicateNames.add(name); else seenNames.add(name); });
-
   const cards = Array.from(page.querySelectorAll(".workflow-people .workflow-card"));
-  for (const participant of participants) {
-    if (participant.role_term_id) continue;
-    const preference = preferences.find((item) => item.person_id === participant.person_id);
+  for (const person of people) {
+    const preference = preferences.find((item) => item.person_id === person.id);
     if (!preference?.default_role_term_id) continue;
-    const personName = names.get(participant.person_id);
-    if (!personName || duplicateNames.has(personName)) continue;
-    const card = cards.find((item) => text(item.querySelector(".prepare-summary strong")) === personName);
+    const card = cards.find((item) => text(item.querySelector(".prepare-summary strong")) === person.display_name.trim());
     if (!card) continue;
     const roleControl = labelControl(card, "Rol");
     if (roleControl instanceof HTMLSelectElement && Array.from(roleControl.options).some((option) => Number(option.value) === preference.default_role_term_id)) {
