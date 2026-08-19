@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { ArrowLeft, CheckCircle2, Plus, Settings2, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { EvaluationTrendSettings } from "../evaluation-trend-settings";
 import styles from "./evaluation-settings.module.css";
 
 type Term = { id:number; taxonomy:string; term_key:string; label:string; sort_order:number; active:boolean };
@@ -179,6 +180,8 @@ export default function EvaluationSettingsClient() {
 
   return <main className={styles.page}>
     <header className={styles.top}><Link href="/" aria-label="Volver"><ArrowLeft/></Link><div><span>Administración · Enseñanza</span><h1>Evaluación y progreso</h1><p>Configura hitos y respuestas observables. El profesor fija la evaluación; el contenido únicamente puede recomendar qué conviene revisar.</p></div></header>
+
+    <EvaluationTrendSettings client={client!} />
 
     <section className={styles.contextCard}><div><strong>Contexto pedagógico</strong><span>Hitos, descriptores y recomendaciones se definen por estilo, rol, nivel y aptitud.</span></div><div className={styles.contextGrid}><label><span>Estilo</span><select value={styleId} onChange={(event)=>setStyleId(Number(event.target.value))}>{stylesList.map((term)=><option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label><span>Rol</span><select value={roleId} onChange={(event)=>setRoleId(Number(event.target.value))}>{rolesList.map((term)=><option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label><span>Nivel</span><select value={levelId} onChange={(event)=>setLevelId(Number(event.target.value))}>{levelsList.map((term)=><option key={term.id} value={term.id}>{term.label}</option>)}</select></label><label><span>Aptitud</span><select value={aptitudeId} onChange={(event)=>setAptitudeId(Number(event.target.value))}>{aptitudes.map((term)=><option key={term.id} value={term.id}>{term.label}</option>)}</select></label></div></section>
 
