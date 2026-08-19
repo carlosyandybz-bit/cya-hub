@@ -21,8 +21,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { TeachingContentCard, type TeachingCardMedia } from "./teaching-content-card";
-import { EvaluationRadar } from "./evaluation-radar";
 import { ContextEvaluationPanel } from "./context-evaluation-panel-p0f";
+import { StudentEvaluationOverviewStaff } from "./student-evaluation-overview-staff";
 import { StudentIdentityEditor } from "./person-identity-editor";
 import { countryName } from "./country-field";
 import { StudentDetailNavigation, type StudentDetailTab } from "./student-detail-navigation";
@@ -390,11 +390,6 @@ export function StudentMasterDetail({
   const crm = crmContact?.crm_profiles?.[0] ?? null;
   const selectedRate = crm?.rate_id ? rates.find((rate) => rate.id === crm.rate_id) ?? null : null;
 
-  const latestByAptitude = new Map<number, Evaluation>();
-  evaluations.forEach((item) => { if (!latestByAptitude.has(item.aptitude_term_id)) latestByAptitude.set(item.aptitude_term_id, item); });
-  const radarItems = [...latestByAptitude.values()].map((item) => ({ id:item.aptitude_term_id,label:termLabel(item.aptitude_term_id,terms),value:item.score as number|null }));
-  const averageScore = radarItems.length ? Math.round(radarItems.reduce((sum, item) => sum + Number(item.value || 0), 0) / radarItems.length) : null;
-
   const issues = [
     ...openIncidents.map((incident) => ({ key: `debt-${incident.id}`, label: `Saldo pendiente: ${minutesLabel(incident.remaining_minutes)}`, tab: "credits" as Tab })),
     ...ownCredits.filter((item) => item.payment_status === "pending").map((item) => ({ key: `payment-${item.id}`, label: "Hay un bono con pago pendiente", tab: "credits" as Tab })),
@@ -466,8 +461,6 @@ export function StudentMasterDetail({
     setFinancialBusy("");
   }
 
-  const evaluationScale=terms.filter((term) => term.taxonomy==='evaluation_scale').map((term) => ({term,score:Number(term.metadata?.score)})).filter(({score}) => [0,25,50,75,100].includes(score)).sort((a,b)=>a.score-b.score);
-
   function renderSummary() {
     return <div className={styles.stack}>
       {issues.length ? <section className={`${styles.issueBox} ${styles.issueBad}`}><header><AlertTriangle /><div><strong>{issues.length === 1 ? "1 incidencia por revisar" : `${issues.length} incidencias por revisar`}</strong><span>CYA las obtiene de los datos actuales, sin duplicar estados.</span></div></header><div>{issues.map((issue) => <button key={issue.key} onClick={() => setTab(issue.tab)}><span>{issue.label}</span><ChevronRight /></button>)}</div></section>
@@ -523,7 +516,7 @@ export function StudentMasterDetail({
   function renderEvaluation() {
     return <div className={styles.evalStack}>
       <section className={styles.sectionCard}><ContextEvaluationPanel client={client} personId={student.id} personName={student.display_name} onCompleted={async () => { setProfileRefresh((value) => value + 1); await refresh(); }} /></section>
-      <div className={styles.evalGrid}><section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Último estado</span><h3>Evolución por aptitud</h3></div>{averageScore !== null ? <b>{averageScore}/100</b> : null}</div>{radarItems.length ? <EvaluationRadar items={radarItems} scale={evaluationScale.map(({term,score}) => ({score,label:term.label}))} readonly ariaLabel={`Última evaluación de ${student.display_name}`} /> : <div className={styles.empty}><TrendingUp /><span>Todavía no hay evaluaciones.</span></div>}</section><section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Historial</span><h3>Evaluaciones registradas</h3></div><b>{evaluations.length}</b></div>{evaluations.length ? <div className={styles.historyList}>{evaluations.slice(0, 30).map((item) => <div key={item.id}><div><strong>{termLabel(item.aptitude_term_id, terms)}</strong><span>{dateLabel(item.created_at)} · {termLabel(item.level_term_id,terms)} · {termLabel(item.style_term_id, terms)} · {termLabel(item.role_term_id, terms)}</span>{item.note ? <small>{item.note}</small> : null}</div><b>{item.score}</b></div>)}</div> : <div className={styles.empty}><TrendingUp /><span>Sin historial de evaluación.</span></div>}</section></div>
+      <div className={styles.evalGrid}><section className={styles.sectionCard}><StudentEvaluationOverviewStaff client={client} personId={student.id} personName={student.display_name} refreshToken={profileRefresh}/></section><section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Historial técnico</span><h3>Evaluaciones registradas</h3></div><b>{evaluations.length}</b></div>{evaluations.length ? <div className={styles.historyList}>{evaluations.slice(0, 30).map((item) => <div key={item.id}><div><strong>{termLabel(item.aptitude_term_id, terms)}</strong><span>{dateLabel(item.created_at)} · {termLabel(item.level_term_id,terms)} · {termLabel(item.style_term_id, terms)} · {termLabel(item.role_term_id, terms)}</span>{item.note ? <small>{item.note}</small> : null}</div><b>{item.score}</b></div>)}</div> : <div className={styles.empty}><TrendingUp /><span>Sin historial de evaluación.</span></div>}</section></div>
     </div>;
   }
 
