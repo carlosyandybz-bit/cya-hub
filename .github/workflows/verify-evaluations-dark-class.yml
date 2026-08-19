@@ -1,0 +1,52 @@
+name: Verify evaluations and Dark Class
+on:
+  push:
+    branches: [staging]
+    paths: ['.github/workflows/verify-evaluations-dark-class.yml']
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+      - name: Run full build and safe-area assertions
+        shell: bash
+        run: |
+          set +e
+          mkdir -p .qa
+          {
+            echo '=== Dark Class safe-area contract ==='
+            grep -F 'viewportFit: "cover"' app/layout.tsx
+            grep -F 'safe-area-inset-top' app/p36-live-class.css
+            grep -F '.p0f-sticky-search{top:env(safe-area-inset-top)}' app/p36-live-class.css
+            grep -F '.p0f-content-tabs{top:calc(62px + env(safe-area-inset-top))}' app/p36-live-class.css
+            SAFE_EXIT=$?
+            echo "safe_area_exit=$SAFE_EXIT"
+            echo '=== npm ci ==='
+            npm ci
+            CI_EXIT=$?
+            echo "npm_ci_exit=$CI_EXIT"
+            echo '=== npm run build ==='
+            npm run build
+            BUILD_EXIT=$?
+            echo "npm_build_exit=$BUILD_EXIT"
+            if [ "$SAFE_EXIT" -eq 0 ] && [ "$CI_EXIT" -eq 0 ] && [ "$BUILD_EXIT" -eq 0 ]; then
+              echo 'VERIFICATION=PASS'
+            else
+              echo 'VERIFICATION=FAIL'
+            fi
+          } > .qa/evaluations-dark-class-verification.txt 2>&1
+          cat .qa/evaluations-dark-class-verification.txt
+      - name: Persist verification result
+        if: always()
+        run: |
+          git config user.name "carlosyandybz-bit"
+          git config user.email "carlosyandybz@gmail.com"
+          git add .qa/evaluations-dark-class-verification.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "Record evaluations and Dark Class verification"
+          git push origin HEAD:staging
