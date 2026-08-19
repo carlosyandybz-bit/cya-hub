@@ -6,6 +6,7 @@ import { CyaModuleTheme } from "./cya-module-theme";
 import { StudentCardContactActions } from "./student-card-contact-actions";
 import { ClassMediaUploadGuard } from "./class-media-upload-guard";
 import { LiveSearchCreateEnhancer } from "./live-search-create-enhancer";
+import { ClassDefaultsHydrator } from "./class-defaults-hydrator";
 import "./globals.css";
 import "./visual-audit-v21.css";
 import "./visual-density-v22.css";
@@ -108,6 +109,7 @@ export default function RootLayout({
         <ClassMediaUploadGuard />
         <StudentCardContactActions />
         <LiveSearchCreateEnhancer />
+        <ClassDefaultsHydrator />
         {children}
       </body>
     </html>
