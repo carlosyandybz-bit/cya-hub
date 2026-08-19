@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cya.local/schemas/staging-only.schema.json",
+  "title": "CYA Hub STAGING_ONLY manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "owner",
+    "description",
+    "stagingSupabaseProjectRef",
+    "productionSupabaseProjectRef",
+    "resources"
+  ],
+  "properties": {
+    "$schema": { "const": "./staging-only.schema.json" },
+    "version": { "type": "integer", "minimum": 1 },
+    "owner": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "stagingSupabaseProjectRef": { "type": "string", "pattern": "^[a-z0-9]+$" },
+    "productionSupabaseProjectRef": { "type": "string", "pattern": "^[a-z0-9]+$" },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

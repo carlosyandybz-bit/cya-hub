@@ -32,15 +32,15 @@ jobs:
 
           printf '%s\n' "$FILES" > /tmp/cya-files.txt
 
-          forbidden='^(\.env\.staging\.example$|\.agents/|\.vinext/|qa/|examples/|supabase/functions/cya-qa-bootstrap/|tsconfig\.tsbuildinfo$|staging/|app/staging-lab/|STAGING_ONLY\.manifest\.json$|scripts/assert-environment-boundary\.mjs$|\.github/workflows/staging-lab-boundary\.yml$)'
+          forbidden='^(\.env\.staging\.example$|\.agents/|\.vinext/|qa/|examples/|staging-lab/|supabase/functions/cya-qa-bootstrap/|tsconfig\.tsbuildinfo$|staging/|app/staging-lab/|STAGING_ONLY\.manifest\.json$|staging-only\.schema\.json$|scripts/assert-environment-boundary\.mjs$|\.github/workflows/staging-lab-boundary\.yml$|\.github/workflows/stg01-integration-gate\.yml$)'
           if grep -E "$forbidden" /tmp/cya-files.txt; then
             echo "ERROR: staging-only artifacts cannot be published to main."
             exit 1
           fi
 
-          if git grep -n -E 'staging-lab|CYA_STAGING_MANUAL_ACCESS|staging-(profesor|alumno|admin)@gmail\.com' -- 'app/**' ':!app/staging-lab/**' >/tmp/cya-staging-imports.txt 2>/dev/null; then
+          if git grep -n -E 'staging-lab|CYA_STAGING_MANUAL_ACCESS|staging-(profesor|alumno|admin)@gmail\.com|cya-qa-bootstrap|STAGING_ONLY\.manifest' -- 'app/**' ':!app/staging-lab/**' >/tmp/cya-staging-imports.txt 2>/dev/null; then
             cat /tmp/cya-staging-imports.txt
-            echo "ERROR: staging-only account switching code or credentials cannot exist in main."
+            echo "ERROR: staging-only dependencies or QA account switching code cannot exist in main."
             exit 1
           fi
 

@@ -5,6 +5,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const manifestPath = path.join(root, "STAGING_ONLY.manifest.json");
+const schemaPath = path.join(root, "staging-only.schema.json");
 const STAGING_REF = "qlngfkzmncihtdzktcmd";
 const PRODUCTION_REF = "ldvyeyhzrepaaouzavgs";
 
@@ -17,13 +18,42 @@ function readManifest() {
   if (!fs.existsSync(manifestPath)) {
     fail("Falta STAGING_ONLY.manifest.json. No se puede demostrar el aislamiento del laboratorio.");
   }
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  if (!fs.existsSync(schemaPath)) {
+    fail("Falta staging-only.schema.json. El contrato STAGING_ONLY no está completo.");
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    JSON.parse(fs.readFileSync(schemaPath, "utf8"));
+  } catch {
+    fail("El manifiesto o su schema no contienen JSON válido.");
+  }
+
+  if (manifest.$schema !== "./staging-only.schema.json") {
+    fail("STAGING_ONLY.manifest.json no referencia el schema canónico.");
+  }
+  if (!Number.isInteger(manifest.version) || manifest.version < 2) {
+    fail("STAGING_ONLY.manifest.json usa una versión de contrato obsoleta.");
+  }
   if (manifest.stagingSupabaseProjectRef !== STAGING_REF || manifest.productionSupabaseProjectRef !== PRODUCTION_REF) {
     fail("El manifiesto contiene project refs de Supabase inesperados.");
+  }
+  if (manifest.stagingSupabaseProjectRef === manifest.productionSupabaseProjectRef) {
+    fail("Staging y producción no pueden compartir proyecto Supabase.");
   }
   if (!Array.isArray(manifest.resources) || manifest.resources.length === 0) {
     fail("El manifiesto STAGING_ONLY no declara recursos protegidos.");
   }
+  if (new Set(manifest.resources).size !== manifest.resources.length) {
+    fail("El manifiesto STAGING_ONLY contiene recursos duplicados.");
+  }
+  for (const resource of manifest.resources) {
+    if (typeof resource !== "string" || !resource.trim() || path.isAbsolute(resource) || resource.includes("..")) {
+      fail(`Recurso STAGING_ONLY inválido: ${String(resource)}`);
+    }
+  }
+
   return manifest;
 }
 
@@ -59,11 +89,21 @@ function existingProtectedResources(manifest) {
   return manifest.resources.filter((resource) => fs.existsSync(path.join(root, resource)));
 }
 
-function scanForbiddenImports() {
+function scanForbiddenProductReferences() {
   const roots = ["app", "components", "lib", "src"].map((value) => path.join(root, value));
   const extensions = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"]);
   const matches = [];
-  const forbidden = ["staging-lab", "/qa/", "cya-hub-qa"];
+  const forbidden = [
+    "staging-lab",
+    "/qa/",
+    "cya-hub-qa",
+    "cya-qa-bootstrap",
+    "STAGING_ONLY.manifest",
+    "CYA_STAGING_MANUAL_ACCESS",
+    "staging-profesor@",
+    "staging-alumno@",
+    "staging-admin@",
+  ];
 
   function walk(current) {
     if (!fs.existsSync(current)) return;
@@ -88,11 +128,33 @@ function scanForbiddenImports() {
   return matches;
 }
 
+function assertStagingBranchContext() {
+  const eventName = (process.env.GITHUB_EVENT_NAME ?? "").trim();
+  const baseBranch = (process.env.GITHUB_BASE_REF ?? "").trim();
+  const branch = (process.env.GITHUB_REF_NAME ?? process.env.CF_PAGES_BRANCH ?? "").trim();
+
+  if (eventName === "pull_request") {
+    if (baseBranch && baseBranch !== "staging") {
+      fail(`El gate de staging recibió un PR hacia una rama inesperada: ${baseBranch}.`);
+    }
+    return;
+  }
+  if (branch && branch !== "staging") {
+    fail(`El entorno staging se está compilando desde una rama inesperada: ${branch}.`);
+  }
+}
+
 const manifest = readManifest();
 const projectRef = supabaseProjectRef(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "");
 const environment = resolveDeployEnvironment(projectRef);
 const protectedResources = existingProtectedResources(manifest);
-const forbiddenImports = scanForbiddenImports();
+const forbiddenProductReferences = scanForbiddenProductReferences();
+
+// Structural invariant: product code may never depend on laboratory/QA code,
+// even while the build itself is running in staging.
+if (forbiddenProductReferences.length > 0) {
+  fail(`STAGING_ONLY DEPENDENCY BLOCKED: código productivo referencia infraestructura de laboratorio:\n- ${forbiddenProductReferences.join("\n- ")}`);
+}
 
 if (environment === "unknown") {
   const allowLocal = process.env.CYA_ALLOW_UNVERIFIED_LOCAL_BUILD === "1" && process.env.CI !== "true";
@@ -107,9 +169,6 @@ if (environment === "production") {
   if (protectedResources.length > 0) {
     fail(`BUILD BLOQUEADO: infraestructura STAGING_ONLY detectada en producción:\n- ${protectedResources.join("\n- ")}`);
   }
-  if (forbiddenImports.length > 0) {
-    fail(`BUILD BLOQUEADO: imports/referencias a infraestructura interna detectados:\n- ${forbiddenImports.join("\n- ")}`);
-  }
   console.log("[CYA environment boundary] Producción limpia: no se detectó infraestructura STAGING_ONLY.");
   process.exit(0);
 }
@@ -117,10 +176,6 @@ if (environment === "production") {
 if (projectRef !== STAGING_REF) {
   fail("El build de staging no está conectado al Supabase dedicado de staging.");
 }
+assertStagingBranchContext();
 
-const branch = (process.env.GITHUB_REF_NAME ?? process.env.CF_PAGES_BRANCH ?? "").trim();
-if (branch && branch !== "staging") {
-  fail(`El entorno staging se está compilando desde una rama inesperada: ${branch}.`);
-}
-
-console.log(`[CYA environment boundary] Staging verificado contra ${STAGING_REF}. Recursos protegidos: ${protectedResources.length}.`);
+console.log(`[CYA environment boundary] Staging verificado contra ${STAGING_REF}. Recursos protegidos: ${protectedResources.length}. Dependencias producto→lab: 0.`);

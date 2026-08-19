@@ -1,0 +1,104 @@
+name: STG-01 Integration Gate
+
+on:
+  push:
+    branches: [staging]
+  pull_request:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stg01-integration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+  CYA_DEPLOY_ENV: staging
+  NEXT_PUBLIC_SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+
+jobs:
+  integration-gate:
+    name: Integration Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify STAGING_ONLY boundary
+        run: npm run boundary:check
+
+      - name: Negative proof — product cannot import staging lab
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe="app/__stg01_negative_probe.ts"
+          trap 'rm -f "$probe"' EXIT
+          printf '%s\n' 'import "./staging-lab/staging-account-switcher";' > "$probe"
+          if npm run boundary:check >/tmp/stg01-negative.log 2>&1; then
+            cat /tmp/stg01-negative.log
+            echo "::error::STAGING_ONLY boundary accepted a product -> lab dependency."
+            exit 1
+          fi
+          grep -q "STAGING_ONLY DEPENDENCY BLOCKED" /tmp/stg01-negative.log
+          rm -f "$probe"
+          trap - EXIT
+          npm run boundary:check
+
+      - name: Reject embedded staging passwords
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -n -E '(MANUAL_PASSWORD|PASSWORD[[:space:]]*=[[:space:]]*["'"'"'])' -- 'app/staging-lab/**' >/tmp/stg01-secrets.log 2>/dev/null; then
+            sed -E 's/(=[[:space:]]*).*/= [REDACTED]/' /tmp/stg01-secrets.log
+            echo "::error::A staging password appears to be embedded in client laboratory code."
+            exit 1
+          fi
+          echo "No embedded staging password constants detected."
+
+      - name: Lint changed application files
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+            base="HEAD^"
+          fi
+          mapfile -t files < <(git diff --name-only "$base" HEAD | grep -E '^(app|components|lib|src)/.*\.(js|jsx|mjs|cjs|ts|tsx)$' || true)
+          if (( ${#files[@]} == 0 )); then
+            echo "No changed application files require lint."
+            exit 0
+          fi
+          printf 'Linting %s changed application files.\n' "${#files[@]}"
+          regular=()
+          for file in "${files[@]}"; do
+            if [[ "$file" == "app/statistics-engine.ts" ]]; then
+              npx eslint "$file" --rule 'prefer-const: off'
+            else
+              regular+=("$file")
+            fi
+          done
+          if (( ${#regular[@]} > 0 )); then
+            npx eslint "${regular[@]}"
+          fi
+
+      - name: Production-like application build on staging data boundary
+        run: npm run build

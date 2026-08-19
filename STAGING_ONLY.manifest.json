@@ -1,19 +1,23 @@
 {
   "$schema": "./staging-only.schema.json",
-  "version": 1,
+  "version": 2,
   "owner": "CYA Hub staging",
-  "description": "Recursos que deben existir exclusivamente en staging/desarrollo. Si cualquiera de ellos está presente en un build conectado a Supabase de producción, el build debe fallar.",
+  "description": "Recursos exclusivos de staging/desarrollo. Ningún módulo productivo puede importarlos o referenciarlos y ningún árbol productivo puede publicarlos.",
   "stagingSupabaseProjectRef": "qlngfkzmncihtdzktcmd",
   "productionSupabaseProjectRef": "ldvyeyhzrepaaouzavgs",
   "resources": [
     ".agents/skills/cya-hub-qa",
+    ".env.staging.example",
     ".github/workflows/cya-qa-e2e.yml",
-    ".github/workflows/production-boundary.yml",
     ".github/workflows/staging-lab-boundary.yml",
+    ".github/workflows/stg01-integration-gate.yml",
     "qa",
     "staging-lab",
     "app/staging-lab",
     "docs/STAGING_LAB.md",
-    "docs/STAGING_VISUAL_AUDIT.md"
+    "docs/STAGING_VISUAL_AUDIT.md",
+    "scripts/assert-environment-boundary.mjs",
+    "staging-only.schema.json",
+    "supabase/functions/cya-qa-bootstrap"
   ]
 }

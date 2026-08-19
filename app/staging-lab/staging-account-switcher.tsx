@@ -2,14 +2,12 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Check, GraduationCap, LoaderCircle, ShieldCheck, UserRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ExperienceContext } from "../v14-types";
 import styles from "./staging-account-switcher.module.css";
 
-const CYA_STAGING_MANUAL_ACCESS = true;
 const STAGING_PROJECT_REF = "qlngfkzmncihtdzktcmd";
 const STAGING_HOSTS = new Set(["desarrollo.carlosyandy.com", "localhost", "127.0.0.1"]);
-const MANUAL_PASSWORD = "CyaStg!1sbl13f2026";
 
 type AccountKey = "teacher" | "student" | "admin";
 
@@ -59,20 +57,8 @@ function clientProjectRef(client: SupabaseClient) {
 }
 
 function isStagingRuntime(client: SupabaseClient) {
-  if (!CYA_STAGING_MANUAL_ACCESS || typeof window === "undefined") return false;
+  if (typeof window === "undefined") return false;
   return clientProjectRef(client) === STAGING_PROJECT_REF && STAGING_HOSTS.has(window.location.hostname.toLowerCase());
-}
-
-function useStagingRuntime(client: SupabaseClient) {
-  const [enabled, setEnabled] = useState(false);
-  useEffect(() => setEnabled(isStagingRuntime(client)), [client]);
-  return enabled;
-}
-
-export function StagingHeaderIndicator({ client }: { client: SupabaseClient }) {
-  const enabled = useStagingRuntime(client);
-  if (!enabled) return null;
-  return <span className={styles.indicator} aria-hidden="true">STG</span>;
 }
 
 export function StagingAccountSwitcher({
@@ -84,11 +70,11 @@ export function StagingAccountSwitcher({
   currentEmail: string;
   experience: ExperienceContext;
 }) {
-  const enabled = useStagingRuntime(client);
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState<AccountKey | null>(null);
   const [error, setError] = useState("");
 
-  if (!enabled) return null;
+  if (!isStagingRuntime(client)) return null;
 
   async function switchAccount(account: ManualAccount) {
     if (busy) return;
@@ -98,7 +84,8 @@ export function StagingAccountSwitcher({
     try {
       const normalizedCurrentEmail = currentEmail.trim().toLowerCase();
       if (normalizedCurrentEmail !== account.email.toLowerCase()) {
-        const login = await client.auth.signInWithPassword({ email: account.email, password: MANUAL_PASSWORD });
+        if (!password) throw new Error("Introduce la contraseña de las cuentas de prueba para cambiar de identidad.");
+        const login = await client.auth.signInWithPassword({ email: account.email, password });
         if (login.error) throw login.error;
       }
 
@@ -106,6 +93,7 @@ export function StagingAccountSwitcher({
       const preference = await client.rpc("set_experience_context", { p_context: account.experience });
       if (preference.error) throw preference.error;
 
+      setPassword("");
       window.dispatchEvent(new CustomEvent("cya:experience-change", { detail: account.experience }));
       window.dispatchEvent(new CustomEvent("cya:auth-change"));
       window.location.reload();
@@ -119,8 +107,19 @@ export function StagingAccountSwitcher({
     <section className={styles.panel} aria-label="Acceso rápido de staging">
       <div className={styles.panelHead}>
         <div><span>Solo staging</span><strong>Cambiar cuenta</strong></div>
-        <small>Accesos fijos de prueba</small>
+        <small>Identidades fijas de prueba</small>
       </div>
+      <label className={styles.passwordField}>
+        <span>Contraseña de pruebas</span>
+        <input
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="No se guarda ni se incluye en el código"
+        />
+      </label>
       <div className={styles.accounts}>
         {accounts.map((account) => {
           const active = currentEmail.trim().toLowerCase() === account.email.toLowerCase() && experience === account.experience;
@@ -135,7 +134,6 @@ export function StagingAccountSwitcher({
               disabled={Boolean(busy)}
               aria-current={active ? "true" : undefined}
               aria-label={`Entrar como ${account.label}`}
-              title={account.email}
             >
               <span className={styles.icon}>{loading ? <LoaderCircle className={styles.spinner} /> : <Icon />}</span>
               <strong>{account.shortLabel}</strong>
