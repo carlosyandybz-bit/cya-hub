@@ -58,6 +58,12 @@ La ruta `/staging-lab` valida de nuevo el project-ref del Supabase del runtime. 
 
 Este runtime guard es una segunda barrera. No sustituye al build guard.
 
+### Acceso manual QA
+
+Las identidades manuales de Profesor, Alumno y Administrador se conservan exclusivamente en staging. Su acceso es passwordless mediante email OTP/magic link con `shouldCreateUser: false`; no existe una contraseña manual compartida en cliente, repositorio o documentación.
+
+`cya-qa-bootstrap` mantiene separadas las credenciales automatizadas `qa-*`, que se generan aleatoriamente por ejecución OIDC. Las identidades manuales se rotan administrativamente mediante Supabase Auth y la contraseña aleatoria resultante nunca se devuelve al workflow ni al cliente.
+
 ## Regla de promoción
 
 Nunca se hace merge integral del laboratorio. Cuando un diseño quede aprobado, se traslada únicamente su implementación de PRODUCTO (tokens/componentes/layouts/assets aprobados). Los recursos listados en `STAGING_ONLY.manifest.json` no acompañan esa promoción.
