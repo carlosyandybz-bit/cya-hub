@@ -34,6 +34,7 @@ import { AcademyOnlineStudentComingSoon } from "./academy-online-student";
 import { BZPointsPanel } from "./bz-points-panel";
 import { SecureDriveAsset } from "./drive-media";
 import { FeedbackOnlineStudentPanel } from "./feedback-online-student";
+import { EvaluationRadar } from "./evaluation-radar";
 import { NotificationsView } from "./notifications-view";
 import { PreferencesSettingsView, ProfileSettingsView } from "./account-pages";
 import { getRuntimeAccessToken } from "./supabase-runtime";
@@ -79,7 +80,6 @@ type PortalClass = {
 
 type PortalEvaluation = {
   id: number;
-  score: number;
   aptitude_term_id: number;
   aptitude: string;
   style: string;
@@ -87,6 +87,9 @@ type PortalEvaluation = {
   level: string;
   created_at: string;
 };
+type PortalEvaluationSummaryItem = { aptitude_term_id:number; aptitude:string; stars:number; total_stars:number; trend:-1|0|1|null };
+type PortalEvaluationSummaryContext = { style_term_id:number; style:string; role_term_id:number; role:string; level_term_id:number; level:string; is_primary:boolean; evaluated_at:string|null; has_evaluation:boolean; items:PortalEvaluationSummaryItem[] };
+type PortalEvaluationSummary = { mode:"evaluations"|"time"; reference_count:number; period_value:number; period_unit:"day"|"week"|"month"; contexts:PortalEvaluationSummaryContext[] };
 
 type PortalCredit = {
   id: number;
@@ -151,6 +154,7 @@ type StudentPortalSnapshot = {
   credits: PortalCredit[];
   assignments: PortalAssignment[];
   evaluations: PortalEvaluation[];
+  evaluation_summary?: PortalEvaluationSummary;
   class_activity?: Array<{ id: number; class_id: number; content_id: number; title: string; content_type: string; event_type: string; created_at: string }>;
   class_summaries?: ClassSummary[];
   class_media?: ClassMediaSnapshot[];
@@ -484,30 +488,14 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
   const priorityMission = missionGroups.now[0] ?? missionGroups.inProgress[0] ?? missionGroups.available[0] ?? null;
   const pendingDebt = snapshot?.financial?.pending_debt_minutes ?? 0;
   const firstName = snapshot?.profile.first_name || identity.display_name.trim().split(/\s+/)[0] || "";
-  const latestScores = useMemo(() => {
-    const map = new Map<number, PortalEvaluation>();
-    for (const item of snapshot?.evaluations ?? []) if (!map.has(item.aptitude_term_id)) map.set(item.aptitude_term_id, item);
-    return [...map.values()];
-  }, [snapshot?.evaluations]);
+  const evaluationContext = useMemo(() => snapshot?.evaluation_summary?.contexts.find((item)=>item.is_primary) ?? snapshot?.evaluation_summary?.contexts[0] ?? null,[snapshot?.evaluation_summary]);
+  const studentRadarItems = useMemo(() => (evaluationContext?.items ?? []).map((item)=>({id:item.aptitude_term_id,label:item.aptitude,value:item.total_stars>0?Math.round(item.stars/item.total_stars*100):null,score:null,stars:item.stars,totalStars:item.total_stars,milestoneLabel:null,delta:item.trend})),[evaluationContext]);
 
   const evaluationTimeline = useMemo(
     () => [...(snapshot?.evaluations ?? [])].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
     [snapshot?.evaluations],
   );
-  const improvements = useMemo(() => {
-    const byAptitude = new Map<number, PortalEvaluation[]>();
-    for (const item of evaluationTimeline) {
-      const history = byAptitude.get(item.aptitude_term_id) ?? [];
-      history.push(item);
-      byAptitude.set(item.aptitude_term_id, history);
-    }
-    return [...byAptitude.values()].flatMap((history) => {
-      const latest = history[0];
-      const previous = history[1];
-      if (!latest || !previous || latest.score <= previous.score) return [];
-      return [{ latest, previous, delta: latest.score - previous.score }];
-    });
-  }, [evaluationTimeline]);
+
   const progressMilestones = useMemo(() => {
     const finishedClasses = snapshot?.classes.filter((item) => item.status === "finished").length ?? 0;
     const evaluationCount = snapshot?.evaluations.length ?? 0;
@@ -606,11 +594,11 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
         <div className={styles.focusList}>{activeAssignments.slice(0, 3).map((item) => <article key={item.id}><Target /><div><span>{contentTypeLabels[item.content_type] ?? item.content_type}</span><strong>{item.title}</strong><small>{assignmentStateLabels[item.assignment_status] ?? item.assignment_status}</small></div></article>)}{!activeAssignments.length ? <p className={styles.emptyText}>Ahora mismo no tienes nada marcado como prioritario. Eso también significa que puedes elegir por dónde seguir.</p> : null}</div>
 
         <div className={styles.homeColumns}>
-          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>TU EVALUACIÓN</span><h2>Última foto de tu progreso</h2></div><strong>{latestScores.length}</strong></div>{latestScores.length ? <div className={styles.scoreList}>{latestScores.map((item) => <div key={item.aptitude_term_id}><span>{item.aptitude}</span><strong>{item.score}</strong></div>)}</div> : <p className={styles.emptyText}>Aún no hemos guardado una evaluación completa. Tu progreso puede seguir construyéndose mientras tanto.</p>}</article>
+          <article className={`${styles.openSection} ${styles.studentEvaluationCard}`}><div className={styles.sectionHeading}><div><span>TU EVALUACIÓN</span><h2>Tu progreso dentro de tu nivel</h2></div>{evaluationContext?<strong>{evaluationContext.level}</strong>:null}</div>{evaluationContext?.has_evaluation&&studentRadarItems.length>=3?<><EvaluationRadar items={studentRadarItems} scale={[]} readonly mode="student" showEditor={false} ariaLabel="Resumen de tu progreso"/><p className={styles.evaluationPrivacyNote}>Estas valoraciones representan tu evolución dentro de tu nivel actual. No comparan tu nivel con el de otros alumnos ni parten desde nivel inicial. Las flechas indican si una capacidad mejora, se mantiene o necesita revisión respecto a tu referencia histórica.</p></>:<p className={styles.emptyText}>Aún no hemos guardado una evaluación completa. Tu progreso puede seguir construyéndose mientras tanto.</p>}</article>
 
-          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>DESDE LA ANTERIOR</span><h2>Qué ha mejorado</h2></div><strong>{improvements.length}</strong></div>{improvements.length ? <div className={styles.activityList}>{improvements.map(({ latest, previous, delta }) => <div key={latest.aptitude_term_id}><TrendingUp /><span><strong>{latest.aptitude}</strong><small>{previous.score} → {latest.score} · +{delta} puntos</small></span></div>)}</div> : <p className={styles.emptyText}>Cuando tengamos dos evaluaciones comparables, aquí verás únicamente mejoras respaldadas por tus datos.</p>}</article>
+          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>TENDENCIA</span><h2>Dónde estás avanzando</h2></div></div>{evaluationContext?.items.some((item)=>item.trend!==null)?<div className={styles.activityList}>{evaluationContext.items.map((item)=><div key={item.aptitude_term_id}><TrendingUp data-trend={item.trend}/><span><strong>{item.aptitude}</strong><small>{item.trend===1?"Mejorando":item.trend===-1?"Necesita revisión":item.trend===0?"Estable":"Todavía sin referencia"}</small></span></div>)}</div>:<p className={styles.emptyText}>Cuando tengamos evaluaciones comparables, aquí verás la dirección de tu evolución sin puntuaciones ni comparaciones con otras personas.</p>}</article>
 
-          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>EVOLUCIÓN</span><h2>Cómo ha ido cambiando</h2></div><strong>{evaluationTimeline.length}</strong></div>{evaluationTimeline.length ? <div className={styles.activityList}>{evaluationTimeline.slice(0, 10).map((item) => <div key={item.id}><CalendarDays /><span><strong>{item.aptitude} · {item.score}</strong><small>{item.style} · {item.level} · {dateLabel(item.created_at, false)}</small></span></div>)}</div> : <p className={styles.emptyText}>Tu historial de evaluación aparecerá aquí a medida que vayamos guardando nuevas fotos de tu progreso.</p>}</article>
+          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>HISTORIAL</span><h2>Tus evaluaciones</h2></div><strong>{evaluationTimeline.length}</strong></div>{evaluationTimeline.length ? <div className={styles.activityList}>{evaluationTimeline.slice(0, 10).map((item) => <div key={item.id}><CalendarDays /><span><strong>{item.aptitude}</strong><small>{item.style} · {item.level} · {dateLabel(item.created_at, false)}</small></span></div>)}</div> : <p className={styles.emptyText}>Tu historial de evaluación aparecerá aquí a medida que vayamos guardando nuevas fotos de tu progreso.</p>}</article>
 
           <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>HITOS</span><h2>Pasos que ya forman parte de tu camino</h2></div><strong>{progressMilestones.length}</strong></div>{progressMilestones.length ? <div className={styles.activityList}>{progressMilestones.map((milestone) => <div key={milestone.key}><CircleCheck /><span><strong>{milestone.title}</strong><small>{milestone.detail}</small></span></div>)}</div> : <p className={styles.emptyText}>Tus primeros hitos aparecerán aquí cuando exista actividad real suficiente para reconocerlos.</p>}</article>
         </div>
