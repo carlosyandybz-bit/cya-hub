@@ -5,6 +5,7 @@ import { Camera, CircleUserRound, Clock3, GraduationCap, Save, Settings2, Trash2
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ExperienceContext, IdentityContext } from "./v14-types";
 import { RuntimeForm } from "./runtime-form";
+import { StudentDeclaredDanceStylesEditor } from "./student-declared-dance-styles";
 import styles from "./account-pages.module.css";
 
 type CommonProps = {
@@ -93,6 +94,7 @@ export function ProfileSettingsView({ client, identity, onIdentityPatch, notify 
   const [removeAvatar, setRemoveAvatar] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [questionnaireRevision, setQuestionnaireRevision] = useState(0);
   const previewUrl = useMemo(() => file ? URL.createObjectURL(file) : null, [file]);
 
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
@@ -209,6 +211,12 @@ export function ProfileSettingsView({ client, identity, onIdentityPatch, notify 
         <div className={styles.sectionTitle}><UserRound /><div><strong id="student-profile-data-title">Mis datos de alumno</strong><span>Información compartida con tu ficha CYA, sin volver a escribir lo que ya conocemos.</span></div></div>
         <RuntimeForm client={client} formKey="student_personal" mode="edit" submitLabel="Guardar datos de alumno" compact onSaved={() => notify("Datos de alumno actualizados.")} />
       </section> : null}
+
+      {identity.can_study ? <section className={styles.card} aria-labelledby="student-questionnaire-title">
+        <div className={styles.sectionTitle}><GraduationCap /><div><strong id="student-questionnaire-title">Cuéntanos un poco sobre ti</strong><span>Es opcional. Puedes finalizarlo aunque dejes preguntas sin responder.</span></div></div>
+        <RuntimeForm key={`student-onboarding-${questionnaireRevision}`} client={client} formKey="onboarding" mode="edit" submitLabel="Finalizar cuestionario" compact allowEmptySubmit onSaved={() => { setQuestionnaireRevision((value) => value + 1); notify("Cuestionario guardado."); }} />
+        <StudentDeclaredDanceStylesEditor client={client} personId={identity.person_id ?? null} questionnaireRevision={questionnaireRevision} notify={notify} />
+      </section> : null}
     </section>
   );
 }
@@ -279,7 +287,7 @@ export function PreferencesSettingsView({ client, identity, experience, onIdenti
         <label className={styles.field}>
           <span>Entrar normalmente como</span>
           <select value={preferredContext} onChange={(event) => setPreferredContext(event.target.value as ExperienceContext)}>
-            {availableContexts.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            {availableContexts.map((item) => <option key={item.value} value={item.value}>{item.label}</option>) }
           </select>
           <small>Puedes cambiar de vista cuando quieras desde «Ver como».</small>
         </label>
