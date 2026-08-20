@@ -9,5 +9,34 @@
     "base_sha": "9bd740fa9b7dd153e937c1bff2eb32d3828c2954",
     "rule": "Historical artifacts remain classified by the snapshot inventory and are not required to fabricate missing provenance. Every migration authored after CORE-01 must be recorded here."
   },
-  "migrations": []
+  "migrations": [
+    {
+      "path": "supabase/migrations/20260820195300_person_lifecycle_student_predicate.sql",
+      "migration_version": "20260820195300",
+      "operational_class": "CANONICA",
+      "applied_state": "PREPARADA_NO_APLICADA",
+      "provenance": {
+        "schema_version": 3,
+        "lifecycle_phase": "AUTHORING",
+        "owner": "PERSON-01 / Personas-Identity-CRM",
+        "func_id": "FUNC-0040",
+        "authorship": {
+          "repository": "carlosyandybz-bit/cya-hub",
+          "base_sha": "58d00e62b83bfebbfb3087b66aaa317d7a255b10",
+          "pr_number": 124
+        },
+        "intended_targets": [
+          {
+            "environment": "staging",
+            "project_ref": "qlngfkzmncihtdzktcmd"
+          }
+        ],
+        "recovery": {
+          "strategy": "forward_fix",
+          "plan": "If PERSON-01 requires correction after application, author a new canonical forward-fix migration; do not mutate this migration or use migration repair."
+        },
+        "application_evidence": null
+      }
+    }
+  ]
 }
