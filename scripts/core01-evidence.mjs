@@ -22,19 +22,11 @@ const MAX_EVIDENCE_BYTES = 256 * 1024;
 const EXPECTED_WORKFLOW_REF = `${CORE01_REPOSITORY}/${CORE01_POST_APPLY_WORKFLOW_PATH}@${CORE01_TRUSTED_REF}`;
 
 export function validatePostApplyInputs({ migrationPath, sourceCommitSha, deploymentRunId }) {
-  if (!CORE01_CANONICAL_PATH_RE.test(migrationPath ?? "")) {
-    throw new Error("migration_path no cumple la ruta canónica exacta de CORE-01.");
-  }
-  if (!CORE01_SHA_RE.test(sourceCommitSha ?? "")) {
-    throw new Error("source_commit_sha debe contener exactamente 40 caracteres hexadecimales minúsculos.");
-  }
-  if (!CORE01_POSITIVE_INTEGER_RE.test(deploymentRunId ?? "")) {
-    throw new Error("deployment_run_id debe ser un entero decimal positivo estricto.");
-  }
+  if (!CORE01_CANONICAL_PATH_RE.test(migrationPath ?? "")) throw new Error("migration_path no cumple la ruta canónica exacta de CORE-01.");
+  if (!CORE01_SHA_RE.test(sourceCommitSha ?? "")) throw new Error("source_commit_sha debe contener exactamente 40 caracteres hexadecimales minúsculos.");
+  if (!CORE01_POSITIVE_INTEGER_RE.test(deploymentRunId ?? "")) throw new Error("deployment_run_id debe ser un entero decimal positivo estricto.");
   const parsedRunId = Number(deploymentRunId);
-  if (!Number.isSafeInteger(parsedRunId) || parsedRunId <= 0) {
-    throw new Error("deployment_run_id está fuera del rango entero seguro.");
-  }
+  if (!Number.isSafeInteger(parsedRunId) || parsedRunId <= 0) throw new Error("deployment_run_id está fuera del rango entero seguro.");
   return { migrationPath, sourceCommitSha, deploymentRunId: parsedRunId };
 }
 
@@ -61,20 +53,14 @@ export async function verifyPostApplyFacts(input, adapters) {
   const { record, environment, projectRef, sourceCommitSha, deploymentRunId, verification } = input;
   const { version, name } = canonicalParts(record?.path);
   if (!version || !name) throw new Error("migration_path no es canónico.");
-  if (record?.applied_state !== "PREPARADA_NO_APLICADA" || record?.provenance?.lifecycle_phase !== "AUTHORING") {
-    throw new Error("Post-apply debe partir de AUTHORING/PREPARADA_NO_APLICADA.");
-  }
+  if (record?.applied_state !== "PREPARADA_NO_APLICADA" || record?.provenance?.lifecycle_phase !== "AUTHORING") throw new Error("Post-apply debe partir de AUTHORING/PREPARADA_NO_APLICADA.");
   if (record?.provenance?.application_evidence !== null) throw new Error("AUTHORING no puede contener evidence futura.");
-  if (!record.provenance.intended_targets.some((target) => target.environment === environment && target.project_ref === projectRef)) {
-    throw new Error("El target real de Release no estaba declarado en intended_targets.");
-  }
+  if (!record.provenance.intended_targets.some((target) => target.environment === environment && target.project_ref === projectRef)) throw new Error("El target real de Release no estaba declarado en intended_targets.");
 
   const sourceCommit = await adapters.getSourceCommit(sourceCommitSha);
   if (sourceCommit?.sha !== sourceCommitSha) throw new Error("GitHub no corroboró source_commit_sha exactamente.");
   const sourceFile = await adapters.getSourceFile(record.path, sourceCommitSha);
-  if (sourceFile?.path !== record.path || (sourceFile?.type && sourceFile.type !== "file")) {
-    throw new Error("source_commit_sha no contiene la migración canónica indicada.");
-  }
+  if (sourceFile?.path !== record.path || (sourceFile?.type && sourceFile.type !== "file")) throw new Error("source_commit_sha no contiene la migración canónica indicada.");
 
   const deployment = await adapters.getDeploymentRun(deploymentRunId);
   if (Number(deployment?.id) !== deploymentRunId) throw new Error("El deployment run corroborado no coincide con deployment_run_id.");
@@ -82,14 +68,10 @@ export async function verifyPostApplyFacts(input, adapters) {
   if (deployment?.status !== "completed" || deployment?.conclusion !== "success") throw new Error("El deployment run no terminó completed/success.");
   if (deployment?.head_sha !== sourceCommitSha) throw new Error("El deployment run no corresponde a source_commit_sha.");
   const workflowId = Number(deployment?.workflow_id);
-  if (!Number.isSafeInteger(workflowId) || !adapters.authorizedDeploymentWorkflowIds.has(workflowId)) {
-    throw new Error(`workflow_id ${deployment?.workflow_id} no está autorizado por Release.`);
-  }
+  if (!Number.isSafeInteger(workflowId) || !adapters.authorizedDeploymentWorkflowIds.has(workflowId)) throw new Error(`workflow_id ${deployment?.workflow_id} no está autorizado por Release.`);
 
   const ledgerRow = await adapters.queryLedger(version);
-  if (!ledgerRow || ledgerRow.version !== version || ledgerRow.name !== name) {
-    throw new Error(`Ledger real no confirma ${version}/${name}.`);
-  }
+  if (!ledgerRow || ledgerRow.version !== version || ledgerRow.name !== name) throw new Error(`Ledger real no confirma ${version}/${name}.`);
 
   const verificationRunId = Number(verification?.runId);
   if (!Number.isSafeInteger(verificationRunId) || verificationRunId <= 0) throw new Error("verification run_id inválido.");
@@ -123,8 +105,8 @@ export function registryEvidenceFromArtifact(artifact) {
     environment: artifact.environment,
     project_ref: artifact.project_ref,
     source_commit_sha: artifact.source_commit_sha,
-    ledger: artifact.ledger,
-    deployment: artifact.deployment,
+    ledger: { ...artifact.ledger },
+    deployment: { ...artifact.deployment },
     release_verification: {
       workflow: artifact.verification.workflow,
       run_id: artifact.verification.run_id,
@@ -165,15 +147,9 @@ export function readEvidenceArtifactZip(zipBytes) {
   const zipPath = join(dir, "artifact.zip");
   try {
     writeFileSync(zipPath, zipBytes, { mode: 0o600 });
-    const listing = execFileSync("unzip", ["-Z1", zipPath], { encoding: "utf8", maxBuffer: 64 * 1024 })
-      .trim().split(/\r?\n/).filter(Boolean);
-    if (listing.length !== 1 || listing[0] !== CORE01_EVIDENCE_FILE) {
-      throw new Error("Artifact ZIP debe contener únicamente core01-post-apply-evidence.json.");
-    }
-    const content = execFileSync("unzip", ["-p", zipPath, CORE01_EVIDENCE_FILE], {
-      encoding: "utf8",
-      maxBuffer: MAX_EVIDENCE_BYTES,
-    });
+    const listing = execFileSync("unzip", ["-Z1", zipPath], { encoding: "utf8", maxBuffer: 64 * 1024 }).trim().split(/\r?\n/).filter(Boolean);
+    if (listing.length !== 1 || listing[0] !== CORE01_EVIDENCE_FILE) throw new Error("Artifact ZIP debe contener únicamente core01-post-apply-evidence.json.");
+    const content = execFileSync("unzip", ["-p", zipPath, CORE01_EVIDENCE_FILE], { encoding: "utf8", maxBuffer: MAX_EVIDENCE_BYTES });
     if (Buffer.byteLength(content, "utf8") > MAX_EVIDENCE_BYTES) throw new Error("Evidence JSON excede el límite CORE-01.");
     return JSON.parse(content);
   } finally {
@@ -198,10 +174,7 @@ export async function validateAuthoritativeAppliedEvidence(record, item, context
   if (errors.length) return errors;
 
   const expectedName = evidenceArtifactName(runId);
-  if (item.release_verification.artifact_name !== expectedName) {
-    errors.push(`${record.path}: artifact_name debe ser ${expectedName}.`);
-    return errors;
-  }
+  if (item.release_verification.artifact_name !== expectedName) return [`${record.path}: artifact_name debe ser ${expectedName}.`];
 
   let artifacts;
   try { artifacts = await listArtifacts(runId, context); }
@@ -220,12 +193,7 @@ export async function validateAuthoritativeAppliedEvidence(record, item, context
     return [`${record.path}: artifact autoritativo no pudo descargarse/leerse (${safeErrorMessage(error)}).`];
   }
 
-  const schemaErrors = validateEvidenceArtifactSchema(
-    artifact,
-    evidenceSchema,
-    options.rootDir ?? process.cwd(),
-    options.compiledEvidenceValidator ?? null,
-  );
+  const schemaErrors = validateEvidenceArtifactSchema(artifact, evidenceSchema, options.rootDir ?? process.cwd(), options.compiledEvidenceValidator ?? null);
   errors.push(...schemaErrors);
   if (schemaErrors.length) return errors;
   errors.push(...validateAppliedEvidenceAgainstArtifact(record, item, artifact, run));
