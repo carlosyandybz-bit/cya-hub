@@ -1,255 +1,84 @@
 # CORE-01 — Gobierno Canónico de Migraciones
 
 **FUNC-ID:** FUNC-0211  
-**Estado de este paquete:** implementado en rama; corrección QA de provenance aplicada; pendiente de revalidación independiente de Chat 11; **NO certificado funcionalmente**.  
+**Estado:** implementado en rama; segunda corrección QA de provenance pendiente de revalidación independiente; **PARCIAL / NO CERTIFICADO FUNCIONALMENTE**.  
 **Base auditada:** `staging@9bd740fa9b7dd153e937c1bff2eb32d3828c2954`  
-**Supabase STAGING auditado:** `qlngfkzmncihtdzktcmd`  
+**PR:** #123 / `core/core-01-migration-governance`  
 **Producción / main:** fuera de alcance.
 
-## 1. Autoridad y objetivo
+## 1. Autoridades separadas
 
-Este contrato elimina la ambigüedad operativa entre `supabase/migrations`, `db/migrations`, SQL bootstrap y archivos retrospectivos. Desde CORE-01:
+CORE-01 no permite que un fichero o JSON sea su propia prueba.
 
-> **Toda migración nueva de CYA Hub se autoriza exclusivamente en `supabase/migrations/`.**
+| Capa | Autoridad |
+| --- | --- |
+| JSON Schema Draft 2020-12 | estructura, tipos, `required`, `additionalProperties`, enums/consts, patrones, formatos y lifecycle declarativo |
+| CI / Git / GitHub | repositorio real, PR real, base SHA real, existencia de commits, diff real, target de authoring autorizado y run de verificación existente |
+| Release / Supabase | entorno/project_ref de aplicación, deployment autorizado y ledger real `supabase_migrations.schema_migrations` |
 
-La presencia de un fichero SQL **nunca prueba** que una migración esté aplicada. La prueba autoritativa por entorno es el ledger de ese proyecto Supabase:
+La presencia de SQL **no prueba aplicación**. La presencia de `application_evidence` escrita por un autor **tampoco prueba aplicación**.
 
-```sql
-select version, name
-from supabase_migrations.schema_migrations
-order by version;
-```
+## 2. Ruta canónica y grandfathering
 
-Antes de consultar o aplicar nada debe verificarse el `project_ref` del entorno. Producción requiere autorización explícita de Release; CORE-01 no la consulta ni la modifica.
+- Nueva autoría: exclusivamente `supabase/migrations/YYYYMMDDHHMMSS_descripcion_snake_case.sql`.
+- `db/migrations/**`: histórico congelado.
+- `supabase/*.sql`: bootstrap/compatibilidad congelada para nueva autoría.
+- `supabase/applied-history/**`: archivo documental congelado; nunca segunda ruta de migración ni ledger.
+- `docs/CORE_01_MIGRATION_INVENTORY.json`: snapshot de los 123 artefactos históricos; grandfathered.
+- `docs/CORE_01_MIGRATION_PROVENANCE.json`: solo migraciones post-CORE-01.
 
-## 2. Clasificación de rutas
+Los históricos no deben recibir provenance inventada. El drift conocido, incluido `v121_student_active_corrections_visible`, permanece visible y no se reconstruye en este paquete.
 
-| Superficie | Clasificación | Regla desde CORE-01 |
-| --- | --- | --- |
-| `supabase/migrations/` | **CANÓNICA** | Única ubicación para todas las migraciones nuevas. Los ficheros históricos que ya estaban aquí quedan grandfathered e inmutables. |
-| `db/migrations/` | **COMPATIBILIDAD** | Ruta histórica congelada. No admite altas, modificaciones, renombres ni borrados. |
-| `supabase/applied-history/` | **COMPATIBILIDAD** | Archivo retrospectivo; no es ruta de autoría ni prueba suficiente de aplicación. |
-| `supabase/*.sql` en raíz | **BOOTSTRAP / COMPATIBILIDAD** | SQL histórico/operacional. No admite nuevas migraciones. Se preserva mientras existan consumidores o hasta clasificación individual aprobada. |
-| `supabase_migrations.schema_migrations` | **APPLIED-HISTORY REAL** | Única fuente autoritativa para afirmar `APLICADA` en un entorno concreto. |
+## 3. Schema real
 
-No se declara ningún artefacto **RETIRADA** ni **DUPLICADO DOCUMENTAL** sin una comparación de contenido/provenance que lo demuestre.
+El contrato de registro es `docs/CORE_01_MIGRATION_PROVENANCE.schema.json`, schema version 2.
 
-## 3. Inventario histórico frente a provenance post-CORE-01
+El Integration Gate instala tooling aislado bajo `tools/core01-validator/` y compila/ejecuta el schema con **Ajv 8 Draft 2020-12 + ajv-formats**. El tooling es CI-only y no forma parte de dependencias/runtime/bundle de la aplicación.
 
-Los dos conceptos se separan para no fabricar evidencia que históricamente no existe:
+El schema es autoridad para forma exacta, `additionalProperties:false`, required, tipos, patrones, `format: date-time`, estados y lifecycle. El checker añade únicamente relaciones semánticas/contextuales que JSON Schema no puede demostrar.
 
-- `docs/CORE_01_MIGRATION_INVENTORY.json`: snapshot clasificado de los 123 artefactos históricos auditados contra STAGING. Mantiene grandfathering y drift/unknowns.
-- `docs/CORE_01_MIGRATION_PROVENANCE.json`: registro operativo obligatorio para **toda migración creada después de CORE-01**.
-- `docs/CORE_01_MIGRATION_PROVENANCE.schema.json`: contrato machine-readable del registro post-CORE-01.
+## 4. AUTHORING GATE
 
-Los artefactos históricos no están obligados a inventar SHA, PR, deployment o ledger que no puedan demostrarse. Toda nueva migración sí debe incorporarse al registro de provenance desde su PR de autoría.
+Una migración nueva entra como `CANONICA`, `PREPARADA_NO_APLICADA`, `AUTHORING` y `application_evidence=null`.
 
-El antiguo mecanismo auxiliar `canonical_pending` deja de ser una vía válida porque permitía registrar solo `path` y superar el gate con provenance insuficiente.
+En `pull_request`, CI corrobora contra Git/GitHub real: repository, existencia de base SHA, igualdad con `pull_request.base.sha`, PR number real, alta SQL en diff, path/version real y target perteneciente al allowlist CI. El gate de PR **no necesita secretos Supabase, no consulta producción, no aplica migraciones y no consulta ledger**.
 
-## 4. Taxonomía
+En STAGING, el target previsto autorizado por CI es `staging / qlngfkzmncihtdzktcmd`. Esto demuestra destino permitido para authoring, no aplicación.
 
-- **CANÓNICA**: superficie autorizada para nueva autoría.
-- **APLICADA**: existe coincidencia demostrada en el ledger real del entorno auditado.
-- **PREPARADA_NO_APLICADA**: artefacto preparado cuya versión exacta no consta aún aplicada.
-- **BOOTSTRAP**: SQL de instalación, operación o compatibilidad histórica fuera del flujo canónico.
-- **COMPATIBILIDAD**: histórico conservado; puede tener consumidores, pero no recibe nueva autoría.
-- **DUPLICADO_DOCUMENTAL**: solo tras demostrar equivalencia material con otro artefacto.
-- **RETIRADA**: solo tras demostrar ausencia de consumidores, aprobar retirada y registrar evidencia.
-- **DESCONOCIDA**: evidencia insuficiente. No se fuerza una clasificación por parecido de nombres.
+## 5. RELEASE / POST-APPLY VERIFICATION
 
-## 5. Naming y orden canónicos
+`APLICADA` solo es legítimo después de verificación posterior independiente del JSON autoral. CORE-01 incorpora `.github/workflows/core01-post-apply-verification.yml` y `scripts/verify-migration-post-apply.mjs`.
 
-Toda nueva migración:
+El workflow solo tiene `workflow_dispatch`, corre bajo GitHub Environment protegido `staging`, no aplica SQL y necesita `CORE01_STAGING_DATABASE_URL` como secret de lectura del ledger y `CORE01_AUTHORIZED_DEPLOYMENT_WORKFLOW_IDS` como allowlist administrado por Release. Falla cerrado si falta configuración.
 
-```text
-supabase/migrations/YYYYMMDDHHMMSS_descripcion_snake_case.sql
-```
+Corrobora: registro aún AUTHORING/PREPARADA, target declarado, source commit existente que contiene el SQL, deployment run real `completed/success` para ese commit y workflow_id autorizado, y fila exacta `version/name` en `supabase_migrations.schema_migrations`. Solo entonces genera un artifact `core01-post-apply-evidence.json`; no modifica repo ni ledger.
 
-Reglas:
+Para promover documentalmente a `APLICADA/APPLIED`, Release incorpora esa evidencia en un cambio posterior. El Authoring Gate vuelve a corroborar source commit, target y que `release_verification.run_id` existe, pertenece al workflow/path exacto, fue `workflow_dispatch`, terminó `success` y su título vincula inequívocamente migration path + source commit. Un JSON autocontenido inventado no basta.
 
-1. timestamp UTC de 14 dígitos;
-2. un timestamp por migración, nunca reutilizado;
-3. descripción en `snake_case` ASCII minúscula;
-4. orden total por timestamp ascendente;
-5. el fichero debe existir en Git **antes** de cualquier aplicación al entorno;
-6. una migración ya comprometida/aplicada es inmutable; una corrección se hace con una migración posterior;
-7. nombres `vNN`, `vNNb`, fechas de 8 dígitos o SQL raíz no son válidos para nueva autoría.
+## 6. Dependencia Release pendiente
 
-## 6. Applied-history por entorno
+Antes del primer uso, Chat 13 / Release debe configurar en el GitHub Environment `staging`: secret read-only `CORE01_STAGING_DATABASE_URL` y variable `CORE01_AUTHORIZED_DEPLOYMENT_WORKFLOW_IDS` con los workflow IDs que Release autorice realmente para aplicar migraciones canónicas. CORE-01 no configura secretos ni ejecuta una aplicación real.
 
-### Preflight obligatorio
+## 7. Reglas semánticas adicionales
 
-Registrar:
+Fuera del schema: `migration_version == timestamp(path)`; evidence ledger version/name == path; evidence target ∈ intended_targets; timestamps nuevos posteriores al máximo histórico/ledger; timestamps únicos; inventario consistente; `canonical_pending` prohibido; legacy/root/applied-history congelados.
 
-- entorno lógico (`staging`, `production`, etc.);
-- Supabase `project_ref`;
-- commit/PR que contiene el SQL;
-- versión/nombre esperado.
+## 8. Applied-history por entorno
 
-### Consulta autoritativa
+La autoridad Supabase es `supabase_migrations.schema_migrations` del `project_ref` realmente consultado. Un JSON o fichero en `applied-history` nunca sustituye esa consulta.
 
-```sql
-select version, name
-from supabase_migrations.schema_migrations
-order by version;
-```
+## 9. Recuperación
 
-Para una migración concreta:
+No `db reset`; no reescritura de migración publicada; default forward-fix. `migration repair`/ledger repair solo mediante procedimiento extraordinario Release + Data + Governance con evidencia.
 
-```sql
-select version, name
-from supabase_migrations.schema_migrations
-where version = '<YYYYMMDDHHMMSS>';
-```
+## 10. CI heredado fuera de alcance
 
-Estados:
+CYA QA E2E OIDC HTTP 403 y P32 156/160 heredado siguen separados. CORE-01 no altera sus contratos para fabricar verde.
 
-- fila exacta versión + nombre → `APLICADA`;
-- no existe fila exacta → no está demostrada como aplicada;
-- mismo nombre con otra versión → **no** asumir equivalencia; requiere provenance/diff;
-- fila de ledger sin SQL localizado → `DESCONOCIDA` y bloqueo de reconstrucción hasta reconciliar.
+## 11. Scope de esta segunda corrección QA
 
-En STAGING auditado CORE-01 hay **218** entradas, desde `20260808214303` hasta `20260819175828`. La última es `v121_student_active_corrections_visible` y no fue localizada en el repositorio certificado. Ese unknown permanece abierto y fuera de esta corrección QA.
+Solo se corrigen veracidad contextual de provenance y enforcement real JSON Schema. No hay SQL nuevo, migración aplicada, schema BD, datos, producto, UI, Personas, Classes, Teaching, Calendar, OIDC, P32, `cya-app.tsx`, main ni producción.
 
-## 7. Idempotencia
+## 12. Estado
 
-La idempotencia de despliegue la aporta el ledger: una versión canónica no se vuelve a aplicar como si fuese nueva.
-
-Dentro del SQL:
-
-- no usar `IF NOT EXISTS` indiscriminadamente para ocultar drift;
-- operaciones de backfill deben tener criterio determinista y, cuando proceda, clave de idempotencia;
-- operaciones externas o side effects no deben depender de reejecutar manualmente el mismo SQL;
-- si una migración necesita reintento parcial, debe documentar el punto seguro de reanudación.
-
-## 8. Rollback y recuperación
-
-No se usa `db reset` en staging ni producción.
-
-Por defecto, tras una migración publicada se corrige **hacia delante** con una nueva migración. Para cambios destructivos/irreversibles, el PR debe documentar antes de aplicar:
-
-- backup/snapshot requerido;
-- rollback o forward-fix verificable;
-- datos afectados;
-- ventana de recuperación;
-- owner Release/Data;
-- criterio de aborto.
-
-`migration repair` o manipulación del ledger no es un procedimiento ordinario; solo se admite como recuperación explícita de Release + Data + Governance con evidencia.
-
-## 9. Provenance machine-readable y lifecycle
-
-Toda migración post-CORE-01 se registra en `docs/CORE_01_MIGRATION_PROVENANCE.json` y debe validar contra `docs/CORE_01_MIGRATION_PROVENANCE.schema.json` **y** las relaciones semánticas del checker.
-
-### 9.1 Fase AUTHORING — obligatoria desde el PR de autoría
-
-Estado compatible: `PREPARADA_NO_APLICADA`.
-
-Campos obligatorios:
-
-- `path` canónico;
-- `migration_version`, idéntico al timestamp del nombre;
-- `operational_class=CANONICA`;
-- `applied_state=PREPARADA_NO_APLICADA`;
-- `provenance.schema_version`;
-- `provenance.lifecycle_phase=AUTHORING`;
-- `owner`;
-- `func_id`;
-- `authorship.repository`;
-- `authorship.base_sha`: SHA real conocido desde el que se abrió el trabajo; no es un SHA futuro/autorreferencial;
-- `authorship.pr_number`;
-- `intended_targets[]` con entorno + `project_ref` conocidos;
-- `recovery.strategy` y `recovery.plan`;
-- `application_evidence=null`.
-
-**Regla:** durante AUTHORING no se rellenan ledger, source commit de aplicación, run/deployment ni fecha de verificación. Esos hechos todavía no han ocurrido y no pueden inventarse para satisfacer CI.
-
-### 9.2 Fase APPLIED — solo después de una aplicación real
-
-Estado compatible: `APLICADA`.
-
-Además de conservar la provenance de autoría, exige `application_evidence[]` con al menos:
-
-- `environment`;
-- `project_ref`;
-- `source_commit_sha` real del código aplicado;
-- `ledger.version`, idéntica a `migration_version`;
-- `ledger.name`, idéntico al nombre canónico de la migración sin timestamp/extensión;
-- `deployment.kind` (`github_actions` o `manual_release`);
-- `deployment.reference`;
-- `deployment.result=SUCCESS`;
-- `verified_at`.
-
-El entorno/project_ref aplicado debe haber sido declarado previamente en `intended_targets`.
-
-### 9.3 Compatibilidad de estados
-
-El checker rechaza explícitamente:
-
-- `PREPARADA_NO_APLICADA` con fase distinta de `AUTHORING`;
-- `PREPARADA_NO_APLICADA` con evidencia de aplicación no nula;
-- `APLICADA` con fase distinta de `APPLIED`;
-- `APLICADA` sin evidencia ledger/entorno/deployment;
-- SHA de 40 ceros u otros placeholders sintácticos;
-- ledger/version/name incompatibles con el path;
-- aplicación en un target no declarado.
-
-## 10. Inmutabilidad histórica
-
-CORE-01 no mueve, renombra ni borra SQL histórico.
-
-Quedan congelados:
-
-- `db/migrations/**`;
-- `supabase/applied-history/**` salvo procedimiento de archivo explícito de Release/Governance;
-- SQL raíz `supabase/*.sql`;
-- ficheros preexistentes no canónicos dentro de `supabase/migrations/`.
-
-Ejemplo de consumidor histórico que obliga a conservar bootstrap: `.github/workflows/apply-p19-persona-unica.yml` referencia `supabase/v47_p19_persona_unica.sql`.
-
-## 11. Gate
-
-`node scripts/check-migration-governance.mjs --base <BASE_SHA>` impide:
-
-- crear/modificar/borrar SQL en `db/migrations`;
-- usar `supabase/applied-history` como ruta alternativa;
-- crear/modificar/borrar SQL de bootstrap en la raíz de `supabase`;
-- modificar o borrar migraciones existentes en `supabase/migrations`;
-- crear una nueva migración canónica con nombre no timestamped o retrodatado;
-- reutilizar timestamp;
-- dejar SQL de cualquiera de las rutas gobernadas fuera del inventario combinado;
-- registrar una nueva migración sin provenance obligatoria de AUTHORING;
-- registrar provenance parcial o inválida;
-- marcar `APLICADA` sin evidencia posterior suficiente;
-- fabricar evidencia futura para una migración todavía preparada;
-- usar `canonical_pending` como bypass de provenance.
-
-El gate está conectado al `STG-01 Integration Gate` requerido para PRs a `staging`.
-
-## 12. Handoff Release / Governance
-
-### Release
-Antes de aplicar una migración:
-1. verifica ruta canónica, naming, registro de provenance en fase AUTHORING y gate verde;
-2. verifica target environment + `project_ref` contra `intended_targets`;
-3. aplica solo con autorización correspondiente;
-4. comprueba el ledger posterior;
-5. actualiza el mismo registro a fase APPLIED con evidencia real, nunca anticipada;
-6. vuelve a ejecutar el gate;
-7. no promociona por mera existencia del fichero.
-
-### Data + Audit/Data Governance
-- Data mantiene el contrato, snapshot histórico y registro post-CORE-01.
-- Governance exige provenance, conserva drift/unknowns y registra repair/rollback.
-- Cualquier reclasificación de `DESCONOCIDA`, `DUPLICADO_DOCUMENTAL` o `RETIRADA` exige evidencia trazable.
-- El snapshot histórico no se rellena retroactivamente con provenance inventada.
-
-## 13. Corrección QA del P2 de provenance
-
-Chat 11 demostró que el head `ff75e29463230a7a9eb9c60c625ba0e7a4b458c0` podía aceptar una migración futura con registro insuficiente. Esta corrección elimina ese bypass mediante schema + registro post-CORE-01 + validación lifecycle en `validateInventory`/`validateChanges` y pruebas positivas/negativas dedicadas.
-
-No se modifica SQL, schema, datos, producto, OIDC, P32 ni `cya-app.tsx`. Los fallos heredados de QA E2E OIDC 403 y P32 156/160 permanecen fuera de scope y deben seguir reportándose por separado.
-
-## 14. Estado funcional
-
-Esta corrección **no aplica ninguna migración**, no modifica schema ni datos y no certifica FUNC-0211. Tras el nuevo head, Chat 11 debe realizar exclusivamente revalidación incremental de CORE-01. Hasta entonces, FUNC-0211 permanece **PARCIAL / NO CERTIFICADO FUNCIONALMENTE** y PR #123 no debe fusionarse.
+PR #123 no se fusiona. Chat 11 debe revalidar incrementalmente el nuevo SHA exacto. Hasta ese veredicto, **FUNC-0211 permanece PARCIAL / NO CERTIFICADO FUNCIONALMENTE**.

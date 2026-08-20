@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "record_schema": "docs/CORE_01_MIGRATION_PROVENANCE.schema.json",
   "contract": "CORE-01",
   "func_id": "FUNC-0211",

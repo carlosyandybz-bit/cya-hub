@@ -1,0 +1,11 @@
+{
+  "name": "cya-core01-validator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CI-only JSON Schema validator for CORE-01 migration governance.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1"
+  }
+}
