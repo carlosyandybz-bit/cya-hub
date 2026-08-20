@@ -35,7 +35,7 @@ jobs:
   verify-staging-application:
     name: Call trusted staging verifier
     if: ${{ github.repository == 'carlosyandybz-bit/cya-hub' && github.ref == 'refs/heads/staging' }}
-    uses: carlosyandybz-bit/cya-hub/.github/workflows/core01-post-apply-trusted.yml@staging
+    uses: ./.github/workflows/core01-post-apply-trusted.yml
     permissions:
       contents: read
       actions: read

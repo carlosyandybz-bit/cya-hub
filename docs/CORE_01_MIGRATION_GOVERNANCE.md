@@ -1,7 +1,7 @@
 # CORE-01 — Gobierno Canónico de Migraciones
 
 **FUNC-ID:** FUNC-0211  
-**Estado:** tercera corrección QA implementada en rama; **PARCIAL / NO CERTIFICADO FUNCIONALMENTE** hasta revalidación independiente.  
+**Estado:** cierre P1 TOCTOU reusable workflow implementado en rama; **PARCIAL / NO CERTIFICADO FUNCIONALMENTE** hasta revalidación independiente.  
 **Base auditada:** `staging@9bd740fa9b7dd153e937c1bff2eb32d3828c2954`  
 **PR:** #123 / `core/core-01-migration-governance`  
 **Producción / main:** fuera de alcance.
@@ -10,7 +10,26 @@
 JSON Schema valida estructura; CI/Git/GitHub corrobora authoring; Release/Supabase corrobora aplicación real. Un JSON del autor nunca certifica APLICADA.
 
 ## Trusted post-apply
-El dispatcher `.github/workflows/core01-post-apply-verification.yml` no tiene Environment ni secretos, exige `refs/heads/staging` y llama al reusable verifier por `@staging`. El reusable hace `preflight-no-secrets` y solo después abre el job con Environment `staging`. Ambos checkouts usan exclusivamente el SHA trusted de staging y `persist-credentials:false`. `source_commit_sha` se trata únicamente como dato: se consulta por GitHub REST y nunca se hace checkout ni se ejecuta código, scripts, actions, package.json o SQL de ese commit.
+El dispatcher `.github/workflows/core01-post-apply-verification.yml` no tiene Environment ni secretos, exige `refs/heads/staging` y llama al reusable same-repo mediante la referencia local exacta:
+
+`uses: ./.github/workflows/core01-post-apply-trusted.yml`
+
+La referencia local es parte del trust boundary: el reusable debe proceder del mismo commit que contiene el caller. Queda prohibido identificar este reusable trusted mediante una rama o tag mutable como `@staging`, `@main`, una feature branch o una release tag. Un SHA explícito de 40 hex sería inmutable, pero el contrato productivo de CORE-01 usa la llamada local same-repo para que no exista resolución posterior mediante una referencia mutable.
+
+### Invariante de identidad exacta
+Para todo run post-apply autoritativo debe cumplirse:
+
+`caller commit = reusable workflow commit = checkout trusted verifier commit = trusted_verifier_sha de la evidencia`
+
+La igualdad se implementa así:
+1. el caller usa `./.github/workflows/core01-post-apply-trusted.yml`, por lo que caller y reusable pertenecen al mismo commit;
+2. los dos checkouts del reusable usan `ref: ${{ github.sha }}` y `persist-credentials:false`;
+3. el verifier exporta `CORE01_TRUSTED_VERIFIER_SHA: ${{ github.sha }}` y ese valor se materializa como `trusted_verifier_sha` en el artifact autoritativo;
+4. un rerun no puede volver a resolver el reusable desde `staging`, `main`, una branch o un tag distinto del commit del caller.
+
+`tests/core01-reusable-workflow-identity.test.mjs` protege esta invariante y falla ante `@staging`, `@main` o cualquier branch/tag mutable equivalente. El test también comprueba la referencia local real, ambos checkouts a `github.sha` y el binding de `CORE01_TRUSTED_VERIFIER_SHA` al mismo SHA.
+
+El reusable hace `preflight-no-secrets` y solo después abre el job con Environment `staging`. `source_commit_sha` se trata únicamente como dato: se consulta por GitHub REST y nunca se hace checkout ni se ejecuta código, scripts, actions, package.json o SQL de ese commit.
 
 ## Command injection
 `migration_path`, `source_commit_sha` y `deployment_run_id` se transfieren por `env` y Node los lee desde `process.env`; no se interpolan dentro de `run:`. Se validan con regex canónica exacta, SHA de 40 hex y entero decimal positivo seguro antes de API/ledger.
@@ -29,4 +48,4 @@ Se conservan 123 artefactos grandfathered, 23 DESCONOCIDA y v121 como unknown. `
 ## Release dependency
 Antes del primer uso real Chat 13 debe configurar en Environment staging una credencial estrictamente read-only para ledger y el allowlist de deployment workflow IDs, y confirmar la operatividad de workflow_dispatch según configuración GitHub vigente. No se configura ni ejecuta aquí.
 
-PR #123 no se fusiona. Chat 11 debe revalidar el SHA exacto publicado. `FUNC-0211` permanece **PARCIAL / NO CERTIFICADO FUNCIONALMENTE**.
+PR #123 no se fusiona. Chat 11 debe revalidar únicamente el P1 TOCTOU sobre el SHA exacto publicado. `FUNC-0211` permanece **PARCIAL / NO CERTIFICADO FUNCIONALMENTE**.
