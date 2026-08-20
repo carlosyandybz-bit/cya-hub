@@ -1,84 +1,32 @@
 # CORE-01 — Gobierno Canónico de Migraciones
 
 **FUNC-ID:** FUNC-0211  
-**Estado:** implementado en rama; segunda corrección QA de provenance pendiente de revalidación independiente; **PARCIAL / NO CERTIFICADO FUNCIONALMENTE**.  
+**Estado:** tercera corrección QA implementada en rama; **PARCIAL / NO CERTIFICADO FUNCIONALMENTE** hasta revalidación independiente.  
 **Base auditada:** `staging@9bd740fa9b7dd153e937c1bff2eb32d3828c2954`  
 **PR:** #123 / `core/core-01-migration-governance`  
 **Producción / main:** fuera de alcance.
 
-## 1. Autoridades separadas
+## Autoridades
+JSON Schema valida estructura; CI/Git/GitHub corrobora authoring; Release/Supabase corrobora aplicación real. Un JSON del autor nunca certifica APLICADA.
 
-CORE-01 no permite que un fichero o JSON sea su propia prueba.
+## Trusted post-apply
+El dispatcher `.github/workflows/core01-post-apply-verification.yml` no tiene Environment ni secretos, exige `refs/heads/staging` y llama al reusable verifier por `@staging`. El reusable hace `preflight-no-secrets` y solo después abre el job con Environment `staging`. Ambos checkouts usan exclusivamente el SHA trusted de staging y `persist-credentials:false`. `source_commit_sha` se trata únicamente como dato: se consulta por GitHub REST y nunca se hace checkout ni se ejecuta código, scripts, actions, package.json o SQL de ese commit.
 
-| Capa | Autoridad |
-| --- | --- |
-| JSON Schema Draft 2020-12 | estructura, tipos, `required`, `additionalProperties`, enums/consts, patrones, formatos y lifecycle declarativo |
-| CI / Git / GitHub | repositorio real, PR real, base SHA real, existencia de commits, diff real, target de authoring autorizado y run de verificación existente |
-| Release / Supabase | entorno/project_ref de aplicación, deployment autorizado y ledger real `supabase_migrations.schema_migrations` |
+## Command injection
+`migration_path`, `source_commit_sha` y `deployment_run_id` se transfieren por `env` y Node los lee desde `process.env`; no se interpolan dentro de `run:`. Se validan con regex canónica exacta, SHA de 40 hex y entero decimal positivo seguro antes de API/ledger.
 
-La presencia de SQL **no prueba aplicación**. La presencia de `application_evidence` escrita por un autor **tampoco prueba aplicación**.
+## Evidence artifact y APPLIED binding
+`docs/CORE_01_POST_APPLY_EVIDENCE.schema.json` (v1) define el artifact autoritativo emitido únicamente tras corroborar source commit/file, deployment allowlisted y ledger real `supabase_migrations.schema_migrations`. El artifact contiene path/version, target, source SHA, deployment run/workflow, ledger, verification run/workflow/path/repo/ref/trusted SHA y verified_at.
 
-## 2. Ruta canónica y grandfathering
+Durante PREPARADA→APLICADA el checker carga el registro base, preserva path/version/class/owner/FUNC-ID/authorship/intended_targets/recovery, obtiene el verification run real, exige repo/workflow/path/event/status/ref correctos, localiza exactamente un artifact por nombre determinista, lo descarga por artifact ID de GitHub, lee el ZIP sin extraerlo al filesystem, valida evidence schema real con Ajv y compara exactamente `application_evidence` con el artifact. Evidence ya certificada es inmutable; solo puede añadirse nueva evidence al final y cada adición requiere su propio artifact corroborado.
 
-- Nueva autoría: exclusivamente `supabase/migrations/YYYYMMDDHHMMSS_descripcion_snake_case.sql`.
-- `db/migrations/**`: histórico congelado.
-- `supabase/*.sql`: bootstrap/compatibilidad congelada para nueva autoría.
-- `supabase/applied-history/**`: archivo documental congelado; nunca segunda ruta de migración ni ledger.
-- `docs/CORE_01_MIGRATION_INVENTORY.json`: snapshot de los 123 artefactos históricos; grandfathered.
-- `docs/CORE_01_MIGRATION_PROVENANCE.json`: solo migraciones post-CORE-01.
+## Seguridad
+Token GitHub limitado a `contents:read` y `actions:read`; no `secrets: inherit`; DB URL solo existe en el step verificador y se pasa a psql mediante `PGDATABASE`, no argv; errores sensibles se redactan. Target post-apply fijado a staging. No se ejecuta post-apply real en CORE-01.
 
-Los históricos no deben recibir provenance inventada. El drift conocido, incluido `v121_student_active_corrections_visible`, permanece visible y no se reconstruye en este paquete.
+## Histórico y scope
+Se conservan 123 artefactos grandfathered, 23 DESCONOCIDA y v121 como unknown. `canonical_pending` bloqueado; `db/migrations`, root Supabase SQL y applied-history congelados. 0 SQL funcional, 0 migraciones aplicadas, 0 schema DB, 0 datos, 0 producto, 0 cya-app.tsx, 0 main, 0 producción.
 
-## 3. Schema real
+## Release dependency
+Antes del primer uso real Chat 13 debe configurar en Environment staging una credencial estrictamente read-only para ledger y el allowlist de deployment workflow IDs, y confirmar la operatividad de workflow_dispatch según configuración GitHub vigente. No se configura ni ejecuta aquí.
 
-El contrato de registro es `docs/CORE_01_MIGRATION_PROVENANCE.schema.json`, schema version 2.
-
-El Integration Gate instala tooling aislado bajo `tools/core01-validator/` y compila/ejecuta el schema con **Ajv 8 Draft 2020-12 + ajv-formats**. El tooling es CI-only y no forma parte de dependencias/runtime/bundle de la aplicación.
-
-El schema es autoridad para forma exacta, `additionalProperties:false`, required, tipos, patrones, `format: date-time`, estados y lifecycle. El checker añade únicamente relaciones semánticas/contextuales que JSON Schema no puede demostrar.
-
-## 4. AUTHORING GATE
-
-Una migración nueva entra como `CANONICA`, `PREPARADA_NO_APLICADA`, `AUTHORING` y `application_evidence=null`.
-
-En `pull_request`, CI corrobora contra Git/GitHub real: repository, existencia de base SHA, igualdad con `pull_request.base.sha`, PR number real, alta SQL en diff, path/version real y target perteneciente al allowlist CI. El gate de PR **no necesita secretos Supabase, no consulta producción, no aplica migraciones y no consulta ledger**.
-
-En STAGING, el target previsto autorizado por CI es `staging / qlngfkzmncihtdzktcmd`. Esto demuestra destino permitido para authoring, no aplicación.
-
-## 5. RELEASE / POST-APPLY VERIFICATION
-
-`APLICADA` solo es legítimo después de verificación posterior independiente del JSON autoral. CORE-01 incorpora `.github/workflows/core01-post-apply-verification.yml` y `scripts/verify-migration-post-apply.mjs`.
-
-El workflow solo tiene `workflow_dispatch`, corre bajo GitHub Environment protegido `staging`, no aplica SQL y necesita `CORE01_STAGING_DATABASE_URL` como secret de lectura del ledger y `CORE01_AUTHORIZED_DEPLOYMENT_WORKFLOW_IDS` como allowlist administrado por Release. Falla cerrado si falta configuración.
-
-Corrobora: registro aún AUTHORING/PREPARADA, target declarado, source commit existente que contiene el SQL, deployment run real `completed/success` para ese commit y workflow_id autorizado, y fila exacta `version/name` en `supabase_migrations.schema_migrations`. Solo entonces genera un artifact `core01-post-apply-evidence.json`; no modifica repo ni ledger.
-
-Para promover documentalmente a `APLICADA/APPLIED`, Release incorpora esa evidencia en un cambio posterior. El Authoring Gate vuelve a corroborar source commit, target y que `release_verification.run_id` existe, pertenece al workflow/path exacto, fue `workflow_dispatch`, terminó `success` y su título vincula inequívocamente migration path + source commit. Un JSON autocontenido inventado no basta.
-
-## 6. Dependencia Release pendiente
-
-Antes del primer uso, Chat 13 / Release debe configurar en el GitHub Environment `staging`: secret read-only `CORE01_STAGING_DATABASE_URL` y variable `CORE01_AUTHORIZED_DEPLOYMENT_WORKFLOW_IDS` con los workflow IDs que Release autorice realmente para aplicar migraciones canónicas. CORE-01 no configura secretos ni ejecuta una aplicación real.
-
-## 7. Reglas semánticas adicionales
-
-Fuera del schema: `migration_version == timestamp(path)`; evidence ledger version/name == path; evidence target ∈ intended_targets; timestamps nuevos posteriores al máximo histórico/ledger; timestamps únicos; inventario consistente; `canonical_pending` prohibido; legacy/root/applied-history congelados.
-
-## 8. Applied-history por entorno
-
-La autoridad Supabase es `supabase_migrations.schema_migrations` del `project_ref` realmente consultado. Un JSON o fichero en `applied-history` nunca sustituye esa consulta.
-
-## 9. Recuperación
-
-No `db reset`; no reescritura de migración publicada; default forward-fix. `migration repair`/ledger repair solo mediante procedimiento extraordinario Release + Data + Governance con evidencia.
-
-## 10. CI heredado fuera de alcance
-
-CYA QA E2E OIDC HTTP 403 y P32 156/160 heredado siguen separados. CORE-01 no altera sus contratos para fabricar verde.
-
-## 11. Scope de esta segunda corrección QA
-
-Solo se corrigen veracidad contextual de provenance y enforcement real JSON Schema. No hay SQL nuevo, migración aplicada, schema BD, datos, producto, UI, Personas, Classes, Teaching, Calendar, OIDC, P32, `cya-app.tsx`, main ni producción.
-
-## 12. Estado
-
-PR #123 no se fusiona. Chat 11 debe revalidar incrementalmente el nuevo SHA exacto. Hasta ese veredicto, **FUNC-0211 permanece PARCIAL / NO CERTIFICADO FUNCIONALMENTE**.
+PR #123 no se fusiona. Chat 11 debe revalidar el SHA exacto publicado. `FUNC-0211` permanece **PARCIAL / NO CERTIFICADO FUNCIONALMENTE**.

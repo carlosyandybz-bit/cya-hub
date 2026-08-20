@@ -1,0 +1,83 @@
+name: CORE-01 Trusted Post-Apply Verifier
+
+on:
+  workflow_call:
+    inputs:
+      migration_path:
+        required: true
+        type: string
+      source_commit_sha:
+        required: true
+        type: string
+      deployment_run_id:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  preflight-no-secrets:
+    name: Validate trusted ref and untrusted inputs
+    if: ${{ github.repository == 'carlosyandybz-bit/cya-hub' && github.ref == 'refs/heads/staging' && github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout trusted staging verifier code only
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Use Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Validate workflow_dispatch data before secrets or external lookups
+        env:
+          CORE01_INPUT_MIGRATION_PATH: ${{ inputs.migration_path }}
+          CORE01_INPUT_SOURCE_COMMIT_SHA: ${{ inputs.source_commit_sha }}
+          CORE01_INPUT_DEPLOYMENT_RUN_ID: ${{ inputs.deployment_run_id }}
+        run: node scripts/validate-core01-release-inputs.mjs
+
+  verify-staging-application:
+    name: Verify source/deployment/ledger and emit authoritative evidence
+    needs: preflight-no-secrets
+    if: ${{ github.repository == 'carlosyandybz-bit/cya-hub' && github.ref == 'refs/heads/staging' && github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: staging
+    steps:
+      - name: Checkout exact trusted staging SHA
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Use Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Install CORE-01 validator tooling from trusted staging
+        run: npm ci --prefix tools/core01-validator --ignore-scripts --no-audit --no-fund
+      - name: Verify application facts read-only and create evidence
+        env:
+          CORE01_INPUT_MIGRATION_PATH: ${{ inputs.migration_path }}
+          CORE01_INPUT_SOURCE_COMMIT_SHA: ${{ inputs.source_commit_sha }}
+          CORE01_INPUT_DEPLOYMENT_RUN_ID: ${{ inputs.deployment_run_id }}
+          CORE01_RELEASE_ENVIRONMENT: staging
+          CORE01_RELEASE_PROJECT_REF: qlngfkzmncihtdzktcmd
+          CORE01_TRUSTED_REF: refs/heads/staging
+          CORE01_TRUSTED_VERIFIER_SHA: ${{ github.sha }}
+          CORE01_DATABASE_URL: ${{ secrets.CORE01_STAGING_DATABASE_URL }}
+          CORE01_AUTHORIZED_DEPLOYMENT_WORKFLOW_IDS: ${{ vars.CORE01_AUTHORIZED_DEPLOYMENT_WORKFLOW_IDS }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/verify-migration-post-apply.mjs
+      - name: Upload authoritative corroborated evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: core01-post-apply-evidence-${{ github.run_id }}
+          path: core01-post-apply-evidence.json
+          if-no-files-found: error
+          retention-days: 90

@@ -1,222 +1,53 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://cya-hub.local/schemas/core-01-migration-provenance-v2",
+  "$id": "https://cya-hub.local/schemas/core-01-migration-provenance-v3",
   "title": "CORE-01 post-contract migration provenance",
-  "description": "Lifecycle-aware declaration for every migration authored after CORE-01. JSON is declarative; Git/GitHub corroborate authoring and Release/Supabase corroborate application.",
-  "x-cya-schema-version": 2,
+  "description": "Lifecycle-aware declaration for every migration authored after CORE-01. JSON is declarative; Git/GitHub corroborate authoring and Release/Supabase evidence artifacts corroborate application.",
+  "x-cya-schema-version": 3,
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "path",
-    "migration_version",
-    "operational_class",
-    "applied_state",
-    "provenance"
-  ],
+  "required": ["path", "migration_version", "operational_class", "applied_state", "provenance"],
   "properties": {
-    "path": {
-      "type": "string",
-      "pattern": "^supabase/migrations/[0-9]{14}_[a-z0-9]+(?:_[a-z0-9]+)*\\.sql$"
-    },
-    "migration_version": {
-      "type": "string",
-      "pattern": "^[0-9]{14}$"
-    },
-    "operational_class": {
-      "const": "CANONICA"
-    },
-    "applied_state": {
-      "enum": [
-        "PREPARADA_NO_APLICADA",
-        "APLICADA"
-      ]
-    },
+    "path": { "type": "string", "pattern": "^supabase/migrations/[0-9]{14}_[a-z0-9]+(?:_[a-z0-9]+)*\\.sql$" },
+    "migration_version": { "type": "string", "pattern": "^[0-9]{14}$" },
+    "operational_class": { "const": "CANONICA" },
+    "applied_state": { "enum": ["PREPARADA_NO_APLICADA", "APLICADA"] },
     "provenance": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "schema_version",
-        "lifecycle_phase",
-        "owner",
-        "func_id",
-        "authorship",
-        "intended_targets",
-        "recovery",
-        "application_evidence"
-      ],
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "lifecycle_phase", "owner", "func_id", "authorship", "intended_targets", "recovery", "application_evidence"],
       "properties": {
-        "schema_version": {
-          "const": 2
-        },
-        "lifecycle_phase": {
-          "enum": [
-            "AUTHORING",
-            "APPLIED"
-          ]
-        },
-        "owner": {
-          "type": "string",
-          "minLength": 1
-        },
-        "func_id": {
-          "type": "string",
-          "pattern": "^FUNC-[0-9]{4}$"
-        },
+        "schema_version": { "const": 3 },
+        "lifecycle_phase": { "enum": ["AUTHORING", "APPLIED"] },
+        "owner": { "type": "string", "minLength": 1 },
+        "func_id": { "type": "string", "pattern": "^FUNC-[0-9]{4}$" },
         "authorship": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "repository",
-            "base_sha",
-            "pr_number"
-          ],
-          "properties": {
-            "repository": {
-              "const": "carlosyandybz-bit/cya-hub"
-            },
-            "base_sha": {
-              "type": "string",
-              "pattern": "^(?!0{40}$)[0-9a-f]{40}$"
-            },
-            "pr_number": {
-              "type": "integer",
-              "minimum": 1
-            }
-          }
+          "type": "object", "additionalProperties": false, "required": ["repository", "base_sha", "pr_number"],
+          "properties": { "repository": { "const": "carlosyandybz-bit/cya-hub" }, "base_sha": { "type": "string", "pattern": "^(?!0{40}$)[0-9a-f]{40}$" }, "pr_number": { "type": "integer", "minimum": 1 } }
         },
         "intended_targets": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "environment",
-              "project_ref"
-            ],
-            "properties": {
-              "environment": {
-                "type": "string",
-                "minLength": 1
-              },
-              "project_ref": {
-                "type": "string",
-                "pattern": "^[a-z0-9]{20}$"
-              }
-            }
-          }
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": { "type": "object", "additionalProperties": false, "required": ["environment", "project_ref"], "properties": { "environment": { "type": "string", "minLength": 1 }, "project_ref": { "type": "string", "pattern": "^[a-z0-9]{20}$" } } }
         },
         "recovery": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "strategy",
-            "plan"
-          ],
-          "properties": {
-            "strategy": {
-              "enum": [
-                "forward_fix",
-                "rollback",
-                "not_applicable"
-              ]
-            },
-            "plan": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
+          "type": "object", "additionalProperties": false, "required": ["strategy", "plan"],
+          "properties": { "strategy": { "enum": ["forward_fix", "rollback", "not_applicable"] }, "plan": { "type": "string", "minLength": 1 } }
         },
         "application_evidence": {
           "oneOf": [
+            { "type": "null" },
             {
-              "type": "null"
-            },
-            {
-              "type": "array",
-              "minItems": 1,
+              "type": "array", "minItems": 1,
               "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "environment",
-                  "project_ref",
-                  "source_commit_sha",
-                  "ledger",
-                  "deployment",
-                  "release_verification",
-                  "verified_at"
-                ],
+                "type": "object", "additionalProperties": false,
+                "required": ["environment", "project_ref", "source_commit_sha", "ledger", "deployment", "release_verification", "verified_at"],
                 "properties": {
-                  "environment": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "project_ref": {
-                    "type": "string",
-                    "pattern": "^[a-z0-9]{20}$"
-                  },
-                  "source_commit_sha": {
-                    "type": "string",
-                    "pattern": "^(?!0{40}$)[0-9a-f]{40}$"
-                  },
-                  "ledger": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "version",
-                      "name"
-                    ],
-                    "properties": {
-                      "version": {
-                        "type": "string",
-                        "pattern": "^[0-9]{14}$"
-                      },
-                      "name": {
-                        "type": "string",
-                        "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$"
-                      }
-                    }
-                  },
-                  "deployment": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "kind",
-                      "run_id"
-                    ],
-                    "properties": {
-                      "kind": {
-                        "const": "github_actions"
-                      },
-                      "run_id": {
-                        "type": "integer",
-                        "minimum": 1
-                      }
-                    }
-                  },
-                  "release_verification": {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "required": [
-                      "workflow",
-                      "run_id"
-                    ],
-                    "properties": {
-                      "workflow": {
-                        "const": "CORE-01 Post-Apply Verification"
-                      },
-                      "run_id": {
-                        "type": "integer",
-                        "minimum": 1
-                      }
-                    }
-                  },
-                  "verified_at": {
-                    "type": "string",
-                    "format": "date-time"
-                  }
+                  "environment": { "type": "string", "minLength": 1 },
+                  "project_ref": { "type": "string", "pattern": "^[a-z0-9]{20}$" },
+                  "source_commit_sha": { "type": "string", "pattern": "^(?!0{40}$)[0-9a-f]{40}$" },
+                  "ledger": { "type": "object", "additionalProperties": false, "required": ["version", "name"], "properties": { "version": { "type": "string", "pattern": "^[0-9]{14}$" }, "name": { "type": "string", "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$" } } },
+                  "deployment": { "type": "object", "additionalProperties": false, "required": ["kind", "run_id", "workflow_id"], "properties": { "kind": { "const": "github_actions" }, "run_id": { "type": "integer", "minimum": 1 }, "workflow_id": { "type": "integer", "minimum": 1 } } },
+                  "release_verification": { "type": "object", "additionalProperties": false, "required": ["workflow", "run_id", "artifact_name"], "properties": { "workflow": { "const": "CORE-01 Post-Apply Verification" }, "run_id": { "type": "integer", "minimum": 1 }, "artifact_name": { "type": "string", "pattern": "^core01-post-apply-evidence-[1-9][0-9]*$" } } },
+                  "verified_at": { "type": "string", "format": "date-time" }
                 }
               }
             }
@@ -226,64 +57,7 @@
     }
   },
   "allOf": [
-    {
-      "if": {
-        "type": "object",
-        "properties": {
-          "applied_state": {
-            "const": "PREPARADA_NO_APLICADA"
-          }
-        },
-        "required": [
-          "applied_state"
-        ]
-      },
-      "then": {
-        "type": "object",
-        "properties": {
-          "provenance": {
-            "type": "object",
-            "properties": {
-              "lifecycle_phase": {
-                "const": "AUTHORING"
-              },
-              "application_evidence": {
-                "type": "null"
-              }
-            }
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "type": "object",
-        "properties": {
-          "applied_state": {
-            "const": "APLICADA"
-          }
-        },
-        "required": [
-          "applied_state"
-        ]
-      },
-      "then": {
-        "type": "object",
-        "properties": {
-          "provenance": {
-            "type": "object",
-            "properties": {
-              "lifecycle_phase": {
-                "const": "APPLIED"
-              },
-              "application_evidence": {
-                "type": "array",
-                "minItems": 1
-              }
-            }
-          }
-        }
-      }
-    }
+    { "if": { "properties": { "applied_state": { "const": "PREPARADA_NO_APLICADA" } }, "required": ["applied_state"] }, "then": { "properties": { "provenance": { "properties": { "lifecycle_phase": { "const": "AUTHORING" }, "application_evidence": { "type": "null" } } } } } },
+    { "if": { "properties": { "applied_state": { "const": "APLICADA" } }, "required": ["applied_state"] }, "then": { "properties": { "provenance": { "properties": { "lifecycle_phase": { "const": "APPLIED" }, "application_evidence": { "type": "array", "minItems": 1 } } } } } }
   ]
 }

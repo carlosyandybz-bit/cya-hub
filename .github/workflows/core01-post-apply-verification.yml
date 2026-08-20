@@ -1,5 +1,5 @@
 name: CORE-01 Post-Apply Verification
-run-name: CORE-01 post-apply ${{ inputs.migration_path }} @ ${{ inputs.source_commit_sha }}
+run-name: CORE-01 post-apply verification
 
 on:
   workflow_dispatch:
@@ -9,53 +9,37 @@ on:
         required: true
         type: string
       source_commit_sha:
-        description: Exact commit SHA deployed/applied
+        description: Exact source commit SHA applied by Release; treated as data only
         required: true
         type: string
       deployment_run_id:
-        description: GitHub Actions run ID that performed the authorized deployment/application
+        description: GitHub Actions run ID that performed the authorized application
         required: true
-        type: number
+        type: string
 
 permissions:
   contents: read
   actions: read
 
 jobs:
-  verify-staging-application:
-    name: Verify staging ledger and deployment
+  reject-untrusted-dispatch:
+    name: Reject untrusted dispatch ref
+    if: ${{ github.repository != 'carlosyandybz-bit/cya-hub' || github.ref != 'refs/heads/staging' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 8
-    environment: staging
-    env:
-      CORE01_RELEASE_ENVIRONMENT: staging
-      CORE01_RELEASE_PROJECT_REF: qlngfkzmncihtdzktcmd
-      CORE01_DATABASE_URL: ${{ secrets.CORE01_STAGING_DATABASE_URL }}
-      CORE01_AUTHORIZED_DEPLOYMENT_WORKFLOW_IDS: ${{ vars.CORE01_AUTHORIZED_DEPLOYMENT_WORKFLOW_IDS }}
-      CORE01_EVIDENCE_PATH: core01-post-apply-evidence.json
-      GITHUB_TOKEN: ${{ github.token }}
     steps:
-      - name: Checkout exact source commit
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.source_commit_sha }}
-          fetch-depth: 0
-      - name: Use Node.js 22
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-      - name: Install CORE-01 validator tooling
-        run: npm ci --prefix tools/core01-validator --ignore-scripts --no-audit --no-fund
-      - name: Verify application facts — read only
-        run: >-
-          node scripts/verify-migration-post-apply.mjs
-          --path '${{ inputs.migration_path }}'
-          --source-commit '${{ inputs.source_commit_sha }}'
-          --deployment-run-id '${{ inputs.deployment_run_id }}'
-      - name: Upload corroborated evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: core01-post-apply-${{ github.run_id }}
-          path: core01-post-apply-evidence.json
-          if-no-files-found: error
-          retention-days: 90
+      - name: Refuse non-staging dispatch
+        run: |
+          echo "CORE-01 post-apply is authorized only from protected refs/heads/staging."
+          exit 1
+
+  verify-staging-application:
+    name: Call trusted staging verifier
+    if: ${{ github.repository == 'carlosyandybz-bit/cya-hub' && github.ref == 'refs/heads/staging' }}
+    uses: carlosyandybz-bit/cya-hub/.github/workflows/core01-post-apply-trusted.yml@staging
+    permissions:
+      contents: read
+      actions: read
+    with:
+      migration_path: ${{ inputs.migration_path }}
+      source_commit_sha: ${{ inputs.source_commit_sha }}
+      deployment_run_id: ${{ inputs.deployment_run_id }}
