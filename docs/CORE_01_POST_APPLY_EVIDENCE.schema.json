@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cya-hub.local/schemas/core-01-post-apply-evidence-v1",
+  "title": "CORE-01 authoritative post-apply evidence artifact",
+  "description": "Machine-readable evidence produced only by the trusted staging post-apply verifier after corroborating source commit, authorized deployment and the real Supabase migration ledger.",
+  "x-cya-schema-version": 1,
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract", "schema_version", "artifact_name", "migration_path", "migration_version", "environment", "project_ref", "source_commit_sha", "deployment", "ledger", "verification", "verified_at"],
+  "properties": {
+    "contract": { "const": "CORE-01-POST-APPLY-EVIDENCE" },
+    "schema_version": { "const": 1 },
+    "artifact_name": { "type": "string", "pattern": "^core01-post-apply-evidence-[1-9][0-9]*$" },
+    "migration_path": { "type": "string", "pattern": "^supabase/migrations/[0-9]{14}_[a-z0-9]+(?:_[a-z0-9]+)*\\.sql$" },
+    "migration_version": { "type": "string", "pattern": "^[0-9]{14}$" },
+    "environment": { "const": "staging" },
+    "project_ref": { "const": "qlngfkzmncihtdzktcmd" },
+    "source_commit_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "deployment": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "run_id", "workflow_id"],
+      "properties": { "kind": { "const": "github_actions" }, "run_id": { "type": "integer", "minimum": 1 }, "workflow_id": { "type": "integer", "minimum": 1 } }
+    },
+    "ledger": {
+      "type": "object", "additionalProperties": false, "required": ["version", "name"],
+      "properties": { "version": { "type": "string", "pattern": "^[0-9]{14}$" }, "name": { "type": "string", "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$" } }
+    },
+    "verification": {
+      "type": "object", "additionalProperties": false,
+      "required": ["run_id", "workflow", "workflow_path", "repository", "ref", "trusted_verifier_sha"],
+      "properties": {
+        "run_id": { "type": "integer", "minimum": 1 },
+        "workflow": { "const": "CORE-01 Post-Apply Verification" },
+        "workflow_path": { "const": ".github/workflows/core01-post-apply-verification.yml" },
+        "repository": { "const": "carlosyandybz-bit/cya-hub" },
+        "ref": { "const": "refs/heads/staging" },
+        "trusted_verifier_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "verified_at": { "type": "string", "format": "date-time" }
+  }
+}

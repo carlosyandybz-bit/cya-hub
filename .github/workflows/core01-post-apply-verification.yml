@@ -1,0 +1,45 @@
+name: CORE-01 Post-Apply Verification
+run-name: CORE-01 post-apply verification
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration_path:
+        description: Canonical migration path already authorized/applied by Release
+        required: true
+        type: string
+      source_commit_sha:
+        description: Exact source commit SHA applied by Release; treated as data only
+        required: true
+        type: string
+      deployment_run_id:
+        description: GitHub Actions run ID that performed the authorized application
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  reject-untrusted-dispatch:
+    name: Reject untrusted dispatch ref
+    if: ${{ github.repository != 'carlosyandybz-bit/cya-hub' || github.ref != 'refs/heads/staging' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse non-staging dispatch
+        run: |
+          echo "CORE-01 post-apply is authorized only from protected refs/heads/staging."
+          exit 1
+
+  verify-staging-application:
+    name: Call trusted staging verifier
+    if: ${{ github.repository == 'carlosyandybz-bit/cya-hub' && github.ref == 'refs/heads/staging' }}
+    uses: ./.github/workflows/core01-post-apply-trusted.yml
+    permissions:
+      contents: read
+      actions: read
+    with:
+      migration_path: ${{ inputs.migration_path }}
+      source_commit_sha: ${{ inputs.source_commit_sha }}
+      deployment_run_id: ${{ inputs.deployment_run_id }}

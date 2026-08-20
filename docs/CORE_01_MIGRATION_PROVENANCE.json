@@ -1,0 +1,13 @@
+{
+  "schema_version": 3,
+  "record_schema": "docs/CORE_01_MIGRATION_PROVENANCE.schema.json",
+  "evidence_schema": "docs/CORE_01_POST_APPLY_EVIDENCE.schema.json",
+  "contract": "CORE-01",
+  "func_id": "FUNC-0211",
+  "grandfathering": {
+    "historical_inventory": "docs/CORE_01_MIGRATION_INVENTORY.json",
+    "base_sha": "9bd740fa9b7dd153e937c1bff2eb32d3828c2954",
+    "rule": "Historical artifacts remain classified by the snapshot inventory and are not required to fabricate missing provenance. Every migration authored after CORE-01 must be recorded here."
+  },
+  "migrations": []
+}
