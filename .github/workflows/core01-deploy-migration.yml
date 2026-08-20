@@ -1,20 +1,27 @@
-name: CORE-01 Trusted Post-Apply Verifier
+name: CORE-02 Staging Migration Deployment
+run-name: CORE-02 staging migration deployment
 
 on:
-  workflow_call:
+  push:
+    tags:
+      - "core01-staging-deploy-pr-*-sha-*"
 
 permissions:
   contents: read
   actions: read
   pull-requests: read
 
+concurrency:
+  group: core02-staging-migration-deployment
+  cancel-in-progress: false
+
 jobs:
   preflight-no-secrets:
-    name: Validate trusted tag, deployment artifact and source data
+    name: Validate trusted pipeline and source data
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout exact trusted verifier SHA
+      - name: Checkout exact trusted pipeline SHA
         uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}
@@ -26,19 +33,19 @@ jobs:
           node-version: "22"
       - name: Install trusted CORE-01 validator tooling
         run: npm ci --prefix tools/core01-validator --ignore-scripts --no-audit --no-fund
-      - name: Validate deployment/source evidence before Environment or database secrets
+      - name: Validate tag, staging SHA, PR, provenance and one SQL blob
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/verify-migration-post-apply.mjs --preflight
+        run: node scripts/verify-migration-deployment.mjs --preflight
 
-  verify-staging-application:
-    name: Verify real STAGING ledger and emit authoritative evidence
+  deploy-staging:
+    name: Apply exactly one authorized migration to STAGING
     needs: preflight-no-secrets
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     environment: staging
     steps:
-      - name: Checkout exact trusted verifier SHA
+      - name: Checkout exact trusted pipeline SHA
         uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}
@@ -48,22 +55,21 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-      - name: Install trusted CORE-01 validator tooling before ledger secret
+      - name: Install trusted CORE-01 validator tooling before database secret
         run: npm ci --prefix tools/core01-validator --ignore-scripts --no-audit --no-fund
-      - name: Revalidate deployment/source evidence before ledger secret
+      - name: Revalidate all source data after Environment approval, before database secret
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/verify-migration-post-apply.mjs --preflight
-      - name: Verify ledger read-only and create authoritative evidence
+        run: node scripts/verify-migration-deployment.mjs --preflight
+      - name: Apply exact immutable source migration and write deployment evidence
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          CORE01_STAGING_LEDGER_DATABASE_URL: ${{ secrets.CORE01_STAGING_LEDGER_DATABASE_URL }}
-          CORE01_AUTHORIZED_DEPLOYMENT_WORKFLOW_IDS: ${{ vars.CORE01_AUTHORIZED_DEPLOYMENT_WORKFLOW_IDS }}
-        run: node scripts/verify-migration-post-apply.mjs --verify
-      - name: Upload authoritative corroborated evidence
+          CORE01_STAGING_DATABASE_URL: ${{ secrets.CORE01_STAGING_DATABASE_URL }}
+        run: node scripts/verify-migration-deployment.mjs --apply
+      - name: Upload authoritative deployment evidence
         uses: actions/upload-artifact@v4
         with:
-          name: core01-post-apply-evidence-${{ github.run_id }}
-          path: core01-post-apply-evidence.json
+          name: core01-deployment-evidence-${{ github.run_id }}
+          path: core01-deployment-evidence.json
           if-no-files-found: error
           retention-days: 90
