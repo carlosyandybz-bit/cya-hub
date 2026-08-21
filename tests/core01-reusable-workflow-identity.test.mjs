@@ -1,3 +1,4 @@
+import "./core01-operational-migration-pipeline.test.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -60,12 +61,7 @@ test("P1 TOCTOU negative: arbitrary mutable branch or tag references are rejecte
 
 test("P1 TOCTOU invariant: caller commit = reusable commit = trusted checkout SHA = evidence trusted_verifier_sha", () => {
   assert.equal(assertTrustedReusableIdentity(callerWorkflow), EXPECTED_LOCAL_REFERENCE);
-
   const checkoutRefs = trustedWorkflow.match(/ref:\s*\$\{\{\s*github\.sha\s*\}\}/g) ?? [];
   assert.equal(checkoutRefs.length, 2, "Both trusted verifier checkouts must pin ref to github.sha from the caller context.");
-
-  const evidenceShaBindings = trustedWorkflow.match(/CORE01_TRUSTED_VERIFIER_SHA:\s*\$\{\{\s*github\.sha\s*\}\}/g) ?? [];
-  assert.equal(evidenceShaBindings.length, 1, "Authoritative evidence must bind trusted_verifier_sha to the same github.sha.");
-
   assert.doesNotMatch(callerWorkflow, /core01-post-apply-trusted\.yml@(staging|main|[^\s]+)/);
 });

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cya-hub.local/schemas/core01-deployment-evidence.schema.json",
+  "title": "CORE-02 authoritative staging migration deployment evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract","schema_version","artifact_name","repository","environment","project_ref","pr_number","source_commit_sha","migration_path","migration_version","migration_name","source_blob_sha","source_sha256","trusted_pipeline_sha","trigger_ref","deployment","ledger","recovery","applied_at"],
+  "properties": {
+    "contract": { "const": "CORE-02-DEPLOYMENT-EVIDENCE" },
+    "schema_version": { "const": 1 },
+    "artifact_name": { "type": "string", "pattern": "^core01-deployment-evidence-[1-9][0-9]*$" },
+    "repository": { "const": "carlosyandybz-bit/cya-hub" },
+    "environment": { "const": "staging" },
+    "project_ref": { "const": "qlngfkzmncihtdzktcmd" },
+    "pr_number": { "type": "integer", "minimum": 1 },
+    "source_commit_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "migration_path": { "type": "string", "pattern": "^supabase/migrations/[0-9]{14}_[a-z0-9]+(?:_[a-z0-9]+)*\\.sql$" },
+    "migration_version": { "type": "string", "pattern": "^[0-9]{14}$" },
+    "migration_name": { "type": "string", "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$" },
+    "source_blob_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "source_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "trusted_pipeline_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "trigger_ref": { "type": "string", "pattern": "^refs/tags/core01-staging-deploy-pr-[1-9][0-9]*-sha-[0-9a-f]{40}$" },
+    "deployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind","run_id","workflow_id","workflow","workflow_path"],
+      "properties": {
+        "kind": { "const": "github_actions" },
+        "run_id": { "type": "integer", "minimum": 1 },
+        "workflow_id": { "type": "integer", "minimum": 1 },
+        "workflow": { "const": "CORE-02 Staging Migration Deployment" },
+        "workflow_path": { "const": ".github/workflows/core01-deploy-migration.yml" }
+      }
+    },
+    "ledger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version","name"],
+      "properties": {
+        "version": { "type": "string", "pattern": "^[0-9]{14}$" },
+        "name": { "type": "string", "pattern": "^[a-z0-9]+(?:_[a-z0-9]+)*$" }
+      }
+    },
+    "recovery": { "const": "forward_fix" },
+    "applied_at": { "type": "string", "format": "date-time" }
+  }
+}

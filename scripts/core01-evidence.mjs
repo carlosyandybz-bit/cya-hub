@@ -20,6 +20,7 @@ import {
 const MAX_ARTIFACT_BYTES = 1024 * 1024;
 const MAX_EVIDENCE_BYTES = 256 * 1024;
 const EXPECTED_WORKFLOW_REF = `${CORE01_REPOSITORY}/${CORE01_POST_APPLY_WORKFLOW_PATH}@${CORE01_TRUSTED_REF}`;
+const CORE02_VERIFY_TAG_RE = /^core01-staging-verify-run-[1-9][0-9]*-pr-[1-9][0-9]*-sha-[0-9a-f]{40}$/;
 
 export function validatePostApplyInputs({ migrationPath, sourceCommitSha, deploymentRunId }) {
   if (!CORE01_CANONICAL_PATH_RE.test(migrationPath ?? "")) throw new Error("migration_path no cumple la ruta canónica exacta de CORE-01.");
@@ -36,6 +37,8 @@ export function safeErrorMessage(error) {
     .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+/gi, "Bearer [REDACTED]");
 }
 
+// Legacy CORE-01 context validator retained for historical regression compatibility.
+// CORE-02 tag-based operational runners use assertCore02TrustedContext instead.
 export function assertTrustedReleaseContext(env) {
   if (env.GITHUB_ACTIONS !== "true") throw new Error("Post-apply solo puede ejecutarse dentro de GitHub Actions.");
   if (env.GITHUB_EVENT_NAME !== "workflow_dispatch") throw new Error("Post-apply exige workflow_dispatch autorizado.");
@@ -133,9 +136,10 @@ export function validateVerificationRun(run, expectedRunId) {
   if (run?.repository?.full_name !== CORE01_REPOSITORY) errors.push(`verification run ${expectedRunId}: repositorio no autorizado.`);
   if (run?.name !== CORE01_POST_APPLY_WORKFLOW) errors.push(`verification run ${expectedRunId}: workflow no autorizado.`);
   if (run?.path !== CORE01_POST_APPLY_WORKFLOW_PATH) errors.push(`verification run ${expectedRunId}: workflow path no autorizado.`);
-  if (run?.event !== "workflow_dispatch") errors.push(`verification run ${expectedRunId}: event debe ser workflow_dispatch.`);
+  const legacyDispatch = run?.event === "workflow_dispatch" && run?.head_branch === "staging";
+  const core02TagPush = run?.event === "push" && (run?.head_branch == null || CORE02_VERIFY_TAG_RE.test(run.head_branch));
+  if (!legacyDispatch && !core02TagPush) errors.push(`verification run ${expectedRunId}: event/head_branch no corresponde a legacy staging ni a CORE-02 verify tag.`);
   if (run?.status !== "completed" || run?.conclusion !== "success") errors.push(`verification run ${expectedRunId}: no está completed/success.`);
-  if (run?.head_branch !== "staging") errors.push(`verification run ${expectedRunId}: head_branch debe ser staging.`);
   if (!CORE01_SHA_RE.test(run?.head_sha ?? "")) errors.push(`verification run ${expectedRunId}: head_sha inválido.`);
   return errors;
 }
