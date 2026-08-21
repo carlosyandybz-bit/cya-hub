@@ -19,7 +19,7 @@
         "schema_version": 3,
         "lifecycle_phase": "AUTHORING",
         "owner": "CLASS-ATTENDANCE-01 / Classes-Workflow",
-        "func_id": "CLASS-ATTENDANCE-01",
+        "func_id": "FUNC-0222",
         "authorship": {
           "repository": "carlosyandybz-bit/cya-hub",
           "base_sha": "861d8e584e8dd1ad5aff6f672affd1748f715168",
