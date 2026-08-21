@@ -25,15 +25,33 @@
           "base_sha": "861d8e584e8dd1ad5aff6f672affd1748f715168",
           "pr_number": 126
         },
-        "intended_targets": [
-          {
-            "environment": "staging",
-            "project_ref": "qlngfkzmncihtdzktcmd"
-          }
-        ],
+        "intended_targets": [{"environment":"staging","project_ref":"qlngfkzmncihtdzktcmd"}],
         "recovery": {
           "strategy": "forward_fix",
           "plan": "If CLASS-ATTENDANCE-01 requires correction after application, author a new canonical forward-fix migration; do not mutate the applied migration, fabricate attendance history, or use migration repair."
+        },
+        "application_evidence": null
+      }
+    },
+    {
+      "path": "supabase/migrations/20260821171000_class_attendance_finalize_compat.sql",
+      "migration_version": "20260821171000",
+      "operational_class": "CANONICA",
+      "applied_state": "PREPARADA_NO_APLICADA",
+      "provenance": {
+        "schema_version": 3,
+        "lifecycle_phase": "AUTHORING",
+        "owner": "CLASS-ATTENDANCE-01 / Classes-Workflow",
+        "func_id": "FUNC-0222",
+        "authorship": {
+          "repository": "carlosyandybz-bit/cya-hub",
+          "base_sha": "861d8e584e8dd1ad5aff6f672affd1748f715168",
+          "pr_number": 126
+        },
+        "intended_targets": [{"environment":"staging","project_ref":"qlngfkzmncihtdzktcmd"}],
+        "recovery": {
+          "strategy": "forward_fix",
+          "plan": "This pre-apply compatibility hardening preserves no-show/absence provenance at administrative close. If correction is needed after application, author a new canonical forward-fix migration."
         },
         "application_evidence": null
       }
