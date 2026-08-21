@@ -3,7 +3,9 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const migrationPath = new URL('../supabase/migrations/20260821170000_class_attendance_real_history.sql', import.meta.url);
+const compatPath = new URL('../supabase/migrations/20260821171000_class_attendance_finalize_compat.sql', import.meta.url);
 const sql = await readFile(migrationPath, 'utf8');
+const compat = await readFile(compatPath, 'utf8');
 
 test('CLASS-ATTENDANCE-01 creates an append-only durable attendance ledger without legacy backfill', () => {
   assert.match(sql, /create table if not exists public\.class_attendance_events/i);
@@ -73,4 +75,11 @@ test('durable attendance protects class_participants projection from silent rewr
   assert.match(sql, /class_participants_protect_durable_attendance/i);
   assert.match(sql, /La asistencia ya tiene historia durable; utiliza correct_class_attendance\(\)/i);
   assert.match(sql, /class_attendance_events_sync_projection/i);
+});
+
+test('compat hardening preserves no-show provenance when close repeats absent', () => {
+  assert.match(compat, /if not \(select private\.is_staff\(\)\)/i);
+  assert.match(compat, /v_existing\.attendance_status=p_attendance_status/i);
+  assert.match(compat, /p_absence_reason is null or v_existing\.absence_reason is not distinct from p_absence_reason/i);
+  assert.doesNotMatch(compat, /insert\s+into\s+public\.class_attendance_events[\s\S]{0,500}select/i);
 });
