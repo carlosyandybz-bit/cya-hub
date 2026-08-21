@@ -717,3 +717,48 @@ begin
   return v_class;
 end;
 $function$;
+
+-- CLASS-ATTENDANCE-SEC-01 — deny direct execution of all private helpers authored/replaced by M1.
+-- Trigger invocation and SECURITY DEFINER public RPC nesting execute as the function owner; no external role needs EXECUTE.
+revoke execute on function private.prevent_class_attendance_event_mutation() from public,anon,authenticated,service_role;
+revoke execute on function private.protect_durable_attendance_projection() from public,anon,authenticated,service_role;
+revoke execute on function private.sync_class_attendance_projection() from public,anon,authenticated,service_role;
+revoke execute on function private.class_attendance_latest_event(bigint,bigint) from public,anon,authenticated,service_role;
+revoke execute on function private.record_class_attendance_fact(bigint,bigint,text,text,timestamptz,text,bigint,text,jsonb) from public,anon,authenticated,service_role;
+revoke execute on function private.person_has_real_attendance_unchecked(bigint) from public,anon,authenticated,service_role;
+revoke execute on function private.person_first_real_attendance_unchecked(bigint) from public,anon,authenticated,service_role;
+revoke execute on function private.person_last_real_attendance_unchecked(bigint) from public,anon,authenticated,service_role;
+revoke execute on function private.person_has_valid_future_class_unchecked(bigint) from public,anon,authenticated,service_role;
+revoke execute on function private.can_read_person_attendance(bigint) from public,anon,authenticated,service_role;
+
+-- Fail closed at apply time if an exact helper signature still has effective external EXECUTE.
+do $acl_guard$
+declare
+  v_role text;
+  v_signature text;
+  v_roles constant text[] := array['public','anon','authenticated','service_role'];
+  v_signatures constant text[] := array[
+    'private.prevent_class_attendance_event_mutation()',
+    'private.protect_durable_attendance_projection()',
+    'private.sync_class_attendance_projection()',
+    'private.class_attendance_latest_event(bigint,bigint)',
+    'private.record_class_attendance_fact(bigint,bigint,text,text,timestamp with time zone,text,bigint,text,jsonb)',
+    'private.person_has_real_attendance_unchecked(bigint)',
+    'private.person_first_real_attendance_unchecked(bigint)',
+    'private.person_last_real_attendance_unchecked(bigint)',
+    'private.person_has_valid_future_class_unchecked(bigint)',
+    'private.can_read_person_attendance(bigint)'
+  ];
+begin
+  foreach v_signature in array v_signatures loop
+    if to_regprocedure(v_signature) is null then
+      raise exception 'CLASS-ATTENDANCE-SEC-01: helper esperado no resuelto: %', v_signature using errcode='42704';
+    end if;
+    foreach v_role in array v_roles loop
+      if has_function_privilege(v_role, v_signature, 'EXECUTE') then
+        raise exception 'CLASS-ATTENDANCE-SEC-01: EXECUTE externo efectivo: role=% function=%', v_role, v_signature using errcode='42501';
+      end if;
+    end loop;
+  end loop;
+end;
+$acl_guard$;
