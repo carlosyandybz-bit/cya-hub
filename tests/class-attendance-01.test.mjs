@@ -23,7 +23,7 @@ test('administrative finish no longer manufactures blanket present', () => {
 test('administrative reopen preserves attendance while reversing billing state', () => {
   const reopenStart = sql.indexOf('create or replace function public.reopen_administratively_finished_class');
   assert.ok(reopenStart >= 0);
-  const reopen = sql.slice(reopenStart);
+  const reopen = sql.slice(reopenStart, sql.indexOf('-- CLASS-ATTENDANCE-SEC-01'));
   assert.match(reopen, /attendance_history_preserved',true/i);
   assert.doesNotMatch(reopen, /attendance_status\s*=\s*'planned'/i);
   assert.match(reopen, /billing_status='planned'/i);
@@ -82,4 +82,36 @@ test('compat hardening preserves no-show provenance when close repeats absent', 
   assert.match(compat, /v_existing\.attendance_status=p_attendance_status/i);
   assert.match(compat, /p_absence_reason is null or v_existing\.absence_reason is not distinct from p_absence_reason/i);
   assert.doesNotMatch(compat, /insert\s+into\s+public\.class_attendance_events[\s\S]{0,500}select/i);
+});
+
+test('CLASS-ATTENDANCE-SEC-01 revokes every M1 private helper from all external roles using exact signatures', () => {
+  const helpers = [
+    'private.prevent_class_attendance_event_mutation()',
+    'private.protect_durable_attendance_projection()',
+    'private.sync_class_attendance_projection()',
+    'private.class_attendance_latest_event(bigint,bigint)',
+    'private.record_class_attendance_fact(bigint,bigint,text,text,timestamptz,text,bigint,text,jsonb)',
+    'private.person_has_real_attendance_unchecked(bigint)',
+    'private.person_first_real_attendance_unchecked(bigint)',
+    'private.person_last_real_attendance_unchecked(bigint)',
+    'private.person_has_valid_future_class_unchecked(bigint)',
+    'private.can_read_person_attendance(bigint)',
+  ];
+  for (const helper of helpers) {
+    const escaped = helper.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    assert.match(sql, new RegExp(`revoke execute on function ${escaped} from public,anon,authenticated,service_role;`, 'i'));
+  }
+  assert.match(sql, /has_function_privilege\(v_role, v_signature, 'EXECUTE'\)/i);
+  assert.match(sql, /to_regprocedure\(v_signature\)/i);
+  assert.match(sql, /raise exception 'CLASS-ATTENDANCE-SEC-01: EXECUTE externo efectivo/i);
+});
+
+test('public attendance RPCs remain the only external mutation entrypoints and enforce staff', () => {
+  assert.match(sql, /grant execute on function public\.record_class_attendance\(bigint,bigint,text,text\) to authenticated,service_role/i);
+  assert.match(sql, /grant execute on function public\.correct_class_attendance\(bigint,bigint,text,text,text\) to authenticated,service_role/i);
+  const recordStart = sql.indexOf('create or replace function public.record_class_attendance');
+  const correctStart = sql.indexOf('create or replace function public.correct_class_attendance');
+  const firstPrivateProjection = sql.indexOf('create or replace function private.person_has_real_attendance_unchecked');
+  assert.match(sql.slice(recordStart, correctStart), /if not \(select private\.is_staff\(\)\)/i);
+  assert.match(sql.slice(correctStart, firstPrivateProjection), /if not \(select private\.is_staff\(\)\)/i);
 });
