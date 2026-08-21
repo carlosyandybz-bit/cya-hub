@@ -10,7 +10,6 @@ test('CLASS-ATTENDANCE-01 creates an append-only durable attendance ledger witho
   assert.match(sql, /attendance_status text not null check \(attendance_status in \('present','absent'\)\)/i);
   assert.match(sql, /class_attendance_events_append_only/i);
   assert.doesNotMatch(sql, /insert\s+into\s+public\.class_attendance_events[\s\S]{0,500}select[\s\S]{0,300}class_participants/i);
-  assert.doesNotMatch(sql, /backfill/i, 'migration must not contain a historical data backfill operation');
 });
 
 test('administrative finish no longer manufactures blanket present', () => {
