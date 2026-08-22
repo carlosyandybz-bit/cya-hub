@@ -705,6 +705,9 @@ begin
 
   select * into v_grant from public.credit_grants where id=p_grant_id for update;
   if not found then raise exception 'El bono no existe.' using errcode='P0002'; end if;
+  if v_grant.status='cancelled' or v_grant.payment_status='refunded' then
+    raise exception 'Este bono está en estado terminal y no puede reanudarse.' using errcode='22023';
+  end if;
 
   select * into v_pause
   from public.credit_grant_pause_periods
@@ -1020,6 +1023,9 @@ begin
 
   select * into v_grant from public.credit_grants where id=v_original.grant_id for update;
   if not found then raise exception 'El bono del movimiento ya no existe.' using errcode='P0002'; end if;
+  if v_grant.status='cancelled' or v_grant.payment_status='refunded' then
+    raise exception 'Este bono está en estado terminal y no admite correcciones de consumo.' using errcode='22023';
+  end if;
   if p_replacement_consumed_minutes > v_grant.total_minutes then
     raise exception 'El consumo corregido supera la capacidad del bono.' using errcode='22023';
   end if;
@@ -1057,11 +1063,9 @@ begin
     ) returning id into v_new_movement_id;
   end if;
 
-  if v_grant.payment_status <> 'refunded' and v_grant.status <> 'cancelled' then
-    update public.credit_grants
-    set status=case when v_balance_after<=0 then 'exhausted' else 'active' end,updated_at=now()
-    where id=v_grant.id;
-  end if;
+  update public.credit_grants
+  set status=case when v_balance_after<=0 then 'exhausted' else 'active' end,updated_at=now()
+  where id=v_grant.id;
 
   insert into public.audit_events(event_type,entity_type,entity_id,summary,detail,actor_user_id)
   values(
