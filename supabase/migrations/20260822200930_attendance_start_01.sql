@@ -440,23 +440,26 @@ do $guard$
 declare
   v_helper regprocedure := to_regprocedure('private.record_class_attendance_fact(bigint,bigint,text,text,timestamp with time zone,text,bigint,text,jsonb)');
   v_old_manual regprocedure := to_regprocedure('public.start_manual_class(text,bigint[],timestamp with time zone,integer,bigint,bigint,text)');
+  v_role text;
 begin
   if v_helper is null then
     raise exception 'ATTENDANCE-START-01 guard: private attendance helper missing.';
   end if;
-  if has_function_privilege('public',v_helper,'EXECUTE')
-     or has_function_privilege('anon',v_helper,'EXECUTE')
-     or has_function_privilege('authenticated',v_helper,'EXECUTE')
-     or has_function_privilege('service_role',v_helper,'EXECUTE') then
-    raise exception 'ATTENDANCE-START-01 guard: private attendance helper has external EXECUTE.';
-  end if;
+
+  foreach v_role in array array['anon','authenticated','service_role'] loop
+    if has_function_privilege(v_role,v_helper,'EXECUTE') then
+      raise exception 'ATTENDANCE-START-01 guard: private attendance helper has external EXECUTE.';
+    end if;
+    if has_table_privilege(v_role,'private.manual_class_start_requests','SELECT')
+       or has_table_privilege(v_role,'private.manual_class_start_requests','INSERT')
+       or has_table_privilege(v_role,'private.manual_class_start_requests','UPDATE')
+       or has_table_privilege(v_role,'private.manual_class_start_requests','DELETE') then
+      raise exception 'CLASS-01-IDEMP-01 guard: private request ledger has external table privileges.';
+    end if;
+  end loop;
+
   if v_old_manual is not null then
     raise exception 'CLASS-01-IDEMP-01 guard: non-idempotent manual-start overload still exists.';
-  end if;
-  if has_table_privilege('anon','private.manual_class_start_requests','SELECT,INSERT,UPDATE,DELETE')
-     or has_table_privilege('authenticated','private.manual_class_start_requests','SELECT,INSERT,UPDATE,DELETE')
-     or has_table_privilege('service_role','private.manual_class_start_requests','SELECT,INSERT,UPDATE,DELETE') then
-    raise exception 'CLASS-01-IDEMP-01 guard: private request ledger has external table privileges.';
   end if;
 end;
 $guard$;
