@@ -63,14 +63,16 @@ async function main() {
 
   try {
     const studentPerson = await one(
-      "resolve QA student person",
-      student.supabase
+      "resolve QA student person via authorized staff session",
+      teacher.supabase
         .from("people")
         .select("id,source,auth_user_id")
         .eq("auth_user_id", student.user.id)
         .eq("source", "qa_automation")
         .single(),
     );
+    assert.equal(studentPerson.auth_user_id, student.user.id, "Resolved person must belong to the authenticated QA Student");
+    assert.equal(studentPerson.source, "qa_automation", "Resolved person must be the canonical QA automation identity");
     const studentPersonId = Number(studentPerson.id);
     assert.ok(Number.isSafeInteger(studentPersonId), "QA student person_id must be a safe integer");
 
