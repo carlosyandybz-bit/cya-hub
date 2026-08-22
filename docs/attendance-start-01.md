@@ -17,7 +17,7 @@ Attendance history remains append-only. `correct_class_attendance` and reopen se
 
 ## CLASS-01-IDEMP-01 — durable manual-start request identity
 
-The canonical manual-start RPC now requires `p_idempotency_key uuid`. The previous non-idempotent overload is removed by the PRE-APPLY migration, so authenticated callers cannot silently fall back to the old behavior.
+The canonical manual-start RPC now requires `p_idempotency_key uuid`. The previous non-idempotent runtime overload is removed by the PRE-APPLY migration, so authenticated callers cannot silently fall back to the old behavior after cutover.
 
 `private.manual_class_start_requests` is a sealed request-to-resource mapping only. Its primary key is `request_key`; it records the authenticated actor, the server-canonicalized payload, and the single `classes.id` produced by that logical request. It is not a second source of truth for classes.
 
@@ -53,15 +53,20 @@ Same key + different actor fails closed before payload/class lookup is exposed. 
 
 ## Repo-exhaustive consumer inventory
 
-Evidence method for the exact PR checkout: `git grep -n -F start_manual_class`, enforced by `tests/attendance-start-01.test.mjs`. The base comparison `main...staging` contains no additional `start_manual_class` reference, and repository code search returned no default-baseline consumer. The PR branch adds only the candidate migration/test/document references classified below.
+Evidence on the exact PR checkout is enforced by `git grep -n -F start_manual_class` inside `tests/attendance-start-01.test.mjs`.
+
+The exhaustive literal-reference inventory contains four files. Only one is a historical schema definition; none is a product caller invoking the RPC:
 
 - PRODUCTIVO ACTUAL: 0
 - COMPATIBILIDAD: 0 current callers
-- LEGACY CONSUMIDO: 0
+- LEGACY CONSUMIDO: 0 callers
 - TEST: `tests/attendance-start-01.test.mjs`
-- OBSOLETO: firma RPC anterior `start_manual_class(text,bigint[],timestamptz,integer,bigint,bigint,text)`; removed by this PRE-APPLY migration
-- DEFINICIÓN CANÓNICA: `supabase/migrations/20260822200930_attendance_start_01.sql`
+- LEGACY SCHEMA SOURCE: `supabase/live-class.sql` — historical/bootstrap SQL definition and grants for the pre-idempotency signature; it is not an RPC consumer and is not the forward migration path
+- OBSOLETO: firma RPC anterior `start_manual_class(text,bigint[],timestamptz,integer,bigint,bigint,text)`; removed from runtime by this PRE-APPLY migration
+- DEFINICIÓN CANÓNICA DELTA: `supabase/migrations/20260822200930_attendance_start_01.sql`
 - DOCUMENTACIÓN: this file
+
+`supabase/live-class.sql` is deliberately not rewritten in this P0 because doing so would turn a historical/bootstrap artifact into a second implementation of the forward delta. The migration is the canonical cutover artifact and explicitly drops the old runtime overload. Re-executing that historical standalone script after the migration would be outside the canonical migration path and remains a documented legacy risk to be rejected by release governance.
 
 Because PRODUCTIVO ACTUAL is zero, there is no legitimate UI/network caller to edit in this patch. Introducing an unused client wrapper solely to simulate a caller would widen the P0 and create dead code.
 
