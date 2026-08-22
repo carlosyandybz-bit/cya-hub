@@ -185,27 +185,46 @@ create or replace function private.credit_grant_effective_expires_at_unchecked(
   p_at timestamptz default now()
 )
 returns timestamptz
-language sql
+language plpgsql
 stable
 security definer
 set search_path = ''
 as $$
-  select case
-    when g.expires_at is null then null
-    else g.expires_at + coalesce((
-      select sum(
-        greatest(
-          least(coalesce(pp.resumed_at, p_at), p_at) - pp.paused_at,
-          interval '0 seconds'
-        )
-      )
-      from public.credit_grant_pause_periods pp
-      where pp.grant_id = g.id
-        and pp.paused_at < p_at
-    ), interval '0 seconds')
-  end
+declare
+  v_expiry timestamptz;
+  v_pause record;
+  v_pause_end timestamptz;
+begin
+  select g.expires_at into v_expiry
   from public.credit_grants g
   where g.id = p_grant_id;
+
+  if not found or v_expiry is null then
+    return v_expiry;
+  end if;
+
+  -- Process pauses chronologically. A pause only extends validity when it
+  -- actually began before the then-current effective expiry; malformed or
+  -- privileged data recorded after expiry must never resurrect entitlement.
+  for v_pause in
+    select pp.paused_at, pp.resumed_at
+    from public.credit_grant_pause_periods pp
+    where pp.grant_id = p_grant_id
+      and pp.paused_at < p_at
+    order by pp.paused_at, pp.id
+  loop
+    if v_pause.paused_at >= v_expiry then
+      continue;
+    end if;
+
+    v_pause_end := least(coalesce(v_pause.resumed_at, p_at), p_at);
+    if v_pause_end > v_pause.paused_at then
+      v_expiry := v_expiry + (v_pause_end - v_pause.paused_at);
+    end if;
+  end loop;
+
+  return v_expiry;
+end;
 $$;
 
 create or replace function private.credit_grant_is_usable_unchecked(
