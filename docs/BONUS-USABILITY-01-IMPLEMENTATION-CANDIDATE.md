@@ -59,6 +59,32 @@ The corrected candidate is fail-closed for generic grant edits after terminal st
 
 This is a correction to the same unapplied migration artifact; version, name and path remain unchanged.
 
+## BONUS-REFUND-TERMINAL-02 — pre-apply correction
+
+QA PRE-APPLY demonstrated a second terminal write-surface gap: grant `+600`, original consumption `-60`, total refund `-540` produced terminal balance `0`, but a later correction of the original consumption from `60` to `45` could append `+15` and leave a `refunded/cancelled` grant with positive balance.
+
+The corrected candidate now makes `public.correct_credit_consumption` fail closed after locking and validating both the original movement and its grant, and before any capacity/target/correction-sum/balance calculation or write side effect:
+
+- `status='cancelled' OR payment_status='refunded'` raises SQLSTATE `22023`;
+- post-refund replacements such as `60→45`, `60→75`, `60→0` or any later correction are denied before an adjustment can be appended;
+- no `credit_consumption_corrected` audit is emitted on the denied path;
+- the original refund movement/audit remains untouched and the terminal balance remains neutralized;
+- the previous late conditional that only skipped the grant-status `UPDATE` is removed because terminality is now proven before the normal correction path begins.
+
+The scoped terminal write-surface sweep of mutations authored in this migration also verified:
+
+- `edit_credit_grant`: terminal guard already present from TERMINAL-01;
+- `set_credit_grant_consumed_minutes`: terminal guard already present before ledger/status/audit writes;
+- `pause_credit_grant`: requires active status and paid/pending payment state;
+- `resume_credit_grant`: now has an explicit terminal guard immediately after grant lock/existence and before pause-history mutation/audit, closing the same already-decided terminal invariant without introducing a new policy;
+- `refund_credit_grant_total`: repeated refund remains idempotent and returns before a second refund movement.
+
+Pre-refund consumption corrections remain append-only: successive corrections are calculated from the original movement plus existing compensating movements, preserve `person_id`, `class_id`, original provenance and `reverses_movement_id`, never update/delete the original movement, and reject a correction that would leave a negative balance.
+
+The SQL source blob after the TERMINAL-02 SQL correction is `cceb9f9a11c2d0fef19f230eccabf7a63213028a`.
+
+This remains the same unapplied migration artifact: version `20260822152400`, name `bonus_usability_01`, path `supabase/migrations/20260822152400_bonus_usability_01.sql`.
+
 ## Schema delta
 
 - `credit_grants.starts_at` with legacy backfill from `purchased_at`.
@@ -96,7 +122,7 @@ No partial refund RPC is introduced.
 
 ## DP-BONUS-15 = 15A
 
-`correct_credit_consumption` never rewrites the original consumption movement. It appends a compensating movement tied through `reverses_movement_id`, preserves original `class_id`, person and provenance, serializes the grant row, and emits before/after audit evidence.
+`correct_credit_consumption` never rewrites the original consumption movement. It appends a compensating movement tied through `reverses_movement_id`, preserves original `class_id`, person and provenance, serializes the grant row, and emits before/after audit evidence on successful non-terminal corrections.
 
 Capacity correction also appends the capacity delta into the ledger, rejects `new total < valid net consumption`, and leaves `price_cents` independent while the grant is non-terminal.
 
