@@ -18,6 +18,15 @@ test("starts_at is backfilled from purchased_at and pause history is separate fr
   assert.doesNotMatch(compact,/status\s*=\s*'paused'/);
 });
 
+test("effective expiry cannot be resurrected by a pause that starts after effective expiry",()=>{
+  const start=compact.indexOf("create or replace function private.credit_grant_effective_expires_at_unchecked");
+  const end=compact.indexOf("create or replace function private.credit_grant_is_usable_unchecked",start);
+  const fn=compact.slice(start,end);
+  assert.match(fn,/language plpgsql/);
+  assert.match(fn,/if v_pause\.paused_at >= v_expiry then continue/);
+  assert.match(fn,/v_expiry := v_expiry \+ \(v_pause_end - v_pause\.paused_at\)/);
+});
+
 test("canonical usable predicate is server-side and includes paid|pending start pause expiry and ledger balance",()=>{
   const start=compact.indexOf("create or replace function private.credit_grant_is_usable_unchecked");
   const end=compact.indexOf("create or replace function private.person_has_usable_presential_bonus_unchecked",start);
@@ -93,7 +102,9 @@ test("migration does not alter Classes or Attendance schema/functions",()=>{
 });
 
 test("student/anonymous cannot mutate through new RPCs and admin-only historical gate is explicit",()=>{
-  for (const fn of ["edit_credit_grant","pause_credit_grant","resume_credit_grant","refund_credit_grant_total","correct_credit_consumption"]) assert.match(compact,new RegExp(`create or replace function public\\.${fn}`));
+  for (const fn of ["edit_credit_grant","pause_credit_grant","resume_credit_grant","refund_credit_grant_total","correct_credit_consumption"]) {
+    assert.match(compact,new RegExp(`create or replace function public\\.${fn}`));
+  }
   assert.match(compact,/if not \(select private\.is_staff\(\)\) then/);
   assert.match(compact,/if not \(select private\.billing_is_admin\(\)\) then/);
   assert.match(compact,/revoke all on function public\.refund_credit_grant_total\(bigint,text\) from public, anon/);
