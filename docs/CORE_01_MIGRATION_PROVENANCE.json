@@ -9,5 +9,34 @@
     "base_sha": "9bd740fa9b7dd153e937c1bff2eb32d3828c2954",
     "rule": "Historical artifacts remain classified by the snapshot inventory and are not required to fabricate missing provenance. Every migration authored after CORE-01 must be recorded here."
   },
-  "migrations": []
+  "migrations": [
+    {
+      "path": "supabase/migrations/20260822200930_attendance_start_01.sql",
+      "migration_version": "20260822200930",
+      "operational_class": "CANONICA",
+      "applied_state": "PREPARADA_NO_APLICADA",
+      "provenance": {
+        "schema_version": 3,
+        "lifecycle_phase": "AUTHORING",
+        "owner": "ATTENDANCE-START-01 / Classes-Workflow",
+        "func_id": "FUNC-0101",
+        "authorship": {
+          "repository": "carlosyandybz-bit/cya-hub",
+          "base_sha": "fa5e67b912e1ec2bacf03f0f993337fec83cc578",
+          "pr_number": 134
+        },
+        "intended_targets": [
+          {
+            "environment": "staging",
+            "project_ref": "qlngfkzmncihtdzktcmd"
+          }
+        ],
+        "recovery": {
+          "strategy": "forward_fix",
+          "plan": "If PRE-APPLY or POST-APPLY verification fails, do not edit any applied Attendance migration. Keep durable history append-only and prepare a new incremental forward-fix from the verified database state."
+        },
+        "application_evidence": null
+      }
+    }
+  ]
 }
