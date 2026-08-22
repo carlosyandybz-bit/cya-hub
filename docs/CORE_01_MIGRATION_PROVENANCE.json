@@ -9,5 +9,34 @@
     "base_sha": "9bd740fa9b7dd153e937c1bff2eb32d3828c2954",
     "rule": "Historical artifacts remain classified by the snapshot inventory and are not required to fabricate missing provenance. Every migration authored after CORE-01 must be recorded here."
   },
-  "migrations": []
+  "migrations": [
+    {
+      "path": "supabase/migrations/20260822152400_bonus_usability_01.sql",
+      "migration_version": "20260822152400",
+      "operational_class": "CANONICA",
+      "applied_state": "PREPARADA_NO_APLICADA",
+      "provenance": {
+        "schema_version": 3,
+        "lifecycle_phase": "AUTHORING",
+        "owner": "BONUS-USABILITY-01 / Billing-Bonos-Pagos",
+        "func_id": "FUNC-0225",
+        "authorship": {
+          "repository": "carlosyandybz-bit/cya-hub",
+          "base_sha": "fa5e67b912e1ec2bacf03f0f993337fec83cc578",
+          "pr_number": 133
+        },
+        "intended_targets": [
+          {
+            "environment": "staging",
+            "project_ref": "qlngfkzmncihtdzktcmd"
+          }
+        ],
+        "recovery": {
+          "strategy": "forward_fix",
+          "plan": "If BONUS-USABILITY-01 requires correction after application, author a new canonical forward-fix migration; do not mutate this migration, copy Attendance migrations, or use migration repair."
+        },
+        "application_evidence": null
+      }
+    }
+  ]
 }
