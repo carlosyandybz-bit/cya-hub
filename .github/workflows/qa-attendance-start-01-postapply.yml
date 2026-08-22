@@ -1,0 +1,121 @@
+name: QA ATTENDANCE-START-01 Post-Apply
+
+on:
+  pull_request:
+    branches: [staging]
+    paths:
+      - '.github/workflows/qa-attendance-start-01-postapply.yml'
+      - 'qa/attendance-start-01/postapply-runtime.mjs'
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+env:
+  SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+  SUPABASE_PUBLISHABLE_KEY: sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW
+
+jobs:
+  postapply-runtime:
+    name: Canonical STAGING Auth/PostgREST runtime
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout QA-only workstream
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Guard exact staging base, product candidate, and QA-only scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGING_SHA='fa5e67b912e1ec2bacf03f0f993337fec83cc578'
+          CANDIDATE_SHA='9e2ba6cc5726c498fda1275a5190736f7ea44653'
+          CANDIDATE_BLOB='4f0d454ec0d8e2cf7697debc1eee95ab0920cb40'
+          MIGRATION='supabase/migrations/20260822200930_attendance_start_01.sql'
+
+          test "${{ github.event.pull_request.base.ref }}" = 'staging'
+          test "${{ github.event.pull_request.base.sha }}" = "$STAGING_SHA"
+          git cat-file -e "${STAGING_SHA}^{commit}"
+          git cat-file -e "${CANDIDATE_SHA}^{commit}"
+          test "$(git show "${CANDIDATE_SHA}:${MIGRATION}" | git hash-object --stdin)" = "$CANDIDATE_BLOB"
+
+          bad="$(git diff --name-only "$STAGING_SHA"..HEAD | grep -Ev '^(qa/attendance-start-01/postapply-runtime\.mjs|\.github/workflows/qa-attendance-start-01-postapply\.yml)$' || true)"
+          if [ -n "$bad" ]; then
+            echo 'QA workstream changed non-QA files:' >&2
+            echo "$bad" >&2
+            exit 1
+          fi
+          echo "QA-only scope and exact identities preserved."
+
+      - name: Request one-time passwordless sessions for sanctioned STAGING identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          for email in \
+            'carlosyandybz+staging-profesor@gmail.com' \
+            'carlosyandybz+staging-alumno@gmail.com' \
+            'carlosyandybz+staging-admin@gmail.com'; do
+            body="$(jq -nc --arg email "$email" '{email:$email,create_user:false}')"
+            code="$(curl --silent --show-error --output /tmp/otp-response --write-out '%{http_code}' \
+              -X POST \
+              -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" \
+              -H 'Content-Type: application/json' \
+              --data "$body" \
+              "${SUPABASE_URL}/auth/v1/otp")"
+            test "$code" = '200' || { echo "Passwordless request failed HTTP ${code}" >&2; cat /tmp/otp-response >&2; exit 1; }
+          done
+          echo 'One-time links requested for sanctioned manual STAGING QA identities.'
+
+      - name: Wait for one-time token handoff
+        id: magiclinks
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          marker="CYA_QA_MAGICLINK:${GITHUB_RUN_ID}"
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"
+          body=''
+          for attempt in {1..60}; do
+            comments="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              "$api")"
+            body="$(jq -r --arg marker "$marker" '[.[] | select(.user.login=="carlosyandybz-bit" and (.body | startswith($marker)))] | sort_by(.created_at) | last | .body // empty' <<<"$comments")"
+            [ -n "$body" ] && break
+            sleep 5
+          done
+          [ -n "$body" ] || { echo 'Timed out waiting for one-time token handoff.' >&2; exit 1; }
+
+          payload="$(printf '%s\n' "$body" | tail -n +2)"
+          teacher="$(jq -er '.teacher' <<<"$payload")"
+          student="$(jq -er '.student' <<<"$payload")"
+          admin="$(jq -er '.admin' <<<"$payload")"
+          for token in "$teacher" "$student" "$admin"; do echo "::add-mask::${token}"; done
+          printf 'QA_TEACHER_MAGICLINK_TOKEN=%s\n' "$teacher" >> "$GITHUB_ENV"
+          printf 'QA_STUDENT_MAGICLINK_TOKEN=%s\n' "$student" >> "$GITHUB_ENV"
+          printf 'QA_ADMIN_MAGICLINK_TOKEN=%s\n' "$admin" >> "$GITHUB_ENV"
+          echo 'One-time handoff accepted from authorized repository owner.'
+
+      - name: Run ATTENDANCE-START-01 POST-APPLY matrix
+        shell: bash
+        env:
+          QA_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          node qa/attendance-start-01/postapply-runtime.mjs | tee /tmp/attendance-start-postapply.log
+
+      - name: Upload POST-APPLY evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: attendance-start-01-postapply-${{ github.run_id }}
+          path: /tmp/attendance-start-postapply.log
+          if-no-files-found: warn
+          retention-days: 90
