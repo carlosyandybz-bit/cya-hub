@@ -1,0 +1,28 @@
+name: ATTENDANCE-START-01 Structural Proof
+
+on:
+  pull_request:
+    branches: [staging]
+    paths:
+      - 'supabase/migrations/20260822200930_attendance_start_01.sql'
+      - 'tests/attendance-start-01.test.mjs'
+      - 'docs/CORE_01_MIGRATION_PROVENANCE.json'
+      - '.github/workflows/attendance-start-01-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structural-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v6
+      - name: Use Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Run ATTENDANCE-START-01 structural tests
+        run: node --test tests/attendance-start-01.test.mjs
