@@ -4,6 +4,10 @@ Status: AUTHORING / PREPARADA_NO_APLICADA.
 
 Base staging: `9033ee5e06313b5af2461f82aba18d14cd54805e`.
 
+Canonical migration: `supabase/migrations/20260821170500_attendance_m1_forward_fix.sql` (`20260821170500`).
+
+Canonical sequence: `20260821170000` M1 APPLIED → `20260821170500` forward-fix PREPARADA_NO_APLICADA → `20260821171000` M2 WAIT.
+
 Applied immutable M1 source reference: PR #126 HEAD `a9f417379427b276386efbb6e9ad29e4e6c5bd10`, blob `15dd9eb55ce699123729471d65dbb8e5707e7c85`.
 
 M2 remains WAIT and is not modified or applied.
