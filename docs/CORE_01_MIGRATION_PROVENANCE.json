@@ -18,7 +18,7 @@
       "provenance": {
         "schema_version": 3,
         "lifecycle_phase": "AUTHORING",
-        "owner": "ATTENDANCE-START-01 / Classes-Workflow",
+        "owner": "ATTENDANCE-START-01 / CLASS-01-IDEMP-01 / Classes-Workflow",
         "func_id": "FUNC-0101",
         "authorship": {
           "repository": "carlosyandybz-bit/cya-hub",
