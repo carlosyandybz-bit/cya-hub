@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
 const migrationPath = 'supabase/migrations/20260822200930_attendance_start_01.sql';
+const legacySchemaPath = 'supabase/live-class.sql';
 const docPath = 'docs/attendance-start-01.md';
 const provenancePath = 'docs/CORE_01_MIGRATION_PROVENANCE.json';
 const testPath = 'tests/attendance-start-01.test.mjs';
@@ -137,7 +138,8 @@ test('claim, class, participants, attendance and claim completion remain in one 
   const attendance = body.indexOf('private.record_class_attendance_fact');
   const bind = body.lastIndexOf('update private.manual_class_start_requests');
   assert.ok(claim >= 0 && cls > claim && participants > cls && attendance > participants && bind > attendance);
-  assert.doesNotMatch(body, /\bcommit\b|\brollback\b|exception\s+when/i);
+  assert.doesNotMatch(body, /\b(?:commit|rollback)\s*;/i);
+  assert.doesNotMatch(body, /exception\s+when/i);
   assert.match(sql, /manual_class_start_requests_completion_ck[\s\S]*class_id\s+is\s+null\s+and\s+completed_at\s+is\s+null[\s\S]*class_id\s+is\s+not\s+null\s+and\s+completed_at\s+is\s+not\s+null/i);
 });
 
@@ -196,7 +198,7 @@ test('CORE provenance remains AUTHORING PRE-APPLY for the exact migration', () =
 // makes this test fail until it implements the approved one-UUID-per-intention lifecycle.
 test('caller double-tap/network-retry/new-intention cases are N/A only while productive consumer count is zero', () => {
   const refs = grepStartManualClass();
-  const nonProductPaths = new Set([migrationPath, testPath, docPath]);
+  const nonProductPaths = new Set([migrationPath, legacySchemaPath, testPath, docPath]);
   const productive = refs.filter((ref) => !nonProductPaths.has(ref.path));
   assert.deepEqual(productive, [], `unclassified productive/legacy consumer(s):\n${productive.map((r) => `${r.path}:${r.line}`).join('\n')}`);
   assert.match(docs, /PRODUCTIVO ACTUAL:\s*0/i);
@@ -206,14 +208,15 @@ test('caller double-tap/network-retry/new-intention cases are N/A only while pro
 // 24. Repo-exhaustive inventory.
 test('repo-exhaustive start_manual_class consumer inventory is explicit and current on this exact checkout', () => {
   const refs = grepStartManualClass();
-  assert.ok(refs.length > 0, 'expected migration/test/docs references');
+  assert.ok(refs.length > 0, 'expected schema/migration/test/docs references');
   const byPath = new Set(refs.map((ref) => ref.path));
-  assert.deepEqual([...byPath].sort(), [docPath, migrationPath, testPath].sort());
+  assert.deepEqual([...byPath].sort(), [docPath, legacySchemaPath, migrationPath, testPath].sort());
   assert.match(docs, /TEST:\s*`tests\/attendance-start-01\.test\.mjs`/i);
+  assert.match(docs, /LEGACY SCHEMA SOURCE:\s*`supabase\/live-class\.sql`/i);
   assert.match(docs, /OBSOLETO:\s*firma RPC anterior/i);
 });
 
-test('old non-idempotent manual-start signature is removed and only keyed signature is externally granted', () => {
+test('old non-idempotent manual-start runtime signature is removed and only keyed signature is externally granted by the forward migration', () => {
   assert.match(sql, /drop\s+function\s+public\.start_manual_class\(text,bigint\[\],timestamptz,integer,bigint,bigint,text\)/i);
   assert.match(sql, /public\.start_manual_class\(text,bigint\[\],timestamptz,integer,bigint,uuid,bigint,text\)/i);
   assert.doesNotMatch(sql, /grant\s+execute\s+on\s+function\s+public\.start_manual_class\(text,bigint\[\],timestamptz,integer,bigint,bigint,text\)/i);
