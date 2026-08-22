@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const migration = await readFile(new URL('../supabase/migrations/20260822035000_attendance_m1_forward_fix.sql', import.meta.url), 'utf8');
+const migration = await readFile(new URL('../supabase/migrations/20260821170500_attendance_m1_forward_fix.sql', import.meta.url), 'utf8');
 
 const v2 = 'public.administratively_finish_class_v2(bigint,bigint[],text[],bigint[],integer)';
 const wrappers = [
