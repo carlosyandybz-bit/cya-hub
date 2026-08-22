@@ -108,7 +108,12 @@ jobs:
           set -a
           source /tmp/cya-attendance-qa.env
           set +a
-          node qa/attendance-start-01/runtime.mjs | tee /tmp/attendance-start-01-runtime.log
+          # QA-harness-only normalization: psql command tags (e.g. INSERT 0 1) are not query values.
+          # Execute a deterministic temporary copy with -q added to the scalar-query helper.
+          cp qa/attendance-start-01/runtime.mjs /tmp/attendance-start-01-runtime.mjs
+          sed -i "s/\[DB_URL, '-X', '-A', '-t'/[DB_URL, '-X', '-q', '-A', '-t'/" /tmp/attendance-start-01-runtime.mjs
+          grep -F "[DB_URL, '-X', '-q', '-A', '-t'" /tmp/attendance-start-01-runtime.mjs >/dev/null
+          node /tmp/attendance-start-01-runtime.mjs | tee /tmp/attendance-start-01-runtime.log
 
       - name: Upload QA runtime evidence
         if: always()
