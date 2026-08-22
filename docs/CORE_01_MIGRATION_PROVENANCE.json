@@ -27,7 +27,7 @@
         },
         "intended_targets": [
           {
-            "environment": "STAGING",
+            "environment": "staging",
             "project_ref": "qlngfkzmncihtdzktcmd"
           }
         ],
