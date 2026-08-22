@@ -114,6 +114,10 @@ jobs:
           sed -i "/  const teacherRoles = await rows('app_member_roles'/,/  assert.equal(studentRoles.some((r) => r.role === 'teacher' || r.role === 'admin' || r.role === 'teacher_admin'), false);/d" qa/attendance-start-01/postapply-runtime.mjs
           sed -i '/    const audits = await auditForAttendanceEvent/d' qa/attendance-start-01/postapply-runtime.mjs
           sed -i '/    assert.equal(audits.length, 1,/d' qa/attendance-start-01/postapply-runtime.mjs
+          # Cancellation is a class status transition; workflow_stage remains the valid pre-start stage.
+          sed -i "s/body: { status: 'cancelled', cancelled_at: new Date().toISOString(), workflow_stage: 'cancelled' }/body: { status: 'cancelled', cancelled_at: new Date().toISOString() }/" qa/attendance-start-01/postapply-runtime.mjs
+          # Reconcile every durable fixture produced by this QA workstream, including aborted harness attempts.
+          sed -i 's/notes: `like.${MARKER}\*`/notes: `like.CYA_QA_ATTENDANCE_START_POSTAPPLY:*`/' qa/attendance-start-01/postapply-runtime.mjs
           node qa/attendance-start-01/postapply-runtime.mjs | tee /tmp/attendance-start-postapply.log
 
       - name: Upload POST-APPLY evidence
