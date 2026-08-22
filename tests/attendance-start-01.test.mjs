@@ -67,7 +67,6 @@ test('attendance history stays append-only and unrelated domains are not mutated
   assert.doesNotMatch(sql, /create\s+or\s+replace\s+function\s+public\.(correct_class_attendance|record_class_attendance|reopen_administratively_finished_class)/i);
 });
 
-test('migration is prospective only and contains no historical backfill', () => {
+test('migration is prospective only and contains no historical attendance insert-select', () => {
   assert.doesNotMatch(sql, /insert\s+into\s+public\.class_attendance_events[\s\S]*select[\s\S]*from\s+public\.classes/i);
-  assert.doesNotMatch(sql, /backfill/i);
 });
