@@ -6,6 +6,14 @@ const path="supabase/migrations/20260822152400_bonus_usability_01.sql";
 const sql=fs.readFileSync(path,"utf8");
 const compact=sql.replace(/\s+/g," ").toLowerCase();
 
+function functionBody(name,nextName){
+  const start=compact.indexOf(`create or replace function ${name}`);
+  assert.notEqual(start,-1,`${name} missing`);
+  const end=nextName ? compact.indexOf(`create or replace function ${nextName}`,start) : compact.length;
+  assert.notEqual(end,-1,`${nextName} missing`);
+  return compact.slice(start,end);
+}
+
 test("migration is one canonical Bonus authoring artifact and never embeds Attendance migrations",()=>{
   assert.match(path,/^supabase\/migrations\/\d{14}_[a-z0-9_]+\.sql$/);
   assert.doesNotMatch(sql,/20260821170000|20260821170500|20260821171000|class_attendance_real_history|attendance_m1_forward_fix|class_attendance_finalize_compat/i);
@@ -19,26 +27,20 @@ test("starts_at is backfilled from purchased_at and pause history is separate fr
 });
 
 test("effective expiry cannot be resurrected by a pause that starts after effective expiry",()=>{
-  const start=compact.indexOf("create or replace function private.credit_grant_effective_expires_at_unchecked");
-  const end=compact.indexOf("create or replace function private.credit_grant_is_usable_unchecked",start);
-  const fn=compact.slice(start,end);
+  const fn=functionBody("private.credit_grant_effective_expires_at_unchecked","private.credit_grant_is_usable_unchecked");
   assert.match(fn,/language plpgsql/);
   assert.match(fn,/if v_pause\.paused_at >= v_expiry then continue/);
   assert.match(fn,/v_expiry := v_expiry \+ \(v_pause_end - v_pause\.paused_at\)/);
 });
 
 test("canonical usable predicate is server-side and includes paid|pending start pause expiry and ledger balance",()=>{
-  const start=compact.indexOf("create or replace function private.credit_grant_is_usable_unchecked");
-  const end=compact.indexOf("create or replace function private.person_has_usable_presential_bonus_unchecked",start);
-  const fn=compact.slice(start,end);
+  const fn=functionBody("private.credit_grant_is_usable_unchecked","private.person_has_usable_presential_bonus_unchecked");
   for (const token of ["g.status = 'active'","g.payment_status in ('paid','pending')","g.starts_at <= p_at","credit_grant_is_paused_unchecked","credit_grant_effective_expires_at_unchecked","credit_grant_balance_minutes_unchecked(g.id) > 0"]) assert.ok(fn.includes(token),token);
   assert.match(compact,/select coalesce\(sum\(m\.delta_minutes\), 0\)::integer from public\.credit_movements m where m\.grant_id = p_grant_id/);
 });
 
 test("DP-14 intent omits starts_at and pause gates but rejects terminal/expired/zero through operational criteria",()=>{
-  const start=compact.indexOf("create or replace function private.person_has_qualifying_presential_billing_intent_unchecked");
-  const end=compact.indexOf("revoke all on function private.billing_is_admin",start);
-  const fn=compact.slice(start,end);
+  const fn=functionBody("private.person_has_qualifying_presential_billing_intent_unchecked","private.aud017_notify_student_credit_balance");
   assert.match(fn,/g.status = 'active'/);
   assert.match(fn,/g.payment_status in \('paid','pending'\)/);
   assert.match(fn,/credit_grant_balance_minutes_unchecked\(g.id\) > 0/);
@@ -48,9 +50,7 @@ test("DP-14 intent omits starts_at and pause gates but rejects terminal/expired/
 });
 
 test("corrections are append-only, preserve original movement/class source and audit before/after",()=>{
-  const start=compact.indexOf("create or replace function public.correct_credit_consumption");
-  const end=compact.indexOf("-- compatibility endpoint",start);
-  const fn=compact.slice(start,end);
+  const fn=functionBody("public.correct_credit_consumption","public.set_credit_grant_consumed_minutes");
   assert.match(fn,/insert into public\.credit_movements/);
   assert.match(fn,/reverses_movement_id/);
   assert.match(fn,/v_original\.class_id/);
@@ -61,9 +61,7 @@ test("corrections are append-only, preserve original movement/class source and a
 });
 
 test("capacity edit appends its delta and never couples total_minutes to price",()=>{
-  const start=compact.indexOf("create or replace function public.edit_credit_grant");
-  const end=compact.indexOf("create or replace function public.pause_credit_grant",start);
-  const fn=compact.slice(start,end);
+  const fn=functionBody("public.edit_credit_grant","public.pause_credit_grant");
   assert.match(fn,/v_consumed := greatest\(v_grant\.total_minutes - v_balance_without_refunds, 0\)/);
   assert.match(fn,/if p_total_minutes < v_consumed/);
   assert.match(fn,/v_capacity_delta := p_total_minutes - v_grant\.total_minutes/);
@@ -73,10 +71,87 @@ test("capacity edit appends its delta and never couples total_minutes to price",
   assert.doesNotMatch(fn,/price.*\/.*total_minutes|total_minutes.*\/.*price/);
 });
 
+test("BONUS-REFUND-TERMINAL-01 locks the grant then denies every terminal edit with SQLSTATE 22023 before side effects",()=>{
+  const fn=functionBody("public.edit_credit_grant","public.pause_credit_grant");
+  const lock=fn.indexOf("for update");
+  const notFound=fn.indexOf("if not found",lock);
+  const guard=fn.indexOf("if v_grant.status='cancelled' or v_grant.payment_status='refunded'",notFound);
+  const err=fn.indexOf("errcode='22023'",guard);
+  const before=fn.indexOf("v_before :=",guard);
+  const movement=fn.indexOf("insert into public.credit_movements",guard);
+  const update=fn.indexOf("update public.credit_grants",guard);
+  const audit=fn.indexOf("insert into public.audit_events",guard);
+  assert.ok(lock>=0 && notFound>lock && guard>notFound,"terminal guard must follow row lock/existence check");
+  assert.ok(err>guard,"terminal guard must raise SQLSTATE 22023");
+  assert.ok(before>err && movement>err && update>err && audit>err,"terminal guard must precede every economic/update/audit side effect");
+});
+
+test("refund then capacity/price/date edit is fail-closed through one unconditional terminal gate",()=>{
+  const edit=functionBody("public.edit_credit_grant","public.pause_credit_grant");
+  const guard=edit.indexOf("if v_grant.status='cancelled' or v_grant.payment_status='refunded'");
+  for (const protectedToken of [
+    "v_capacity_delta := p_total_minutes - v_grant.total_minutes",
+    "price_cents=p_price_cents",
+    "purchased_at=p_purchased_at",
+    "starts_at=p_starts_at",
+    "expires_at=p_expires_at",
+  ]) {
+    const pos=edit.indexOf(protectedToken);
+    assert.ok(pos>guard,`${protectedToken} must remain behind terminal guard`);
+  }
+});
+
+test("total refund neutralizes balance, records the refund audit, and seals status/payment terminally",()=>{
+  const refund=functionBody("public.refund_credit_grant_total","public.set_billing_historical_import_enabled");
+  assert.match(refund,/if v_balance > 0 then insert into public\.credit_movements/);
+  assert.match(refund,/p_grant_id,'refund',-v_balance/);
+  assert.match(refund,/set payment_status='refunded',status='cancelled'/);
+  assert.match(refund,/'credit_grant_refunded_total'/);
+  assert.match(refund,/'before'/);
+  assert.match(refund,/'after'/);
+});
+
+test("repeated total refund is idempotent and cannot create a second refund movement",()=>{
+  const refund=functionBody("public.refund_credit_grant_total","public.set_billing_historical_import_enabled");
+  const already=refund.indexOf("if v_grant.payment_status='refunded' then");
+  const earlyReturn=refund.indexOf("return jsonb_build_object",already);
+  const balance=refund.indexOf("v_balance :=",already);
+  const movement=refund.indexOf("insert into public.credit_movements",already);
+  assert.ok(already>=0 && earlyReturn>already && balance>earlyReturn && movement>earlyReturn);
+  assert.match(refund.slice(already,balance),/'already_refunded',true,'balance_minutes',private\.credit_grant_balance_minutes_unchecked/);
+});
+
+test("refunded/cancelled grants remain unusable and do not qualify DP-14 presencial intent",()=>{
+  const usable=functionBody("private.credit_grant_is_usable_unchecked","private.person_has_usable_presential_bonus_unchecked");
+  const intent=functionBody("private.person_has_qualifying_presential_billing_intent_unchecked","private.aud017_notify_student_credit_balance");
+  assert.match(usable,/g.status = 'active'/);
+  assert.match(usable,/g.payment_status in \('paid','pending'\)/);
+  assert.match(intent,/g.status = 'active'/);
+  assert.match(intent,/g.payment_status in \('paid','pending'\)/);
+});
+
+test("normal pre-refund capacity edits still generate the exact ledger adjustment and audited update",()=>{
+  const edit=functionBody("public.edit_credit_grant","public.pause_credit_grant");
+  const guardEnd=edit.indexOf("end if",edit.indexOf("if v_grant.status='cancelled' or v_grant.payment_status='refunded'"));
+  const capacity=edit.indexOf("v_capacity_delta := p_total_minutes - v_grant.total_minutes",guardEnd);
+  const movement=edit.indexOf("'adjustment',v_capacity_delta",capacity);
+  const update=edit.indexOf("update public.credit_grants",movement);
+  const audit=edit.indexOf("'credit_grant_edited'",update);
+  assert.ok(capacity>guardEnd && movement>capacity && update>movement && audit>update);
+});
+
+test("failed terminal edit has no partial movement, grant update, or edit audit path before the exception",()=>{
+  const edit=functionBody("public.edit_credit_grant","public.pause_credit_grant");
+  const guard=edit.indexOf("if v_grant.status='cancelled' or v_grant.payment_status='refunded'");
+  const err=edit.indexOf("errcode='22023'",guard);
+  const prefix=edit.slice(0,err);
+  assert.doesNotMatch(prefix,/insert into public\.credit_movements/);
+  assert.doesNotMatch(prefix,/update public\.credit_grants/);
+  assert.doesNotMatch(prefix,/'credit_grant_edited'/);
+});
+
 test("historical path is admin-gated audited and does not fabricate class attendance or payment facts",()=>{
-  const start=compact.indexOf("create or replace function public.import_historical_credit_grant");
-  const end=compact.indexOf("-- 8. append-only correction contract",start);
-  const fn=compact.slice(start,end);
+  const fn=functionBody("public.import_historical_credit_grant","public.correct_credit_consumption");
   assert.match(fn,/private.billing_is_admin/);
   assert.match(fn,/allow_historical_bonus_import/);
   assert.match(fn,/credit_grant_historical_imported/);
