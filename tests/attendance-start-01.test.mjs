@@ -63,7 +63,7 @@ test('a lost-response retry is resolved exclusively from the committed request t
   const body = manual();
   assert.match(body, /if\s+v_existing_class_id\s+is\s+null[\s\S]*raise\s+exception/i);
   assert.match(body, /where\s+id=v_existing_class_id[\s\S]*return\s+new_class/i);
-  const retryBranch = body.slice(body.indexOf('if v_claimed_key is null'), body.indexOf("-- Mutable resource validity"));
+  const retryBranch = body.slice(body.indexOf('if v_claimed_key is null'), body.indexOf('-- Mutable resource validity'));
   assert.doesNotMatch(retryBranch, /student_profiles|catalog_terms/i);
 });
 
@@ -124,7 +124,7 @@ test('actor mismatch fails closed before payload or class resource is exposed', 
 test('manual start remains server-authorized to a concrete staff actor', () => {
   const body = manual();
   assert.match(body, /security\s+definer/i);
-  assert.match(body, /set\s+search_path=''?/i);
+  assert.match(body, /set\s+search_path=''/i);
   assert.match(body, /v_actor\s+is\s+null\s+or\s+not\s+\(select\s+private\.is_staff\(\)\)/i);
 });
 
@@ -166,7 +166,9 @@ test('private manual-start request ledger has no external table access', () => {
   for (const role of ['public', 'anon', 'authenticated', 'service_role']) {
     assert.match(sql, new RegExp(`revoke\\s+all\\s+on\\s+table\\s+private\\.manual_class_start_requests\\s+from\\s+${role}`, 'i'));
   }
-  assert.match(sql, /has_table_privilege\('authenticated','private\.manual_class_start_requests','SELECT,INSERT,UPDATE,DELETE'\)/i);
+  for (const privilege of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) {
+    assert.match(sql, new RegExp(`has_table_privilege\\(v_role,'private\\.manual_class_start_requests','${privilege}'\\)`, 'i'));
+  }
 });
 
 // 19. Provenance.
@@ -198,7 +200,7 @@ test('caller double-tap/network-retry/new-intention cases are N/A only while pro
   const productive = refs.filter((ref) => !nonProductPaths.has(ref.path));
   assert.deepEqual(productive, [], `unclassified productive/legacy consumer(s):\n${productive.map((r) => `${r.path}:${r.line}`).join('\n')}`);
   assert.match(docs, /PRODUCTIVO ACTUAL:\s*0/i);
-  assert.match(docs, /caller UUID lifecycle:\s*N\/A/i);
+  assert.match(docs, /Caller UUID lifecycle:\s*N\/A/i);
 });
 
 // 24. Repo-exhaustive inventory.
@@ -207,7 +209,7 @@ test('repo-exhaustive start_manual_class consumer inventory is explicit and curr
   assert.ok(refs.length > 0, 'expected migration/test/docs references');
   const byPath = new Set(refs.map((ref) => ref.path));
   assert.deepEqual([...byPath].sort(), [docPath, migrationPath, testPath].sort());
-  assert.match(docs, /TEST:\s*tests\/attendance-start-01\.test\.mjs/i);
+  assert.match(docs, /TEST:\s*`tests\/attendance-start-01\.test\.mjs`/i);
   assert.match(docs, /OBSOLETO:\s*firma RPC anterior/i);
 });
 
