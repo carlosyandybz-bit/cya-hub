@@ -1,5 +1,6 @@
--- ATTENDANCE-START-01
+-- ATTENDANCE-START-01 / CLASS-01-IDEMP-01
 -- R1 forward migration: a real class start records durable PRESENT attendance.
+-- Manual class creation uses durable request-level idempotency.
 -- STAGING authoring only. No historical backfill.
 
 -- Extend durable attendance provenance without rewriting applied Attendance migrations.
@@ -21,6 +22,28 @@ alter table public.class_attendance_events
 create unique index if not exists class_attendance_events_session_start_once_uidx
   on public.class_attendance_events(class_id, person_id)
   where source = 'session_start';
+
+-- Durable request -> class mapping for manual class starts. This is not a second source
+-- of truth for classes: it only remembers which canonical class one logical request created.
+create table private.manual_class_start_requests (
+  request_key uuid primary key,
+  requested_by uuid not null,
+  payload jsonb not null,
+  class_id bigint references public.classes(id),
+  created_at timestamptz not null default now(),
+  completed_at timestamptz,
+  constraint manual_class_start_requests_completion_ck
+    check (
+      (class_id is null and completed_at is null)
+      or (class_id is not null and completed_at is not null)
+    )
+);
+
+alter table private.manual_class_start_requests owner to postgres;
+revoke all on table private.manual_class_start_requests from public;
+revoke all on table private.manual_class_start_requests from anon;
+revoke all on table private.manual_class_start_requests from authenticated;
+revoke all on table private.manual_class_start_requests from service_role;
 
 create or replace function private.record_class_attendance_fact(
   p_class_id bigint,
@@ -231,12 +254,17 @@ revoke execute on function public.start_class(bigint) from anon;
 grant execute on function public.start_class(bigint) to authenticated;
 grant execute on function public.start_class(bigint) to service_role;
 
+-- The previous seven-argument overload is intentionally retired. There are no current
+-- repository consumers; leaving it executable would preserve the non-idempotent path.
+drop function public.start_manual_class(text,bigint[],timestamptz,integer,bigint,bigint,text);
+
 create or replace function public.start_manual_class(
   p_class_type text,
   p_student_ids bigint[],
   p_scheduled_start_at timestamptz,
   p_duration_minutes integer,
   p_style_term_id bigint,
+  p_idempotency_key uuid,
   p_location_term_id bigint default null,
   p_notes text default null
 )
@@ -250,16 +278,29 @@ declare
   new_class public.classes;
   expected_count integer;
   v_person_id bigint;
+  v_actor uuid := (select auth.uid());
+  v_notes text;
+  v_payload jsonb;
+  v_claimed_key uuid;
+  v_existing_actor uuid;
+  v_existing_payload jsonb;
+  v_existing_class_id bigint;
 begin
-  if not (select private.is_staff()) then
+  if v_actor is null or not (select private.is_staff()) then
     raise exception 'No tienes permiso para iniciar clases.' using errcode='42501';
+  end if;
+  if p_idempotency_key is null then
+    raise exception 'La operación requiere una clave de idempotencia.' using errcode='22023';
   end if;
   if p_class_type not in ('individual','pair') then
     raise exception 'Tipo de clase no valido.' using errcode='22023';
   end if;
+
+  -- Canonicalize only from server-side typed inputs and the pre-existing RPC normalizations.
   select coalesce(array_agg(id order by id),'{}'::bigint[])
   into clean_ids
   from (select distinct unnest(p_student_ids) id) s;
+
   expected_count:=case when p_class_type='pair' then 2 else 1 end;
   if cardinality(clean_ids)<>expected_count then
     raise exception 'La clase requiere % alumno(s) distintos.',expected_count using errcode='22023';
@@ -270,6 +311,59 @@ begin
   if p_scheduled_start_at is null then
     raise exception 'Fecha y hora obligatorias.' using errcode='22023';
   end if;
+
+  v_notes := nullif(btrim(p_notes),'');
+  v_payload := jsonb_build_object(
+    'class_type',p_class_type,
+    'student_ids',to_jsonb(clean_ids),
+    'scheduled_start_at',to_jsonb(p_scheduled_start_at),
+    'duration_minutes',p_duration_minutes,
+    'style_term_id',p_style_term_id,
+    'location_term_id',p_location_term_id,
+    'notes',v_notes
+  );
+
+  -- PK(request_key) is the primary concurrency primitive. PostgreSQL waits on a concurrent
+  -- uncommitted conflicting insert. If the first transaction rolls back, this insert can win;
+  -- if it commits, ON CONFLICT returns no row and this call converges on the committed request.
+  insert into private.manual_class_start_requests(request_key,requested_by,payload)
+  values(p_idempotency_key,v_actor,v_payload)
+  on conflict (request_key) do nothing
+  returning request_key into v_claimed_key;
+
+  if v_claimed_key is null then
+    select requested_by,payload,class_id
+    into v_existing_actor,v_existing_payload,v_existing_class_id
+    from private.manual_class_start_requests
+    where request_key=p_idempotency_key
+    for update;
+
+    if not found then
+      raise exception 'No se pudo resolver la operación idempotente.' using errcode='40001';
+    end if;
+    if v_existing_actor is distinct from v_actor then
+      raise exception 'La clave de idempotencia no es válida para esta operación.' using errcode='42501';
+    end if;
+    if v_existing_payload is distinct from v_payload then
+      raise exception 'La clave de idempotencia ya fue usada con datos distintos.' using errcode='22023';
+    end if;
+    if v_existing_class_id is null then
+      raise exception 'La operación idempotente quedó incompleta.' using errcode='40001';
+    end if;
+
+    select * into new_class
+    from public.classes
+    where id=v_existing_class_id;
+
+    if not found then
+      raise exception 'La clase vinculada a la operación ya no existe.' using errcode='P0002';
+    end if;
+
+    return new_class;
+  end if;
+
+  -- Mutable resource validity is checked only for the creator. A committed retry must return
+  -- the original class even if a participant/style changes state after the successful commit.
   if not exists(
     select 1 from public.catalog_terms
     where id=p_style_term_id and taxonomy='dance_style' and active
@@ -289,8 +383,8 @@ begin
     teacher_user_id,class_type,status,scheduled_start_at,duration_minutes,
     style_term_id,location_term_id,notes,started_at,created_by
   ) values(
-    (select auth.uid()),p_class_type,'active',p_scheduled_start_at,p_duration_minutes,
-    p_style_term_id,p_location_term_id,nullif(btrim(p_notes),''),now(),(select auth.uid())
+    v_actor,p_class_type,'active',p_scheduled_start_at,p_duration_minutes,
+    p_style_term_id,p_location_term_id,v_notes,now(),v_actor
   ) returning * into new_class;
 
   insert into public.class_participants(class_id,person_id)
@@ -314,25 +408,38 @@ begin
       jsonb_build_object(
         'origin','manual_class_start',
         'class_type',new_class.class_type,
-        'started_at',new_class.started_at
+        'started_at',new_class.started_at,
+        'idempotency_key',p_idempotency_key
       )
     );
   end loop;
+
+  update private.manual_class_start_requests
+  set class_id=new_class.id,
+      completed_at=now()
+  where request_key=p_idempotency_key
+    and requested_by=v_actor;
+
+  if not found then
+    raise exception 'No se pudo completar la operación idempotente.' using errcode='40001';
+  end if;
 
   return new_class;
 end;
 $function$;
 
-alter function public.start_manual_class(text,bigint[],timestamptz,integer,bigint,bigint,text) owner to postgres;
-revoke execute on function public.start_manual_class(text,bigint[],timestamptz,integer,bigint,bigint,text) from public;
-revoke execute on function public.start_manual_class(text,bigint[],timestamptz,integer,bigint,bigint,text) from anon;
-grant execute on function public.start_manual_class(text,bigint[],timestamptz,integer,bigint,bigint,text) to authenticated;
-grant execute on function public.start_manual_class(text,bigint[],timestamptz,integer,bigint,bigint,text) to service_role;
+alter function public.start_manual_class(text,bigint[],timestamptz,integer,bigint,uuid,bigint,text) owner to postgres;
+revoke execute on function public.start_manual_class(text,bigint[],timestamptz,integer,bigint,uuid,bigint,text) from public;
+revoke execute on function public.start_manual_class(text,bigint[],timestamptz,integer,bigint,uuid,bigint,text) from anon;
+grant execute on function public.start_manual_class(text,bigint[],timestamptz,integer,bigint,uuid,bigint,text) to authenticated;
+grant execute on function public.start_manual_class(text,bigint[],timestamptz,integer,bigint,uuid,bigint,text) to service_role;
 
--- Fail closed if the private durable-write helper was accidentally exposed.
+-- Fail closed if private durable-write surfaces were accidentally exposed or the retired
+-- non-idempotent manual-start overload still exists.
 do $guard$
 declare
   v_helper regprocedure := to_regprocedure('private.record_class_attendance_fact(bigint,bigint,text,text,timestamp with time zone,text,bigint,text,jsonb)');
+  v_old_manual regprocedure := to_regprocedure('public.start_manual_class(text,bigint[],timestamp with time zone,integer,bigint,bigint,text)');
 begin
   if v_helper is null then
     raise exception 'ATTENDANCE-START-01 guard: private attendance helper missing.';
@@ -342,6 +449,14 @@ begin
      or has_function_privilege('authenticated',v_helper,'EXECUTE')
      or has_function_privilege('service_role',v_helper,'EXECUTE') then
     raise exception 'ATTENDANCE-START-01 guard: private attendance helper has external EXECUTE.';
+  end if;
+  if v_old_manual is not null then
+    raise exception 'CLASS-01-IDEMP-01 guard: non-idempotent manual-start overload still exists.';
+  end if;
+  if has_table_privilege('anon','private.manual_class_start_requests','SELECT,INSERT,UPDATE,DELETE')
+     or has_table_privilege('authenticated','private.manual_class_start_requests','SELECT,INSERT,UPDATE,DELETE')
+     or has_table_privilege('service_role','private.manual_class_start_requests','SELECT,INSERT,UPDATE,DELETE') then
+    raise exception 'CLASS-01-IDEMP-01 guard: private request ledger has external table privileges.';
   end if;
 end;
 $guard$;
