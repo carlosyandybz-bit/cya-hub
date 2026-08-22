@@ -150,6 +150,72 @@ test("failed terminal edit has no partial movement, grant update, or edit audit 
   assert.doesNotMatch(prefix,/'credit_grant_edited'/);
 });
 
+test("BONUS-REFUND-TERMINAL-02 locks original movement and grant then denies correction with SQLSTATE 22023 before every correction side effect",()=>{
+  const fn=functionBody("public.correct_credit_consumption","public.set_credit_grant_consumed_minutes");
+  const originalLock=fn.indexOf("where id=p_original_movement_id for update");
+  const originalExists=fn.indexOf("if not found",originalLock);
+  const grantLock=fn.indexOf("where id=v_original.grant_id for update",originalExists);
+  const grantExists=fn.indexOf("if not found",grantLock);
+  const guard=fn.indexOf("if v_grant.status='cancelled' or v_grant.payment_status='refunded'",grantExists);
+  const err=fn.indexOf("errcode='22023'",guard);
+  const correctionSum=fn.indexOf("into v_correction_sum",guard);
+  const movement=fn.indexOf("insert into public.credit_movements",guard);
+  const update=fn.indexOf("update public.credit_grants",guard);
+  const audit=fn.indexOf("insert into public.audit_events",guard);
+  assert.ok(originalLock>=0 && originalExists>originalLock,"original movement must be locked and existence-checked first");
+  assert.ok(grantLock>originalExists && grantExists>grantLock,"grant must be locked and existence-checked before terminal guard");
+  assert.ok(guard>grantExists && err>guard,"terminal correction guard must raise SQLSTATE 22023 after both locks");
+  assert.ok(correctionSum>err && movement>err && update>err && audit>err,"terminal guard must precede correction sum, movement, grant update and audit");
+});
+
+test("refund then correction to 45, 75, zero, or any later replacement is unconditionally fail-closed before target-specific calculation",()=>{
+  const fn=functionBody("public.correct_credit_consumption","public.set_credit_grant_consumed_minutes");
+  const guard=fn.indexOf("if v_grant.status='cancelled' or v_grant.payment_status='refunded'");
+  const capacityCheck=fn.indexOf("if p_replacement_consumed_minutes > v_grant.total_minutes",guard);
+  const sum=fn.indexOf("into v_correction_sum",guard);
+  const target=fn.indexOf("v_target_delta := -p_replacement_consumed_minutes",guard);
+  const balance=fn.indexOf("v_balance_before :=",guard);
+  assert.ok(guard>=0 && capacityCheck>guard && sum>guard && target>guard && balance>guard);
+  assert.doesNotMatch(fn.slice(0,guard),/v_target_delta\s*:=|into v_correction_sum|insert into public\.credit_movements|'credit_consumption_corrected'/);
+});
+
+test("pre-refund corrections still support lower, higher, successive targets while preserving origin and preventing negative balance",()=>{
+  const fn=functionBody("public.correct_credit_consumption","public.set_credit_grant_consumed_minutes");
+  assert.match(fn,/where m\.reverses_movement_id=v_original\.id/);
+  assert.match(fn,/v_current_effective_delta := v_original\.delta_minutes \+ v_correction_sum/);
+  assert.match(fn,/v_target_delta := -p_replacement_consumed_minutes/);
+  assert.match(fn,/v_delta := v_target_delta - v_current_effective_delta/);
+  assert.match(fn,/if v_balance_after < 0 then/);
+  for (const token of ["v_original.person_id","v_original.class_id","v_original.id","'original_provenance',v_original.provenance"]) assert.ok(fn.includes(token),token);
+  assert.match(fn,/reverses_movement_id,provenance/);
+  assert.doesNotMatch(fn,/delete from public\.credit_movements/);
+  assert.doesNotMatch(fn,/update public\.credit_movements/);
+});
+
+test("terminal write-surface sweep seals edit, manual target, pause and resume while total refund remains idempotent",()=>{
+  const edit=functionBody("public.edit_credit_grant","public.pause_credit_grant");
+  const pause=functionBody("public.pause_credit_grant","public.resume_credit_grant");
+  const resume=functionBody("public.resume_credit_grant","public.refund_credit_grant_total");
+  const refund=functionBody("public.refund_credit_grant_total","public.set_billing_historical_import_enabled");
+  const correction=functionBody("public.correct_credit_consumption","public.set_credit_grant_consumed_minutes");
+  const manual=functionBody("public.set_credit_grant_consumed_minutes",null);
+
+  assert.match(edit,/if v_grant\.status='cancelled' or v_grant\.payment_status='refunded'/);
+  assert.match(pause,/if v_grant\.status <> 'active' or v_grant\.payment_status not in \('paid','pending'\)/);
+  assert.match(resume,/if v_grant\.status='cancelled' or v_grant\.payment_status='refunded'/);
+  assert.match(correction,/if v_grant\.status='cancelled' or v_grant\.payment_status='refunded'/);
+  assert.match(manual,/if v_grant\.status='cancelled' or v_grant\.payment_status='refunded'/);
+  assert.match(refund,/if v_grant\.payment_status='refunded' then return jsonb_build_object/);
+
+  const resumeGuard=resume.indexOf("if v_grant.status='cancelled' or v_grant.payment_status='refunded'");
+  assert.ok(resume.indexOf("update public.credit_grant_pause_periods",resumeGuard)>resumeGuard);
+  assert.ok(resume.indexOf("'credit_grant_resumed'",resumeGuard)>resumeGuard);
+
+  const manualGuard=manual.indexOf("if v_grant.status='cancelled' or v_grant.payment_status='refunded'");
+  assert.ok(manual.indexOf("insert into public.credit_movements",manualGuard)>manualGuard);
+  assert.ok(manual.indexOf("update public.credit_grants",manualGuard)>manualGuard);
+});
+
 test("historical path is admin-gated audited and does not fabricate class attendance or payment facts",()=>{
   const fn=functionBody("public.import_historical_credit_grant","public.correct_credit_consumption");
   assert.match(fn,/private.billing_is_admin/);
