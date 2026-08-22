@@ -572,6 +572,9 @@ begin
   where id=p_grant_id
   for update;
   if not found then raise exception 'El bono no existe.' using errcode='P0002'; end if;
+  if v_grant.status='cancelled' or v_grant.payment_status='refunded' then
+    raise exception 'Este bono está en estado terminal y no puede editarse.' using errcode='22023';
+  end if;
 
   v_before := to_jsonb(v_grant) || jsonb_build_object(
     'balance_minutes', private.credit_grant_balance_minutes_unchecked(p_grant_id)
