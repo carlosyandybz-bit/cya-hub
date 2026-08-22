@@ -44,6 +44,21 @@
 
 DP-14=14B is materialized separately: future-start and paused qualifying grants may prove presencial Billing intent, but exhausted/expired/cancelled/refunded/zero-balance grants do not.
 
+## BONUS-REFUND-TERMINAL-01 — pre-apply correction
+
+QA PRE-APPLY demonstrated that the original candidate could neutralize a grant through `refund_credit_grant_total` and later reintroduce balance through a capacity increase in `edit_credit_grant`.
+
+The corrected candidate is fail-closed for generic grant edits after terminal state:
+
+- after the grant row is fetched and locked with `FOR UPDATE`;
+- before any capacity calculation, movement insert, grant update or edit audit side effect;
+- `status='cancelled' OR payment_status='refunded'` raises SQLSTATE `22023`;
+- therefore capacity, price, purchase/start/expiry dates and label cannot be edited through `edit_credit_grant` once terminal;
+- total refund remains idempotent and the original refund audit remains unchanged;
+- no metadata-only post-terminal exception is invented because the closed contract does not define one.
+
+This is a correction to the same unapplied migration artifact; version, name and path remain unchanged.
+
 ## Schema delta
 
 - `credit_grants.starts_at` with legacy backfill from `purchased_at`.
@@ -83,7 +98,7 @@ No partial refund RPC is introduced.
 
 `correct_credit_consumption` never rewrites the original consumption movement. It appends a compensating movement tied through `reverses_movement_id`, preserves original `class_id`, person and provenance, serializes the grant row, and emits before/after audit evidence.
 
-Capacity correction also appends the capacity delta into the ledger, rejects `new total < valid net consumption`, and leaves `price_cents` independent.
+Capacity correction also appends the capacity delta into the ledger, rejects `new total < valid net consumption`, and leaves `price_cents` independent while the grant is non-terminal.
 
 ## Historical mode
 
