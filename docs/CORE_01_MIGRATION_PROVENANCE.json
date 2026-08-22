@@ -23,7 +23,7 @@
         "authorship": {
           "repository": "carlosyandybz-bit/cya-hub",
           "base_sha": "fa5e67b912e1ec2bacf03f0f993337fec83cc578",
-          "pr_number": null
+          "pr_number": 132
         },
         "intended_targets": [
           {
