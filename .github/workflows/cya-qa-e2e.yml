@@ -83,6 +83,10 @@ jobs:
       - name: Install application dependencies
         run: npm ci
 
+      - name: Run authenticated Attendance post-apply gate
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/staging' }}
+        run: node qa/tests/class-attendance-auth-postapply.test.mjs
+
       - name: Install QA harness
         working-directory: qa
         run: npm install --no-audit --no-fund
