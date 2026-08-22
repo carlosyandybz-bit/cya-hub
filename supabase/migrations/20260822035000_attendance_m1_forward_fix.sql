@@ -11,7 +11,8 @@ alter function public.administratively_finish_class_v2(bigint,bigint[],text[],bi
 alter function public.administratively_finish_class_v2(bigint,bigint[],text[],bigint[],integer)
   set search_path to '';
 
--- Wrappers remain SECURITY INVOKER by contract.
+-- Wrappers remain SECURITY INVOKER by contract. Installed STAGING owner is postgres and is
+-- verified below; their bodies/signatures are not replaced.
 alter function public.administratively_finish_class_v3(bigint,bigint[],text[],bigint[],integer,integer)
   security invoker;
 alter function public.administratively_finish_class_v4(bigint,bigint[],bigint[],integer,integer,bigint,integer,jsonb)
@@ -96,6 +97,9 @@ begin
     if (select p.prosecdef from pg_proc p where p.oid=v_oid) then
       raise exception 'ATTENDANCE M1 FORWARD-FIX: wrapper must remain SECURITY INVOKER: %',v_sig using errcode='42501';
     end if;
+    if (select pg_get_userbyid(p.proowner) from pg_proc p where p.oid=v_oid) <> 'postgres' then
+      raise exception 'ATTENDANCE M1 FORWARD-FIX: wrapper owner must remain postgres: %',v_sig using errcode='42501';
+    end if;
     foreach v_role in array v_roles loop
       if has_function_privilege(v_role,v_oid,'EXECUTE') then
         raise exception 'ATTENDANCE M1 FORWARD-FIX: forbidden wrapper EXECUTE role=% function=%',v_role,v_sig using errcode='42501';
@@ -117,6 +121,12 @@ begin
   end if;
   if (select pg_get_userbyid(p.proowner) from pg_proc p where p.oid=v_oid) <> 'postgres' then
     raise exception 'ATTENDANCE M1 FORWARD-FIX: private helper owner must remain postgres' using errcode='42501';
+  end if;
+  if not exists (
+    select 1 from pg_proc p
+    where p.oid=v_oid and coalesce(p.proconfig,'{}'::text[]) @> array['search_path=""']::text[]
+  ) then
+    raise exception 'ATTENDANCE M1 FORWARD-FIX: private helper search_path must remain empty' using errcode='42501';
   end if;
   foreach v_role in array array['public','anon','authenticated','service_role']::text[] loop
     if has_function_privilege(v_role,v_oid,'EXECUTE') then
