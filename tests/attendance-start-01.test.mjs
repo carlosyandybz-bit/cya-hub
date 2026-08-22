@@ -68,5 +68,5 @@ test('attendance history stays append-only and unrelated domains are not mutated
 });
 
 test('migration is prospective only and contains no historical attendance insert-select', () => {
-  assert.doesNotMatch(sql, /insert\s+into\s+public\.class_attendance_events[\s\S]*select[\s\S]*from\s+public\.classes/i);
+  assert.doesNotMatch(sql, /insert\s+into\s+public\.class_attendance_events\s*\([^;]+?\)\s*select\b/i);
 });
