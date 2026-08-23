@@ -37,6 +37,28 @@ create unique index if not exists credit_movements_source_operation_key_uidx
 comment on column public.credit_movements.source_operation_key is
   'Server-side idempotency key for canonical Billing mutations. Historical rows remain NULL.';
 
+-- Transitional fail-closed protection: legacy direct Staff writers still need INSERT
+-- until cross-domain convergence, but they must not be able to mint/squat canonical
+-- idempotency keys. Existing legacy inserts omit the new column and remain NULL.
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'credit_movements'
+      and policyname = 'movements_staff_insert'
+      and cmd = 'INSERT'
+  ) then
+    raise exception 'BONUS-AUTHORITY-HARDENING-01 requires movements_staff_insert transitional policy.';
+  end if;
+end
+$$;
+
+alter policy movements_staff_insert
+  on public.credit_movements
+  with check ((select private.is_staff()) and source_operation_key is null);
+
 create or replace function public.consume_credit_grant_for_class(
   p_grant_id bigint,
   p_person_id bigint,
@@ -286,10 +308,13 @@ begin
       using errcode = '22023';
   end if;
 
+  -- Match the existing correction path lock order (movement -> grant) so a
+  -- concurrent correction/reversal of the same source cannot deadlock by inversion.
   select *
     into v_original
     from public.credit_movements
-   where id = p_original_movement_id;
+   where id = p_original_movement_id
+   for update;
 
   if not found then
     raise exception 'El movimiento original no existe.'
@@ -306,12 +331,6 @@ begin
     raise exception 'El bono del movimiento no existe.'
       using errcode = 'P0002';
   end if;
-
-  select *
-    into v_original
-    from public.credit_movements
-   where id = p_original_movement_id
-   for update;
 
   if v_original.movement_type <> 'class'
      or v_original.delta_minutes >= 0
@@ -593,6 +612,8 @@ grant execute on function public.billing_person_bonus_summary(bigint,timestamptz
 -- Direct authenticated DML on credit_grants / credit_movements / credit_grant_members
 -- is intentionally NOT revoked in Phase 2A. Current cross-domain SECURITY INVOKER
 -- consumers (Classes finish/reopen and related legacy paths) still depend on it.
+-- The transitional movements_staff_insert policy now forces source_operation_key=NULL,
+-- so legacy direct writers cannot mint or squat canonical idempotency keys.
 -- Final integration must first migrate those consumers to the canonical Billing API,
 -- then execute a separate reviewed forward-fix that REVOKEs table DML and removes
 -- grants_staff_insert, grants_staff_update, movements_staff_insert and
