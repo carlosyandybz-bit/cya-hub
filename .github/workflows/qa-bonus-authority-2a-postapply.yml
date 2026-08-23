@@ -1,0 +1,101 @@
+name: QA BONUS-AUTHORITY-HARDENING-01 2A Post-Apply
+
+on:
+  pull_request:
+    branches: [staging]
+    paths:
+      - '.github/workflows/qa-bonus-authority-2a-postapply.yml'
+      - 'qa/bonus-authority-2a/postapply-runtime.mjs'
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+env:
+  SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+  SUPABASE_PUBLISHABLE_KEY: sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW
+
+jobs:
+  postapply-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Guard QA-only scope and exact product source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          STAGING_SHA='fa5e67b912e1ec2bacf03f0f993337fec83cc578'
+          PRODUCT_HEAD='51e84488710b4d01ade8441cad97e97dc5d13ac0'
+          PRODUCT_BLOB='39ed0d38341b3af5536a813f5edbbefa8cb5a28f'
+          MIG='supabase/migrations/20260822235000_bonus_authority_hardening_01.sql'
+          test "${{ github.event.pull_request.base.ref }}" = 'staging'
+          test "${{ github.event.pull_request.base.sha }}" = "$STAGING_SHA"
+          pr="$(curl --fail --silent --show-error -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/137)"
+          test "$(jq -r .state <<<"$pr")" = 'open'
+          test "$(jq -r .draft <<<"$pr")" = 'true'
+          test "$(jq -r .merged <<<"$pr")" = 'false'
+          test "$(jq -r .head.sha <<<"$pr")" = "$PRODUCT_HEAD"
+          git fetch --no-tags origin "$PRODUCT_HEAD" >/dev/null 2>&1
+          test "$(git show "${PRODUCT_HEAD}:${MIG}" | git hash-object --stdin)" = "$PRODUCT_BLOB"
+          bad="$(git diff --name-only "$STAGING_SHA"..HEAD | grep -Ev '^(qa/bonus-authority-2a/postapply-runtime\.mjs|\.github/workflows/qa-bonus-authority-2a-postapply\.yml)$' || true)"
+          test -z "$bad" || { echo "$bad"; exit 1; }
+
+      - name: Request passwordless sessions
+        shell: bash
+        run: |
+          set -euo pipefail
+          for email in 'carlosyandybz+staging-profesor@gmail.com' 'carlosyandybz+staging-alumno@gmail.com' 'carlosyandybz+staging-admin@gmail.com'; do
+            body="$(jq -nc --arg email "$email" '{email:$email,create_user:false}')"
+            code="$(curl --silent --show-error --output /tmp/otp-response --write-out '%{http_code}' -X POST -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" -H 'Content-Type: application/json' --data "$body" "${SUPABASE_URL}/auth/v1/otp")"
+            test "$code" = '200' || { cat /tmp/otp-response >&2; exit 1; }
+          done
+
+      - name: Wait for one-time token handoff
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          marker="CYA_QA_MAGICLINK:${GITHUB_RUN_ID}"
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"
+          body=''
+          for attempt in {1..60}; do
+            comments="$(curl --fail --silent --show-error -H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' "$api")"
+            body="$(jq -r --arg marker "$marker" '[.[] | select(.user.login=="carlosyandybz-bit" and (.body | startswith($marker)))] | sort_by(.created_at) | last | .body // empty' <<<"$comments")"
+            [ -n "$body" ] && break
+            sleep 5
+          done
+          [ -n "$body" ] || exit 1
+          payload="$(printf '%s\n' "$body" | tail -n +2)"
+          for name in teacher student admin; do
+            token="$(jq -er --arg n "$name" '.[$n]' <<<"$payload")"
+            echo "::add-mask::${token}"
+            printf 'QA_%s_MAGICLINK_TOKEN=%s\n' "$(tr '[:lower:]' '[:upper:]' <<<"$name")" "$token" >> "$GITHUB_ENV"
+          done
+
+      - name: Run runtime matrix
+        shell: bash
+        env:
+          QA_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          node qa/bonus-authority-2a/postapply-runtime.mjs | tee /tmp/bonus-authority-2a-postapply.log
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bonus-authority-2a-postapply-${{ github.run_id }}
+          path: /tmp/bonus-authority-2a-postapply.log
+          if-no-files-found: warn
+          retention-days: 90
