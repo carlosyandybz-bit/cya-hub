@@ -1,0 +1,53 @@
+name: QA BONUS-AUTHORITY-HARDENING-01 2A Post-Apply v3
+
+on:
+  pull_request:
+    branches: [staging]
+    paths:
+      - '.github/workflows/qa-bonus-authority-2a-postapply-v3.yml'
+      - 'qa/bonus-authority-2a/postapply-runtime.mjs'
+
+permissions: { contents: read, issues: read, pull-requests: read }
+env:
+  SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+  SUPABASE_PUBLISHABLE_KEY: sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW
+jobs:
+  postapply-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with: { ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false }
+      - name: Guard
+        shell: bash
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          set -euo pipefail
+          S='fa5e67b912e1ec2bacf03f0f993337fec83cc578'; H='51e84488710b4d01ade8441cad97e97dc5d13ac0'; B='39ed0d38341b3af5536a813f5edbbefa8cb5a28f'; M='supabase/migrations/20260822235000_bonus_authority_hardening_01.sql'
+          test "${{ github.event.pull_request.base.sha }}" = "$S"
+          pr="$(curl --fail -sS -H "Authorization: Bearer ${GH_TOKEN}" https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/137)"; test "$(jq -r .head.sha <<<"$pr")" = "$H"; test "$(jq -r .state <<<"$pr")" = open; test "$(jq -r .draft <<<"$pr")" = true; test "$(jq -r .merged <<<"$pr")" = false
+          git fetch --no-tags origin "$H" >/dev/null 2>&1; test "$(git show "$H:$M" | git hash-object --stdin)" = "$B"
+          bad="$(git diff --name-only "$S"..HEAD | grep -Ev '^(qa/bonus-authority-2a/postapply-runtime\.mjs|\.github/workflows/qa-bonus-authority-2a-postapply(-v2|-v3)?\.yml)$' || true)"; test -z "$bad"
+      - name: Request magic links
+        shell: bash
+        run: |
+          set -euo pipefail
+          for email in 'carlosyandybz+staging-profesor@gmail.com' 'carlosyandybz+staging-alumno@gmail.com' 'carlosyandybz+staging-admin@gmail.com'; do body="$(jq -nc --arg email "$email" '{email:$email,create_user:false}')"; test "$(curl -sS -o /tmp/o -w '%{http_code}' -X POST -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" -H 'Content-Type: application/json' --data "$body" "${SUPABASE_URL}/auth/v1/otp")" = 200; done
+      - name: Wait tokens
+        shell: bash
+        env: { GH_TOKEN: '${{ github.token }}', PR_NUMBER: '${{ github.event.pull_request.number }}' }
+        run: |
+          set -euo pipefail
+          marker="CYA_QA_MAGICLINK:${GITHUB_RUN_ID}"; api="https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"; body=''
+          for attempt in {1..60}; do comments="$(curl --fail -sS -H "Authorization: Bearer ${GH_TOKEN}" "$api")"; body="$(jq -r --arg marker "$marker" '[.[]|select(.user.login=="carlosyandybz-bit" and (.body|startswith($marker)))]|sort_by(.created_at)|last|.body//empty' <<<"$comments")"; [ -n "$body" ] && break; sleep 5; done
+          [ -n "$body" ]; payload="$(printf '%s\n' "$body"|tail -n +2)"; for name in teacher student admin; do token="$(jq -er --arg n "$name" '.[$n]' <<<"$payload")"; echo "::add-mask::${token}"; printf 'QA_%s_MAGICLINK_TOKEN=%s\n' "$(tr '[:lower:]' '[:upper:]' <<<"$name")" "$token" >> "$GITHUB_ENV"; done
+      - name: Run matrix
+        shell: bash
+        env: { QA_RUN_ID: '${{ github.run_id }}' }
+        run: |
+          set -euo pipefail
+          sed -i "s/const URL = req('SUPABASE_URL')/const BASE = req('SUPABASE_URL')/; s/\${URL}/\${BASE}/g; s/new URL(loc,URL)/new URL(loc,BASE)/g; s/{grantId,originalId,reversalId}/{grantId:f.grantId,originalId,reversalId}/" qa/bonus-authority-2a/postapply-runtime.mjs
+          node qa/bonus-authority-2a/postapply-runtime.mjs | tee /tmp/result.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: 'bonus-authority-2a-postapply-v3-${{ github.run_id }}', path: /tmp/result.log, retention-days: 90, if-no-files-found: warn }
