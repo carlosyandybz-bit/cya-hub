@@ -33,7 +33,7 @@
         ],
         "recovery": {
           "strategy": "forward_fix",
-          "plan": "Do not edit an applied migration. If this candidate is later applied and a defect is found, author a new reviewed forward-fix migration; preserve movement history and terminal Billing invariants."
+          "plan": "Candidate remains AUTHORING/PREPARADA_NO_APLICADA after pre-apply QA corrections on the same migration identity. Do not edit it after application; if a post-apply defect is later found, author a new reviewed forward-fix migration and preserve movement history, replay equivalence and terminal Billing invariants."
         },
         "application_evidence": null
       }
