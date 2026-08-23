@@ -19,6 +19,8 @@ It preserves the closed BONUS-USABILITY-01 contract and does not implement BILLI
 
 `credit_movements.source_operation_key` is introduced as a nullable server-side idempotency key. Existing historical movements remain `NULL`. Non-null keys must be nonblank and are unique.
 
+While cross-domain direct writers still exist, the existing `movements_staff_insert` policy is narrowed so direct Staff INSERT remains compatible only when `source_operation_key IS NULL`. This preserves legacy consumers while preventing them from minting or squatting canonical Billing idempotency keys.
+
 ### Canonical class consumption
 
 `public.consume_credit_grant_for_class(...)`:
@@ -44,7 +46,7 @@ Classes remains responsible for proving that the supplied class/person relations
 
 - `SECURITY DEFINER`, blank `search_path`;
 - explicit Staff authorization;
-- locks the grant and source movement;
+- locks the source movement first and then the grant, matching the existing `correct_credit_consumption` lock order and avoiding a movement/grant lock inversion;
 - only accepts a negative class movement with a real `class_id`;
 - refuses `refunded` or `cancelled` terminal grants;
 - calculates remaining effective consumption after prior append-only corrections/reversals;
@@ -91,6 +93,8 @@ Therefore this migration intentionally does **not** yet:
 - drop `grants_staff_update`;
 - drop `movements_staff_insert`;
 - drop `grant_members_staff_insert`.
+
+It does harden the transitional movement policy so legacy direct inserts cannot set the canonical idempotency-key column.
 
 Final hardening order is mandatory:
 
