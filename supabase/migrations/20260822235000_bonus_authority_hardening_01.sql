@@ -47,17 +47,21 @@ begin
     from pg_policies
     where schemaname = 'public'
       and tablename = 'credit_movements'
-      and policyname = 'movements_staff_insert'
+      and policyname = 'credit_movements_staff_insert'
       and cmd = 'INSERT'
   ) then
-    raise exception 'BONUS-AUTHORITY-HARDENING-01 requires movements_staff_insert transitional policy.';
+    raise exception 'BONUS-AUTHORITY-HARDENING-01 requires credit_movements_staff_insert transitional policy.';
   end if;
 end
 $$;
 
-alter policy movements_staff_insert
+alter policy credit_movements_staff_insert
   on public.credit_movements
-  with check ((select private.is_staff()) and source_operation_key is null);
+  with check (
+    (select private.is_staff())
+    and created_by = (select auth.uid())
+    and source_operation_key is null
+  );
 
 create or replace function public.consume_credit_grant_for_class(
   p_grant_id bigint,
@@ -349,7 +353,9 @@ begin
        and v_existing.reverses_movement_id = v_original.id
        and v_existing.movement_type = 'adjustment'
        and v_existing.delta_minutes > 0
-       and coalesce(v_existing.provenance->>'operation', '') = 'reverse_credit_consumption_for_class' then
+       and v_existing.note is not distinct from v_reason
+       and coalesce(v_existing.provenance->>'operation', '') = 'reverse_credit_consumption_for_class'
+       and coalesce(v_existing.provenance->>'reason', '') = v_reason then
       return jsonb_build_object(
         'movement_id', v_existing.id,
         'original_movement_id', v_original.id,
@@ -431,7 +437,9 @@ begin
        and v_existing.reverses_movement_id = v_original.id
        and v_existing.movement_type = 'adjustment'
        and v_existing.delta_minutes > 0
-       and coalesce(v_existing.provenance->>'operation', '') = 'reverse_credit_consumption_for_class' then
+       and v_existing.note is not distinct from v_reason
+       and coalesce(v_existing.provenance->>'operation', '') = 'reverse_credit_consumption_for_class'
+       and coalesce(v_existing.provenance->>'reason', '') = v_reason then
       return jsonb_build_object(
         'movement_id', v_existing.id,
         'original_movement_id', v_original.id,
@@ -612,9 +620,10 @@ grant execute on function public.billing_person_bonus_summary(bigint,timestamptz
 -- Direct authenticated DML on credit_grants / credit_movements / credit_grant_members
 -- is intentionally NOT revoked in Phase 2A. Current cross-domain SECURITY INVOKER
 -- consumers (Classes finish/reopen and related legacy paths) still depend on it.
--- The transitional movements_staff_insert policy now forces source_operation_key=NULL,
--- so legacy direct writers cannot mint or squat canonical idempotency keys.
+-- The transitional credit_movements_staff_insert policy now forces source_operation_key=NULL
+-- while preserving its existing created_by=auth.uid() guard, so legacy direct writers cannot
+-- mint or squat canonical idempotency keys or weaken the pre-existing author constraint.
 -- Final integration must first migrate those consumers to the canonical Billing API,
 -- then execute a separate reviewed forward-fix that REVOKEs table DML and removes
--- grants_staff_insert, grants_staff_update, movements_staff_insert and
+-- grants_staff_insert, grants_staff_update, credit_movements_staff_insert and
 -- grant_members_staff_insert. This candidate must not break legitimate consumers.
