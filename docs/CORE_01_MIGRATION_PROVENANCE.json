@@ -9,5 +9,34 @@
     "base_sha": "9bd740fa9b7dd153e937c1bff2eb32d3828c2954",
     "rule": "Historical artifacts remain classified by the snapshot inventory and are not required to fabricate missing provenance. Every migration authored after CORE-01 must be recorded here."
   },
-  "migrations": []
+  "migrations": [
+    {
+      "path": "supabase/migrations/20260821171000_class_attendance_finalize_compat.sql",
+      "migration_version": "20260821171000",
+      "operational_class": "CANONICA",
+      "applied_state": "PREPARADA_NO_APLICADA",
+      "provenance": {
+        "schema_version": 3,
+        "lifecycle_phase": "AUTHORING",
+        "owner": "CLASS-ATTENDANCE-01 / Classes-Workflow",
+        "func_id": "FUNC-0222",
+        "authorship": {
+          "repository": "carlosyandybz-bit/cya-hub",
+          "base_sha": "fa5e67b912e1ec2bacf03f0f993337fec83cc578",
+          "pr_number": 132
+        },
+        "intended_targets": [
+          {
+            "environment": "staging",
+            "project_ref": "qlngfkzmncihtdzktcmd"
+          }
+        ],
+        "recovery": {
+          "strategy": "forward_fix",
+          "plan": "If this AUTHORING M2 requires correction before application, update this candidate only. After application, use a new canonical forward-fix; never edit applied M1 or the applied 20260821170500 forward-fix."
+        },
+        "application_evidence": null
+      }
+    }
+  ]
 }
