@@ -442,7 +442,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $transfer_invariant$
 declare
   v_out_count integer;
   v_in_count integer;
