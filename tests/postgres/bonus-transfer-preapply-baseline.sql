@@ -259,7 +259,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $$
+as $
   select exists(
     select 1
     from public.credit_grant_pause_periods pp
@@ -267,7 +267,33 @@ as $$
       and pp.paused_at<=p_at
       and (pp.resumed_at is null or pp.resumed_at>p_at)
   );
-$$;
+$;
+
+-- Exact canonical STAGING usability predicate required by QA 05.4.
+create or replace function private.credit_grant_is_usable_unchecked(
+  p_grant_id bigint,
+  p_at timestamptz default now()
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $qa_usable$
+  select coalesce((
+    select g.status = 'active'
+       and g.payment_status in ('paid','pending')
+       and g.starts_at <= p_at
+       and not private.credit_grant_is_paused_unchecked(g.id,p_at)
+       and (
+         private.credit_grant_effective_expires_at_unchecked(g.id,p_at) is null
+         or private.credit_grant_effective_expires_at_unchecked(g.id,p_at) > p_at
+       )
+       and private.credit_grant_balance_minutes_unchecked(g.id) > 0
+    from public.credit_grants g
+    where g.id=p_grant_id
+  ),false);
+$qa_usable$;
 
 create or replace function public.billing_person_bonus_summary(
   p_person_id bigint,
@@ -293,6 +319,9 @@ with check (
 );
 
 grant usage on schema public to anon, authenticated, service_role;
+-- Mirrors current STAGING private-schema reachability: authenticated can resolve
+-- private helpers, while function EXECUTE ACL remains authoritative.
+grant usage on schema private to authenticated;
 grant select, insert on public.credit_movements to authenticated;
 grant usage, select on sequence public.credit_movements_id_seq to authenticated;
 
