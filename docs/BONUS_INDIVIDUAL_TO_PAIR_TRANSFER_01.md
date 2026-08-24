@@ -52,7 +52,7 @@ This prevents overspend and concurrent duplicate compatible pools.
 
 ## Reversal
 
-Normal reversal is append-only and full-operation only in this Foundation. It is accepted only when mathematically safe. If the destination has subsequent negative balance use, insufficient balance, terminal incompatibility or a previous reversal, the RPC fails closed and requires an explicitly separate administrative correction path. No historical row is rewritten or deleted.
+Normal reversal is append-only and full-operation only in this Foundation. It is accepted only when mathematically safe. Genuine subsequent incompatible negative use, insufficient balance, terminal incompatibility or a previous reversal fails closed and requires an explicitly separate administrative correction path. A negative `transfer_out` is excluded from that incompatible-use guard only when canonical relational links prove it belongs to a valid `operation_type='reversal'` of another transfer and `reverses_movement_id` points to that transfer's exact destination `transfer_in`; notes/provenance text are never trusted for this decision. No historical row is rewritten or deleted.
 
 ## Security
 
