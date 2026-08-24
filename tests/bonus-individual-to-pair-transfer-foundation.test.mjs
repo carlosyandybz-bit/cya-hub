@@ -45,7 +45,8 @@ test("transfer is standalone and class context is optional, not an eligibility a
   assert.doesNotMatch(sql, /class_participants/i);
   assert.doesNotMatch(sql, /attendance/i);
   assert.doesNotMatch(sql, /fee_cents/i);
-  assert.doesNotMatch(sql, /debt_/i);
+  assert.doesNotMatch(sql, /(?:insert\s+into|update|delete\s+from)\s+public\.[a-z0-9_]*debt[a-z0-9_]*/i);
+  assert.match(sql, /'debt_created_cents',0/);
 });
 
 test("source transfer eligibility is ledger-based while pending, paused and future-start states remain transferable", () => {
