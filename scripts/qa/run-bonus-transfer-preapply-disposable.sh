@@ -6,6 +6,8 @@ DB_URL="${DATABASE_URL:-postgresql://postgres:postgres@127.0.0.1:5432/cya_transf
 MIGRATION="$ROOT/supabase/migrations/20260824115943_bonus_individual_to_pair_transfer_foundation_01.sql"
 BASELINE="$ROOT/tests/postgres/bonus-transfer-preapply-baseline.sql"
 REGRESSION="$ROOT/tests/postgres/bonus-transfer-preapply-regression.sql"
+ADVERSARIAL="$ROOT/tests/postgres/bonus-transfer-preapply-adversarial.sql"
+GATE8="$ROOT/tests/postgres/bonus-transfer-preapply-gate8.sql"
 TMPDIR_QA="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR_QA"' EXIT
 
@@ -31,7 +33,9 @@ run_transfer() {
   local stdout_file="$5"
   local stderr_file="$6"
 
-  timeout 20s psql "$DB_URL" -X -qAt -v ON_ERROR_STOP=1     -c "select pg_sleep(0.75); select public.transfer_individual_credit_to_pair_v2($source,$partner,$minutes,'$request_key',null)::text;"     >"$stdout_file" 2>"$stderr_file"
+  timeout 20s psql "$DB_URL" -X -qAt -v ON_ERROR_STOP=1 \
+    -c "select set_config('request.jwt.claim.sub','11111111-1111-1111-1111-111111111111',false); select pg_sleep(0.75); select public.transfer_individual_credit_to_pair_v2($source,$partner,$minutes,'$request_key',null)::text;" \
+    >"$stdout_file" 2>"$stderr_file"
 }
 
 run_pair() {
@@ -75,8 +79,127 @@ psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f "$BASELINE"
 echo "== Apply exact candidate migration to disposable PostgreSQL only =="
 psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f "$MIGRATION"
 
-echo "== Runtime reversal regressions =="
+echo "== Runtime regressions for closed findings 001/002 =="
 psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f "$REGRESSION"
+
+echo "== QA-BONUS-TRANSFER-003 adversarial runtime =="
+psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f "$ADVERSARIAL"
+
+echo "== QA-BONUS-TRANSFER-004 Gate 8 contract runtime =="
+psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f "$GATE8"
+
+echo "== QA-BONUS-TRANSFER-004 faithful ACL runtime =="
+
+TEACHER_UID="11111111-1111-1111-1111-111111111111"
+TEACHER_ADMIN_UID="22222222-2222-2222-2222-222222222222"
+ADMIN_UID="33333333-3333-3333-3333-333333333333"
+STUDENT_UID="44444444-4444-4444-4444-444444444444"
+NONSTAFF_UID="55555555-5555-5555-5555-555555555555"
+
+run_actor_sql() {
+  local role="$1"
+  local uid="$2"
+  local sql="$3"
+  local stdout_file="$4"
+  local stderr_file="$5"
+
+  timeout 15s psql "$DB_URL" -X -qAt -v ON_ERROR_STOP=1 \
+    >"$stdout_file" 2>"$stderr_file" <<SQL
+\\set VERBOSITY verbose
+select set_config('request.jwt.claim.sub','$uid',false);
+set role $role;
+$sql
+SQL
+}
+
+expect_actor_allow() {
+  local label="$1"
+  local uid="$2"
+  local source="$3"
+  local partner="$4"
+  local request_key="$5"
+  local prefix="$6"
+
+  run_actor_sql authenticated "$uid" \
+    "select public.transfer_individual_credit_to_pair_v2($source,$partner,20,'$request_key',null)::text;" \
+    "$TMPDIR_QA/$prefix.out" "$TMPDIR_QA/$prefix.err"
+
+  local result
+  result="$(tail -n 1 "$TMPDIR_QA/$prefix.out")"
+  if ! jq -e '.status=="committed"' <<<"$result" >/dev/null; then
+    echo "QA ACL allow failed for $label: $result" >&2
+    exit 1
+  fi
+
+  assert_eq "$(psql_qa -c "select actor_user_id::text from public.credit_transfer_operations where request_key='$request_key';")" \
+    "$uid" "$label actor_user_id"
+}
+
+expect_actor_deny() {
+  local label="$1"
+  local role="$2"
+  local uid="$3"
+  local source="$4"
+  local partner="$5"
+  local request_key="$6"
+  local prefix="$7"
+
+  set +e
+  run_actor_sql "$role" "$uid" \
+    "select public.transfer_individual_credit_to_pair_v2($source,$partner,20,'$request_key',null)::text;" \
+    "$TMPDIR_QA/$prefix.out" "$TMPDIR_QA/$prefix.err"
+  local rc=$?
+  set -e
+
+  if [[ "$rc" -eq 0 ]]; then
+    echo "QA ACL deny unexpectedly allowed $label" >&2
+    cat "$TMPDIR_QA/$prefix.out" >&2 || true
+    exit 1
+  fi
+  if [[ "$rc" -eq 124 ]]; then
+    echo "QA ACL deny timed out for $label" >&2
+    exit 1
+  fi
+
+  assert_eq "$(psql_qa -c "select count(*) from public.credit_transfer_operations where request_key='$request_key';")" \
+    "0" "$label creates no canonical operation"
+}
+
+psql_qa -c "select qa_transfer.seed_source(5001,1,100);"
+psql_qa -c "select qa_transfer.seed_source(5002,3,100);"
+psql_qa -c "select qa_transfer.seed_source(5003,5,100);"
+psql_qa -c "select qa_transfer.seed_source(5004,7,100);"
+psql_qa -c "select qa_transfer.seed_source(5005,9,100);"
+psql_qa -c "select qa_transfer.seed_source(5006,11,100);"
+
+expect_actor_allow "teacher allow" "$TEACHER_UID" 5001 2 qa-acl-teacher acl-teacher
+expect_actor_allow "teacher_admin allow" "$TEACHER_ADMIN_UID" 5002 4 qa-acl-teacher-admin acl-teacher-admin
+expect_actor_allow "admin allow" "$ADMIN_UID" 5003 6 qa-acl-admin acl-admin
+
+expect_actor_deny "student deny" authenticated "$STUDENT_UID" 5004 8 qa-acl-student acl-student
+grep -q "No tienes permiso para transferir saldo de bonos" "$TMPDIR_QA/acl-student.err"
+
+expect_actor_deny "authenticated non-staff deny" authenticated "$NONSTAFF_UID" 5005 10 qa-acl-nonstaff acl-nonstaff
+grep -q "No tienes permiso para transferir saldo de bonos" "$TMPDIR_QA/acl-nonstaff.err"
+
+expect_actor_deny "anon deny" anon "" 5006 12 qa-acl-anon acl-anon
+grep -qi "permission denied for function transfer_individual_credit_to_pair_v2" "$TMPDIR_QA/acl-anon.err"
+
+set +e
+run_actor_sql authenticated "$TEACHER_UID" \
+  "insert into public.credit_movements(grant_id,movement_type,delta_minutes,created_by,transfer_id) values(5001,'transfer_out',-1,auth.uid(),999999999);" \
+  "$TMPDIR_QA/acl-forgery.out" "$TMPDIR_QA/acl-forgery.err"
+forgery_rc=$?
+set -e
+if [[ "$forgery_rc" -eq 0 || "$forgery_rc" -eq 124 ]]; then
+  echo "QA direct-DML transfer forgery was not fail-closed" >&2
+  exit 1
+fi
+grep -qi "row-level security" "$TMPDIR_QA/acl-forgery.err"
+assert_eq "$(psql_qa -c "select count(*) from public.credit_movements where transfer_id=999999999;")" \
+  "0" "direct-DML transfer forgery persists no row"
+
+echo "QA-BONUS-TRANSFER-004 ACL RUNTIME: PASS"
 
 echo "== Concurrency 1: overspend race =="
 psql_qa -c "select qa_transfer.seed_source(2001,13,300);"
@@ -130,4 +253,7 @@ invalid_ops="$(psql_qa -c "
 ")"
 assert_eq "$invalid_ops" "0" "all canonical operations preserve -X/+X conservation"
 
+echo "QA-BONUS-TRANSFER-001/002 REGRESSION: PASS"
+echo "QA-BONUS-TRANSFER-003 RUNTIME: PASS"
+echo "QA-BONUS-TRANSFER-004 CONTRACT + ACL RUNTIME: PASS"
 echo "BONUS TRANSFER PRE-APPLY DISPOSABLE HARNESS: PASS"
