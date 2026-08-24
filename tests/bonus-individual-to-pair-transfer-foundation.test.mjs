@@ -74,6 +74,9 @@ test("destination preserves payment, starts_at, effective expiry and pause witho
 
 test("purchased pair grants cannot be reused as transfer pools", () => {
   assert.match(sql, /from public\.credit_pair_transfer_pools tp/i);
+  assert.match(sql, /economic_source_grant_id/i);
+  assert.match(sql, /tp\.economic_source_grant_id=p_economic_source_grant_id/i);
+  assert.match(sql, /tp\.economic_source_grant_id=v_source\.id/i);
   assert.match(sql, /g\.price_cents=0/i);
   assert.match(sql, /not exists \([\s\S]*cm\.movement_type='grant'/i);
   assert.match(sql, /member_person_id_low/);
