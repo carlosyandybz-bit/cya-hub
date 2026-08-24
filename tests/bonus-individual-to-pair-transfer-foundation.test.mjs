@@ -153,6 +153,14 @@ test("new authority is server-authorized and has minimum external ACL", () => {
   assert.match(sql, /grant execute on function public\.transfer_individual_credit_to_pair_v2[\s\S]*to authenticated/i);
   assert.match(sql, /revoke execute on function public\.transfer_individual_credit_to_pair_v2[\s\S]*from anon/i);
   assert.match(sql, /revoke execute on function public\.transfer_individual_credit_to_pair_v2[\s\S]*from service_role/i);
+  assert.match(
+    sql,
+    /create or replace function private\.assert_credit_transfer_operation_balanced\(\)[\s\S]*security definer[\s\S]*set search_path = ''/i
+  );
+  assert.match(
+    sql,
+    /revoke all on function private\.assert_credit_transfer_operation_balanced\(\)[\s\S]*from public, anon, authenticated, service_role/i
+  );
 });
 
 test("transitional direct DML cannot forge canonical transfer movements", () => {
