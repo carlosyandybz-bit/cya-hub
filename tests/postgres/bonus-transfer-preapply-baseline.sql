@@ -358,11 +358,64 @@ create or replace function qa_transfer.assert_eq(
 returns void
 language plpgsql
 set search_path = ''
-as $$
+as $
 begin
   if p_actual is distinct from p_expected then
     raise exception 'QA_ASSERT_EQ failed: %, actual %, expected %',
       p_label,p_actual,p_expected;
   end if;
 end;
-$$;
+$;
+
+
+create or replace function qa_transfer.assert_true(
+  p_actual boolean,
+  p_label text
+)
+returns void
+language plpgsql
+set search_path = ''
+as $
+begin
+  if p_actual is distinct from true then
+    raise exception 'QA_ASSERT_TRUE failed: %, actual %',p_label,p_actual;
+  end if;
+end;
+$;
+
+create or replace function qa_transfer.assert_text_eq(
+  p_actual text,
+  p_expected text,
+  p_label text
+)
+returns void
+language plpgsql
+set search_path = ''
+as $
+begin
+  if p_actual is distinct from p_expected then
+    raise exception 'QA_ASSERT_TEXT_EQ failed: %, actual %, expected %',
+      p_label,p_actual,p_expected;
+  end if;
+end;
+$;
+
+create or replace function qa_transfer.assert_ts_eq(
+  p_actual timestamptz,
+  p_expected timestamptz,
+  p_label text
+)
+returns void
+language plpgsql
+set search_path = ''
+as $
+begin
+  if p_actual is distinct from p_expected then
+    raise exception 'QA_ASSERT_TS_EQ failed: %, actual %, expected %',
+      p_label,p_actual,p_expected;
+  end if;
+end;
+$;
+
+grant usage on schema qa_transfer to authenticated;
+grant execute on all functions in schema qa_transfer to authenticated;
