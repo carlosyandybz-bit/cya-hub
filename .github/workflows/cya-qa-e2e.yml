@@ -64,12 +64,40 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p qa
           oidc_json="$(curl --fail --silent --show-error -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=cya-hub-qa")"
           oidc_token="$(jq -er '.value' <<<"${oidc_json}")"
-          bootstrap_json="$(curl --fail --silent --show-error -X POST -H "Authorization: Bearer ${oidc_token}" -H "Content-Type: application/json" "${CYA_QA_BOOTSTRAP_URL}")"
+          bootstrap_file="${RUNNER_TEMP}/cya-qa-bootstrap.json"
+          http_code="$(curl --silent --show-error -o "${bootstrap_file}" -w '%{http_code}' -X POST -H "Authorization: Bearer ${oidc_token}" -H "Content-Type: application/json" "${CYA_QA_BOOTSTRAP_URL}")"
+          if [[ "${http_code}" -lt 200 || "${http_code}" -ge 300 ]]; then
+            if jq -e . "${bootstrap_file}" >/dev/null 2>&1; then
+              jq '{kind:(.error_kind // "fixture_failure"),error:(.error // "QA bootstrap failed")}' "${bootstrap_file}" > qa/qa-bootstrap-diagnostic.json
+              error_message="$(jq -r '.error // "QA bootstrap failed"' "${bootstrap_file}")"
+            else
+              printf '%s\n' '{"kind":"fixture_failure","error":"QA bootstrap returned an unreadable response"}' > qa/qa-bootstrap-diagnostic.json
+              error_message="QA bootstrap returned an unreadable response"
+            fi
+            echo "::error::${error_message}"
+            exit 1
+          fi
+
+          bootstrap_json="$(cat "${bootstrap_file}")"
           jq -e --arg run_id "${GITHUB_RUN_ID}" '.ok == true and .run_id == $run_id' <<<"${bootstrap_json}" >/dev/null
           jq -e '.fixtures.studentName and .fixtures.projects["iphone-large-chromium"].classId and .fixtures.projects["desktop-chromium"].classId' <<<"${bootstrap_json}" >/dev/null
-          for role in teacher student admin; do
+          if ! jq -e '
+            .credentials.teacher.email and .credentials.teacher.password and
+            .credentials.student.email and .credentials.student.password and
+            .credentials.student_onboarding.email and .credentials.student_onboarding.password and
+            .credentials.admin.email and .credentials.admin.password and
+            .readiness.student and .readiness.student_onboarding
+          ' <<<"${bootstrap_json}" >/dev/null; then
+            printf '%s\n' '{"kind":"fixture_failure","error":"QA bootstrap response does not implement the student onboarding fixture contract"}' > qa/qa-bootstrap-diagnostic.json
+            echo "::error::QA bootstrap response does not implement the student onboarding fixture contract"
+            exit 1
+          fi
+
+          jq '{kind:"bootstrap_success",run_id,readiness}' <<<"${bootstrap_json}" > qa/qa-bootstrap-diagnostic.json
+          for role in teacher student student_onboarding admin; do
             upper_role="$(printf '%s' "${role}" | tr '[:lower:]' '[:upper:]')"
             email="$(jq -er ".credentials.${role}.email" <<<"${bootstrap_json}")"
             password="$(jq -er ".credentials.${role}.password" <<<"${bootstrap_json}")"
@@ -77,8 +105,21 @@ jobs:
             printf 'QA_%s_EMAIL=%s\n' "${upper_role}" "${email}" >> "${GITHUB_ENV}"
             printf 'QA_%s_PASSWORD=%s\n' "${upper_role}" "${password}" >> "${GITHUB_ENV}"
           done
+          printf 'QA_FIXTURE_READINESS_JSON=%s\n' "$(jq -c '.readiness' <<<"${bootstrap_json}")" >> "${GITHUB_ENV}"
           printf 'QA_FIXTURES_JSON=%s\n' "$(jq -c '.fixtures' <<<"${bootstrap_json}")" >> "${GITHUB_ENV}"
           printf 'QA_RUN_ID=%s\n' "${GITHUB_RUN_ID}" >> "${GITHUB_ENV}"
+
+      - name: Verify student fixture readiness before Playwright
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test qa/tests/fixture-readiness.test.mjs
+          if node qa/assert-fixture-readiness.mjs 2>&1 | tee qa/qa-readiness.log; then
+            jq -n --argjson readiness "${QA_FIXTURE_READINESS_JSON}" '{kind:"readiness_pass",readiness:$readiness}' > qa/qa-readiness-diagnostic.json
+          else
+            jq -n --argjson readiness "${QA_FIXTURE_READINESS_JSON}" '{kind:"readiness_failure",readiness:$readiness}' > qa/qa-readiness-diagnostic.json
+            exit 1
+          fi
 
       - name: Install application dependencies
         run: npm ci
@@ -154,5 +195,8 @@ jobs:
             qa/test-results/
             qa/lint.log
             qa/app-server.log
+            qa/qa-bootstrap-diagnostic.json
+            qa/qa-readiness-diagnostic.json
+            qa/qa-readiness.log
           if-no-files-found: warn
           retention-days: 14
