@@ -73,7 +73,15 @@ begin
     when sqlstate '55000' then null;
   end;
 end;
-$$;
+$;
+
+-- Product-logic regression runs as database owner but with the same JWT-derived
+-- teacher identity used by the faithful ACL harness. ACL itself is proven separately.
+select set_config(
+  'request.jwt.claim.sub',
+  '11111111-1111-1111-1111-111111111111',
+  false
+);
 
 -- CASE A: T1 +100, T2 +80, reverse T2, reverse T1.
 select qa_transfer.seed_source(1001,1,300);
@@ -320,3 +328,5 @@ select qa_transfer.assert_eq(
   0,
   'global -X/+X conservation'
 );
+
+select 'QA-BONUS-TRANSFER-001/002 REGRESSION: PASS' as result;
