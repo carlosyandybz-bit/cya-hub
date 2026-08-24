@@ -267,7 +267,7 @@ as $qa_paused$
       and pp.paused_at<=p_at
       and (pp.resumed_at is null or pp.resumed_at>p_at)
   );
-$;
+$qa_paused$;
 
 -- Exact canonical STAGING usability predicate required by QA 05.4.
 create or replace function private.credit_grant_is_usable_unchecked(
