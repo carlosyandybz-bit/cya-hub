@@ -12,13 +12,13 @@ create or replace function auth.uid()
 returns uuid
 language sql
 stable
-as $
+as $auth_uid$
   select
   coalesce(
     nullif(current_setting('request.jwt.claim.sub', true), ''),
     (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')
   )::uuid
-$;
+$auth_uid$;
 
 grant usage on schema auth to anon, authenticated, service_role;
 grant execute on function auth.uid() to anon, authenticated, service_role;
