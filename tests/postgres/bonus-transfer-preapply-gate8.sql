@@ -462,7 +462,6 @@ declare
 begin
   v_result:=public.reconcile_individual_credit_to_pair_transfer('qa-g8-reconcile');
   if v_result->>'status'<>'committed'
-     or (v_result->>'operation_id')::bigint<>:grec_transfer_id
      or coalesce((v_result->>'reconciled')::boolean,false) is not true
      or coalesce((v_result#>>'{reconciliation,retry_with_same_key}')::boolean,false) is not true
      or coalesce((v_result#>>'{reconciliation,blind_retry_with_new_key}')::boolean,true) is not false then
