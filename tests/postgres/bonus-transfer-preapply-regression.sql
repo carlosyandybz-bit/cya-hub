@@ -73,7 +73,7 @@ begin
     when sqlstate '55000' then null;
   end;
 end;
-$;
+$append_only$;
 
 -- Product-logic regression runs as database owner but with the same JWT-derived
 -- teacher identity used by the faithful ACL harness. ACL itself is proven separately.
