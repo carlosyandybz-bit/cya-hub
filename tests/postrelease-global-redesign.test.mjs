@@ -75,7 +75,7 @@ test("student bottom navigation keeps exactly the approved five product destinat
   const navStart = portal.indexOf('<nav className={styles.bottomNav}');
   const navEnd = portal.indexOf("</nav>", navStart);
   const nav = portal.slice(navStart, navEnd);
-  const labels = ["Inicio", "Contenido", "Mi formación", "Eventos", "Misiones"];
+  const labels = ["Inicio", "Contenido", "Mi Formación", "Eventos", "Misiones"];
   let previous = -1;
   for (const label of labels) {
     const index = nav.indexOf(`>${label}<`);

@@ -33,7 +33,7 @@ test("A1 keeps five exact teacher destinations and five secondary class accesses
 test("A1 student navigation and Mi Formación match the approved contract", () => {
   const navStart = portal.indexOf('<nav className={styles.bottomNav}');
   const nav = portal.slice(navStart, portal.indexOf("</nav>", navStart));
-  for (const label of ["Inicio", "Contenido", "Mi formación", "Eventos", "Misiones"]) assert.match(nav, new RegExp(`>${label}<`));
+  for (const label of ["Inicio", "Contenido", "Mi Formación", "Eventos", "Misiones"]) assert.match(nav, new RegExp(`>${label}<`));
   for (const label of ["Academia Online", "Mis clases", "Mi progreso"]) assert.match(portal, new RegExp(label));
   assert.match(portal, /Vídeos de formación y clase/);
   assert.doesNotMatch(nav, /mobile-nav-secondary|Más opciones de clase/);

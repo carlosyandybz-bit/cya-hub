@@ -671,14 +671,14 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
       <button type="button" className={screen === "home" ? styles.active : ""} onClick={() => go("home")}><House /><span>Inicio</span></button>
       <button type="button" className={screen === "content" ? styles.active : ""} onClick={() => go("content")}><BookOpen /><span>Contenido</span></button>
       <div className={styles.formationNav}>
-        <button type="button" className={`${styles.formationMain} ${screen === "formation" ? styles.active : ""}`} onClick={() => goFormation("progress")}><GraduationCap /><span>Mi formación</span></button>
-        <button type="button" className={styles.formationToggle} aria-label="Abrir apartados de Mi formación" aria-expanded={formationMenu} onClick={() => setFormationMenu((value) => !value)}><ChevronDown /></button>
+        <button type="button" className={`${styles.formationMain} ${screen === "formation" ? styles.active : ""}`} onClick={() => goFormation("progress")}><GraduationCap /><span>Mi Formación</span></button>
+        <button type="button" className={styles.formationToggle} aria-label="Abrir apartados de Mi Formación" aria-expanded={formationMenu} onClick={() => setFormationMenu((value) => !value)}><ChevronDown /></button>
       </div>
       <button type="button" className={screen === "events" ? styles.active : ""} onClick={() => go("events")}><CalendarDays /><span>Eventos</span></button>
       <button type="button" className={screen === "missions" ? styles.active : ""} onClick={() => go("missions")}><Target /><span>Misiones</span></button>
     </nav>
 
-    {formationMenu ? <div className={styles.formationSheet} role="menu" aria-label="Apartados de Mi formación"><div><strong>Mi formación</strong><button type="button" aria-label="Cerrar" onClick={() => setFormationMenu(false)}><X /></button></div><button type="button" onClick={() => goFormation("academy")}><GraduationCap /> Academia Online <ChevronRight /></button><button type="button" onClick={() => goFormation("classes")}><CalendarDays /> Mis clases <ChevronRight /></button><button type="button" onClick={() => goFormation("progress")}><TrendingUp /> Mi progreso <ChevronRight /></button></div> : null}
+    {formationMenu ? <div className={styles.formationSheet} role="menu" aria-label="Apartados de Mi Formación"><div><strong>Mi Formación</strong><button type="button" aria-label="Cerrar" onClick={() => setFormationMenu(false)}><X /></button></div><button type="button" onClick={() => goFormation("academy")}><GraduationCap /> Academia Online <ChevronRight /></button><button type="button" onClick={() => goFormation("classes")}><CalendarDays /> Mis clases <ChevronRight /></button><button type="button" onClick={() => goFormation("progress")}><TrendingUp /> Mi progreso <ChevronRight /></button></div> : null}
 
     {toast ? <div className={styles.toast}>{toast}</div> : null}
   </div>;

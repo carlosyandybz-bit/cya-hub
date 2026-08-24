@@ -1532,7 +1532,7 @@ function StudentPortal({ identity, experience, onExperience, client, email, onId
     <StudentExercisesPanel exercises={snapshot.exercises ?? []} />
     <FeedbackOnlineStudentPanel client={client} />
     <AcademyOnlineStudentComingSoon />
-    <section className="portal-grid"><article className="card portal-card"><div className="card-head"><h2>Mi formación</h2><span>{snapshot.assignments.length}</span></div>{snapshot.assignments.length ? <div className="portal-learning-list">{snapshot.assignments.map((assignment) => <TeachingContentCard
+    <section className="portal-grid"><article className="card portal-card"><div className="card-head"><h2>Mi Formación</h2><span>{snapshot.assignments.length}</span></div>{snapshot.assignments.length ? <div className="portal-learning-list">{snapshot.assignments.map((assignment) => <TeachingContentCard
         key={assignment.id}
         kindLabel={teachingKindLabels[assignment.content_type] ?? assignment.content_type}
         title={assignment.title}

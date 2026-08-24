@@ -19,7 +19,7 @@ test('P22 keeps an explicit no-store rollout marker compatible with later packag
 test('student portal keeps the complete product areas wired', () => {
   for (const copy of [
     'Próxima clase',
-    'Mi formación',
+    'Mi Formación',
     'Vídeos de mis clases',
     'Resumen de mis clases',
     'Observaciones de mis clases',
