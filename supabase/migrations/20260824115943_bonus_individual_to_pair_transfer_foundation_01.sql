@@ -1345,10 +1345,37 @@ begin
         cm.occurred_at>v_original_in.occurred_at
         or (cm.occurred_at=v_original_in.occurred_at and cm.id>v_original_in.id)
       )
+      and not (
+        cm.movement_type='transfer_out'
+        and cm.transfer_id is not null
+        and cm.reverses_movement_id is not null
+        and exists (
+          select 1
+          from public.credit_transfer_operations reversal_op
+          join public.credit_transfer_operations reversed_transfer
+            on reversed_transfer.id=reversal_op.reverses_transfer_id
+           and reversed_transfer.operation_type='transfer'
+          join public.credit_movements reversed_in
+            on reversed_in.id=cm.reverses_movement_id
+           and reversed_in.transfer_id=reversed_transfer.id
+           and reversed_in.movement_type='transfer_in'
+           and reversed_in.grant_id=v_destination.id
+          where reversal_op.id=cm.transfer_id
+            and reversal_op.operation_type='reversal'
+            and reversal_op.destination_grant_id=v_destination.id
+            and reversed_transfer.destination_grant_id=v_destination.id
+            and reversal_op.source_grant_id=reversed_transfer.source_grant_id
+            and reversal_op.source_person_id=reversed_transfer.source_person_id
+            and reversal_op.partner_person_id=reversed_transfer.partner_person_id
+            and reversal_op.minutes=reversed_transfer.minutes
+            and cm.delta_minutes=-reversal_op.minutes
+            and reversed_in.delta_minutes=reversal_op.minutes
+        )
+      )
   ) then
     raise exception 'TRANSFER_REVERSAL_REQUIRES_ADMIN_CORRECTION'
       using errcode='55000',
-            detail='Destination balance has subsequent negative use; ordinary reversal is unsafe.';
+            detail='Destination balance has subsequent incompatible negative use; ordinary reversal is unsafe.';
   end if;
 
   v_source_balance_before :=
