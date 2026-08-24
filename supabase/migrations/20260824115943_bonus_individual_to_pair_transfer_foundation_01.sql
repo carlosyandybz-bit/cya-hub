@@ -520,7 +520,7 @@ begin
 
   return null;
 end;
-$$;
+$transfer_invariant$;
 
 alter function private.assert_credit_transfer_operation_balanced() owner to postgres;
 revoke all on function private.assert_credit_transfer_operation_balanced()
