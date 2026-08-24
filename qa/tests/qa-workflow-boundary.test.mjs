@@ -27,7 +27,7 @@ function assertOrdered(block, labels) {
   }
 }
 
-test("workflow grants OIDC only to the staging runtime job", () => {
+test("workflow grants OIDC only to the exact staging runtime job", () => {
   const header = workflow.slice(0, workflow.indexOf("\njobs:\n"));
   assert.match(header, /permissions:\n  contents: read/);
   assert.doesNotMatch(header, /id-token:\s*write/);
@@ -38,6 +38,7 @@ test("workflow grants OIDC only to the staging runtime job", () => {
 
   const runtime = jobBlock("runtime-staging");
   assert.match(runtime, /permissions:\n      contents: read\n      id-token: write/);
+  assert.match(runtime, /if: \$\{\{ \(github\.event_name == 'push' \|\| github\.event_name == 'workflow_dispatch'\) && github\.ref == 'refs\/heads\/staging' \}\}/);
 });
 
 test("pull_request lane is explicit, non-mutating, and still runs harness contracts and build", () => {
@@ -60,6 +61,7 @@ test("pull_request lane is explicit, non-mutating, and still runs harness contra
 test("staging runtime lane keeps exact ref boundary and complete authenticated QA ordering", () => {
   const runtime = jobBlock("runtime-staging");
   assert.match(runtime, /github\.event_name == 'push' \|\| github\.event_name == 'workflow_dispatch'/);
+  assert.match(runtime, /github\.ref == 'refs\/heads\/staging'/);
   assert.match(runtime, /GITHUB_REF.*refs\/heads\/staging/);
   assert.match(runtime, /qlngfkzmncihtdzktcmd\.supabase\.co/);
   assert.match(runtime, /ldvyeyhzrepaaouzavgs\.supabase\.co/);
@@ -81,6 +83,7 @@ test("staging runtime lane keeps exact ref boundary and complete authenticated Q
 test("workflow_dispatch cannot become a permissive deployment or mutation bypass", () => {
   assert.match(workflow, /workflow_dispatch:/);
   const runtime = jobBlock("runtime-staging");
+  assert.match(runtime, /github\.event_name == 'workflow_dispatch'\) && github\.ref == 'refs\/heads\/staging'/);
   assert.match(runtime, /\[\[ "\$\{GITHUB_REF\}" == "refs\/heads\/staging" \]\]/);
   assert.doesNotMatch(workflow, /supabase\s+functions\s+deploy|deploy_edge_function/i);
 });
