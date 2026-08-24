@@ -8,6 +8,7 @@ BASELINE="$ROOT/tests/postgres/bonus-transfer-preapply-baseline.sql"
 REGRESSION="$ROOT/tests/postgres/bonus-transfer-preapply-regression.sql"
 ADVERSARIAL="$ROOT/tests/postgres/bonus-transfer-preapply-adversarial.sql"
 GATE8="$ROOT/tests/postgres/bonus-transfer-preapply-gate8.sql"
+RESIDUAL_054="$ROOT/tests/postgres/bonus-transfer-preapply-residual-05-4.sql"
 TMPDIR_QA="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR_QA"' EXIT
 
@@ -88,6 +89,9 @@ psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f "$ADVERSARIAL"
 echo "== QA-BONUS-TRANSFER-004 Gate 8 contract runtime =="
 psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f "$GATE8"
 
+echo "== QA 05.4 residual future-usability + economic-source isolation =="
+psql "$DB_URL" -X -v ON_ERROR_STOP=1 -f "$RESIDUAL_054"
+
 echo "== QA-BONUS-TRANSFER-004 faithful ACL runtime =="
 
 TEACHER_UID="11111111-1111-1111-1111-111111111111"
@@ -110,6 +114,33 @@ select set_config('request.jwt.claim.sub','$uid',false);
 set role $role;
 $sql
 SQL
+}
+
+expect_runtime_deny() {
+  local label="$1"
+  local role="$2"
+  local uid="$3"
+  local sql="$4"
+  local prefix="$5"
+  local expected_pattern="$6"
+
+  set +e
+  run_actor_sql "$role" "$uid" "$sql" \
+    "$TMPDIR_QA/$prefix.out" "$TMPDIR_QA/$prefix.err"
+  local rc=$?
+  set -e
+
+  if [[ "$rc" -eq 0 || "$rc" -eq 124 ]]; then
+    echo "QA expected runtime DENY for $label, rc=$rc" >&2
+    cat "$TMPDIR_QA/$prefix.out" "$TMPDIR_QA/$prefix.err" >&2 || true
+    exit 1
+  fi
+
+  if ! grep -Eqi "$expected_pattern" "$TMPDIR_QA/$prefix.err"; then
+    echo "QA runtime DENY for $label did not match expected permission failure" >&2
+    cat "$TMPDIR_QA/$prefix.err" >&2 || true
+    exit 1
+  fi
 }
 
 expect_actor_allow() {
@@ -164,6 +195,131 @@ expect_actor_deny() {
   assert_eq "$(psql_qa -c "select count(*) from public.credit_transfer_operations where request_key='$request_key';")" \
     "0" "$label creates no canonical operation"
 }
+
+echo "== QA 05.4 residual #1: service_role denied on every public Transfer Foundation RPC =="
+psql_qa -c "select qa_transfer.seed_source(5201,23,100);"
+service_balance_before="$(psql_qa -c "select private.credit_grant_balance_minutes_unchecked(5201);")"
+service_ops_before="$(psql_qa -c "select count(*) from public.credit_transfer_operations;")"
+service_movements_before="$(psql_qa -c "select count(*) from public.credit_movements;")"
+
+expect_runtime_deny "service_role preview RPC" service_role "" \
+  "select public.preview_individual_credit_to_pair_transfer(5201,24,10,null);" \
+  "svc-preview" "permission denied for function preview_individual_credit_to_pair_transfer"
+
+expect_runtime_deny "service_role transfer RPC" service_role "" \
+  "select public.transfer_individual_credit_to_pair_v2(5201,24,10,'qa-054-service-transfer',null);" \
+  "svc-transfer" "permission denied for function transfer_individual_credit_to_pair_v2"
+
+expect_runtime_deny "service_role reconcile RPC" service_role "" \
+  "select public.reconcile_individual_credit_to_pair_transfer('qa-054-service-transfer');" \
+  "svc-reconcile" "permission denied for function reconcile_individual_credit_to_pair_transfer"
+
+expect_runtime_deny "service_role reverse RPC" service_role "" \
+  "select public.reverse_individual_credit_to_pair_transfer(1,'qa-054-service-reverse','deny');" \
+  "svc-reverse" "permission denied for function reverse_individual_credit_to_pair_transfer"
+
+assert_eq "$(psql_qa -c "select private.credit_grant_balance_minutes_unchecked(5201);")" \
+  "$service_balance_before" "service_role public RPCs preserve source balance"
+assert_eq "$(psql_qa -c "select count(*) from public.credit_transfer_operations;")" \
+  "$service_ops_before" "service_role public RPCs persist zero operations"
+assert_eq "$(psql_qa -c "select count(*) from public.credit_movements;")" \
+  "$service_movements_before" "service_role public RPCs persist zero movements"
+assert_eq "$(psql_qa -c "select count(*) from public.credit_transfer_operations where request_key in ('qa-054-service-transfer','qa-054-service-reverse');")" \
+  "0" "service_role public RPCs mutate zero canonical history"
+echo "QA 05.4 SERVICE_ROLE PUBLIC RPC RUNTIME: PASS"
+
+echo "== QA 05.4 residual #2: private SECURITY DEFINER helper direct-call DENY =="
+expect_runtime_deny "authenticated direct helper call" authenticated "$TEACHER_UID" \
+  "select private.assert_credit_transfer_operation_balanced();" \
+  "helper-authenticated" "permission denied for function assert_credit_transfer_operation_balanced"
+
+expect_runtime_deny "anon direct helper call" anon "" \
+  "select private.assert_credit_transfer_operation_balanced();" \
+  "helper-anon" "permission denied for schema private|permission denied for function assert_credit_transfer_operation_balanced"
+
+expect_runtime_deny "service_role direct helper call" service_role "" \
+  "select private.assert_credit_transfer_operation_balanced();" \
+  "helper-service" "permission denied for schema private|permission denied for function assert_credit_transfer_operation_balanced"
+echo "QA 05.4 SECURITY DEFINER DIRECT-CALL DENY: PASS"
+
+echo "== QA 05.4 residual #3: DEFERRABLE invariant aborts broken ledger at COMMIT =="
+psql_qa -c "select qa_transfer.seed_source(5202,25,100);"
+run_actor_sql authenticated "$TEACHER_UID" \
+  "select public.transfer_individual_credit_to_pair_v2(5202,26,20,'qa-054-broken-seed',null)::text;" \
+  "$TMPDIR_QA/broken-seed.out" "$TMPDIR_QA/broken-seed.err"
+
+broken_seed="$(tail -n 1 "$TMPDIR_QA/broken-seed.out")"
+broken_transfer_id="$(jq -r '.transfer_id' <<<"$broken_seed")"
+broken_dest="$(jq -r '.destination.grant_id' <<<"$broken_seed")"
+broken_source_before="$(psql_qa -c "select private.credit_grant_balance_minutes_unchecked(5202);")"
+broken_dest_before="$(psql_qa -c "select private.credit_grant_balance_minutes_unchecked($broken_dest);")"
+broken_ops_before="$(psql_qa -c "select count(*) from public.credit_transfer_operations;")"
+broken_movements_before="$(psql_qa -c "select count(*) from public.credit_movements;")"
+
+set +e
+timeout 15s psql "$DB_URL" -X -qAt -v ON_ERROR_STOP=1 \
+  >"$TMPDIR_QA/broken-ledger.out" 2>"$TMPDIR_QA/broken-ledger.err" <<SQL
+\\set VERBOSITY verbose
+begin;
+insert into public.credit_transfer_operations(
+  operation_type,request_key,source_grant_id,destination_grant_id,
+  source_person_id,partner_person_id,minutes,class_id,
+  source_payment_status,source_starts_at,source_effective_expires_at,
+  source_was_paused,source_provenance,
+  source_balance_before,source_balance_after,
+  destination_balance_before,destination_balance_after,
+  actor_user_id,reason,reverses_transfer_id
+)
+select
+  'transfer','qa-054-broken-ledger',op.source_grant_id,op.destination_grant_id,
+  op.source_person_id,op.partner_person_id,10,op.class_id,
+  op.source_payment_status,op.source_starts_at,op.source_effective_expires_at,
+  op.source_was_paused,op.source_provenance,
+  $broken_source_before,$((broken_source_before-10)),
+  $broken_dest_before,$((broken_dest_before+10)),
+  op.actor_user_id,null,null
+from public.credit_transfer_operations op
+where op.id=$broken_transfer_id;
+
+insert into public.credit_movements(
+  grant_id,person_id,class_id,movement_type,delta_minutes,note,
+  created_by,occurred_at,date_approximate,reverses_movement_id,
+  provenance,source_operation_key,transfer_id
+)
+select
+  op.source_grant_id,op.source_person_id,op.class_id,
+  'transfer_out',-10,'QA 05.4 deliberately broken ledger',
+  op.actor_user_id,clock_timestamp(),false,null,
+  jsonb_build_object('qa','05.4-broken-ledger'),
+  'qa-054-broken-ledger:out',op.id
+from public.credit_transfer_operations op
+where op.request_key='qa-054-broken-ledger';
+
+commit;
+SQL
+broken_rc=$?
+set -e
+
+if [[ "$broken_rc" -eq 0 || "$broken_rc" -eq 124 ]]; then
+  echo "QA broken-ledger transaction did not abort at COMMIT" >&2
+  cat "$TMPDIR_QA/broken-ledger.out" "$TMPDIR_QA/broken-ledger.err" >&2 || true
+  exit 1
+fi
+grep -q "TRANSFER_LEDGER_INVARIANT_VIOLATION" "$TMPDIR_QA/broken-ledger.err"
+
+assert_eq "$(psql_qa -c "select count(*) from public.credit_transfer_operations where request_key='qa-054-broken-ledger';")" \
+  "0" "broken ledger operation rolled back"
+assert_eq "$(psql_qa -c "select count(*) from public.credit_movements where source_operation_key='qa-054-broken-ledger:out';")" \
+  "0" "broken ledger movement rolled back"
+assert_eq "$(psql_qa -c "select private.credit_grant_balance_minutes_unchecked(5202);")" \
+  "$broken_source_before" "broken ledger source balance intact after rollback"
+assert_eq "$(psql_qa -c "select private.credit_grant_balance_minutes_unchecked($broken_dest);")" \
+  "$broken_dest_before" "broken ledger destination balance intact after rollback"
+assert_eq "$(psql_qa -c "select count(*) from public.credit_transfer_operations;")" \
+  "$broken_ops_before" "broken ledger preserves canonical operation history"
+assert_eq "$(psql_qa -c "select count(*) from public.credit_movements;")" \
+  "$broken_movements_before" "broken ledger preserves canonical movement history"
+echo "QA 05.4 DEFERRABLE BROKEN-LEDGER COMMIT ABORT: PASS"
 
 psql_qa -c "select qa_transfer.seed_source(5001,1,100);"
 psql_qa -c "select qa_transfer.seed_source(5002,3,100);"
@@ -256,4 +412,9 @@ assert_eq "$invalid_ops" "0" "all canonical operations preserve -X/+X conservati
 echo "QA-BONUS-TRANSFER-001/002 REGRESSION: PASS"
 echo "QA-BONUS-TRANSFER-003 RUNTIME: PASS"
 echo "QA-BONUS-TRANSFER-004 CONTRACT + ACL RUNTIME: PASS"
+echo "QA 05.4 SERVICE_ROLE PUBLIC RPC RUNTIME: PASS"
+echo "QA 05.4 SECURITY DEFINER DIRECT-CALL DENY: PASS"
+echo "QA 05.4 DEFERRABLE BROKEN-LEDGER COMMIT ABORT: PASS"
+echo "QA 05.4 FUTURE START NOT-USABLE RUNTIME: PASS"
+echo "QA 05.4 ECONOMIC-SOURCE ISOLATION RUNTIME: PASS"
 echo "BONUS TRANSFER PRE-APPLY DISPOSABLE HARNESS: PASS"
