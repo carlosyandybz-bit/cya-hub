@@ -80,7 +80,7 @@ jobs:
 
   runtime-staging:
     name: Browser QA — Staging runtime
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/staging' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
