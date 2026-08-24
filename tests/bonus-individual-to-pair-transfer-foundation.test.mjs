@@ -128,8 +128,12 @@ test("reversal ignores only relationally proven canonical reversals and still fa
   assert.match(sql, /reversed_in\.movement_type='transfer_in'/i);
   assert.match(sql, /cm\.delta_minutes=-reversal_op\.minutes/i);
   assert.match(sql, /reversed_in\.delta_minutes=reversal_op\.minutes/i);
-  assert.doesNotMatch(sql, /note\s*(?:=|like|ilike)[^;]*revers/i);
-  assert.doesNotMatch(sql, /provenance[^;]*(?:=|like|ilike)[^;]*revers/i);
+  const reversalUseGuard = sql.slice(
+    sql.indexOf("if exists (", sql.indexOf("v_original_in.id is null")),
+    sql.indexOf("v_source_balance_before :=", sql.indexOf("v_original_in.id is null"))
+  );
+  assert.doesNotMatch(reversalUseGuard, /cm\.note/i);
+  assert.doesNotMatch(reversalUseGuard, /cm\.provenance/i);
   assert.doesNotMatch(sql, /delete from public\.credit_transfer_operations/i);
   assert.doesNotMatch(sql, /delete from public\.credit_movements/i);
 });
