@@ -52,6 +52,8 @@ $preflight$;
 create table public.credit_pair_transfer_pools (
   destination_grant_id bigint primary key
     references public.credit_grants(id) on delete restrict,
+  economic_source_grant_id bigint not null
+    references public.credit_grants(id) on delete restrict,
   member_person_id_low bigint not null
     references public.people(id) on delete restrict,
   member_person_id_high bigint not null
@@ -63,10 +65,15 @@ create table public.credit_pair_transfer_pools (
 );
 
 comment on table public.credit_pair_transfer_pools is
-  'Marks pair grants created exclusively from canonical individual-to-pair transfers. Purchased pair grants are never eligible transfer pools.';
+  'Marks pair grants created exclusively from canonical individual-to-pair transfers and binds each pool to one economic source grant. Purchased or cross-provenance pair grants are never eligible transfer pools.';
 
 create index credit_pair_transfer_pools_pair_idx
-  on public.credit_pair_transfer_pools(member_person_id_low, member_person_id_high, destination_grant_id);
+  on public.credit_pair_transfer_pools(
+    economic_source_grant_id,
+    member_person_id_low,
+    member_person_id_high,
+    destination_grant_id
+  );
 
 alter table public.credit_pair_transfer_pools enable row level security;
 
@@ -226,6 +233,7 @@ alter policy credit_movements_staff_insert
 
 create or replace function private.credit_pair_transfer_pool_compatible_unchecked(
   p_grant_id bigint,
+  p_economic_source_grant_id bigint,
   p_member_person_id_low bigint,
   p_member_person_id_high bigint,
   p_payment_status text,
@@ -250,6 +258,7 @@ as $$
       and private.credit_grant_effective_expires_at_unchecked(g.id,p_at)
             is not distinct from p_effective_expires_at
       and private.credit_grant_is_paused_unchecked(g.id,p_at)=p_paused
+      and tp.economic_source_grant_id=p_economic_source_grant_id
       and tp.member_person_id_low=p_member_person_id_low
       and tp.member_person_id_high=p_member_person_id_high
       and (
@@ -270,11 +279,11 @@ as $$
 $$;
 
 alter function private.credit_pair_transfer_pool_compatible_unchecked(
-  bigint,bigint,bigint,text,timestamptz,timestamptz,boolean,timestamptz
+  bigint,bigint,bigint,bigint,text,timestamptz,timestamptz,boolean,timestamptz
 ) owner to postgres;
 
 revoke all on function private.credit_pair_transfer_pool_compatible_unchecked(
-  bigint,bigint,bigint,text,timestamptz,timestamptz,boolean,timestamptz
+  bigint,bigint,bigint,bigint,text,timestamptz,timestamptz,boolean,timestamptz
 ) from public, anon, authenticated, service_role;
 
 create or replace function private.credit_transfer_source_provenance_unchecked(
@@ -578,10 +587,11 @@ begin
   into v_destination_id
   from public.credit_pair_transfer_pools tp
   join public.credit_grants g on g.id=tp.destination_grant_id
-  where tp.member_person_id_low=v_pair_low
+  where tp.economic_source_grant_id=v_source.id
+    and tp.member_person_id_low=v_pair_low
     and tp.member_person_id_high=v_pair_high
     and private.credit_pair_transfer_pool_compatible_unchecked(
-      g.id,v_pair_low,v_pair_high,v_source.payment_status,
+      g.id,v_source.id,v_pair_low,v_pair_high,v_source.payment_status,
       v_source.starts_at,v_effective_expires_at,v_paused,v_now
     )
   order by g.id
@@ -781,6 +791,7 @@ begin
   v_pair_high := greatest(v_source_person_id,p_partner_person_id);
 
   v_compatibility_key := jsonb_build_array(
+    v_source.id,
     v_pair_low,
     v_pair_high,
     v_source.payment_status,
@@ -796,10 +807,11 @@ begin
   select g.* into v_destination
   from public.credit_pair_transfer_pools tp
   join public.credit_grants g on g.id=tp.destination_grant_id
-  where tp.member_person_id_low=v_pair_low
+  where tp.economic_source_grant_id=v_source.id
+    and tp.member_person_id_low=v_pair_low
     and tp.member_person_id_high=v_pair_high
     and private.credit_pair_transfer_pool_compatible_unchecked(
-      g.id,v_pair_low,v_pair_high,v_source.payment_status,
+      g.id,v_source.id,v_pair_low,v_pair_high,v_source.payment_status,
       v_source.starts_at,v_effective_expires_at,v_paused,v_now
     )
   order by g.id
@@ -858,12 +870,14 @@ begin
 
     insert into public.credit_pair_transfer_pools(
       destination_grant_id,
+      economic_source_grant_id,
       member_person_id_low,
       member_person_id_high,
       created_by
     )
     values(
       v_destination.id,
+      v_source.id,
       v_pair_low,
       v_pair_high,
       v_actor
@@ -1246,6 +1260,7 @@ begin
 
   if not private.credit_pair_transfer_pool_compatible_unchecked(
     v_destination.id,
+    v_source.id,
     v_pair_low,
     v_pair_high,
     v_source.payment_status,
