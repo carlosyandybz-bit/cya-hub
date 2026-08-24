@@ -259,7 +259,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $qa_paused$
   select exists(
     select 1
     from public.credit_grant_pause_periods pp
