@@ -16,9 +16,9 @@ The existing `public.transfer_individual_credit_to_pair(bigint,bigint,integer,in
 ## Canonical model
 
 - `credit_transfer_operations`: append-only canonical operation record with unique request key, source/destination, exact pair, minutes, semantic snapshots, optional class context, actor and reversal linkage.
-- `credit_pair_transfer_pools`: marks pair grants created exclusively from transfer-derived balance. A purchased pair grant can never be selected as a transfer destination.
+- `credit_pair_transfer_pools`: marks pair grants created exclusively from transfer-derived balance and binds each pool to one `economic_source_grant_id`. A purchased pair grant or a pool from a different economic source can never be selected as the destination.
 - `credit_movements.transfer_id`: links exactly one `transfer_out` and exactly one `transfer_in` to each canonical operation.
-- Destination compatibility is evaluated server-side against current canonical semantics; incompatible state creates a separate transfer-derived pool instead of mixing balances.
+- Destination compatibility is evaluated server-side against current canonical semantics **and the exact economic source grant**; incompatible state or provenance creates a separate transfer-derived pool instead of mixing balances.
 
 ## Transfer semantics
 
