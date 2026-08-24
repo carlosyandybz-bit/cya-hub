@@ -159,7 +159,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $fn$
   select exists(
     select 1
     from public.app_member_roles r
@@ -167,7 +167,7 @@ as $
       and r.active
       and r.role=p_role
   );
-$;
+$fn$;
 
 create or replace function private.is_admin()
 returns boolean
@@ -175,10 +175,10 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $fn$
   select (select private.has_app_role('admin'))
       or (select private.has_app_role('teacher_admin'));
-$;
+$fn$;
 
 create or replace function private.is_staff()
 returns boolean
@@ -186,11 +186,11 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $fn$
   select (select private.has_app_role('admin'))
       or (select private.has_app_role('teacher_admin'))
       or (select private.has_app_role('teacher'));
-$;
+$fn$;
 
 create or replace function private.credit_grant_balance_minutes_unchecked(
   p_grant_id bigint
@@ -358,14 +358,14 @@ create or replace function qa_transfer.assert_eq(
 returns void
 language plpgsql
 set search_path = ''
-as $
+as $fn$
 begin
   if p_actual is distinct from p_expected then
     raise exception 'QA_ASSERT_EQ failed: %, actual %, expected %',
       p_label,p_actual,p_expected;
   end if;
 end;
-$;
+$fn$;
 
 
 create or replace function qa_transfer.assert_true(
@@ -375,13 +375,13 @@ create or replace function qa_transfer.assert_true(
 returns void
 language plpgsql
 set search_path = ''
-as $
+as $fn$
 begin
   if p_actual is distinct from true then
     raise exception 'QA_ASSERT_TRUE failed: %, actual %',p_label,p_actual;
   end if;
 end;
-$;
+$fn$;
 
 create or replace function qa_transfer.assert_text_eq(
   p_actual text,
@@ -391,14 +391,14 @@ create or replace function qa_transfer.assert_text_eq(
 returns void
 language plpgsql
 set search_path = ''
-as $
+as $fn$
 begin
   if p_actual is distinct from p_expected then
     raise exception 'QA_ASSERT_TEXT_EQ failed: %, actual %, expected %',
       p_label,p_actual,p_expected;
   end if;
 end;
-$;
+$fn$;
 
 create or replace function qa_transfer.assert_ts_eq(
   p_actual timestamptz,
@@ -408,14 +408,14 @@ create or replace function qa_transfer.assert_ts_eq(
 returns void
 language plpgsql
 set search_path = ''
-as $
+as $fn$
 begin
   if p_actual is distinct from p_expected then
     raise exception 'QA_ASSERT_TS_EQ failed: %, actual %, expected %',
       p_label,p_actual,p_expected;
   end if;
 end;
-$;
+$fn$;
 
 grant usage on schema qa_transfer to authenticated;
 grant execute on all functions in schema qa_transfer to authenticated;
