@@ -111,12 +111,25 @@ test("locking order and locked balance recomputation protect overspend and desti
   assert.match(sql, /for update of g/i);
 });
 
-test("reversal is append-only and fails closed after incompatible destination use", () => {
+test("reversal ignores only relationally proven canonical reversals and still fails closed on genuine negative use", () => {
   assert.match(sql, /public\.reverse_individual_credit_to_pair_transfer/i);
   assert.match(sql, /operation_type='reversal'/i);
   assert.match(sql, /TRANSFER_REVERSAL_REQUIRES_ADMIN_CORRECTION/g);
   assert.match(sql, /cm\.delta_minutes<0/i);
-  assert.match(sql, /reverses_movement_id/i);
+  assert.match(sql, /cm\.movement_type='transfer_out'/i);
+  assert.match(sql, /cm\.transfer_id is not null/i);
+  assert.match(sql, /cm\.reverses_movement_id is not null/i);
+  assert.match(sql, /reversal_op\.id=cm\.transfer_id/i);
+  assert.match(sql, /reversal_op\.operation_type='reversal'/i);
+  assert.match(sql, /reversed_transfer\.id=reversal_op\.reverses_transfer_id/i);
+  assert.match(sql, /reversed_transfer\.operation_type='transfer'/i);
+  assert.match(sql, /reversed_in\.id=cm\.reverses_movement_id/i);
+  assert.match(sql, /reversed_in\.transfer_id=reversed_transfer\.id/i);
+  assert.match(sql, /reversed_in\.movement_type='transfer_in'/i);
+  assert.match(sql, /cm\.delta_minutes=-reversal_op\.minutes/i);
+  assert.match(sql, /reversed_in\.delta_minutes=reversal_op\.minutes/i);
+  assert.doesNotMatch(sql, /note\s*(?:=|like|ilike)[^;]*revers/i);
+  assert.doesNotMatch(sql, /provenance[^;]*(?:=|like|ilike)[^;]*revers/i);
   assert.doesNotMatch(sql, /delete from public\.credit_transfer_operations/i);
   assert.doesNotMatch(sql, /delete from public\.credit_movements/i);
 });
