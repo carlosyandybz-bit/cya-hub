@@ -58,7 +58,7 @@ create table public.credit_pair_transfer_pools (
     references public.people(id) on delete restrict,
   member_person_id_high bigint not null
     references public.people(id) on delete restrict,
-  created_by uuid references auth.users(id) on delete set null,
+  created_by uuid,
   created_at timestamptz not null default now(),
   constraint credit_pair_transfer_pools_member_order_check
     check (member_person_id_low < member_person_id_high)
@@ -105,7 +105,7 @@ create table public.credit_transfer_operations (
   source_balance_after integer not null,
   destination_balance_before integer not null,
   destination_balance_after integer not null,
-  actor_user_id uuid not null references auth.users(id) on delete restrict,
+  actor_user_id uuid not null,
   reason text,
   reverses_transfer_id bigint
     references public.credit_transfer_operations(id) on delete restrict,
