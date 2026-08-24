@@ -17,10 +17,19 @@ test("bootstrap declares separate portal-ready and onboarding-required student c
 });
 
 test("bootstrap deterministically materializes and resets the product-required profile fields", () => {
-  for (const field of ["first_name", "last_name", "phone", "country_code"]) {
-    assert.match(source, new RegExp(`${field} = \\${fixture\\.studentProfile`));
-    assert.match(source, new RegExp(`${field} = null`));
-  }
+  const readyAssignments = [
+    /first_name = \$\{fixture\.studentProfile\.firstName\}/,
+    /last_name = \$\{fixture\.studentProfile\.lastName\}/,
+    /phone = \$\{fixture\.studentProfile\.phone\}/,
+    /country_code = \$\{fixture\.studentProfile\.countryCode\}/,
+  ];
+  const resetAssignments = [
+    /first_name = null/,
+    /last_name = null/,
+    /phone = null/,
+    /country_code = null/,
+  ];
+  for (const pattern of [...readyAssignments, ...resetAssignments]) assert.match(source, pattern);
 });
 
 test("bootstrap readiness comes from the canonical product RPC rather than navigation state", () => {
