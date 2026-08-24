@@ -55,7 +55,7 @@ create or replace function qa_transfer.assert_append_only(
 returns void
 language plpgsql
 set search_path = ''
-as $$
+as $append_only$
 begin
   begin
     update public.credit_transfer_operations
