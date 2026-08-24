@@ -43,7 +43,7 @@ test('administrative close uses explicit manual duration and v6 billing', () => 
 
 test('live search exposes all four pedagogical types', () => {
   assert.match(app, /\['correction','Correcciones'\]/);
-  assert.match(app, /\['explanation','Contenido'\]/);
+  assert.match(app, /\['explanation','Explicaciones'\]/);
   assert.match(app, /\['exercise','Ejercicios'\]/);
   assert.match(app, /\['sequence','Secuencias'\]/);
   assert.match(app, /search_class_teaching_content/);
@@ -102,7 +102,7 @@ test('P21.2/P0G correction cards expose one compact glance and one editable deta
   const live = sliceBetween(app, 'function LiveSession(', 'function LiveClassView(');
   assert.doesNotMatch(live, /correction-detail/);
   assert.doesNotMatch(live, /correction-quick/);
-  assert.match(live, /quickControls=\{renderCorrectionSummary\(assignment\)\}/);
+  assert.match(live, /inlineControls=\{renderCorrectionSummary\(assignment\)\}/);
   assert.match(live, /statusLabel=\{correctionStateShortLabel\(assignment\.assignment_status\)\}/);
   assert.match(live, /function renderCorrectionControls\(assignment:ContentAssignment\)/);
   assert.doesNotMatch(live, /<summary>\+ Medir<\/summary>/);

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const app = fs.readFileSync('app/cya-app.tsx','utf8');
+const liveExercises = fs.readFileSync('app/live-student-exercises.tsx','utf8');
 const sql = fs.readFileSync('supabase/v31-class-workflow-realtime.sql','utf8');
 const currentWorkflow = fs.readFileSync('db/migrations/v54_p0f_live_class_milestones.sql','utf8');
 
@@ -53,14 +54,16 @@ test('exercises are class events instead of recurring permanent assignments', ()
   assert.ok(sql.includes("if p_content_type='exercise' then"));
   assert.ok(sql.includes("'exercise_pending'"));
   assert.ok(app.includes("recordEvent(content.id,'exercise_active')"));
-  assert.ok(app.includes("recordEvent(event.content_id,'exercise_completed')"));
+  assert.ok(liveExercises.includes('record(exercise, "exercise_completed")'));
 });
 
-test('live screen has work, evaluation and observations separated', () => {
+test('live screen keeps work, context and evaluation while observations belong to content', () => {
   assert.ok(app.includes("liveTab==='work'"));
+  assert.ok(app.includes("liveTab==='context'"));
   assert.ok(app.includes("liveTab==='evaluation'"));
-  assert.ok(app.includes("liveTab==='notes'"));
-  assert.ok(app.includes("p_visibility_scope:scope"));
+  assert.equal(app.includes("liveTab==='notes'"), false);
+  assert.ok(app.includes('function renderContentNote(contentId:number)'));
+  assert.ok(app.includes("p_visibility_scope:visibility"));
 });
 
 test('administrative close can be left pending before pedagogical close', () => {

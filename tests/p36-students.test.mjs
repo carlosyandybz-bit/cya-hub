@@ -8,7 +8,7 @@ const layout = fs.readFileSync("app/layout.tsx", "utf8");
 
 test("P36-3 preserves the student directory operations", () => {
   assert.match(shell, /function StudentsView/);
-  assert.match(shell, /Buscar nombre, teléfono o email/);
+  assert.match(shell, /Buscar alias, nombre, teléfono o email/);
   assert.match(shell, /Programar/);
   assert.match(shell, /Bono/);
   assert.match(shell, /Registrado/);

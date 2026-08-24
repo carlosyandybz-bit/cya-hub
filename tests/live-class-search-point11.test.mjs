@@ -20,7 +20,7 @@ test('live search is contextual, global across teaching types and server validat
 
 test('all four teaching types use one quick creation area', () => {
   assert.match(live,/<option value="correction">Corrección<\/option>/);
-  assert.match(live,/<option value="explanation">Contenido<\/option>/);
+  assert.match(live,/<option value="explanation">Explicación<\/option>/);
   assert.match(live,/<option value="exercise">Ejercicio<\/option>/);
   assert.match(live,/<option value="sequence">Secuencia<\/option>/);
   assert.equal((live.match(/create_class_correction/g) ?? []).length,1);
@@ -28,7 +28,7 @@ test('all four teaching types use one quick creation area', () => {
 });
 
 test('assigned content gets current type-specific quick actions without duplicate assignment', () => {
-  assert.match(live,/type==='correction' && assignment \? <select className="p0f-status-chip"/);
+  assert.match(live,/type==='correction' && assignment \? <ContentStatusControl/);
   assert.match(live,/>Explicada<\/button>/);
   assert.match(live,/>Repasar<\/button>/);
   assert.match(live,/exercise_completed/);
