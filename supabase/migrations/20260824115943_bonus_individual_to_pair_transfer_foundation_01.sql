@@ -127,6 +127,20 @@ create table public.credit_transfer_operations (
       and destination_balance_before >= 0
       and destination_balance_after >= 0
     ),
+  constraint credit_transfer_operations_balance_delta_check
+    check (
+      (
+        operation_type='transfer'
+        and source_balance_after=source_balance_before-minutes
+        and destination_balance_after=destination_balance_before+minutes
+      )
+      or
+      (
+        operation_type='reversal'
+        and source_balance_after=source_balance_before+minutes
+        and destination_balance_after=destination_balance_before-minutes
+      )
+    ),
   constraint credit_transfer_operations_reversal_shape_check
     check (
       (operation_type='transfer' and reverses_transfer_id is null)
@@ -436,9 +450,29 @@ declare
   v_minutes integer;
   v_operation_type text;
   v_reverses_transfer_id bigint;
+  v_source_grant_id bigint;
+  v_destination_grant_id bigint;
+  v_source_balance_after integer;
+  v_destination_balance_after integer;
+  v_actual_source_balance integer;
+  v_actual_destination_balance integer;
 begin
-  select op.minutes,op.operation_type,op.reverses_transfer_id
-  into v_minutes,v_operation_type,v_reverses_transfer_id
+  select
+    op.minutes,
+    op.operation_type,
+    op.reverses_transfer_id,
+    op.source_grant_id,
+    op.destination_grant_id,
+    op.source_balance_after,
+    op.destination_balance_after
+  into
+    v_minutes,
+    v_operation_type,
+    v_reverses_transfer_id,
+    v_source_grant_id,
+    v_destination_grant_id,
+    v_source_balance_after,
+    v_destination_balance_after
   from public.credit_transfer_operations op
   where op.id=new.id;
 
@@ -459,6 +493,18 @@ begin
     raise exception 'TRANSFER_LEDGER_INVARIANT_VIOLATION'
       using errcode='23514',
             detail='Each canonical transfer operation must commit exactly one transfer_out=-X and one transfer_in=+X.';
+  end if;
+
+  v_actual_source_balance :=
+    private.credit_grant_balance_minutes_unchecked(v_source_grant_id);
+  v_actual_destination_balance :=
+    private.credit_grant_balance_minutes_unchecked(v_destination_grant_id);
+
+  if v_actual_source_balance<>v_source_balance_after
+     or v_actual_destination_balance<>v_destination_balance_after then
+    raise exception 'TRANSFER_BALANCE_SNAPSHOT_INVARIANT_VIOLATION'
+      using errcode='23514',
+            detail='Committed ledger balances must equal the canonical operation after-snapshots.';
   end if;
 
   if v_operation_type='reversal' and not exists (
