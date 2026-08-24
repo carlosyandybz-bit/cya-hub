@@ -442,6 +442,11 @@ button:disabled { cursor: default; opacity: var(--cya-disabled-opacity, .52); }
 .missionList article > div:last-child > svg { color: var(--prf-purple); }
 .missionList small { display: inline-block; margin-top: 7px; color: var(--prf-muted); }
 .missionList button:first-child:not(:last-child) { border: 1px solid var(--cya-line-strong); background: var(--cya-surface-interactive); color:var(--cya-text-secondary); }
+.missionPostpone { display:flex; align-items:flex-end; gap:8px; margin-top:12px; padding:10px; border:1px solid var(--cya-line-strong); border-radius:13px; background:var(--cya-surface-subtle); }
+.missionPostpone label { display:grid; flex:1; gap:5px; }
+.missionPostpone label > span { color:var(--prf-muted); font-size:11px; font-weight:750; }
+.missionPostpone input { width:100%; min-height:42px; padding:0 10px; border:1px solid var(--cya-line); border-radius:10px; background:var(--cya-surface); color:var(--prf-ink); font:inherit; }
+.missionPostpone button { min-height:42px; }
 
 .backButton { margin: 0 0 12px; display: inline-flex; align-items: center; gap: 5px; color: var(--prf-purple-dark); }
 .backButton svg { width: 16px; transform: rotate(180deg); }
@@ -592,6 +597,8 @@ button:disabled { cursor: default; opacity: var(--cya-disabled-opacity, .52); }
   .discoverGrid { grid-template-columns: 1fr; }
   .missionList article { flex-direction: column; }
   .missionList article > div:last-child { justify-content: flex-end; }
+  .missionPostpone { align-items:stretch; flex-direction:column; }
+  .missionPostpone input { font-size:16px; }
   .contentList article { flex-direction: column; }
   .scoreList { grid-template-columns: 1fr; }
   .nowItem { grid-template-columns: 28px minmax(0, 1fr); }

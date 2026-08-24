@@ -8,7 +8,7 @@ import { ContextEvaluationPanel } from "./context-evaluation-panel-p0f";
 import { getRuntimeSupabaseClient } from "./supabase-runtime";
 import styles from "./student-master-evaluation-access.module.css";
 
-type Target = { host: Element; name: string };
+type Target = { host: Element; name: string; personId: number };
 type Person = { id: number; display_name: string };
 
 function nodeText(node: Element | null) {
@@ -25,17 +25,15 @@ function findMasterTarget(): Target | null {
     const buttons = Array.from(item.querySelectorAll(":scope > button"));
     return buttons.some((button) => /programar/i.test(nodeText(button))) && buttons.some((button) => /bono/i.test(nodeText(button)));
   });
-  return host ? { host, name: nodeText(title) } : null;
+  const personId = Number(title.getAttribute("data-person-id"));
+  return host && Number.isSafeInteger(personId) && personId > 0 ? { host, name: nodeText(title), personId } : null;
 }
 
-async function resolvePerson(client: SupabaseClient, displayName: string): Promise<Person> {
-  const result = await client.from("people").select("id,display_name").eq("display_name", displayName).eq("active", true).limit(3);
+async function resolvePerson(client: SupabaseClient, personId: number): Promise<Person> {
+  const result = await client.from("people").select("id,display_name").eq("id", personId).eq("active", true).maybeSingle();
   if (result.error) throw result.error;
-  const rows = (result.data ?? []) as Person[];
-  if (rows.length !== 1) {
-    throw new Error(rows.length ? "Hay varias personas con este mismo nombre. Abre una ficha inequívoca antes de evaluar." : "No se ha podido resolver el alumno de esta ficha.");
-  }
-  return rows[0];
+  if (!result.data) throw new Error("No se ha podido resolver el alumno de esta ficha.");
+  return result.data as Person;
 }
 
 export function StudentMasterEvaluationAccess() {
@@ -47,24 +45,34 @@ export function StudentMasterEvaluationAccess() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setClient(getRuntimeSupabaseClient());
-    const scan = () => setTarget(findMasterTarget());
-    scan();
+    const scan = () => {
+      setClient(getRuntimeSupabaseClient());
+      setTarget(findMasterTarget());
+    };
+    const timer = window.setTimeout(scan, 0);
     const observer = new MutationObserver(scan);
     observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    return () => {
+      window.clearTimeout(timer);
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {
     if (!open || !client || !target) return;
     let alive = true;
-    setLoading(true);
-    setError("");
-    void resolvePerson(client, target.name)
-      .then((resolved) => { if (alive) setPerson(resolved); })
-      .catch((cause) => { if (alive) setError(cause instanceof Error ? cause.message : "No se ha podido abrir la evaluación."); })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      setError("");
+      void resolvePerson(client, target.personId)
+        .then((resolved) => { if (alive) setPerson(resolved); })
+        .catch((cause) => { if (alive) setError(cause instanceof Error ? cause.message : "No se ha podido abrir la evaluación."); })
+        .finally(() => { if (alive) setLoading(false); });
+    }, 0);
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
   }, [client, open, target]);
 
   if (!target) return null;
@@ -85,7 +93,7 @@ export function StudentMasterEvaluationAccess() {
           <div>
             <span>Ficha maestra · Evaluación del alumno</span>
             <h2 id="student-master-evaluation-title">Evaluar</h2>
-            <p>{person?.display_name ?? target.name}</p>
+            <p>{target.name}</p>
           </div>
           <button type="button" className={styles.close} onClick={() => setOpen(false)} aria-label="Cerrar evaluación"><X /></button>
         </header>
@@ -96,7 +104,7 @@ export function StudentMasterEvaluationAccess() {
             <ContextEvaluationPanel
               client={client}
               personId={person.id}
-              personName={person.display_name}
+              personName={target.name}
               classId={null}
             />
           ) : null}

@@ -5,7 +5,6 @@ import { PullToRefresh } from "./pull-to-refresh";
 import { CyaModuleTheme } from "./cya-module-theme";
 import { StudentCardContactActions } from "./student-card-contact-actions";
 import { ClassMediaUploadGuard } from "./class-media-upload-guard";
-import { LiveSearchCreateEnhancer } from "./live-search-create-enhancer";
 import { ClassDefaultsHydrator } from "./class-defaults-hydrator";
 import { StudentMasterStaffControls } from "./student-master-staff-controls";
 import { StudentMasterEvaluationAccess } from "./student-master-evaluation-access";
@@ -115,7 +114,6 @@ export default function RootLayout({
         <PullToRefresh />
         <ClassMediaUploadGuard />
         <StudentCardContactActions />
-        <LiveSearchCreateEnhancer />
         <ClassDefaultsHydrator />
         <StudentMasterStaffControls />
         <StudentMasterEvaluationAccess />

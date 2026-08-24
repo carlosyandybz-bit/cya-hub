@@ -39,10 +39,12 @@ type Props = {
   tags?: string[];
   actions?: ReactNode;
   quickControls?: ReactNode;
+  inlineControls?: ReactNode;
   detailControls?: ReactNode;
   kindTone?: "correction" | "explanation" | "exercise" | "sequence";
   children?: ReactNode;
   className?: string;
+  highlightKey?: string;
   defaultOpen?: boolean;
   emptyText?: string;
 };
@@ -53,7 +55,7 @@ function canonicalMetadataValue(item: TeachingCardMeta) {
 
 export function TeachingContentCard({
   kindLabel,title,summary,subtitle,statusLabel,statusTone="default",description,correctionGuidance,
-  media=[],metadata=[],tags=[],actions,quickControls,detailControls,kindTone,children,className="",defaultOpen=false,
+  media=[],metadata=[],tags=[],actions,quickControls,inlineControls,detailControls,kindTone,children,className="",highlightKey,defaultOpen=false,
   emptyText="No hay información adicional guardada todavía.",
 }: Props) {
   const [open,setOpen]=useState(defaultOpen);
@@ -80,7 +82,7 @@ export function TeachingContentCard({
 
   const toneClass=kindTone==="correction"?styles.correction:kindTone==="explanation"?styles.explanation:kindTone==="exercise"?styles.exercise:kindTone==="sequence"?styles.sequence:"";
 
-  return <article className={`${styles.card} ${toneClass} ${className}`.trim()}>
+  return <article className={`${styles.card} ${toneClass} ${className}`.trim()} data-mission-highlight={highlightKey}>
     <div className={styles.compactRow}>
       <button type="button" className={`${styles.compactButton} ${collapsedMedia?styles.withMedia:""}`} onClick={()=>setOpen(true)} aria-label={`Abrir ${kindLabel}: ${title}`}>
         {collapsedMedia ? <span className={styles.miniMedia} aria-hidden="true"><SecureDriveAsset
@@ -101,6 +103,7 @@ export function TeachingContentCard({
       </button>
       {actions?<div className={styles.actions}>{actions}</div>:null}
     </div>
+    {inlineControls ? <div className={styles.inlineControls}>{inlineControls}</div> : null}
 
     {open ? <div className={styles.detailBackdrop} onMouseDown={(event)=>event.target===event.currentTarget&&setOpen(false)}>
       <section className={styles.detailModal} role="dialog" aria-modal="true" aria-label={`${kindLabel}: ${title}`}>

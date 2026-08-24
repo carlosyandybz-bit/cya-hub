@@ -5,9 +5,10 @@ import { createPortal } from "react-dom";
 import { BookOpen, Clock3, MapPin, Settings2, Sparkles, Target, UsersRound, X } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getRuntimeSupabaseClient } from "./supabase-runtime";
+import { staffPrimaryName } from "./staff-person-name";
 import styles from "./student-master-staff-controls.module.css";
 
-type PersonLite = { id: number; display_name: string; email: string | null; phone: string | null };
+type PersonLite = { id: number; display_name: string; internal_alias: string | null; email: string | null; phone: string | null };
 type Term = { id: number; label: string; taxonomy: string };
 type Preferences = {
   person_id: number;
@@ -26,7 +27,7 @@ type StaffProfile = {
   strengths: string | null;
 };
 
-type PortalTarget = { host: Element; name: string };
+type PortalTarget = { host: Element; name: string; personId: number };
 
 function clean(value: string) { return value.trim(); }
 function text(node: Element | null) { return node?.textContent?.trim() ?? ""; }
@@ -42,15 +43,15 @@ function findMasterTarget(): PortalTarget | null {
     const buttons = Array.from(item.querySelectorAll(":scope > button"));
     return buttons.some((button) => /programar/i.test(text(button))) && buttons.some((button) => /bono/i.test(text(button)));
   });
-  return host ? { host, name: text(title) } : null;
+  const personId = Number(title.getAttribute("data-person-id"));
+  return host && Number.isSafeInteger(personId) && personId > 0 ? { host, name: text(title), personId } : null;
 }
 
-async function resolvePerson(client: SupabaseClient, displayName: string) {
-  const result = await client.from("people").select("id,display_name,email,phone").eq("display_name", displayName).eq("active", true).limit(3);
+async function resolvePerson(client: SupabaseClient, personId: number) {
+  const result = await client.from("people").select("id,display_name,internal_alias,email,phone").eq("id", personId).eq("active", true).maybeSingle();
   if (result.error) throw result.error;
-  const rows = (result.data ?? []) as PersonLite[];
-  if (rows.length !== 1) throw new Error(rows.length ? "Hay varias personas con este mismo nombre. Abre la ficha desde un registro inequívoco antes de editar sus preferencias." : "No se ha podido resolver el alumno de esta ficha.");
-  return rows[0];
+  if (!result.data) throw new Error("No se ha podido resolver el alumno de esta ficha.");
+  return result.data as PersonLite;
 }
 
 export function StudentMasterStaffControls() {
@@ -61,7 +62,6 @@ export function StudentMasterStaffControls() {
   const [people, setPeople] = useState<PersonLite[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
   const [preferences, setPreferences] = useState<Preferences | null>(null);
-  const [staffProfile, setStaffProfile] = useState<StaffProfile>({ teacher_notes: null, teaching_approach: null, work_priorities: null, strengths: null });
   const [locationText, setLocationText] = useState("");
   const [styleId, setStyleId] = useState("");
   const [roleId, setRoleId] = useState("");
@@ -80,52 +80,61 @@ export function StudentMasterStaffControls() {
   const roleTerms = useMemo(() => terms.filter((term) => term.taxonomy === "dance_role"), [terms]);
 
   useEffect(() => {
-    setClient(getRuntimeSupabaseClient());
-    const scan = () => setTarget(findMasterTarget());
-    scan();
+    const scan = () => {
+      setClient(getRuntimeSupabaseClient());
+      setTarget(findMasterTarget());
+    };
+    const timer = window.setTimeout(scan, 0);
     const observer = new MutationObserver(scan);
     observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    return () => {
+      window.clearTimeout(timer);
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {
     if (!open || !client || !target) return;
     let alive = true;
-    setBusy("loading"); setError(""); setNotice("");
-    void (async () => {
-      try {
-        const currentPerson = await resolvePerson(client, target.name);
-        const [prefResult, profileResult, peopleResult, termsResult] = await Promise.all([
-          client.rpc("get_student_class_preferences", { p_person_id: currentPerson.id }),
-          client.from("student_profiles").select("teacher_notes,teaching_approach,work_priorities,strengths").eq("person_id", currentPerson.id).maybeSingle(),
-          client.from("people").select("id,display_name,email,phone").eq("active", true).order("display_name"),
-          client.from("catalog_terms").select("id,label,taxonomy").in("taxonomy", ["dance_style", "dance_role"]).eq("active", true).order("sort_order"),
-        ]);
-        if (!alive) return;
-        const failed = [prefResult, profileResult, peopleResult, termsResult].find((result) => result.error)?.error;
-        if (failed) throw failed;
-        const pref = (prefResult.data ?? { person_id: currentPerson.id }) as Preferences;
-        const profile = (profileResult.data ?? {}) as StaffProfile;
-        setPerson(currentPerson);
-        setPreferences(pref);
-        setStaffProfile(profile);
-        setPeople((peopleResult.data ?? []) as PersonLite[]);
-        setTerms((termsResult.data ?? []) as Term[]);
-        setLocationText(pref.default_location_text ?? "");
-        setStyleId(pref.default_style_term_id ? String(pref.default_style_term_id) : "");
-        setRoleId(pref.default_role_term_id ? String(pref.default_role_term_id) : "");
-        setDuration(String(pref.default_duration_minutes ?? 60));
-        setClassType(pref.default_class_type ?? "individual");
-        setPartnerId(pref.default_partner_person_id ? String(pref.default_partner_person_id) : "");
-        setTeacherNotes(profile.teacher_notes ?? "");
-        setTeachingApproach(profile.teaching_approach ?? "");
-        setWorkPriorities(profile.work_priorities ?? "");
-        setStrengths(profile.strengths ?? "");
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "No se han podido cargar las preferencias.");
-      } finally { if (alive) setBusy(""); }
-    })();
-    return () => { alive = false; };
+    const timer = window.setTimeout(() => {
+      setBusy("loading"); setError(""); setNotice("");
+      void (async () => {
+        try {
+          const currentPerson = await resolvePerson(client, target.personId);
+          const [prefResult, profileResult, peopleResult, termsResult] = await Promise.all([
+            client.rpc("get_student_class_preferences", { p_person_id: currentPerson.id }),
+            client.from("student_profiles").select("teacher_notes,teaching_approach,work_priorities,strengths").eq("person_id", currentPerson.id).maybeSingle(),
+            client.from("people").select("id,display_name,internal_alias,email,phone").eq("active", true).order("display_name"),
+            client.from("catalog_terms").select("id,label,taxonomy").in("taxonomy", ["dance_style", "dance_role"]).eq("active", true).order("sort_order"),
+          ]);
+          if (!alive) return;
+          const failed = [prefResult, profileResult, peopleResult, termsResult].find((result) => result.error)?.error;
+          if (failed) throw failed;
+          const pref = (prefResult.data ?? { person_id: currentPerson.id }) as Preferences;
+          const profile = (profileResult.data ?? {}) as StaffProfile;
+          setPerson(currentPerson);
+          setPreferences(pref);
+          setPeople((peopleResult.data ?? []) as PersonLite[]);
+          setTerms((termsResult.data ?? []) as Term[]);
+          setLocationText(pref.default_location_text ?? "");
+          setStyleId(pref.default_style_term_id ? String(pref.default_style_term_id) : "");
+          setRoleId(pref.default_role_term_id ? String(pref.default_role_term_id) : "");
+          setDuration(String(pref.default_duration_minutes ?? 60));
+          setClassType(pref.default_class_type ?? "individual");
+          setPartnerId(pref.default_partner_person_id ? String(pref.default_partner_person_id) : "");
+          setTeacherNotes(profile.teacher_notes ?? "");
+          setTeachingApproach(profile.teaching_approach ?? "");
+          setWorkPriorities(profile.work_priorities ?? "");
+          setStrengths(profile.strengths ?? "");
+        } catch (cause) {
+          setError(cause instanceof Error ? cause.message : "No se han podido cargar las preferencias.");
+        } finally { if (alive) setBusy(""); }
+      })();
+    }, 0);
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
   }, [client, open, target]);
 
   async function savePreferences() {
@@ -171,7 +180,6 @@ export function StudentMasterStaffControls() {
     });
     if (result.error) setError(result.error.message);
     else {
-      setStaffProfile((result.data ?? {}) as StaffProfile);
       setNotice("Perfil docente interno guardado.");
     }
     setBusy("");
@@ -184,7 +192,7 @@ export function StudentMasterStaffControls() {
 
   const panel = <div className={styles.backdrop} onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
     <section className={styles.panel} role="dialog" aria-modal="true" aria-labelledby="student-preferences-title">
-      <header className={styles.header}><div><span>Ficha maestra · Solo equipo</span><h2 id="student-preferences-title">Preferencias de clase</h2><p>{person?.display_name ?? target.name}</p></div><button type="button" className={styles.close} onClick={() => setOpen(false)} aria-label="Cerrar preferencias"><X /></button></header>
+      <header className={styles.header}><div><span>Ficha maestra · Solo equipo</span><h2 id="student-preferences-title">Preferencias de clase</h2><p>{person ? staffPrimaryName(person) : target.name}</p></div><button type="button" className={styles.close} onClick={() => setOpen(false)} aria-label="Cerrar preferencias"><X /></button></header>
       {busy === "loading" ? <div className={styles.loading}>Cargando configuración…</div> : null}
       {error ? <p className={styles.error}>{error}</p> : null}
       {notice ? <p className={styles.notice}>{notice}</p> : null}
@@ -198,7 +206,7 @@ export function StudentMasterStaffControls() {
             <label className={styles.field}><span><Clock3 /> Duración habitual</span><input type="number" min={15} max={480} step={15} value={duration} onChange={(event) => setDuration(event.target.value)} /></label>
           </div>
           <div className={styles.segmented} role="group" aria-label="Tipo de clase predeterminado"><button type="button" className={classType === "individual" ? styles.active : ""} onClick={() => { setClassType("individual"); setPartnerId(""); }}>Individual</button><button type="button" className={classType === "pair" ? styles.active : ""} onClick={() => setClassType("pair")}>Pareja</button></div>
-          {classType === "pair" ? <label className={styles.field}><span><UsersRound /> Pareja predeterminada</span><select value={partnerId} onChange={(event) => setPartnerId(event.target.value)}><option value="">Seleccionar persona…</option>{people.filter((candidate) => candidate.id !== person.id).map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.display_name}</option>)}</select><small>La relación es bidireccional: al cambiarla, CYA mantiene ambas fichas coherentes.</small></label> : null}
+          {classType === "pair" ? <label className={styles.field}><span><UsersRound /> Pareja predeterminada</span><select value={partnerId} onChange={(event) => setPartnerId(event.target.value)}><option value="">Seleccionar persona…</option>{people.filter((candidate) => candidate.id !== person.id).map((candidate) => <option key={candidate.id} value={candidate.id}>{staffPrimaryName(candidate)}</option>)}</select><small>La relación es bidireccional: al cambiarla, CYA mantiene ambas fichas coherentes.</small></label> : null}
           <button type="button" className={styles.primary} disabled={busy === "preferences"} onClick={() => void savePreferences()}>{busy === "preferences" ? "Guardando…" : "Guardar preferencias de clase"}</button>
         </section>
 

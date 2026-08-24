@@ -6,6 +6,7 @@ const app = fs.readFileSync('app/cya-app.tsx','utf8');
 const css = fs.readFileSync('app/globals.css','utf8');
 const card = fs.readFileSync('app/teaching-content-card.tsx','utf8');
 const cardCss = fs.readFileSync('app/teaching-content-card.module.css','utf8');
+const quickControls = fs.readFileSync('app/content-quick-controls.tsx','utf8');
 const migration = fs.readFileSync('supabase/v33-live-class-polish-permissions.sql','utf8');
 const liveStart = app.indexOf('function LiveSession(');
 const liveEnd = app.indexOf('\nfunction LiveClassView(', liveStart);
@@ -18,12 +19,15 @@ test('live class keeps one creation route and removes the redundant correction c
 });
 
 test('live correction cards expose state frequency and importance while collapsed', () => {
-  assert.ok(live.includes('quickControls={renderCorrectionSummary(assignment)}'));
-  assert.ok(live.includes("compactMetric('frequency',assignment.current_frequency"));
-  assert.ok(live.includes("compactMetric('influence',assignment.current_importance"));
-  assert.ok(live.includes('aria-label={`Estado de ${assignment.teaching_contents.title}`}'));
-  assert.ok(live.includes('aria-label={`Frecuencia de ${assignment.teaching_contents.title}`}'));
-  assert.ok(live.includes('aria-label={`Influencia de ${assignment.teaching_contents.title}`}'));
+  assert.ok(live.includes('inlineControls={renderCorrectionSummary(assignment)}'));
+  assert.ok(live.includes('<CorrectionQuickControls status={assignment.assignment_status}'));
+  assert.ok(live.includes('frequency={assignment.current_frequency}'));
+  assert.ok(live.includes('importance={assignment.current_importance}'));
+  assert.ok(quickControls.includes('label = "Estado"'));
+  assert.ok(quickControls.includes('aria-label={`${label}: ${currentLabel}`}'));
+  assert.ok(quickControls.includes('label="Frecuencia"'));
+  assert.ok(quickControls.includes('label="Importancia"'));
+  assert.ok(quickControls.includes('aria-label={label}'));
   assert.ok(live.includes('live-priority-high'));
   assert.ok(live.includes('live-priority-medium'));
   assert.ok(live.includes('live-priority-low'));

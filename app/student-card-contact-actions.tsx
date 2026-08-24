@@ -20,6 +20,8 @@ function whatsappNumber(phone: string, countryCode: string | null) {
 }
 
 function uniquePersonForRow(row: Element, people: ContactPerson[]) {
+  const personId = Number((row as HTMLElement).dataset.personId || 0);
+  if (personId) return people.find((person) => person.id === personId) ?? null;
   const name = row.querySelector(".student-main strong")?.textContent?.trim() ?? "";
   const contact = row.querySelector(".student-main span")?.textContent?.trim() ?? "";
   if (!name) return null;

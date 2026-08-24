@@ -5,6 +5,7 @@ import { Check, Image as ImageIcon, Pencil, Plus, Upload, Video, X } from "lucid
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import { SecureDriveAsset } from "./drive-media";
 import { getRuntimeAccessToken, getRuntimeSupabaseClient } from "./supabase-runtime";
+import { staffPrimaryName } from "./staff-person-name";
 import styles from "./student-personal-media.module.css";
 
 type StudentMedia = {
@@ -19,7 +20,7 @@ type StudentMedia = {
   created_at: string;
 };
 
-type PersonSummary = { id: number; display_name: string };
+type PersonSummary = { id: number; display_name: string; internal_alias?: string | null };
 
 function dateLabel(value: string) {
   return new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
@@ -56,7 +57,7 @@ export function StudentPersonalMediaOverlay({ close, personId: personIdOverride 
 
   const load = useCallback(async (supabase: SupabaseClient, id: number) => {
     const [personResult, mediaResult] = await Promise.all([
-      supabase.from("people").select("id,display_name").eq("id", id).maybeSingle(),
+      supabase.from("people").select(readOnly ? "id,display_name" : "id,display_name,internal_alias").eq("id", id).maybeSingle(),
       supabase.from("student_media_resources")
         .select("id,person_id,media_type,external_file_id,title,note,mime_type,size_bytes,created_at")
         .eq("person_id", id)
@@ -66,14 +67,17 @@ export function StudentPersonalMediaOverlay({ close, personId: personIdOverride 
     if (mediaResult.error) throw mediaResult.error;
     setPerson((personResult.data ?? null) as PersonSummary | null);
     setItems((mediaResult.data ?? []) as StudentMedia[]);
-  }, []);
+  }, [readOnly]);
 
   useEffect(() => {
-    if (!client || !personId) {
-      setError("No se ha podido identificar la ficha del alumno.");
-      return;
-    }
-    void load(client, personId).catch((reason) => setError(reason instanceof Error ? reason.message : "No se pudo cargar la multimedia."));
+    const timer = window.setTimeout(() => {
+      if (!client || !personId) {
+        setError("No se ha podido identificar la ficha del alumno.");
+        return;
+      }
+      void load(client, personId).catch((reason) => setError(reason instanceof Error ? reason.message : "No se pudo cargar la multimedia."));
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [client, personId, load]);
 
   function chooseFile(event: ChangeEvent<HTMLInputElement>, expectedType: "image" | "video") {
@@ -190,7 +194,7 @@ export function StudentPersonalMediaOverlay({ close, personId: personIdOverride 
   return <div className={styles.backdrop} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && close()}>
     <section className={styles.panel} role="dialog" aria-modal="true" aria-labelledby="student-personal-media-title">
       <header className={styles.header}>
-        <div><span>MULTIMEDIA PERSONAL</span><h2 id="student-personal-media-title">{readOnly ? "Mis archivos" : person?.display_name || "Alumno"}</h2><p>{readOnly ? "Fotos y vídeos que CYA ha compartido directamente contigo." : "Contenido multimedia vinculado directamente a esta persona y guardado de forma privada en Google Drive."}</p></div>
+        <div><span>MULTIMEDIA PERSONAL</span><h2 id="student-personal-media-title">{readOnly ? "Mis archivos" : person ? staffPrimaryName(person) : "Alumno"}</h2><p>{readOnly ? "Fotos y vídeos que CYA ha compartido directamente contigo." : "Contenido multimedia vinculado directamente a esta persona y guardado de forma privada en Google Drive."}</p></div>
         <button type="button" onClick={close} aria-label="Cerrar"><X /></button>
       </header>
 

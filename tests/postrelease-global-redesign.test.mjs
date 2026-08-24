@@ -75,7 +75,7 @@ test("student bottom navigation keeps exactly the approved five product destinat
   const navStart = portal.indexOf('<nav className={styles.bottomNav}');
   const navEnd = portal.indexOf("</nav>", navStart);
   const nav = portal.slice(navStart, navEnd);
-  const labels = ["Inicio", "Progreso", "Mi formación", "Descubre", "Misiones"];
+  const labels = ["Inicio", "Contenido", "Mi Formación", "Eventos", "Misiones"];
   let previous = -1;
   for (const label of labels) {
     const index = nav.indexOf(`>${label}<`);
@@ -87,14 +87,14 @@ test("student bottom navigation keeps exactly the approved five product destinat
   assert.match(portal, /aria-expanded={formationMenu}/);
   assert.match(css, /Visible split action for Mi formación/);
   assert.doesNotMatch(nav, />Aprende</);
-  assert.doesNotMatch(nav, />Eventos</);
+  assert.doesNotMatch(nav, />Progreso</);
+  assert.doesNotMatch(nav, />Descubre</);
 });
 
-test("Mi Formación exposes the four approved submodules without adding a sixth bottom tab", () => {
-  assert.match(portal, /Resumen/);
-  assert.match(portal, /A practicar/);
-  assert.match(portal, /Clases realizadas/);
-  assert.match(portal, /Contenido/);
+test("Mi Formación exposes the three approved submodules without adding a sixth bottom tab", () => {
+  assert.match(portal, /Academia Online/);
+  assert.match(portal, /Mis clases/);
+  assert.match(portal, /Mi progreso/);
   assert.match(portal, /formationSheet/);
 });
 
@@ -109,18 +109,16 @@ test("class history preserves summaries notes media videos and canonical teacher
   assert.match(portal, /Observaciones de mis clases/);
   assert.match(portal, /Vídeos de mis clases/);
   assert.match(portal, /Documentación de clase/);
-  assert.match(portal, /<h2>Mis clases<\/h2>/);
+  assert.match(portal, /formationTab === "classes" \? "Mis clases"/);
   assert.match(portal, /return "Realizada"/);
-  assert.match(portal, /<h2>Mis bonos<\/h2>/);
 });
 
-test("Descubre is the canonical discovery home for Aprende Online and Eventos", () => {
-  assert.match(portal, /APRENDE ONLINE/);
+test("Contenido, Eventos and Academia remain separate student domains", () => {
+  assert.match(portal, /Mejora, practica y vuelve a verlo/);
   assert.match(portal, /EVENTOS/);
   assert.match(portal, /AcademyOnlineStudentComingSoon/);
-  assert.match(docs, /una sola entidad canónica Evento/i);
-  assert.match(docs, /Descubre → Eventos/);
-  assert.match(docs, /Mi Formación → Clases \/ Próximamente/);
+  assert.match(portal, /formationTab === "academy"/);
+  assert.match(portal, /screen === "events"/);
 });
 
 test("PR-F1 reuses class_preparation_requests instead of creating a parallel inbox", () => {
@@ -188,8 +186,9 @@ test("teacher mobile primary navigation contract is untouched", () => {
   const alumnado = cyaApp.indexOf('["students", "Alumnado"');
   const live = cyaApp.indexOf('["live", "Dar clase"');
   const teaching = cyaApp.indexOf('["teaching", "Enseñanza"');
-  const marketing = cyaApp.indexOf('["marketing", "Marketing"');
-  assert.ok(inicio >= 0 && inicio < alumnado && alumnado < live && live < teaching && teaching < marketing);
+  const academy = cyaApp.indexOf('["academy", "Academia"');
+  assert.ok(inicio >= 0 && inicio < alumnado && alumnado < live && live < teaching && teaching < academy);
+  assert.match(cyaApp, /navigateView\("marketing"\)/);
 });
 
 test("student-facing preparation copy stays close and confidence-building", () => {
@@ -200,15 +199,15 @@ test("student-facing preparation copy stays close and confidence-building", () =
   assert.doesNotMatch(portal, /Supabase RPC|PostgreSQL|migration|backend/i);
 });
 
-test("Progreso final derives improvements evolution milestones and videos from real portal data", () => {
-  assert.match(portal, /<h2>Qué ha mejorado<\/h2>/);
-  assert.match(portal, /latest\.score - previous\.score/);
-  assert.match(portal, /latest\.score <= previous\.score/);
-  assert.match(portal, /<h2>Cómo ha ido cambiando<\/h2>/);
+test("Mi progreso derives radar, tendency, history, milestones and videos from canonical portal data", () => {
+  assert.match(portal, /EvaluationRadar/);
+  assert.match(portal, /<h2>Dónde estás avanzando<\/h2>/);
+  assert.match(portal, /item\.trend===1/);
+  assert.match(portal, /<h2>Tus evaluaciones<\/h2>/);
   assert.match(portal, /evaluationTimeline\.slice\(0, 10\)/);
   assert.match(portal, /<h2>Pasos que ya forman parte de tu camino<\/h2>/);
   assert.match(portal, /finishedClasses >= 5/);
-  assert.match(portal, /<h2>Mis vídeos<\/h2>/);
+  assert.match(portal, /Vídeos de formación y clase/);
   assert.match(portal, /progressVideos\.slice\(0, 12\)/);
   assert.match(portal, /media\.media_type === "video"/);
   assert.match(portal, /privateVideos\.map/);

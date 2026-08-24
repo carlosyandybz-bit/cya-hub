@@ -14,6 +14,7 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import type { IdentityContext } from "./v14-types";
+import { staffPrimaryName } from "./staff-person-name";
 import styles from "./academy-online.module.css";
 
 type AcademyProgram = {
@@ -49,7 +50,7 @@ type AcademyEnrollment = {
 };
 
 type Term = { id: number; taxonomy: string; label: string; sort_order: number; active: boolean };
-type Person = { id: number; display_name: string; active: boolean };
+type Person = { id: number; display_name: string; internal_alias: string | null; active: boolean };
 type TeachingContent = {
   id: number;
   title: string;
@@ -117,7 +118,7 @@ export function AcademyOnlineTeacherView({ client, identity, notify }: {
       client.from("academy_enrollments").select("id,program_id,person_id,status,starts_at,expires_at").order("created_at", { ascending: false }),
       client.from("teaching_contents").select("id,title,content_type,description,completion_status,publication_status,visibility,active,teaching_content_styles(style_term_id),teaching_content_roles(role_term_id),teaching_content_levels(level_term_id)").eq("active", true).order("title"),
       client.from("catalog_terms").select("id,taxonomy,label,sort_order,active").eq("active", true).order("taxonomy").order("sort_order"),
-      client.from("people").select("id,display_name,active").eq("active", true).order("display_name"),
+      client.from("people").select("id,display_name,internal_alias,active").eq("active", true).order("display_name"),
     ]);
     const firstError = [programResult, contentResult, enrollmentResult, libraryResult, termResult, peopleResult].find((result) => result.error)?.error;
     if (firstError) notify(firstError.message);
@@ -152,7 +153,7 @@ export function AcademyOnlineTeacherView({ client, identity, notify }: {
   const levelTerms = terms.filter((term) => term.taxonomy === "dance_level");
   const termLabel = (id: number) => terms.find((term) => term.id === id)?.label ?? "—";
   const contentById = (id: number) => library.find((item) => item.id === id) ?? null;
-  const enrolledName = (personId: number) => people.find((person) => person.id === personId)?.display_name ?? "Alumno";
+  const enrolledName = (personId: number) => { const person = people.find((candidate) => candidate.id === personId); return person ? staffPrimaryName(person) : "Alumno"; };
   const linkedIds = new Set(linked.map((item) => item.content_id));
   const compatibleLibrary = selected ? library.filter((content) =>
     content.completion_status === "complete"
@@ -357,7 +358,7 @@ export function AcademyOnlineTeacherView({ client, identity, notify }: {
         {selected && identity.can_admin ? <article className="card pad">
           <div className="card-head"><div><p className="eyebrow">Acceso</p><h2>Matrículas</h2></div><UsersRound /></div>
           <div className={styles.actions}>
-            <label className="field" style={{ flex: "1 1 260px" }}><span>Conceder acceso a</span><select value={personToEnroll} onChange={(event) => setPersonToEnroll(event.target.value)}><option value="">Selecciona una persona</option>{people.map((person) => <option key={person.id} value={person.id}>{person.display_name}</option>)}</select></label>
+            <label className="field" style={{ flex: "1 1 260px" }}><span>Conceder acceso a</span><select value={personToEnroll} onChange={(event) => setPersonToEnroll(event.target.value)}><option value="">Selecciona una persona</option>{people.map((person) => <option key={person.id} value={person.id}>{staffPrimaryName(person)}</option>)}</select></label>
             <button className="btn" type="button" disabled={!personToEnroll || busy === "enroll"} onClick={() => void enrollPerson()}><Plus /> Matricular</button>
           </div>
           <div className={styles.enrollmentList}>

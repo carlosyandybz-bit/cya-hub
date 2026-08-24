@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const app=fs.readFileSync('app/cya-app.tsx','utf8');
+const primaryNavigation=fs.readFileSync('app/primary-navigation.tsx','utf8');
 const menu=fs.readFileSync('app/account-menu.tsx','utf8');
 const switcher=fs.readFileSync('app/experience-switcher.tsx','utf8');
 const router=fs.readFileSync('app/app-entry-router.tsx','utf8');
@@ -10,9 +11,10 @@ const css=fs.readFileSync('app/globals.css','utf8');
 const sql=fs.readFileSync('supabase/v46_p18_experience_context.sql','utf8');
 
 test('P18 keeps the definitive five-destination navigation',()=>{
-  for(const pair of [['home','Inicio'],['students','Alumnado'],['live','Dar clase'],['teaching','Enseñanza'],['marketing','Marketing']]) {
+  for(const pair of [['home','Inicio'],['students','Alumnado'],['live','Dar clase'],['teaching','Enseñanza'],['academy','Academia']]) {
     assert.match(app,new RegExp(`\\[\\"${pair[0]}\\", \\"${pair[1]}\\"`));
   }
+  for(const label of ['Agenda','Estadísticas','Marketing','Notificaciones','Misiones']) assert.match(primaryNavigation,new RegExp(`label: "${label}"`));
   assert.match(css,/\.mobile-nav \{[^}]*grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/s);
   assert.match(css,/\.mobile-nav button\.primary \{[^}]*translateY\(-11px\)/s);
 });

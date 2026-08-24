@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useMemo, useState } from "react";
 import { CrmPersonExplorer } from "./crm-person-explorer";
+import { staffPrimaryName } from "./staff-person-name";
 import {
   MarketingView as LegacyMarketingView,
   type CampaignMetric,
@@ -104,7 +105,7 @@ export function MarketingView(props: {
 }) {
   const [bonuses, setBonuses] = useState<BonusSummary[]>([]);
   const contacts = useMemo(() => normalizeContacts(props.contacts), [props.contacts]);
-  const contactNames = useMemo(() => new Map(contacts.map((contact) => [contact.id, contact.display_name])), [contacts]);
+  const contactNames = useMemo(() => new Map(contacts.map((contact) => [contact.id, staffPrimaryName(contact)])), [contacts]);
 
   useEffect(() => {
     let alive = true;

@@ -11,7 +11,6 @@ import {
   ChevronDown,
   ChevronRight,
   CircleCheck,
-  Compass,
   GraduationCap,
   House,
   Link2,
@@ -38,6 +37,7 @@ import { EvaluationRadar } from "./evaluation-radar";
 import { NotificationsView } from "./notifications-view";
 import { PreferencesSettingsView, ProfileSettingsView } from "./account-pages";
 import { getRuntimeAccessToken } from "./supabase-runtime";
+import { missionTypeLabel } from "./mission-routing";
 import { prepareVideoForUpload, uploadPreparedClassPreparation, type UploadProgress } from "./video-upload-client";
 import type { ExperienceContext, HomeSnapshot, IdentityContext, Mission } from "./v14-types";
 import styles from "./student-portal-prf.module.css";
@@ -174,8 +174,8 @@ type PreparationRequest = {
   updated_at: string;
 };
 
-type PortalScreen = "home" | "progress" | "formation" | "discover" | "missions" | "feedback" | "bz" | "notifications" | "profile" | "preferences";
-type FormationTab = "summary" | "practice" | "classes" | "content";
+type PortalScreen = "home" | "content" | "formation" | "events" | "missions" | "feedback" | "bz" | "notifications" | "profile" | "preferences";
+type FormationTab = "academy" | "classes" | "progress";
 
 const assignmentStateLabels: Record<string, string> = {
   pending: "Pendiente",
@@ -246,6 +246,11 @@ function missionStateLabel(mission: Mission) {
   if (mission.state === "not_done") return "Pendiente";
   if (mission.state === "postponed") return "Pospuesta";
   return "Disponible";
+}
+
+function missionTomorrow() {
+  const date = new Date(Date.now() + 24 * 60 * 60_000);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 }
 
 function PreparationPanel({ client, nextClass, personId, assignments, changed, openQuestionnaire }: {
@@ -429,7 +434,7 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
   onIdentityPatch: (patch: Partial<IdentityContext>) => void;
 }) {
   const [screen, setScreen] = useState<PortalScreen>("home");
-  const [formationTab, setFormationTab] = useState<FormationTab>("summary");
+  const [formationTab, setFormationTab] = useState<FormationTab>("progress");
   const [formationMenu, setFormationMenu] = useState(false);
   const [snapshot, setSnapshot] = useState<StudentPortalSnapshot | null>(null);
   const [homeSnapshot, setHomeSnapshot] = useState<HomeSnapshot | null>(null);
@@ -440,15 +445,18 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const [postponingMission, setPostponingMission] = useState<number | null>(null);
+  const [missionPostponeUntil, setMissionPostponeUntil] = useState(missionTomorrow);
+  const studentAudienceGuaranteed = !identity.can_teach && !identity.can_admin;
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
-    await client.rpc("refresh_missions");
+    if (studentAudienceGuaranteed) await client.rpc("refresh_missions");
     const [portalResult, homeResult, bzResult, unreadResult] = await Promise.all([
       client.rpc("student_portal_snapshot"),
-      client.rpc("home_snapshot"),
+      studentAudienceGuaranteed ? client.rpc("home_snapshot") : Promise.resolve(null),
       client.rpc("bz_snapshot"),
-      client.from("internal_notifications").select("id", { count: "exact", head: true }).is("read_at", null),
+      studentAudienceGuaranteed ? client.from("internal_notifications").select("id", { count: "exact", head: true }).is("read_at", null) : Promise.resolve(null),
     ]);
     if (portalResult.error) { setError(portalResult.error.message); setLoading(false); return; }
     const nextSnapshot = portalResult.data as StudentPortalSnapshot;
@@ -467,11 +475,13 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
     ]);
     if (!videoResult.error) setPrivateVideos((videoResult.data ?? []) as ClassPrivateVideo[]);
     if (!noteResult.error) setStudentNotes((noteResult.data ?? []) as StudentClassNote[]);
-    if (!homeResult.error) setHomeSnapshot(homeResult.data as HomeSnapshot);
+    if (homeResult && !homeResult.error) setHomeSnapshot(homeResult.data as HomeSnapshot);
+    else setHomeSnapshot(null);
     if (!bzResult.error) setBzSnapshot(bzResult.data as BzSnapshot);
-    if (!unreadResult.error) setUnread(unreadResult.count ?? 0);
+    if (unreadResult && !unreadResult.error) setUnread(unreadResult.count ?? 0);
+    else setUnread(0);
     setLoading(false);
-  }, [client]);
+  }, [client, studentAudienceGuaranteed]);
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
   useEffect(() => {
@@ -550,14 +560,14 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
     const value = target.toLowerCase();
     if (value.includes("feedback")) go("feedback");
     else if (value.includes("mission")) go("missions");
-    else if (value.includes("progress") || value.includes("evaluation")) go("progress");
-    else if (value.includes("teaching") || value.includes("formation") || value.includes("content")) goFormation("summary");
+    else if (value.includes("progress") || value.includes("evaluation")) goFormation("progress");
+    else if (value.includes("teaching") || value.includes("formation") || value.includes("content")) go("content");
     else go("home");
   }
 
-  async function actOnMission(mission: Mission, action: "start" | "complete") {
-    const result = await client.rpc("act_on_mission", { p_mission_id: mission.id, p_action: action, p_comment: null, p_postpone_until: null });
-    if (result.error) setToast(result.error.message); else { setToast(action === "complete" ? "¡Hecho! Misión completada." : "Misión en marcha. Vamos a por ella."); await load(); }
+  async function actOnMission(mission: Mission, action: "start" | "complete" | "postpone") {
+    const result = await client.rpc("act_on_mission", { p_mission_id: mission.id, p_action: action, p_comment: null, p_postpone_until: action === "postpone" ? new Date(missionPostponeUntil).toISOString() : null });
+    if (result.error) setToast(result.error.message); else { setPostponingMission(null); setToast(action === "complete" ? "¡Hecho! Misión completada." : action === "postpone" ? "Misión pospuesta." : "Misión en marcha. Vamos a por ella."); await load(); }
   }
 
   if (loading && !snapshot) return <div className={styles.loading}><strong>CYA</strong><span>Preparando tu espacio…</span></div>;
@@ -591,7 +601,7 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
         <section className={styles.summaryStrip} aria-label="Resumen de tu espacio">
           <button type="button" onClick={() => go("bz")}><Zap /><span>BZ Points<strong>{bzSnapshot?.balance_points ?? 0}</strong></span><ChevronRight /></button>
           <button type="button" onClick={() => go("missions")}><Target /><span>Misiones<strong>{currentMissions.length}</strong></span><ChevronRight /></button>
-          <button type="button" onClick={() => go("progress")}><TrendingUp /><span>En progreso<strong>{activeAssignments.length}</strong></span><ChevronRight /></button>
+          <button type="button" onClick={() => go("content")}><BookOpen /><span>Contenido<strong>{activeAssignments.length}</strong></span><ChevronRight /></button>
         </section>
 
         <section className={styles.feedbackCallout}>
@@ -601,31 +611,26 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
         {nextClass && snapshot ? <PreparationPanel client={client} nextClass={nextClass} personId={snapshot.profile.id} assignments={snapshot.assignments} changed={load} openQuestionnaire={() => go("profile")} /> : null}
 
         <section className={styles.homeColumns}>
-          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>NOVEDADES PARA TI</span><h2>Lo último en tu formación</h2></div><button type="button" onClick={() => goFormation("content")}>Ver contenido</button></div>{latestAssignments.length ? <div className={styles.simpleList}>{latestAssignments.map((item) => <button type="button" key={item.id} onClick={() => goFormation("content")}><BookOpen /><span><strong>{item.title}</strong><small>{contentTypeLabels[item.content_type] ?? item.content_type} · {assignmentStateLabels[item.assignment_status] ?? item.assignment_status}</small></span><ChevronRight /></button>)}</div> : <p className={styles.emptyText}>Todavía no tienes contenido guardado. Poco a poco iremos llenando este espacio contigo.</p>}</article>
+          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>NOVEDADES PARA TI</span><h2>Lo último en tu formación</h2></div><button type="button" onClick={() => go("content")}>Ver contenido</button></div>{latestAssignments.length ? <div className={styles.simpleList}>{latestAssignments.map((item) => <button type="button" key={item.id} onClick={() => go("content")}><BookOpen /><span><strong>{item.title}</strong><small>{contentTypeLabels[item.content_type] ?? item.content_type} · {assignmentStateLabels[item.assignment_status] ?? item.assignment_status}</small></span><ChevronRight /></button>)}</div> : <p className={styles.emptyText}>Todavía no tienes contenido guardado. Poco a poco iremos llenando este espacio contigo.</p>}</article>
           <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>ACTIVIDAD RECIENTE</span><h2>Lo que va pasando</h2></div></div>{snapshot?.class_activity?.length ? <div className={styles.activityList}>{snapshot.class_activity.slice(0, 5).map((item) => <div key={item.id}><CircleCheck /><span><strong>{item.title}</strong><small>{dateLabel(item.created_at, false)}</small></span></div>)}</div> : <p className={styles.emptyText}>Aquí iremos guardando tus avances, clases y nuevos contenidos para que puedas mirar atrás cuando quieras.</p>}</article>
         </section>
       </> : null}
 
-      {screen === "progress" ? <section className={styles.pageSection}>
-        <header className={styles.pageHeading}><span>PROGRESO</span><h1>En qué enfocarte ahora</h1><p>Primero lo que te ayuda hoy; después, toda tu evolución.</p></header>
-        <div className={styles.focusList}>{activeAssignments.slice(0, 3).map((item) => <article key={item.id}><Target /><div><span>{contentTypeLabels[item.content_type] ?? item.content_type}</span><strong>{item.title}</strong><small>{assignmentStateLabels[item.assignment_status] ?? item.assignment_status}</small></div></article>)}{!activeAssignments.length ? <p className={styles.emptyText}>Ahora mismo no tienes nada marcado como prioritario. Eso también significa que puedes elegir por dónde seguir.</p> : null}</div>
-
-        <div className={styles.homeColumns}>
-          <article className={`${styles.openSection} ${styles.studentEvaluationCard}`}><div className={styles.sectionHeading}><div><span>TU EVALUACIÓN</span><h2>Tu progreso dentro de tu nivel</h2></div>{evaluationContext?<strong>{evaluationContext.level}</strong>:null}</div>{evaluationContext?.has_evaluation&&studentRadarItems.length>=3?<><EvaluationRadar items={studentRadarItems} scale={[]} readonly mode="student" showEditor={false} ariaLabel="Resumen de tu progreso"/><p className={styles.evaluationPrivacyNote}>Estas valoraciones representan tu evolución dentro de tu nivel actual. No comparan tu nivel con el de otros alumnos ni parten desde nivel inicial. Las flechas indican si una capacidad mejora, se mantiene o necesita revisión respecto a tu referencia histórica.</p></>:<p className={styles.emptyText}>Aún no hemos guardado una evaluación completa. Tu progreso puede seguir construyéndose mientras tanto.</p>}</article>
-
-          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>TENDENCIA</span><h2>Dónde estás avanzando</h2></div></div>{evaluationContext?.items.some((item)=>item.trend!==null)?<div className={styles.activityList}>{evaluationContext.items.map((item)=><div key={item.aptitude_term_id}><TrendingUp data-trend={item.trend}/><span><strong>{item.aptitude}</strong><small>{item.trend===1?"Mejorando":item.trend===-1?"Necesita revisión":item.trend===0?"Estable":"Todavía sin referencia"}</small></span></div>)}</div>:<p className={styles.emptyText}>Cuando tengamos evaluaciones comparables, aquí verás la dirección de tu evolución sin puntuaciones ni comparaciones con otras personas.</p>}</article>
-
-          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>HISTORIAL</span><h2>Tus evaluaciones</h2></div><strong>{evaluationTimeline.length}</strong></div>{evaluationTimeline.length ? <div className={styles.activityList}>{evaluationTimeline.slice(0, 10).map((item) => <div key={item.id}><CalendarDays /><span><strong>{item.aptitude}</strong><small>{item.style} · {item.level} · {dateLabel(item.created_at, false)}</small></span></div>)}</div> : <p className={styles.emptyText}>Tu historial de evaluación aparecerá aquí a medida que vayamos guardando nuevas fotos de tu progreso.</p>}</article>
-
-          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>HITOS</span><h2>Pasos que ya forman parte de tu camino</h2></div><strong>{progressMilestones.length}</strong></div>{progressMilestones.length ? <div className={styles.activityList}>{progressMilestones.map((milestone) => <div key={milestone.key}><CircleCheck /><span><strong>{milestone.title}</strong><small>{milestone.detail}</small></span></div>)}</div> : <p className={styles.emptyText}>Tus primeros hitos aparecerán aquí cuando exista actividad real suficiente para reconocerlos.</p>}</article>
-        </div>
-
-        <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>MULTIMEDIA</span><h2>Mis vídeos</h2></div><strong>{progressVideos.length}</strong></div>{progressVideos.length ? <div className={styles.homeColumns}>{progressVideos.slice(0, 12).map((video) => <div key={video.key}><SecureDriveAsset fileId={video.fileId} mediaType="video" title={video.title} controls className={styles.prepVideo} /><p className={styles.emptyText}>{video.title} · {dateLabel(video.createdAt, false)}</p></div>)}</div> : <p className={styles.emptyText}>Cuando tengas vídeos personales de evolución o vídeos guardados de clase, los tendrás reunidos aquí.</p>}</article>
+      {screen === "content" ? <section className={styles.pageSection}>
+        <header className={styles.pageHeading}><span>CONTENIDO</span><h1>Mejora, practica y vuelve a verlo</h1><p>Aquí tienes el contenido disponible para practicar y la multimedia autorizada de tu formación y tus clases.</p></header>
+        <div className={styles.focusList}>{activeAssignments.map((item) => <article key={item.id}><Target /><div><span>{contentTypeLabels[item.content_type] ?? item.content_type}</span><strong>{item.title}</strong><small>{assignmentStateLabels[item.assignment_status] ?? item.assignment_status}</small></div></article>)}{!activeAssignments.length ? <p className={styles.emptyText}>Ahora mismo no tienes contenido activo para practicar.</p> : null}</div>
+        <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>BIBLIOTECA</span><h2>Tu contenido de formación</h2></div><strong>{snapshot?.assignments.length ?? 0}</strong></div><div className={styles.contentList}>{snapshot?.assignments.map((item) => <article key={item.id}><div><span>{contentTypeLabels[item.content_type] ?? item.content_type}</span><h3>{item.title}</h3><p>{item.description || item.correction_guidance || "Este contenido forma parte de tu formación."}</p>{item.media?.length ? <div className={styles.homeColumns}>{item.media.map((media) => <SecureDriveAsset key={media.id} fileId={media.external_file_id} mediaType={media.media_type} title={media.title || item.title} controls={media.media_type === "video"} className={styles.prepVideo} />)}</div> : null}</div><strong>{assignmentStateLabels[item.assignment_status] ?? item.assignment_status}</strong></article>)}</div>{!snapshot?.assignments.length ? <p className={styles.emptyText}>Cuando tengas contenido autorizado, aparecerá aquí.</p> : null}</article>
+        <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>MULTIMEDIA</span><h2>Vídeos de formación y clase</h2></div><strong>{progressVideos.length}</strong></div>{progressVideos.length ? <div className={styles.homeColumns}>{progressVideos.slice(0, 12).map((video) => <div key={video.key}><SecureDriveAsset fileId={video.fileId} mediaType="video" title={video.title} controls className={styles.prepVideo} /><p className={styles.emptyText}>{video.title} · {dateLabel(video.createdAt, false)}</p></div>)}</div> : <p className={styles.emptyText}>La multimedia autorizada de tus clases y formación aparecerá aquí.</p>}</article>
       </section> : null}
 
-      {screen === "formation" ? <section className={styles.pageSection}><header className={styles.pageHeading}><span>MI FORMACIÓN</span><h1>{formationTab === "summary" ? "Resumen" : formationTab === "practice" ? "A practicar" : formationTab === "classes" ? "Clases realizadas" : "Contenido"}</h1><p>{formationTab === "summary" ? "Tu aprendizaje, ordenado para saber qué toca y dónde encontrarlo." : formationTab === "practice" ? "Todo lo que merece práctica ahora, junto y sin hacerte buscar." : formationTab === "classes" ? "Tu historia de clases, ordenada por cada vez que nos vimos." : "Todo lo que ya forma parte de tu espacio de aprendizaje."}</p></header>
-        {formationTab === "summary" ? <><div className={styles.formationAccess}><button type="button" onClick={() => goFormation("practice")}><Target /><span><strong>A practicar</strong><small>{activeAssignments.length} elementos activos</small></span><ChevronRight /></button><button type="button" onClick={() => goFormation("classes")}><CalendarDays /><span><strong>Clases realizadas</strong><small>{snapshot?.classes.filter((item) => item.status === "finished").length ?? 0} en tu historial</small></span><ChevronRight /></button><button type="button" onClick={() => goFormation("content")}><BookOpen /><span><strong>Contenido</strong><small>{snapshot?.assignments.length ?? 0} elementos en tu espacio</small></span><ChevronRight /></button></div>{snapshot?.credits?.length ? <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>SALDO</span><h2>Mis bonos</h2></div><strong>{snapshot.credits.length}</strong></div><div className={styles.activityList}>{snapshot.credits.map((credit) => <div key={credit.id}><CircleCheck /><span><strong>{credit.label || (credit.modality === "pair" ? "Bono de pareja" : "Bono individual")}</strong><small>{minutesLabel(credit.balance_minutes)} disponibles</small></span></div>)}</div></article> : null}</> : null}
-        {formationTab === "practice" ? <div className={styles.contentList}>{activeAssignments.map((item) => <article key={item.id}><div><span>{contentTypeLabels[item.content_type] ?? item.content_type}</span><h3>{item.title}</h3><p>{item.description || item.correction_guidance || "Lo tienes guardado para seguir trabajándolo."}</p></div><strong>{assignmentStateLabels[item.assignment_status] ?? item.assignment_status}</strong></article>)}{!activeAssignments.length ? <p className={styles.emptyText}>No tienes tareas activas ahora mismo.</p> : null}</div> : null}
+      {screen === "formation" ? <section className={styles.pageSection}><header className={styles.pageHeading}><span>MI FORMACIÓN</span><h1>{formationTab === "academy" ? "Academia Online" : formationTab === "classes" ? "Mis clases" : "Mi progreso"}</h1><p>{formationTab === "academy" ? "Programas y formación estructurada para aprender a tu ritmo." : formationTab === "classes" ? "Tu historia de clases, con los cierres y archivos que puedes consultar." : "Tu evaluación, tendencia e hitos reunidos en un único lugar."}</p></header>
+        {formationTab === "academy" ? <AcademyOnlineStudentComingSoon /> : null}
+        {formationTab === "progress" ? <div className={styles.homeColumns}>
+          <article className={`${styles.openSection} ${styles.studentEvaluationCard}`}><div className={styles.sectionHeading}><div><span>TU EVALUACIÓN</span><h2>Tu progreso dentro de tu nivel</h2></div>{evaluationContext?<strong>{evaluationContext.level}</strong>:null}</div>{evaluationContext?.has_evaluation&&studentRadarItems.length>=3?<><EvaluationRadar items={studentRadarItems} scale={[]} readonly mode="student" showEditor={false} ariaLabel="Resumen de tu progreso"/><p className={styles.evaluationPrivacyNote}>Estas valoraciones representan tu evolución dentro de tu nivel actual. No comparan tu nivel con el de otros alumnos ni parten desde nivel inicial. Las flechas indican si una capacidad mejora, se mantiene o necesita revisión respecto a tu referencia histórica.</p></>:<p className={styles.emptyText}>Aún no hemos guardado una evaluación completa. Tu progreso puede seguir construyéndose mientras tanto.</p>}</article>
+          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>TENDENCIA</span><h2>Dónde estás avanzando</h2></div></div>{evaluationContext?.items.some((item)=>item.trend!==null)?<div className={styles.activityList}>{evaluationContext.items.map((item)=><div key={item.aptitude_term_id}><TrendingUp data-trend={item.trend}/><span><strong>{item.aptitude}</strong><small>{item.trend===1?"Mejorando":item.trend===-1?"Necesita revisión":item.trend===0?"Estable":"Todavía sin referencia"}</small></span></div>)}</div>:<p className={styles.emptyText}>Cuando tengamos evaluaciones comparables, aquí verás la dirección de tu evolución sin comparaciones con otras personas.</p>}</article>
+          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>HISTORIAL</span><h2>Tus evaluaciones</h2></div><strong>{evaluationTimeline.length}</strong></div>{evaluationTimeline.length ? <div className={styles.activityList}>{evaluationTimeline.slice(0, 10).map((item) => <div key={item.id}><CalendarDays /><span><strong>{item.aptitude}</strong><small>{item.style} · {item.level} · {dateLabel(item.created_at, false)}</small></span></div>)}</div> : <p className={styles.emptyText}>Tu historial de evaluación aparecerá aquí a medida que guardemos nuevas fotos de tu progreso.</p>}</article>
+          <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>HITOS</span><h2>Pasos que ya forman parte de tu camino</h2></div><strong>{progressMilestones.length}</strong></div>{progressMilestones.length ? <div className={styles.activityList}>{progressMilestones.map((milestone) => <div key={milestone.key}><CircleCheck /><span><strong>{milestone.title}</strong><small>{milestone.detail}</small></span></div>)}</div> : <p className={styles.emptyText}>Tus primeros hitos aparecerán aquí cuando exista actividad real suficiente para reconocerlos.</p>}</article>
+        </div> : null}
         {formationTab === "classes" ? <div className={styles.homeColumns}>
           {snapshot?.class_summaries?.length ? <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>CIERRES PEDAGÓGICOS</span><h2>Resumen de mis clases</h2></div><strong>{snapshot.class_summaries.length}</strong></div><div className={styles.activityList}>{snapshot.class_summaries.slice(0, 8).map((summary) => <div key={summary.class_id}><CircleCheck /><span><strong>{dateLabel(summary.closed_at, false)}</strong><small>{summary.student_message || "Clase cerrada y documentación actualizada."}</small></span></div>)}</div></article> : null}
           {studentNotes.length ? <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>MENSAJES DE CLASE</span><h2>Observaciones de mis clases</h2></div><strong>{studentNotes.length}</strong></div><div className={styles.activityList}>{studentNotes.slice(0, 10).map((note) => <div key={note.id}><MessageCircle /><span><strong>{dateLabel(note.created_at, false)}</strong><small>{note.body}</small></span></div>)}</div></article> : null}
@@ -633,14 +638,13 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
           {snapshot?.class_media?.length ? <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>ARCHIVOS</span><h2>Documentación de clase</h2></div><strong>{snapshot.class_media.length}</strong></div>{snapshot.class_media.slice(0, 8).map((media) => <div key={media.id}><SecureDriveAsset fileId={media.external_file_id} mediaType={media.media_type} title={media.title || (media.media_kind === "final_dance" ? "Baile final" : "Documento de clase")} controls={media.media_type === "video"} className={styles.prepVideo} /><p className={styles.emptyText}>{media.title || (media.media_kind === "final_dance" ? "Baile final" : "Documento de clase")}</p></div>)}</article> : null}
           <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>HISTORIAL</span><h2>Mis clases</h2></div><strong>{snapshot?.classes.length ?? 0}</strong></div><div className={styles.classList}>{snapshot?.classes.sort((a, b) => new Date(b.scheduled_start_at).getTime() - new Date(a.scheduled_start_at).getTime()).map((item) => <article key={item.id}><CalendarDays /><div><strong>{item.style || "Clase"}</strong><span>{dateLabel(item.scheduled_start_at)} · {minutesLabel(item.duration_minutes)} · {classStatusLabel(item.status)}</span></div></article>)}</div>{!snapshot?.classes.length ? <p className={styles.emptyText}>Cuando tengas clases, aquí podrás recorrerlas una a una.</p> : null}</article>
         </div> : null}
-        {formationTab === "content" ? <div className={styles.contentList}>{snapshot?.assignments.map((item) => <article key={item.id}><div><span>{contentTypeLabels[item.content_type] ?? item.content_type}</span><h3>{item.title}</h3><p>{item.description || "Este contenido ya forma parte de tu espacio."}</p></div><strong>{assignmentStateLabels[item.assignment_status] ?? item.assignment_status}</strong></article>)}</div> : null}
       </section> : null}
 
-      {screen === "discover" ? <section className={styles.pageSection}><header className={styles.pageHeading}><span>DESCUBRE</span><h1>Más formas de aprender y vivir CYA</h1><p>Aquí reunimos lo que puedes descubrir aunque no tengas una clase programada.</p></header><div className={styles.discoverGrid}><article className={styles.discoverCard}><GraduationCap /><div><span>APRENDE ONLINE</span><h2>Aprende a tu ritmo</h2><p>Programas, rutas y contenido guiado estarán aquí cuando abramos Academia Online.</p></div></article><article className={styles.discoverCard}><CalendarDays /><div><span>EVENTOS</span><h2>Nos vemos también fuera de clase</h2><p>Talleres, intensivos y eventos tendrán aquí su hogar. Si te apuntas a uno, también aparecerá entre tus próximos compromisos.</p></div></article></div><AcademyOnlineStudentComingSoon /></section> : null}
+      {screen === "events" ? <section className={styles.pageSection}><header className={styles.pageHeading}><span>EVENTOS</span><h1>Nos vemos también fuera de clase</h1><p>Talleres, intensivos y eventos disponibles aparecerán aquí con su información real.</p></header><div className={styles.discoverGrid}><article className={styles.discoverCard}><CalendarDays /><div><span>PRÓXIMAMENTE</span><h2>Aún no hay eventos publicados</h2><p>Cuando exista una convocatoria disponible podrás consultarla desde este espacio.</p></div></article></div></section> : null}
 
       {screen === "missions" ? <section className={styles.pageSection}>
         <header className={styles.pageHeading}><span>MISIONES</span><h1>Pequeños pasos que sí cuentan</h1><p>Primero lo que merece atención; después, lo que puedes hacer cuando te venga bien.</p></header>
-        {[
+        {!studentAudienceGuaranteed ? <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>AUDIENCIA PROTEGIDA</span><h2>Misiones ocultas en Vista Alumno</h2></div></div><p className={styles.emptyText}>No mostraremos acciones de Staff en este portal mientras no podamos garantizar la audiencia de cada misión.</p></article> : [
           { key: "now", label: "AHORA", title: "Prioritarias", items: missionGroups.now, empty: "No hay ninguna misión prioritaria ahora mismo." },
           { key: "available", label: "DISPONIBLES", title: "Para cuando te venga bien", items: missionGroups.available, empty: "No tienes más misiones disponibles ahora mismo." },
           { key: "progress", label: "EN PROGRESO", title: "Lo que ya has empezado", items: missionGroups.inProgress, empty: "No tienes ninguna misión en marcha." },
@@ -651,30 +655,30 @@ export function StudentPortalPrf({ client, identity, email, experience, onExperi
             const canStart = ["available", "not_done", "postponed"].includes(mission.state);
             const canComplete = ["available", "not_done", "postponed", "in_progress"].includes(mission.state);
             const isCompleted = ["completed", "completed_automatically"].includes(mission.state);
-            return <article key={mission.id}><div><span>{mission.priority === "urgent" ? "Urgente" : mission.priority === "priority" ? "Prioritaria" : mission.mission_type === "daily" ? "Misión diaria" : "Misión"}</span><h3>{mission.title}</h3><p>{mission.description || "Una acción para seguir avanzando."}</p><small>{missionStateLabel(mission)}{mission.due_at ? ` · ${dateLabel(mission.due_at)}` : ""}</small></div><div>{canStart ? <button type="button" onClick={() => void actOnMission(mission, "start")}>Empezar</button> : null}{canComplete ? <button type="button" onClick={() => void actOnMission(mission, "complete")}><Check /> Completar</button> : null}{isCompleted ? <CircleCheck aria-label="Completada" /> : null}</div></article>;
+            return <article key={mission.id}><div><span>{missionTypeLabel(mission.mission_type)}{mission.priority === "urgent" ? " · Urgente" : mission.priority === "priority" ? " · Prioritaria" : ""}</span><h3>{mission.title}</h3><p>{mission.description || "Una acción para seguir avanzando."}</p><small>{missionStateLabel(mission)}{mission.due_at ? ` · ${dateLabel(mission.due_at)}` : ""}</small>{postponingMission === mission.id ? <div className={styles.missionPostpone}><label><span>Posponer hasta</span><input type="datetime-local" value={missionPostponeUntil} onChange={(event) => setMissionPostponeUntil(event.target.value)} /></label><button type="button" onClick={() => void actOnMission(mission, "postpone")}>Confirmar</button></div> : null}</div><div>{canStart ? <button type="button" onClick={() => void actOnMission(mission, "start")}>Empezar</button> : null}{canComplete ? <><button type="button" onClick={() => { setPostponingMission(postponingMission === mission.id ? null : mission.id); setMissionPostponeUntil(missionTomorrow()); }}>Posponer</button><button type="button" onClick={() => void actOnMission(mission, "complete")}><Check /> Completar</button></> : null}{isCompleted ? <CircleCheck aria-label="Completada" /> : null}</div></article>;
           })}</div> : <p className={styles.emptyText}>{group.empty}</p>}
         </article>)}
       </section> : null}
 
       {screen === "feedback" ? <section className={styles.pageSection}><button className={styles.backButton} type="button" onClick={() => go("home")}><ChevronRight /> Volver a Inicio</button><FeedbackOnlineStudentPanel client={client} /></section> : null}
       {screen === "bz" ? <section className={styles.pageSection}><button className={styles.backButton} type="button" onClick={() => go("home")}><ChevronRight /> Volver a Inicio</button><BZPointsPanel client={client} assignments={snapshot?.assignments ?? []} /></section> : null}
-      {screen === "notifications" ? <section className={styles.pageSection}><NotificationsView client={client} timezone={identity.timezone} openTarget={notificationTarget} onUnreadChange={setUnread} notify={setToast} /></section> : null}
+      {screen === "notifications" ? <section className={styles.pageSection}>{studentAudienceGuaranteed ? <NotificationsView client={client} timezone={identity.timezone} openTarget={notificationTarget} onUnreadChange={setUnread} notify={setToast} /> : <article className={styles.openSection}><div className={styles.sectionHeading}><div><span>AUDIENCIA PROTEGIDA</span><h2>Notificaciones ocultas en Vista Alumno</h2></div></div><p className={styles.emptyText}>No mostraremos novedades de Staff en este portal mientras no podamos garantizar la audiencia de cada notificación.</p></article>}</section> : null}
       {screen === "profile" ? <section className={styles.pageSection}><ProfileSettingsView client={client} identity={identity} onIdentityPatch={onIdentityPatch} notify={setToast} /></section> : null}
       {screen === "preferences" ? <section className={styles.pageSection}><PreferencesSettingsView client={client} identity={identity} experience={experience} onIdentityPatch={onIdentityPatch} notify={setToast} /></section> : null}
     </main>
 
     <nav className={styles.bottomNav} aria-label="Portal CYA">
       <button type="button" className={screen === "home" ? styles.active : ""} onClick={() => go("home")}><House /><span>Inicio</span></button>
-      <button type="button" className={screen === "progress" ? styles.active : ""} onClick={() => go("progress")}><TrendingUp /><span>Progreso</span></button>
+      <button type="button" className={screen === "content" ? styles.active : ""} onClick={() => go("content")}><BookOpen /><span>Contenido</span></button>
       <div className={styles.formationNav}>
-        <button type="button" className={`${styles.formationMain} ${screen === "formation" ? styles.active : ""}`} onClick={() => goFormation("summary")}><BookOpen /><span>Mi formación</span></button>
-        <button type="button" className={styles.formationToggle} aria-label="Abrir apartados de Mi formación" aria-expanded={formationMenu} onClick={() => setFormationMenu((value) => !value)}><ChevronDown /></button>
+        <button type="button" className={`${styles.formationMain} ${screen === "formation" ? styles.active : ""}`} onClick={() => goFormation("progress")}><GraduationCap /><span>Mi Formación</span></button>
+        <button type="button" className={styles.formationToggle} aria-label="Abrir apartados de Mi Formación" aria-expanded={formationMenu} onClick={() => setFormationMenu((value) => !value)}><ChevronDown /></button>
       </div>
-      <button type="button" className={screen === "discover" ? styles.active : ""} onClick={() => go("discover")}><Compass /><span>Descubre</span></button>
+      <button type="button" className={screen === "events" ? styles.active : ""} onClick={() => go("events")}><CalendarDays /><span>Eventos</span></button>
       <button type="button" className={screen === "missions" ? styles.active : ""} onClick={() => go("missions")}><Target /><span>Misiones</span></button>
     </nav>
 
-    {formationMenu ? <div className={styles.formationSheet} role="menu" aria-label="Apartados de Mi formación"><div><strong>Mi formación</strong><button type="button" aria-label="Cerrar" onClick={() => setFormationMenu(false)}><X /></button></div><button type="button" onClick={() => goFormation("summary")}><Sparkles /> Resumen <ChevronRight /></button><button type="button" onClick={() => goFormation("practice")}><Target /> A practicar <ChevronRight /></button><button type="button" onClick={() => goFormation("classes")}><CalendarDays /> Clases realizadas <ChevronRight /></button><button type="button" onClick={() => goFormation("content")}><BookOpen /> Contenido <ChevronRight /></button></div> : null}
+    {formationMenu ? <div className={styles.formationSheet} role="menu" aria-label="Apartados de Mi Formación"><div><strong>Mi Formación</strong><button type="button" aria-label="Cerrar" onClick={() => setFormationMenu(false)}><X /></button></div><button type="button" onClick={() => goFormation("academy")}><GraduationCap /> Academia Online <ChevronRight /></button><button type="button" onClick={() => goFormation("classes")}><CalendarDays /> Mis clases <ChevronRight /></button><button type="button" onClick={() => goFormation("progress")}><TrendingUp /> Mi progreso <ChevronRight /></button></div> : null}
 
     {toast ? <div className={styles.toast}>{toast}</div> : null}
   </div>;
