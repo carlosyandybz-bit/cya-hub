@@ -1,7 +1,9 @@
 import { expect, type Page } from "@playwright/test";
 
 export type VisualExperience = "Profesor" | "Alumno" | "Administrador";
-type QaRole = "teacher" | "student" | "admin";
+export type StudentEntryState = "ONBOARDING_REQUIRED" | "PORTAL_READY";
+type QaRole = "teacher" | "student" | "student_onboarding" | "admin";
+type LoginOptions = { expectedStudentState?: StudentEntryState };
 
 function credentials(role: QaRole) {
   const prefix = `QA_${role.toUpperCase()}`;
@@ -27,7 +29,38 @@ function targetShell(page: Page, experience: VisualExperience) {
   return page.locator('[data-cya-account-menu][data-experience="admin"]:visible').first();
 }
 
-export async function loginAs(page: Page, role: QaRole, experience: VisualExperience) {
+async function waitForStudentEntryState(page: Page, timeout = 8_000): Promise<StudentEntryState> {
+  const portal = targetShell(page, "Alumno");
+  const onboarding = page.getByRole("heading", { name: "Completa tus datos personales", exact: true });
+  const deadline = Date.now() + timeout;
+
+  while (Date.now() < deadline) {
+    if (await onboarding.isVisible().catch(() => false)) return "ONBOARDING_REQUIRED";
+    if (await portal.isVisible().catch(() => false)) return "PORTAL_READY";
+    await page.waitForTimeout(100);
+  }
+
+  throw new Error("Authenticated student reached neither onboarding nor Portal CYA within the QA state-detection window.");
+}
+
+function expectedStudentState(role: QaRole, options?: LoginOptions): StudentEntryState {
+  return options?.expectedStudentState ?? (role === "student_onboarding" ? "ONBOARDING_REQUIRED" : "PORTAL_READY");
+}
+
+function assertStudentState(actual: StudentEntryState, expected: StudentEntryState) {
+  if (actual === expected) return;
+  if (expected === "PORTAL_READY") {
+    throw new Error("QA fixture expected portal-ready student but onboarding is required.");
+  }
+  throw new Error("QA onboarding-required fixture unexpectedly reached Portal CYA before completing onboarding.");
+}
+
+export async function loginAs(
+  page: Page,
+  role: QaRole,
+  experience: VisualExperience,
+  options?: LoginOptions,
+) {
   const { email, password } = credentials(role);
   await page.goto("/", { waitUntil: "domcontentloaded" });
   const emailInput = page.locator('input[name="email"]');
@@ -40,21 +73,31 @@ export async function loginAs(page: Page, role: QaRole, experience: VisualExperi
     await expect(emailInput).toBeHidden({ timeout: 20_000 });
   }
 
-  const nativeExperience = (role === "student" && experience === "Alumno") ||
+  const studentNative = (role === "student" || role === "student_onboarding") && experience === "Alumno";
+  const nativeExperience = studentNative ||
     (role === "teacher" && experience === "Profesor") ||
     (role === "admin" && experience === "Administrador");
   const shell = targetShell(page, experience);
 
-  if (nativeExperience) {
-    await expect(shell).toBeVisible({ timeout: 20_000 });
-    return;
+  if (studentNative) {
+    const state = await waitForStudentEntryState(page);
+    assertStudentState(state, expectedStudentState(role, options));
+    return { auth: "AUTHENTICATED" as const, studentEntry: state };
   }
 
-  if (await shell.isVisible({ timeout: 4_000 }).catch(() => false)) return;
+  if (nativeExperience) {
+    await expect(shell).toBeVisible({ timeout: 20_000 });
+    return { auth: "AUTHENTICATED" as const };
+  }
+
+  if (await shell.isVisible({ timeout: 4_000 }).catch(() => false)) {
+    return { auth: "AUTHENTICATED" as const };
+  }
 
   const menu = await openAccountMenu(page);
   const switchButton = menu.getByRole("button", { name: new RegExp(`^${experience}(?:,|\\.)`) });
   await expect(switchButton).toBeVisible({ timeout: 10_000 });
   await switchButton.click();
   await expect(shell).toBeVisible({ timeout: 20_000 });
+  return { auth: "AUTHENTICATED" as const };
 }
