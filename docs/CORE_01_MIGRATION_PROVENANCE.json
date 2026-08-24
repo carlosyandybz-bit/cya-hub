@@ -9,5 +9,34 @@
     "base_sha": "9bd740fa9b7dd153e937c1bff2eb32d3828c2954",
     "rule": "Historical artifacts remain classified by the snapshot inventory and are not required to fabricate missing provenance. Every migration authored after CORE-01 must be recorded here."
   },
-  "migrations": []
+  "migrations": [
+    {
+      "path": "supabase/migrations/20260822235000_bonus_authority_hardening_01.sql",
+      "migration_version": "20260822235000",
+      "operational_class": "CANONICA",
+      "applied_state": "PREPARADA_NO_APLICADA",
+      "provenance": {
+        "schema_version": 3,
+        "lifecycle_phase": "AUTHORING",
+        "owner": "CYA v3 — 06B — BILLING / BONOS / PAGOS",
+        "func_id": "FUNC-0225",
+        "authorship": {
+          "repository": "carlosyandybz-bit/cya-hub",
+          "base_sha": "fa5e67b912e1ec2bacf03f0f993337fec83cc578",
+          "pr_number": 137
+        },
+        "intended_targets": [
+          {
+            "environment": "staging",
+            "project_ref": "qlngfkzmncihtdzktcmd"
+          }
+        ],
+        "recovery": {
+          "strategy": "forward_fix",
+          "plan": "Candidate remains AUTHORING/PREPARADA_NO_APLICADA after pre-apply QA corrections on the same migration identity. Do not edit it after application; if a post-apply defect is later found, author a new reviewed forward-fix migration and preserve movement history, replay equivalence and terminal Billing invariants."
+        },
+        "application_evidence": null
+      }
+    }
+  ]
 }
