@@ -4,6 +4,7 @@ export type VisualExperience = "Profesor" | "Alumno" | "Administrador";
 export type StudentEntryState = "ONBOARDING_REQUIRED" | "PORTAL_READY";
 type QaRole = "teacher" | "student" | "student_onboarding" | "admin";
 type LoginOptions = { expectedStudentState?: StudentEntryState };
+export type LoginResult = { auth: "AUTHENTICATED"; studentEntry?: StudentEntryState };
 
 function credentials(role: QaRole) {
   const prefix = `QA_${role.toUpperCase()}`;
@@ -60,7 +61,7 @@ export async function loginAs(
   role: QaRole,
   experience: VisualExperience,
   options?: LoginOptions,
-) {
+): Promise<LoginResult> {
   const { email, password } = credentials(role);
   await page.goto("/", { waitUntil: "domcontentloaded" });
   const emailInput = page.locator('input[name="email"]');
@@ -82,16 +83,16 @@ export async function loginAs(
   if (studentNative) {
     const state = await waitForStudentEntryState(page);
     assertStudentState(state, expectedStudentState(role, options));
-    return { auth: "AUTHENTICATED" as const, studentEntry: state };
+    return { auth: "AUTHENTICATED", studentEntry: state };
   }
 
   if (nativeExperience) {
     await expect(shell).toBeVisible({ timeout: 20_000 });
-    return { auth: "AUTHENTICATED" as const };
+    return { auth: "AUTHENTICATED" };
   }
 
   if (await shell.isVisible({ timeout: 4_000 }).catch(() => false)) {
-    return { auth: "AUTHENTICATED" as const };
+    return { auth: "AUTHENTICATED" };
   }
 
   const menu = await openAccountMenu(page);
@@ -99,5 +100,5 @@ export async function loginAs(
   await expect(switchButton).toBeVisible({ timeout: 10_000 });
   await switchButton.click();
   await expect(shell).toBeVisible({ timeout: 20_000 });
-  return { auth: "AUTHENTICATED" as const };
+  return { auth: "AUTHENTICATED" };
 }
