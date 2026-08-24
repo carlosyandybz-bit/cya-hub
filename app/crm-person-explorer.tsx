@@ -2,7 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { BookmarkPlus, Filter, RefreshCw, Search, Settings2, Trash2, UsersRound } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./crm-person-explorer.module.css";
 
 type PersonRow = {
@@ -154,7 +154,7 @@ export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true); setError("");
     const [peopleResult, viewsResult] = await Promise.all([
       db.rpc("crm_person_explorer_snapshot"),
@@ -171,9 +171,12 @@ export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
     const current = nextViews.find((view) => viewToken(view) === activeView);
     if (current) setVisibleColumns(normalizeColumns(current.columns));
     setLoading(false);
-  }
+  }, [activeView, db]);
 
-  useEffect(() => { void load(); }, [db, refreshToken]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load, refreshToken]);
 
   const selectedView = views.find((view) => viewToken(view) === activeView) ?? null;
 

@@ -62,7 +62,6 @@ export function StudentMasterStaffControls() {
   const [people, setPeople] = useState<PersonLite[]>([]);
   const [terms, setTerms] = useState<Term[]>([]);
   const [preferences, setPreferences] = useState<Preferences | null>(null);
-  const [staffProfile, setStaffProfile] = useState<StaffProfile>({ teacher_notes: null, teaching_approach: null, work_priorities: null, strengths: null });
   const [locationText, setLocationText] = useState("");
   const [styleId, setStyleId] = useState("");
   const [roleId, setRoleId] = useState("");
@@ -81,52 +80,61 @@ export function StudentMasterStaffControls() {
   const roleTerms = useMemo(() => terms.filter((term) => term.taxonomy === "dance_role"), [terms]);
 
   useEffect(() => {
-    setClient(getRuntimeSupabaseClient());
-    const scan = () => setTarget(findMasterTarget());
-    scan();
+    const scan = () => {
+      setClient(getRuntimeSupabaseClient());
+      setTarget(findMasterTarget());
+    };
+    const timer = window.setTimeout(scan, 0);
     const observer = new MutationObserver(scan);
     observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    return () => {
+      window.clearTimeout(timer);
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {
     if (!open || !client || !target) return;
     let alive = true;
-    setBusy("loading"); setError(""); setNotice("");
-    void (async () => {
-      try {
-        const currentPerson = await resolvePerson(client, target.personId);
-        const [prefResult, profileResult, peopleResult, termsResult] = await Promise.all([
-          client.rpc("get_student_class_preferences", { p_person_id: currentPerson.id }),
-          client.from("student_profiles").select("teacher_notes,teaching_approach,work_priorities,strengths").eq("person_id", currentPerson.id).maybeSingle(),
-          client.from("people").select("id,display_name,internal_alias,email,phone").eq("active", true).order("display_name"),
-          client.from("catalog_terms").select("id,label,taxonomy").in("taxonomy", ["dance_style", "dance_role"]).eq("active", true).order("sort_order"),
-        ]);
-        if (!alive) return;
-        const failed = [prefResult, profileResult, peopleResult, termsResult].find((result) => result.error)?.error;
-        if (failed) throw failed;
-        const pref = (prefResult.data ?? { person_id: currentPerson.id }) as Preferences;
-        const profile = (profileResult.data ?? {}) as StaffProfile;
-        setPerson(currentPerson);
-        setPreferences(pref);
-        setStaffProfile(profile);
-        setPeople((peopleResult.data ?? []) as PersonLite[]);
-        setTerms((termsResult.data ?? []) as Term[]);
-        setLocationText(pref.default_location_text ?? "");
-        setStyleId(pref.default_style_term_id ? String(pref.default_style_term_id) : "");
-        setRoleId(pref.default_role_term_id ? String(pref.default_role_term_id) : "");
-        setDuration(String(pref.default_duration_minutes ?? 60));
-        setClassType(pref.default_class_type ?? "individual");
-        setPartnerId(pref.default_partner_person_id ? String(pref.default_partner_person_id) : "");
-        setTeacherNotes(profile.teacher_notes ?? "");
-        setTeachingApproach(profile.teaching_approach ?? "");
-        setWorkPriorities(profile.work_priorities ?? "");
-        setStrengths(profile.strengths ?? "");
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "No se han podido cargar las preferencias.");
-      } finally { if (alive) setBusy(""); }
-    })();
-    return () => { alive = false; };
+    const timer = window.setTimeout(() => {
+      setBusy("loading"); setError(""); setNotice("");
+      void (async () => {
+        try {
+          const currentPerson = await resolvePerson(client, target.personId);
+          const [prefResult, profileResult, peopleResult, termsResult] = await Promise.all([
+            client.rpc("get_student_class_preferences", { p_person_id: currentPerson.id }),
+            client.from("student_profiles").select("teacher_notes,teaching_approach,work_priorities,strengths").eq("person_id", currentPerson.id).maybeSingle(),
+            client.from("people").select("id,display_name,internal_alias,email,phone").eq("active", true).order("display_name"),
+            client.from("catalog_terms").select("id,label,taxonomy").in("taxonomy", ["dance_style", "dance_role"]).eq("active", true).order("sort_order"),
+          ]);
+          if (!alive) return;
+          const failed = [prefResult, profileResult, peopleResult, termsResult].find((result) => result.error)?.error;
+          if (failed) throw failed;
+          const pref = (prefResult.data ?? { person_id: currentPerson.id }) as Preferences;
+          const profile = (profileResult.data ?? {}) as StaffProfile;
+          setPerson(currentPerson);
+          setPreferences(pref);
+          setPeople((peopleResult.data ?? []) as PersonLite[]);
+          setTerms((termsResult.data ?? []) as Term[]);
+          setLocationText(pref.default_location_text ?? "");
+          setStyleId(pref.default_style_term_id ? String(pref.default_style_term_id) : "");
+          setRoleId(pref.default_role_term_id ? String(pref.default_role_term_id) : "");
+          setDuration(String(pref.default_duration_minutes ?? 60));
+          setClassType(pref.default_class_type ?? "individual");
+          setPartnerId(pref.default_partner_person_id ? String(pref.default_partner_person_id) : "");
+          setTeacherNotes(profile.teacher_notes ?? "");
+          setTeachingApproach(profile.teaching_approach ?? "");
+          setWorkPriorities(profile.work_priorities ?? "");
+          setStrengths(profile.strengths ?? "");
+        } catch (cause) {
+          setError(cause instanceof Error ? cause.message : "No se han podido cargar las preferencias.");
+        } finally { if (alive) setBusy(""); }
+      })();
+    }, 0);
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
   }, [client, open, target]);
 
   async function savePreferences() {
@@ -172,7 +180,6 @@ export function StudentMasterStaffControls() {
     });
     if (result.error) setError(result.error.message);
     else {
-      setStaffProfile((result.data ?? {}) as StaffProfile);
       setNotice("Perfil docente interno guardado.");
     }
     setBusy("");

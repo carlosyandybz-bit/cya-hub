@@ -70,11 +70,14 @@ export function StudentPersonalMediaOverlay({ close, personId: personIdOverride 
   }, [readOnly]);
 
   useEffect(() => {
-    if (!client || !personId) {
-      setError("No se ha podido identificar la ficha del alumno.");
-      return;
-    }
-    void load(client, personId).catch((reason) => setError(reason instanceof Error ? reason.message : "No se pudo cargar la multimedia."));
+    const timer = window.setTimeout(() => {
+      if (!client || !personId) {
+        setError("No se ha podido identificar la ficha del alumno.");
+        return;
+      }
+      void load(client, personId).catch((reason) => setError(reason instanceof Error ? reason.message : "No se pudo cargar la multimedia."));
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [client, personId, load]);
 
   function chooseFile(event: ChangeEvent<HTMLInputElement>, expectedType: "image" | "video") {

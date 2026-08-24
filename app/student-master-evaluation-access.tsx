@@ -45,24 +45,34 @@ export function StudentMasterEvaluationAccess() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setClient(getRuntimeSupabaseClient());
-    const scan = () => setTarget(findMasterTarget());
-    scan();
+    const scan = () => {
+      setClient(getRuntimeSupabaseClient());
+      setTarget(findMasterTarget());
+    };
+    const timer = window.setTimeout(scan, 0);
     const observer = new MutationObserver(scan);
     observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    return () => {
+      window.clearTimeout(timer);
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {
     if (!open || !client || !target) return;
     let alive = true;
-    setLoading(true);
-    setError("");
-    void resolvePerson(client, target.personId)
-      .then((resolved) => { if (alive) setPerson(resolved); })
-      .catch((cause) => { if (alive) setError(cause instanceof Error ? cause.message : "No se ha podido abrir la evaluación."); })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      setError("");
+      void resolvePerson(client, target.personId)
+        .then((resolved) => { if (alive) setPerson(resolved); })
+        .catch((cause) => { if (alive) setError(cause instanceof Error ? cause.message : "No se ha podido abrir la evaluación."); })
+        .finally(() => { if (alive) setLoading(false); });
+    }, 0);
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
   }, [client, open, target]);
 
   if (!target) return null;
