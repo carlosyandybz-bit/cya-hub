@@ -187,7 +187,7 @@ insert into public.credit_grant_pause_periods(
   grant_id,paused_at,resumed_at,pause_reason,resume_reason,paused_by,resumed_by
 )
 values(
-  4106,clock_timestamp()-interval '5 days',clock_timestamp()-interval '3 days',
+  4106,now()-interval '5 days',now()-interval '3 days',
   'QA closed pause','QA resumed',
   '11111111-1111-1111-1111-111111111111',
   '11111111-1111-1111-1111-111111111111'
