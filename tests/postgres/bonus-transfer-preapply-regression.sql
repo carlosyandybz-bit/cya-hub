@@ -246,7 +246,7 @@ from (
 
 select
   (r->>'reversal_id')::bigint as reversal_id,
-  (r->>'idempotent_replay')::boolean as second_replay
+  case when (r->>'idempotent_replay')::boolean then 1 else 0 end as second_replay
 from (
   select public.reverse_individual_credit_to_pair_transfer(
     :e1_t1,'qa-e-r1','QA replay reversal'
@@ -254,7 +254,7 @@ from (
 ) q
 \gset er2_
 
-select qa_transfer.assert_eq(:er2_second_replay::integer,1,'case E replay flag');
+select qa_transfer.assert_eq(:er2_second_replay,1,'case E replay flag');
 select qa_transfer.assert_eq(:er1_reversal_id,:er2_reversal_id,'case E same reversal id');
 select qa_transfer.assert_eq(
   (select count(*) from public.credit_transfer_operations
