@@ -440,8 +440,9 @@ execute function private.reject_credit_transfer_history_mutation();
 create or replace function private.assert_credit_transfer_operation_balanced()
 returns trigger
 language plpgsql
+security definer
 set search_path = ''
-as $$
+as $
 declare
   v_out_count integer;
   v_in_count integer;
