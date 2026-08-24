@@ -1,0 +1,71 @@
+name: Bonus Transfer PRE-APPLY Disposable DB
+
+on:
+  pull_request:
+    branches: [staging]
+    paths:
+      - "supabase/migrations/20260824115943_bonus_individual_to_pair_transfer_foundation_01.sql"
+      - "tests/bonus-individual-to-pair-transfer-foundation.test.mjs"
+      - "tests/postgres/bonus-transfer-preapply-*.sql"
+      - "scripts/qa/run-bonus-transfer-preapply-disposable.sh"
+      - ".github/workflows/bonus-transfer-preapply-disposable.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bonus-transfer-preapply-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  disposable-postgres:
+    name: PostgreSQL 17.6 runtime + concurrency
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cya_transfer_qa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cya_transfer_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/cya_transfer_qa
+
+    steps:
+      - name: Checkout exact PR candidate
+        uses: actions/checkout@v6
+
+      - name: Install PostgreSQL client
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client jq
+          psql --version
+
+      - name: Assert disposable target only
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$DATABASE_URL" == "postgresql://postgres:postgres@127.0.0.1:5432/cya_transfer_qa" ]]
+          if grep -q "qlngfkzmncihtdzktcmd" <<<"$DATABASE_URL"; then
+            echo "::error::Disposable PRE-APPLY harness must never target Supabase STAGING."
+            exit 1
+          fi
+
+      - name: Run exact migration runtime and multi-session regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/qa/run-bonus-transfer-preapply-disposable.sh

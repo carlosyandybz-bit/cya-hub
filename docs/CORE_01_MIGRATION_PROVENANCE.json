@@ -9,5 +9,34 @@
     "base_sha": "9bd740fa9b7dd153e937c1bff2eb32d3828c2954",
     "rule": "Historical artifacts remain classified by the snapshot inventory and are not required to fabricate missing provenance. Every migration authored after CORE-01 must be recorded here."
   },
-  "migrations": []
+  "migrations": [
+    {
+      "path": "supabase/migrations/20260824115943_bonus_individual_to_pair_transfer_foundation_01.sql",
+      "migration_version": "20260824115943",
+      "operational_class": "CANONICA",
+      "applied_state": "PREPARADA_NO_APLICADA",
+      "provenance": {
+        "schema_version": 3,
+        "lifecycle_phase": "AUTHORING",
+        "owner": "CYA v3 — 03.3 — CORE / DATA / WORKFLOW / SECURITY",
+        "func_id": "FUNC-0113",
+        "authorship": {
+          "repository": "carlosyandybz-bit/cya-hub",
+          "base_sha": "fa5e67b912e1ec2bacf03f0f993337fec83cc578",
+          "pr_number": 139
+        },
+        "intended_targets": [
+          {
+            "environment": "staging",
+            "project_ref": "qlngfkzmncihtdzktcmd"
+          }
+        ],
+        "recovery": {
+          "strategy": "forward_fix",
+          "plan": "The candidate remains AUTHORING/PREPARADA_NO_APLICADA until independent QA PRE-APPLY and separately authorized Release. After any real application this migration becomes immutable; defects must be corrected only by a new reviewed forward-fix while preserving append-only transfer operations and ledger history."
+        },
+        "application_evidence": null
+      }
+    }
+  ]
 }
