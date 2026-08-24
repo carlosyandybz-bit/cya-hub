@@ -5,6 +5,7 @@ import { CheckCircle2, CircleDot, LockKeyhole, Settings2, Sparkles } from "lucid
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { getRuntimeSupabaseClient } from "./supabase-runtime";
+import { staffPrimaryName } from "./staff-person-name";
 import styles from "./evaluation-post-class.module.css";
 
 type Participant = { person_id:number; role_term_id:number|null; level_term_id:number|null };
@@ -70,7 +71,7 @@ type Descriptor = {
   sort_order:number;
 };
 type ScaleTerm = { id:number; label:string; sort_order:number };
-type Person = { id:number; display_name:string };
+type Person = { id:number; display_name:string; internal_alias:string|null };
 type Term = { id:number; label:string };
 type StyleTerm = { id:number; term_key:string };
 type ClassEvent = { person_id:number; content_id:number };
@@ -279,7 +280,7 @@ export function EvaluationPostClassGate({ classId, onCompleted }: { classId: num
       client.from("student_aptitude_progress")
         .select("id,person_id,style_term_id,role_term_id,level_term_id,aptitude_term_id,raw_score,effective_score,pending_milestone_id")
         .in("person_id",personIds),
-      client.from("people").select("id,display_name").in("id",personIds),
+      client.from("people").select("id,display_name,internal_alias").in("id",personIds),
       client.from("catalog_terms").select("id,label,sort_order").eq("taxonomy","evaluation_scale").eq("active",true).order("sort_order"),
       client.from("class_content_events").select("person_id,content_id").eq("class_id",item.id),
     ]);
@@ -362,7 +363,7 @@ export function EvaluationPostClassGate({ classId, onCompleted }: { classId: num
   const termLabel=(id:number) => terms.find((term) => term.id===id)?.label ?? "—";
   const aptitudeLabel=(id:number) => termLabel(id)==="—" ? "Aptitud" : termLabel(id);
   const styleLabel=(id:number) => termLabel(id)==="—" ? "Estilo" : termLabel(id);
-  const personName=(id:number) => people.find((person) => person.id===id)?.display_name ?? "Alumno";
+  const personName=(id:number) => { const person=people.find((candidate) => candidate.id===id); return person?staffPrimaryName(person):"Alumno"; };
   const sessionFor=(row:ProgressRow) => sessions.find((session) =>
     session.person_id===row.person_id &&
     session.style_term_id===row.style_term_id &&

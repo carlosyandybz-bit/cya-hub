@@ -5,11 +5,13 @@ import { FormEvent, useEffect, useState } from "react";
 import { CheckCircle2, GitMerge, Plus, Search, X } from "lucide-react";
 import { CountrySelect } from "./country-field";
 import { RuntimeForm } from "./runtime-form";
+import { staffPrimaryName } from "./staff-person-name";
 
 export type EditablePersonIdentity = {
   id: number;
   auth_user_id: string | null;
   display_name: string;
+  internal_alias?: string | null;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
@@ -34,6 +36,7 @@ type StudentIdentityEditorProps = {
 type MergeCandidate = {
   person_id: number;
   display_name: string;
+  internal_alias?: string | null;
   email: string | null;
   phone: string | null;
   lifecycle_status: string;
@@ -59,6 +62,7 @@ export function StudentIdentityEditor({ client, person, profile, close, saved }:
           onSaved={async () => { await saved(); close(); }}
         />
 
+        <InternalAliasField client={client} person={person} saved={saved} />
         <InstagramIdentityField client={client} personId={person.id} saved={saved} />
 
         <div className="actions">
@@ -70,6 +74,32 @@ export function StudentIdentityEditor({ client, person, profile, close, saved }:
       </div>
     </section>
   </div>;
+}
+
+function InternalAliasField({ client, person, saved }: { client: SupabaseClient; person: EditablePersonIdentity; saved: () => Promise<void> }) {
+  const [value, setValue] = useState(person.internal_alias ?? "");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true); setMessage(""); setError("");
+    const result = await client.rpc("save_person_internal_alias", { p_person_id: person.id, p_alias: value.trim() || null });
+    if (result.error) setError(result.error.message);
+    else {
+      setValue(typeof result.data === "string" ? result.data : "");
+      setMessage("Alias interno guardado.");
+      await saved().catch(() => undefined);
+    }
+    setBusy(false);
+  }
+
+  return <form className="form" onSubmit={submit} aria-label="Alias interno de Staff">
+    <label className="field field-wide"><span>Alias interno · solo Staff</span><div style={{ display: "flex", gap: 8 }}><input value={value} onChange={(event) => { setValue(event.target.value); setMessage(""); setError(""); }} placeholder="Nombre principal para Profesor y Admin" autoComplete="off" /><button className="btn ghost" disabled={busy}>{busy ? "Guardando…" : "Guardar alias"}</button></div><small>No se muestra al alumno ni sustituye su identidad real en comunicaciones.</small></label>
+    {message ? <p className="notice success" role="status">{message}</p> : null}
+    {error ? <p className="error" role="alert">{error}</p> : null}
+  </form>;
 }
 
 function InstagramIdentityField({ client, personId, saved }: { client: SupabaseClient; personId: number; saved: () => Promise<void> }) {
@@ -146,7 +176,10 @@ function SimpleIdentityMerge({ client, person, saved, close }: { client: Supabas
         p_query: value,
       });
       if (result.error) throw result.error;
-      setResults((result.data ?? []) as MergeCandidate[]);
+      const candidates = (result.data ?? []) as MergeCandidate[];
+      const aliases = candidates.length ? await client.from("people").select("id,internal_alias").in("id", candidates.map((candidate) => candidate.person_id)) : null;
+      const aliasById = new Map(((aliases?.data ?? []) as Array<{ id: number; internal_alias: string | null }>).map((item) => [item.id, item.internal_alias]));
+      setResults(candidates.map((candidate) => ({ ...candidate, internal_alias: aliasById.get(candidate.person_id) ?? null })));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo realizar la búsqueda.");
     } finally {
@@ -195,8 +228,8 @@ function SimpleIdentityMerge({ client, person, saved, close }: { client: Supabas
 
     {results.length ? <div className="form">
       {results.map((candidate) => <div className="notice" key={candidate.person_id}>
-        <strong>{candidate.display_name}</strong>
-        <p>{[candidate.phone, candidate.email].filter(Boolean).join(" · ") || "Sin teléfono ni email"}</p>
+        <strong>{staffPrimaryName(candidate)}</strong>
+        <p>{[candidate.internal_alias ? candidate.display_name : null, candidate.phone, candidate.email].filter(Boolean).join(" · ") || "Sin teléfono ni email"}</p>
         <div className="actions">
           <button type="button" className="btn" onClick={() => void accept(candidate)} disabled={mergingId !== null}>
             <CheckCircle2 size={17}/>{mergingId === candidate.person_id ? "Fusionando…" : "Aceptar"}

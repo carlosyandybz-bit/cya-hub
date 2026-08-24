@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardCheck, LockKeyhole, Setti
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getRuntimeSupabaseClient } from "./supabase-runtime";
+import { staffPrimaryName } from "./staff-person-name";
 import styles from "./evaluation-initial-class.module.css";
 
 type Participant={person_id:number;role_term_id:number|null;level_term_id:number|null};
@@ -18,7 +19,7 @@ type Milestone={id:number;style_term_id:number;role_term_id:number;level_term_id
 type Descriptor={id:number;milestone_id:number;label:string;description:string|null;internal_score:number;sort_order:number};
 type ScaleTerm={id:number;label:string;sort_order:number};
 type Term={id:number;label:string;sort_order:number};
-type Person={id:number;display_name:string};
+type Person={id:number;display_name:string;internal_alias:string|null};
 
 const staffRoles=new Set(["admin","teacher_admin","teacher"]);
 
@@ -110,7 +111,7 @@ export function InitialEvaluationClassGate(){
       client.from("student_aptitude_progress").select("id,person_id,style_term_id,role_term_id,level_term_id,aptitude_term_id,effective_score").eq("person_id",target.participant.person_id).eq("style_term_id",target.classRow.style_term_id).eq("role_term_id",target.participant.role_term_id).eq("level_term_id",target.participant.level_term_id),
       client.from("student_evaluations").select("id,session_id,aptitude_term_id,answer_scale_term_id,descriptor_id,answer_label,reviewed_at").eq("session_id",nextSession.id),
       client.from("catalog_terms").select("id,label,sort_order").eq("taxonomy","evaluation_scale").eq("active",true).order("sort_order"),
-      client.from("people").select("id,display_name").eq("id",target.participant.person_id).single(),
+      client.from("people").select("id,display_name,internal_alias").eq("id",target.participant.person_id).single(),
     ]);
     const baseError=progressResult.error||evaluationResult.error||scaleResult.error||personResult.error;
     if(baseError){setError(baseError.message);setBusy("");return;}
@@ -185,7 +186,7 @@ export function InitialEvaluationClassGate(){
   return <div className={styles.backdrop} role="dialog" aria-modal="true" aria-label="Evaluación inicial guiada">
     <section className={styles.panel}>
       <header className={styles.header}>
-        <div><p>Durante la clase · diagnóstico inicial</p><h1>Evaluación inicial guiada</h1><span>{person?.display_name??"Alumno"} · clase iniciada {dateLabel(candidate.classRow.started_at??candidate.classRow.scheduled_start_at)}</span></div>
+        <div><p>Durante la clase · diagnóstico inicial</p><h1>Evaluación inicial guiada</h1><span>{person?staffPrimaryName(person):"Alumno"} · clase iniciada {dateLabel(candidate.classRow.started_at??candidate.classRow.scheduled_start_at)}</span></div>
         <div className={styles.counter}><ClipboardCheck/><strong>{reviewedCount}/{sortedProgress.length}</strong><small>contestadas</small></div>
       </header>
 

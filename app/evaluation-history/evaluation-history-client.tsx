@@ -4,9 +4,10 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { ArrowLeft, Award, BookOpenCheck, CalendarDays, CheckCircle2, CircleUserRound, Clock3, LockKeyhole, TrendingUp, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { staffPrimaryName } from "../staff-person-name";
 import styles from "./evaluation-history.module.css";
 
-type Person = { id:number; display_name:string; active:boolean };
+type Person = { id:number; display_name:string; internal_alias:string|null; active:boolean };
 type StudentProfile = { person_id:number; active:boolean };
 type Term = { id:number; taxonomy:string; label:string; sort_order:number };
 type SessionRow = { id:number; person_id:number; class_id:number|null; style_term_id:number; role_term_id:number; level_term_id:number; evaluation_kind:string; status:string; note:string|null; started_at:string; completed_at:string|null; created_at:string };
@@ -105,7 +106,7 @@ export default function EvaluationHistoryClient(){
     if(!client)return;setBusy("base");setError("");
     const [profileResult,peopleResult,termResult,milestoneResult,descriptorResult,contentResult,recommendationResult]=await Promise.all([
       client.from("student_profiles").select("person_id,active").eq("active",true),
-      client.from("people").select("id,display_name,active").eq("active",true).order("display_name"),
+      client.from("people").select("id,display_name,internal_alias,active").eq("active",true).order("display_name"),
       client.from("catalog_terms").select("id,taxonomy,label,sort_order").in("taxonomy",["dance_style","dance_role","dance_level","aptitude"]).eq("active",true).order("sort_order"),
       client.from("evaluation_milestones").select("id,aptitude_term_id,label,threshold_score,active"),
       client.from("evaluation_descriptors").select("id,milestone_id,label,description,internal_score,active"),
@@ -182,7 +183,7 @@ export default function EvaluationHistoryClient(){
   return <main className={styles.page}>
     <header className={styles.top}><Link href="/" aria-label="Volver"><ArrowLeft/></Link><div><span>Alumnado · Evaluaciones</span><h1>Histórico y evolución</h1><p>Explora cualquier momento del aprendizaje y compara las respuestas del profesor con la evaluación inmediatamente anterior.</p></div><Link className={styles.settingsLink} href="/evaluation-settings">Configurar evaluación</Link></header>
 
-    <section className={styles.filters}><label><span>Alumno</span><select value={personId||""} onChange={(event)=>choosePerson(Number(event.target.value))}><option value="" disabled>Selecciona alumno</option>{students.map((person)=><option key={person.id} value={person.id}>{person.display_name}</option>)}</select></label><label><span>Contexto</span><select value={context?.key??""} onChange={(event)=>chooseContext(event.target.value)} disabled={!contexts.length}>{contexts.length?contexts.map((item)=><option key={item.key} value={item.key}>{termLabel(item.styleId)} · {termLabel(item.roleId)} · {termLabel(item.levelId)}</option>):<option value="">Sin evaluaciones</option>}</select></label><div className={styles.identity}><CircleUserRound/><div><span>Alumno seleccionado</span><strong>{student?.display_name??"—"}</strong></div></div></section>
+    <section className={styles.filters}><label><span>Alumno</span><select value={personId||""} onChange={(event)=>choosePerson(Number(event.target.value))}><option value="" disabled>Selecciona alumno</option>{students.map((person)=><option key={person.id} value={person.id}>{staffPrimaryName(person)}</option>)}</select></label><label><span>Contexto</span><select value={context?.key??""} onChange={(event)=>chooseContext(event.target.value)} disabled={!contexts.length}>{contexts.length?contexts.map((item)=><option key={item.key} value={item.key}>{termLabel(item.styleId)} · {termLabel(item.roleId)} · {termLabel(item.levelId)}</option>):<option value="">Sin evaluaciones</option>}</select></label><div className={styles.identity}><CircleUserRound/><div><span>Alumno seleccionado</span><strong>{student?staffPrimaryName(student):"—"}</strong></div></div></section>
 
     {error?<div className={styles.error}>{error}</div>:null}
     {busy==="person"||busy==="base"?<div className={styles.loading}><span className={styles.spinner}/><p>Cargando evolución…</p></div>:null}

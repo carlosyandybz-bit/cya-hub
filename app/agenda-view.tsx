@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CyaIcon } from "./cya-icon";
 import type { CalendarItem, CalendarSnapshot } from "./v14-types";
 import { GoogleCalendarSync } from "./google-calendar-sync";
+import { staffPrimaryName, staffRealNameWhenAliased } from "./staff-person-name";
 
 type CalendarMode = "day" | "week" | "month" | "list";
 type CalendarType = CalendarItem["type"];
@@ -23,6 +24,7 @@ type VisualRow = { external_calendar_id: string; calendar_name: string; icon_sto
 type PendingParticipant = {
   person_id: number;
   display_name: string;
+  internal_alias?: string | null;
   phone: string | null;
   country_code: string | null;
   confirmation_status: string;
@@ -209,7 +211,13 @@ export function AgendaView({ client, timezone, schedule, openClass, notify }: Ag
     else setSnapshot(snapshotResult.data as CalendarSnapshot);
     if (!visualResult.error) setVisuals((visualResult.data ?? []) as VisualRow[]);
     if (confirmationResult.error) notify(confirmationResult.error.message);
-    else setPendingConfirmations((confirmationResult.data ?? []) as PendingConfirmationClass[]);
+    else {
+      const rows = (confirmationResult.data ?? []) as PendingConfirmationClass[];
+      const ids = [...new Set(rows.flatMap((item) => item.pending_participants.map((person) => person.person_id)))];
+      const aliasResult = ids.length ? await client.from("people").select("id,internal_alias").in("id", ids) : null;
+      const aliases = new Map(((aliasResult?.data ?? []) as Array<{ id: number; internal_alias: string | null }>).map((person) => [person.id, person.internal_alias]));
+      setPendingConfirmations(rows.map((item) => ({ ...item, pending_participants: item.pending_participants.map((person) => ({ ...person, internal_alias: aliases.get(person.person_id) ?? null })) })));
+    }
     setLoading(false);
   }, [client, notify, range.from, range.to]);
 
@@ -302,7 +310,7 @@ export function AgendaView({ client, timezone, schedule, openClass, notify }: Ag
         <div className="class-confirmation-agenda-people">{item.pending_participants.map((person) => {
           const href = confirmationWhatsAppHref(item, person);
           return <div key={person.person_id} className="class-confirmation-agenda-person">
-            <span><strong>{person.display_name}</strong><small>Pendiente de confirmar</small></span>
+            <span><strong>{staffPrimaryName(person)}</strong><small>{staffRealNameWhenAliased(person) ? `${person.display_name} · ` : ""}Pendiente de confirmar</small></span>
             {href ? <a href={href} target="_blank" rel="noopener noreferrer"><MessageCircle /> Pedir por WhatsApp</a> : <span className="class-confirmation-no-phone">Sin teléfono</span>}
           </div>;
         })}</div>

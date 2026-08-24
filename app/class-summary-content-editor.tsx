@@ -3,6 +3,8 @@
 import { BookOpenCheck, CheckCircle2, Plus, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getRuntimeSupabaseClient } from "./supabase-runtime";
+import { ContentStatusControl, CorrectionQuickControls } from "./content-quick-controls";
+import { staffPrimaryName } from "./staff-person-name";
 import styles from "./class-summary-content-editor.module.css";
 
 type Participant = {
@@ -11,7 +13,7 @@ type Participant = {
   level_term_id: number | null;
 };
 
-type Student = { id: number; display_name: string };
+type Student = { id: number; display_name: string; internal_alias?: string | null };
 
 type Assignment = {
   id: number;
@@ -52,9 +54,11 @@ const kindLabels: Record<string, string> = {
   exercise: "Ejercicio",
   sequence: "Secuencia",
 };
+const correctionStatusOptions = [["pending", "Pendiente de corrección"], ["in_correction", "En corrección"], ["corrected", "Corregido"]] as const;
+const learningStatusOptions = [["pending", "Pendiente"], ["explained", "Explicada"]] as const;
 
 function assignmentLabel(type: string, status: string) {
-  if (type === "correction") return status === "corrected" ? "Corregida" : "Pendiente";
+  if (type === "correction") return correctionStatusOptions.find(([value]) => value === status)?.[1] ?? status;
   if (type === "exercise") return status === "completed" ? "Realizado" : status === "active" ? "Activo" : "Pendiente";
   return status === "explained" ? "Explicada" : "Pendiente";
 }
@@ -92,7 +96,8 @@ export function ClassSummaryContentEditor({
   const [importance, setImportance] = useState(50);
 
   const participant = participants.find((row) => row.person_id === personId) ?? participants[0] ?? null;
-  const studentName = students.find((student) => student.id === personId)?.display_name ?? "Alumno";
+  const currentStudent = students.find((student) => student.id === personId);
+  const studentName = currentStudent ? staffPrimaryName(currentStudent) : "Alumno";
 
   const loadContext = useCallback(async () => {
     const client = getRuntimeSupabaseClient();
@@ -297,14 +302,10 @@ export function ClassSummaryContentEditor({
           <div><strong>{content.title}</strong><small>{assignmentLabel(content.content_type, assignment.assignment_status)}</small></div>
         </div>
         {content.content_type === "correction" ? (
-          <div className={styles.controls}>
-            <label><span>Estado</span><select disabled={disabled} value={assignment.assignment_status} onChange={(event) => void updateCorrection(assignment, { status: event.target.value })}><option value="pending">Pendiente</option><option value="corrected">Corregida</option></select></label>
-            {assignment.snapshot_measurement_mode === "frequency" || assignment.snapshot_measurement_mode === "both" ? <label><span>Frecuencia</span><select disabled={disabled} value={assignment.current_frequency ?? 0} onChange={(event) => void updateCorrection(assignment, { frequency: Number(event.target.value) })}>{[0,25,50,75,100].map((value) => <option key={value}>{value}</option>)}</select></label> : null}
-            {assignment.snapshot_measurement_mode === "importance" || assignment.snapshot_measurement_mode === "both" ? <label><span>Importancia</span><select disabled={disabled} value={assignment.current_importance ?? 0} onChange={(event) => void updateCorrection(assignment, { importance: Number(event.target.value) })}>{[0,25,50,75,100].map((value) => <option key={value}>{value}</option>)}</select></label> : null}
-          </div>
+          <div className={styles.controls}><CorrectionQuickControls status={assignment.assignment_status} statusOptions={correctionStatusOptions} frequency={assignment.current_frequency} importance={assignment.current_importance} measurementMode={assignment.snapshot_measurement_mode} disabled={disabled} onStatus={(status) => updateCorrection(assignment, { status })} onFrequency={(frequency) => updateCorrection(assignment, { frequency })} onImportance={(importance) => updateCorrection(assignment, { importance })} /></div>
         ) : (
           <div className={styles.controls}>
-            <label><span>Estado</span><select disabled={disabled} value={assignment.assignment_status} onChange={(event) => void updateLearning(assignment, event.target.value)}><option value="pending">Pendiente</option><option value="explained">Explicada</option></select></label>
+            <ContentStatusControl value={assignment.assignment_status} options={learningStatusOptions} disabled={disabled} onChange={(status) => updateLearning(assignment, status)} />
             {assignment.assignment_status === "explained" ? <button type="button" disabled={Boolean(busy)} onClick={() => void markReviewed(assignment.content_id, content.content_type)}>Marcar repasada hoy</button> : null}
           </div>
         )}
@@ -322,7 +323,7 @@ export function ClassSummaryContentEditor({
 
       {open ? (
         <div className={styles.editor}>
-          {participants.length > 1 ? <div className={styles.people}>{participants.map((row) => <button type="button" key={row.person_id} className={personId === row.person_id ? styles.active : ""} onClick={() => setPersonId(row.person_id)}>{students.find((student) => student.id === row.person_id)?.display_name ?? "Alumno"}</button>)}</div> : <div className={styles.singlePerson}><strong>{studentName}</strong></div>}
+          {participants.length > 1 ? <div className={styles.people}>{participants.map((row) => { const student = students.find((candidate) => candidate.id === row.person_id); return <button type="button" key={row.person_id} className={personId === row.person_id ? styles.active : ""} onClick={() => setPersonId(row.person_id)}>{student ? staffPrimaryName(student) : "Alumno"}</button>; })}</div> : <div className={styles.singlePerson}><strong>{studentName}</strong></div>}
 
           <div className={styles.sectionHead}><div><p>Trabajo registrado</p><h3>Lo que consta en esta clase</h3></div><span>{workedContentIds.size}</span></div>
           {loading ? <div className={styles.empty}>Cargando…</div> : null}

@@ -3,10 +3,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CheckCircle2, Plus, Settings, WalletCards } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { staffPrimaryName } from "./staff-person-name";
 import styles from "./feedback-online.module.css";
 
 type Product = { id: number; name: string; description: string | null; price_cents: number | null; currency: string; target_response_hours: number | null; active: boolean };
-type Person = { id: number; display_name: string; active: boolean };
+type Person = { id: number; display_name: string; internal_alias: string | null; active: boolean };
 type Order = { id: number; person_id: number; product_id: number; total_price_cents: number; currency: string; payment_status: string; requested_at: string };
 type Ledger = { id: number; person_id: number; movement_type: string; delta_credits: number; note: string | null; created_at: string };
 type RequestRow = { id: number; person_id: number; status: string; submitted_at: string | null; completed_at: string | null };
@@ -42,7 +43,7 @@ export function FeedbackOnlineAdmin({ client, notify }: Props) {
     setError("");
     const [productResult, peopleResult, ordersResult, ledgerResult, requestsResult] = await Promise.all([
       client.from("feedback_products").select("id,name,description,price_cents,currency,target_response_hours,active").order("sort_order").limit(1).maybeSingle(),
-      client.from("people").select("id,display_name,active").eq("active", true).order("display_name"),
+      client.from("people").select("id,display_name,internal_alias,active").eq("active", true).order("display_name"),
       client.from("feedback_credit_orders").select("id,person_id,product_id,total_price_cents,currency,payment_status,requested_at").order("requested_at", { ascending: false }).limit(100),
       client.from("feedback_credit_ledger").select("id,person_id,movement_type,delta_credits,note,created_at").order("created_at", { ascending: false }).limit(500),
       client.from("feedback_requests").select("id,person_id,status,submitted_at,completed_at").order("created_at", { ascending: false }).limit(200),
@@ -70,7 +71,7 @@ export function FeedbackOnlineAdmin({ client, notify }: Props) {
   const balanceByPerson = useMemo(() => ledger.reduce<Map<number, number>>((map, row) => map.set(row.person_id, (map.get(row.person_id) || 0) + Number(row.delta_credits || 0)), new Map()), [ledger]);
   const activeRequests = requests.filter((row) => ["submitted", "in_review"].includes(row.status));
   const completedRequests = requests.filter((row) => row.status === "completed");
-  const personName = (id: number) => people.find((person) => person.id === id)?.display_name || `Persona ${id}`;
+  const personName = (id: number) => { const person = people.find((candidate) => candidate.id === id); return person ? staffPrimaryName(person) : `Persona ${id}`; };
 
   async function saveProduct() {
     const priceCents = centsFromInput(price);
@@ -129,7 +130,7 @@ export function FeedbackOnlineAdmin({ client, notify }: Props) {
 
     {pendingOrders.length ? <article className="card pad"><div className="card-head"><div><p className="eyebrow">Compras</p><h3>Pendientes de confirmación</h3></div><span className="badge">{pendingOrders.length}</span></div><div className={styles.adminRows}>{pendingOrders.map((order) => <div key={order.id}><span><strong>{personName(order.person_id)}</strong><small>{money(order.total_price_cents, order.currency)} · solicitado {dateTime(order.requested_at)}</small></span><button className="btn" type="button" disabled={busy === `order-${order.id}`} onClick={() => void confirmOrder(order.id)}><CheckCircle2 /> {busy === `order-${order.id}` ? "Confirmando…" : "Confirmar pago"}</button></div>)}</div></article> : null}
 
-    <article className="card pad"><div className="card-head"><div><p className="eyebrow">Créditos</p><h3>Añadir o ajustar</h3></div><WalletCards /></div><div className={styles.adminFields}><label className="field"><span>Persona</span><select value={personId} onChange={(event) => setPersonId(event.target.value)}>{people.map((person) => <option key={person.id} value={person.id}>{person.display_name} · saldo {balanceByPerson.get(person.id) || 0}</option>)}</select></label><div className={styles.adminAction}><button className="btn ghost" type="button" disabled={product?.price_cents == null || busy === "paid"} onClick={() => void addPaidCredit()}><Plus /> {busy === "paid" ? "Añadiendo…" : "Registrar compra pagada"}</button><small>{product && product.price_cents !== null ? money(product.price_cents, product.currency) : "Configura el precio antes."}</small></div><label className="field"><span>Ajuste de créditos (+/-)</span><input inputMode="numeric" value={adjustDelta} onChange={(event) => setAdjustDelta(event.target.value.replace(/[^0-9-]/g, ""))} placeholder="Ej. 1 o -1" /></label><label className="field"><span>Motivo del ajuste</span><input value={adjustNote} onChange={(event) => setAdjustNote(event.target.value)} placeholder="Obligatorio para auditoría" /></label></div><button className="btn ghost" type="button" disabled={busy === "adjust"} onClick={() => void adjustCredits()}>{busy === "adjust" ? "Registrando…" : "Registrar ajuste"}</button></article>
+    <article className="card pad"><div className="card-head"><div><p className="eyebrow">Créditos</p><h3>Añadir o ajustar</h3></div><WalletCards /></div><div className={styles.adminFields}><label className="field"><span>Persona</span><select value={personId} onChange={(event) => setPersonId(event.target.value)}>{people.map((person) => <option key={person.id} value={person.id}>{staffPrimaryName(person)} · saldo {balanceByPerson.get(person.id) || 0}</option>)}</select></label><div className={styles.adminAction}><button className="btn ghost" type="button" disabled={product?.price_cents == null || busy === "paid"} onClick={() => void addPaidCredit()}><Plus /> {busy === "paid" ? "Añadiendo…" : "Registrar compra pagada"}</button><small>{product && product.price_cents !== null ? money(product.price_cents, product.currency) : "Configura el precio antes."}</small></div><label className="field"><span>Ajuste de créditos (+/-)</span><input inputMode="numeric" value={adjustDelta} onChange={(event) => setAdjustDelta(event.target.value.replace(/[^0-9-]/g, ""))} placeholder="Ej. 1 o -1" /></label><label className="field"><span>Motivo del ajuste</span><input value={adjustNote} onChange={(event) => setAdjustNote(event.target.value)} placeholder="Obligatorio para auditoría" /></label></div><button className="btn ghost" type="button" disabled={busy === "adjust"} onClick={() => void adjustCredits()}>{busy === "adjust" ? "Registrando…" : "Registrar ajuste"}</button></article>
 
     <article className="card pad"><div className="card-head"><div><p className="eyebrow">Saldos</p><h3>Personas con movimientos</h3></div><span>{balanceByPerson.size}</span></div><div className={styles.adminRows}>{[...balanceByPerson.entries()].sort((a, b) => personName(a[0]).localeCompare(personName(b[0]), "es")).map(([id, value]) => <div key={id}><span><strong>{personName(id)}</strong><small>{ledger.filter((row) => row.person_id === id).length} movimientos</small></span><strong>{value} créditos</strong></div>)}{!balanceByPerson.size ? <p className="modal-intro">Todavía no hay movimientos de Feedback Online.</p> : null}</div></article>
 

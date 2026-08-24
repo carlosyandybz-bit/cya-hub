@@ -3,12 +3,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Coins, Gift, Plus, Save, SlidersHorizontal, UsersRound } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { staffPrimaryName } from "./staff-person-name";
 import styles from "./bz-points-admin.module.css";
 
 type Rule = { rule_key: string; label: string; description: string | null; points: number; trigger_mode: string; active: boolean; sort_order: number };
 type Reward = { id: number; name: string; description: string | null; cost_points: number; discount_kind: "fixed_cents" | "percent"; discount_value: number; currency: string; active: boolean; sort_order: number };
 type PersonStat = { person_id: number; balance_points: number; earned_points: number; spent_points: number; earn_events: number; last_movement_at: string | null };
-type Person = { id: number; display_name: string };
+type Person = { id: number; display_name: string; internal_alias: string | null };
 
 type RewardDraft = { name: string; description: string; cost_points: string; discount_kind: "fixed_cents" | "percent"; discount_value: string; active: boolean };
 const blankReward: RewardDraft = { name: "", description: "", cost_points: "", discount_kind: "fixed_cents", discount_value: "", active: true };
@@ -57,7 +58,7 @@ export function BZPointsAdmin({ client, notify }: { client: SupabaseClient; noti
       client.from("bz_point_rules").select("rule_key,label,description,points,trigger_mode,active,sort_order").order("sort_order"),
       client.from("bz_rewards").select("id,name,description,cost_points,discount_kind,discount_value,currency,active,sort_order").order("sort_order").order("id"),
       client.from("bz_person_statistics").select("person_id,balance_points,earned_points,spent_points,earn_events,last_movement_at").order("balance_points", { ascending: false }).limit(100),
-      client.from("people").select("id,display_name").eq("active", true).order("display_name"),
+      client.from("people").select("id,display_name,internal_alias").eq("active", true).order("display_name"),
     ]);
     const error = ruleResult.error || rewardResult.error || statResult.error || peopleResult.error;
     if (error) { notify(error.message); return; }
@@ -71,7 +72,7 @@ export function BZPointsAdmin({ client, notify }: { client: SupabaseClient; noti
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
 
-  const statRows = useMemo(() => stats.map((stat) => ({ ...stat, name: people.find((person) => person.id === stat.person_id)?.display_name ?? `Persona ${stat.person_id}` })), [stats, people]);
+  const statRows = useMemo(() => stats.map((stat) => { const person = people.find((candidate) => candidate.id === stat.person_id); return { ...stat, name: person ? staffPrimaryName(person) : `Persona ${stat.person_id}` }; }), [stats, people]);
 
   async function saveRule(rule: Rule) {
     const draft = ruleDrafts[rule.rule_key];
@@ -126,7 +127,7 @@ export function BZPointsAdmin({ client, notify }: { client: SupabaseClient; noti
 
     <section className={styles.twoCol}>
       <article className="card pad"><div className="card-head"><h3>Saldos</h3><Coins /></div>{statRows.length ? <div className={styles.balanceList}>{statRows.map((row) => <div key={row.person_id}><span>{row.name}</span><strong>{row.balance_points} BZ</strong><small>+{row.earned_points} · −{row.spent_points}</small></div>)}</div> : <div className="compact-empty"><Coins /><span>Aún no hay movimientos BZ.</span></div>}</article>
-      <article className="card pad"><div className="card-head"><h3>Ajuste manual</h3><SlidersHorizontal /></div><form className={styles.adjust} onSubmit={adjust}><label>Persona<select value={adjustPerson} onChange={(event) => setAdjustPerson(event.target.value)}><option value="">Selecciona</option>{people.map((person) => <option key={person.id} value={person.id}>{person.display_name}</option>)}</select></label><label>Puntos<input inputMode="numeric" value={adjustPoints} onChange={(event) => setAdjustPoints(event.target.value.replace(/[^\d-]/g, ""))} placeholder="Ej. 50 o -20" /></label><label>Motivo<input value={adjustNote} onChange={(event) => setAdjustNote(event.target.value)} placeholder="Quedará en el historial" /></label><button className="btn" disabled={busy === "adjust"}><Save /> Registrar ajuste</button></form></article>
+      <article className="card pad"><div className="card-head"><h3>Ajuste manual</h3><SlidersHorizontal /></div><form className={styles.adjust} onSubmit={adjust}><label>Persona<select value={adjustPerson} onChange={(event) => setAdjustPerson(event.target.value)}><option value="">Selecciona</option>{people.map((person) => <option key={person.id} value={person.id}>{staffPrimaryName(person)}</option>)}</select></label><label>Puntos<input inputMode="numeric" value={adjustPoints} onChange={(event) => setAdjustPoints(event.target.value.replace(/[^\d-]/g, ""))} placeholder="Ej. 50 o -20" /></label><label>Motivo<input value={adjustNote} onChange={(event) => setAdjustNote(event.target.value)} placeholder="Quedará en el historial" /></label><button className="btn" disabled={busy === "adjust"}><Save /> Registrar ajuste</button></form></article>
     </section>
   </section>;
 }

@@ -5,9 +5,10 @@ import { CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Search, Video } fro
 import { useCallback, useEffect, useState } from "react";
 import { ContextEvaluationPanel } from "./context-evaluation-panel-p0f";
 import { SecureDriveAsset } from "./drive-media";
+import { staffPrimaryName } from "./staff-person-name";
 import styles from "./feedback-online.module.css";
 
-type PersonBrief = { id: number; display_name: string };
+type PersonBrief = { id: number; display_name: string; internal_alias?: string | null };
 type Term = { id: number; taxonomy: string; label: string; sort_order: number };
 type RequestRow = {
   id: number;
@@ -108,7 +109,7 @@ export function FeedbackOnlineStaffQueue({ client, students, visible = true, not
   const stylesTerms = terms.filter((term) => term.taxonomy === "dance_style");
   const roleTerms = terms.filter((term) => term.taxonomy === "dance_role");
   const levelTerms = terms.filter((term) => term.taxonomy === "dance_level");
-  const personName = (personId: number) => students.find((person) => person.id === personId)?.display_name || `Alumno ${personId}`;
+  const personName = (personId: number) => { const person = students.find((candidate) => candidate.id === personId); return person ? staffPrimaryName(person) : `Alumno ${personId}`; };
   const requestLinks = selected ? links.filter((row) => row.request_id === selected.id) : [];
   const linkedContentIds = new Set(requestLinks.map((row) => row.content_id));
   const contextReady = Boolean(selected?.style_term_id && selected?.role_term_id && selected?.level_term_id);

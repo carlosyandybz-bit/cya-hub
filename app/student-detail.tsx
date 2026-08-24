@@ -24,14 +24,17 @@ import { TeachingContentCard, type TeachingCardMedia } from "./teaching-content-
 import { ContextEvaluationPanel } from "./context-evaluation-panel-p0f";
 import { StudentEvaluationOverviewStaff } from "./student-evaluation-overview-staff";
 import { StudentIdentityEditor } from "./person-identity-editor";
+import { ContentStatusControl } from "./content-quick-controls";
 import { countryName } from "./country-field";
 import { StudentDetailNavigation, type StudentDetailTab } from "./student-detail-navigation";
+import { staffPrimaryName, staffRealNameWhenAliased } from "./staff-person-name";
 import styles from "./student-detail.module.css";
 
 type Student = {
   id: number;
   auth_user_id: string | null;
   display_name: string;
+  internal_alias: string | null;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
@@ -78,6 +81,8 @@ type Assignment = {
   assignment_status: string;
   current_frequency: number | null;
   current_importance: number | null;
+  source_class_id: number | null;
+  snapshot_measurement_mode: "frequency" | "importance" | "both" | "none";
   snapshot_style_term_id: number | null;
   snapshot_role_term_id: number | null;
   snapshot_level_term_id: number | null;
@@ -204,6 +209,10 @@ const assignmentLabels: Record<string, string> = {
   practicing: "Practicando",
   completed: "Completado",
 };
+const correctionStatusOptions = [["pending", "Pendiente de corrección"], ["in_correction", "En corrección"], ["corrected", "Corregido"]] as const;
+const correctionProfileStatusOptions = [["pending", "Pendiente de corrección"], ["corrected", "Corregido"]] as const;
+const explanationStatusOptions = [["pending", "Pendiente"], ["explained", "Explicada"]] as const;
+const exerciseStatusOptions = [["pending", "Pendiente"], ["active", "Activo"], ["completed", "Realizado"]] as const;
 const classLabels: Record<string, string> = {
   scheduled: "Programada",
   active: "En curso",
@@ -256,6 +265,7 @@ export function StudentMasterDetail({
   schedule,
   addCredit,
   openClass,
+  initialTab = "summary",
 }: {
   client: SupabaseClient;
   student: Student;
@@ -271,8 +281,9 @@ export function StudentMasterDetail({
   schedule: () => void;
   addCredit: () => void;
   openClass: (id: number) => void;
+  initialTab?: Tab;
 }) {
-  const [tab, setTab] = useState<Tab>("summary");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [identityEditorOpen,setIdentityEditorOpen] = useState(false);
   const [profileRefresh,setProfileRefresh] = useState(0);
@@ -291,7 +302,13 @@ export function StudentMasterDetail({
   const [financialRefresh, setFinancialRefresh] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [assignmentBusy, setAssignmentBusy] = useState<number | null>(null);
   const [now] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setTab(initialTab), 0);
+    return () => window.clearTimeout(timer);
+  }, [initialTab, student.id]);
 
   useEffect(() => {
     let alive = true;
@@ -397,6 +414,17 @@ export function StudentMasterDetail({
     ...(!danceProfiles.length ? [{ key: "dance", label: "Falta definir el contexto de baile del alumno", tab: "data" as Tab }] : []),
     ...(upcoming.length && balance <= 0 ? [{ key: "balance", label: "Tiene una próxima clase y el saldo neto no es positivo", tab: "credits" as Tab }] : []),
   ];
+  const contextualSlots = tab === "credits"
+    ? [{ label: "Saldo neto", value: minutesLabel(balance) }, { label: "Pago", value: ownCredits.some((item) => item.payment_status === "pending") ? "Pendiente" : "Al día" }]
+    : tab === "classes"
+      ? [{ label: "Próxima clase", value: upcoming[0] ? dateLabel(upcoming[0].scheduled_start_at, false) : "Sin programar" }, { label: "Última clase", value: ownClasses[0] ? dateLabel(ownClasses[0].scheduled_start_at, false) : "Sin historial" }]
+      : tab === "learning" || tab === "evaluation"
+        ? [{ label: "Contenido activo", value: String(activeAssignments.length) }, { label: "Evaluación", value: evaluations[0] ? dateLabel(evaluations[0].created_at, false) : "Sin evaluar" }]
+        : tab === "crm"
+          ? [{ label: "Relación CRM", value: stageLabels[student.crm_stage] ?? student.crm_stage }, { label: "Origen", value: crmContact?.source || "Sin indicar" }]
+          : tab === "data"
+            ? [{ label: "Teléfono", value: student.phone || "Sin indicar" }, { label: "Contextos", value: String(danceProfiles.length) }]
+            : [{ label: "Próxima clase", value: upcoming[0] ? dateLabel(upcoming[0].scheduled_start_at, false) : "Sin programar" }, { label: "Saldo", value: minutesLabel(balance) }];
 
   function compatibleCredits(incident: StudentIncident) {
     const people = incident.student_incident_people.map((link) => link.person_id);
@@ -461,6 +489,24 @@ export function StudentMasterDetail({
     setFinancialBusy("");
   }
 
+  async function updateAssignmentStatus(assignment: Assignment, status: string) {
+    setAssignmentBusy(assignment.id); setError("");
+    const sourceClass = assignment.source_class_id ? classes.find((item) => item.id === assignment.source_class_id) : null;
+    const canUseOpenCorrectionFlow = assignment.teaching_contents.content_type === "correction" && sourceClass && ["active", "finished"].includes(sourceClass.status) && !sourceClass.pedagogy_closed_at;
+    const result = canUseOpenCorrectionFlow
+      ? await client.rpc("update_correction_assignment", {
+          p_assignment_id: assignment.id,
+          p_class_id: sourceClass.id,
+          p_assignment_status: status,
+          p_frequency: assignment.snapshot_measurement_mode === "frequency" || assignment.snapshot_measurement_mode === "both" ? assignment.current_frequency : null,
+          p_importance: assignment.snapshot_measurement_mode === "importance" || assignment.snapshot_measurement_mode === "both" ? assignment.current_importance : null,
+        })
+      : await client.rpc("update_teaching_assignment_status", { p_assignment_id: assignment.id, p_assignment_status: status });
+    if (result.error) setError(result.error.message);
+    else await refresh();
+    setAssignmentBusy(null);
+  }
+
   function renderSummary() {
     return <div className={styles.stack}>
       {issues.length ? <section className={`${styles.issueBox} ${styles.issueBad}`}><header><AlertTriangle /><div><strong>{issues.length === 1 ? "1 incidencia por revisar" : `${issues.length} incidencias por revisar`}</strong><span>CYA las obtiene de los datos actuales, sin duplicar estados.</span></div></header><div>{issues.map((issue) => <button key={issue.key} onClick={() => setTab(issue.tab)}><span>{issue.label}</span><ChevronRight /></button>)}</div></section>
@@ -492,9 +538,11 @@ export function StudentMasterDetail({
   }
 
   function renderLearning() {
-    return <section className={styles.sectionCard}>
+    return <div className={styles.evalStack}>
+      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Evaluación</span><h3>Polígono de progreso</h3></div><button onClick={() => setTab("evaluation")}>Editar evaluación</button></div><StudentEvaluationOverviewStaff client={client} personId={student.id} personName={staffPrimaryName(student)} refreshToken={profileRefresh}/></section>
+      <section className={styles.sectionCard}>
       <div className={styles.sectionHead}><div><span>Formación</span><h3>{ownAssignments.length} contenidos asignados</h3></div></div>
-      {ownAssignments.length ? <div className={styles.learningList}>{ownAssignments.map((assignment) => { const libraryContent = teachingContents.find((content) => content.id === assignment.content_id); return <TeachingContentCard
+      {ownAssignments.length ? <div className={styles.learningList}>{ownAssignments.map((assignment) => { const libraryContent = teachingContents.find((content) => content.id === assignment.content_id); const type = assignment.teaching_contents.content_type; const sourceClass = assignment.source_class_id ? classes.find((item) => item.id === assignment.source_class_id) : null; const correctionOpen = type === "correction" && sourceClass && ["active", "finished"].includes(sourceClass.status) && !sourceClass.pedagogy_closed_at; const options = type === "correction" ? (correctionOpen ? correctionStatusOptions : correctionProfileStatusOptions) : type === "exercise" ? exerciseStatusOptions : explanationStatusOptions; return <TeachingContentCard
         key={assignment.id}
         kindLabel={contentLabels[assignment.teaching_contents.content_type] ?? assignment.teaching_contents.content_type}
         title={assignment.teaching_contents.title}
@@ -504,19 +552,21 @@ export function StudentMasterDetail({
         description={assignment.teaching_contents.description}
         correctionGuidance={assignment.teaching_contents.correction_guidance}
         media={libraryContent?.teaching_content_media ?? []}
+        inlineControls={<ContentStatusControl value={assignment.assignment_status} options={options} disabled={assignmentBusy === assignment.id} onChange={(status) => updateAssignmentStatus(assignment, status)} />}
         metadata={[
           { label: "Estilo", value: termLabel(assignment.snapshot_style_term_id, terms) },
           { label: "Rol", value: termLabel(assignment.snapshot_role_term_id, terms) },
           { label: "Nivel", value: termLabel(assignment.snapshot_level_term_id, terms) },
         ]}
       />; })}</div> : <div className={styles.empty}><BookOpen /><span>No hay formación asignada todavía.</span></div>}
-    </section>;
+      </section>
+    </div>;
   }
 
   function renderEvaluation() {
     return <div className={styles.evalStack}>
-      <section className={styles.sectionCard}><ContextEvaluationPanel client={client} personId={student.id} personName={student.display_name} onCompleted={async () => { setProfileRefresh((value) => value + 1); await refresh(); }} /></section>
-      <div className={styles.evalGrid}><section className={styles.sectionCard}><StudentEvaluationOverviewStaff client={client} personId={student.id} personName={student.display_name} refreshToken={profileRefresh}/></section><section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Historial técnico</span><h3>Evaluaciones registradas</h3></div><b>{evaluations.length}</b></div>{evaluations.length ? <div className={styles.historyList}>{evaluations.slice(0, 30).map((item) => <div key={item.id}><div><strong>{termLabel(item.aptitude_term_id, terms)}</strong><span>{dateLabel(item.created_at)} · {termLabel(item.level_term_id,terms)} · {termLabel(item.style_term_id, terms)} · {termLabel(item.role_term_id, terms)}</span>{item.note ? <small>{item.note}</small> : null}</div><b>{item.score}</b></div>)}</div> : <div className={styles.empty}><TrendingUp /><span>Sin historial de evaluación.</span></div>}</section></div>
+      <section className={styles.sectionCard}><ContextEvaluationPanel client={client} personId={student.id} personName={staffPrimaryName(student)} onCompleted={async () => { setProfileRefresh((value) => value + 1); await refresh(); }} /></section>
+      <div className={styles.evalGrid}><section className={styles.sectionCard}><StudentEvaluationOverviewStaff client={client} personId={student.id} personName={staffPrimaryName(student)} refreshToken={profileRefresh}/></section><section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Historial técnico</span><h3>Evaluaciones registradas</h3></div><b>{evaluations.length}</b></div>{evaluations.length ? <div className={styles.historyList}>{evaluations.slice(0, 30).map((item) => <div key={item.id}><div><strong>{termLabel(item.aptitude_term_id, terms)}</strong><span>{dateLabel(item.created_at)} · {termLabel(item.level_term_id,terms)} · {termLabel(item.style_term_id, terms)} · {termLabel(item.role_term_id, terms)}</span>{item.note ? <small>{item.note}</small> : null}</div><b>{item.score}</b></div>)}</div> : <div className={styles.empty}><TrendingUp /><span>Sin historial de evaluación.</span></div>}</section></div>
     </div>;
   }
 
@@ -579,7 +629,7 @@ export function StudentMasterDetail({
 
   function renderData() {
     return <div className={styles.dataGrid}>
-      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Identidad</span><h3>Datos principales</h3></div><button onClick={() => setIdentityEditorOpen(true)}><Pencil size={15}/> Editar</button></div><div className={styles.readGrid}><div><Phone /><span>Teléfono</span><strong>{student.phone || "Sin indicar"}</strong></div><div><Mail /><span>Email</span><strong>{student.email || "Sin indicar"}</strong></div><div><MapPin /><span>País</span><strong>{countryName(student.country_code)}</strong></div><div><CircleUserRound /><span>Portal</span><strong>{student.auth_user_id ? "Registrado" : "Provisional"}</strong></div><div><CalendarDays /><span>Alumno desde</span><strong>{dateLabel(profile?.student_since ?? null, false)}</strong></div><div><CheckCircle2 /><span>Estado</span><strong>{student.active && profile?.active !== false ? "Activo" : "Inactivo"}</strong></div></div></section>
+      <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Identidad</span><h3>Datos principales</h3></div><button data-mission-highlight="person-data" onClick={() => setIdentityEditorOpen(true)}><Pencil size={15}/> Editar</button></div><div className={styles.readGrid}><div><Phone /><span>Teléfono</span><strong>{student.phone || "Sin indicar"}</strong></div><div><Mail /><span>Email</span><strong>{student.email || "Sin indicar"}</strong></div><div><MapPin /><span>País</span><strong>{countryName(student.country_code)}</strong></div><div><CircleUserRound /><span>Portal</span><strong>{student.auth_user_id ? "Registrado" : "Provisional"}</strong></div><div><CalendarDays /><span>Alumno desde</span><strong>{dateLabel(profile?.student_since ?? null, false)}</strong></div><div><CheckCircle2 /><span>Estado</span><strong>{student.active && profile?.active !== false ? "Activo" : "Inactivo"}</strong></div></div></section>
       <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Baile</span><h3>Contextos guardados</h3></div></div>{danceProfiles.length ? <div className={styles.danceGrid}>{danceProfiles.map((item) => <div key={item.id} className={item.is_primary ? styles.primaryDance : ""}><strong>{termLabel(item.style_term_id, terms)}</strong><span>{termLabel(item.role_term_id, terms)} · {termLabel(item.level_term_id, terms)}</span>{item.is_primary ? <small>Principal</small> : null}</div>)}</div> : <div className={styles.empty}><GraduationCap /><span>Sin contexto de baile.</span></div>}</section>
       <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Ficha del alumno</span><h3>Datos personales e históricos</h3></div></div><div className={styles.readGrid}><div><MapPin /><span>Ciudad</span><strong>{profile?.city || "Sin indicar"}</strong></div><div><CircleUserRound /><span>Tiene pareja</span><strong>{profile?.has_partner === null || profile?.has_partner === undefined ? "Sin indicar" : profile.has_partner ? "Sí" : "No"}</strong></div><div><TrendingUp /><span>Sigue bailando</span><strong>{profile?.continues_dancing === null || profile?.continues_dancing === undefined ? "Sin indicar" : profile.continues_dancing ? "Sí" : "No"}</strong></div><div><WalletCards /><span>Compró bono</span><strong>{profile?.bought_bonus === null || profile?.bought_bonus === undefined ? "Sin indicar" : profile.bought_bonus ? "Sí" : "No"}</strong></div><div><CalendarDays /><span>Inicio</span><strong>{profile?.dance_start_label || (profile?.student_since ? dateLabel(profile.student_since, false) : "Sin indicar")}</strong></div><div><CalendarDays /><span>Fin</span><strong>{profile?.dance_end_label || "Sin indicar"}</strong></div><div><CalendarDays /><span>Clases históricas</span><strong>{profile?.historical_classes ?? 0}</strong></div><div><CheckCircle2 /><span>Clases consumidas</span><strong>{profile?.historical_consumed_classes ?? 0}</strong></div><div><WalletCards /><span>Total histórico pagado</span><strong>{euros(profile?.historical_total_paid_cents)}</strong></div><div><CheckCircle2 /><span>Boda</span><strong>{profile?.wedding === null || profile?.wedding === undefined ? "Sin indicar" : profile.wedding ? "Sí" : "No"}</strong></div><div><CheckCircle2 /><span>Turista</span><strong>{profile?.tourist === null || profile?.tourist === undefined ? "Sin indicar" : profile.tourist ? "Sí" : "No"}</strong></div><div><Target /><span>Recomendado por</span><strong>{profile?.referred_by || "Sin indicar"}</strong></div></div></section>
       <section className={styles.sectionCard}><div className={styles.sectionHead}><div><span>Objetivos</span><h3>Información pedagógica</h3></div></div><div className={styles.longText}><strong>Objetivos</strong><p>{profile?.goals || "Sin objetivos guardados."}</p><strong>Notas internas</strong><p>{profile?.teacher_notes || "Sin notas internas."}</p><strong>Salud / a tener en cuenta</strong><p>{profile?.health_notes || "Sin indicaciones."}</p></div></section>
@@ -596,9 +646,10 @@ export function StudentMasterDetail({
   return <div className={styles.backdrop} onMouseDown={(event) => event.target === event.currentTarget && close()}>
     <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="student-master-title">
       <header className={styles.header}>
-        <div className={styles.hero}><span className={styles.avatar}><CircleUserRound /></span><div><span className={styles.kicker}>Ficha maestra del alumno</span><h2 id="student-master-title">{student.display_name}</h2><div className={styles.heroMeta}><span>{student.auth_user_id ? "Con portal" : "Provisional"}</span><span>{stageLabels[student.crm_stage] ?? student.crm_stage}</span>{issues.length ? <span className={styles.issueBadge}>{issues.length} por revisar</span> : <span className={styles.okBadge}>Sin incidencias</span>}</div></div></div>
+        <div className={styles.hero} data-mission-highlight="person-header"><span className={styles.avatar}><CircleUserRound /></span><div><span className={styles.kicker}>Ficha maestra del alumno</span><h2 id="student-master-title" data-person-id={student.id}>{staffPrimaryName(student)}</h2>{staffRealNameWhenAliased(student) ? <p className={styles.realName}>{student.display_name}</p> : null}<div className={styles.heroMeta}><span>{student.auth_user_id ? "Con portal" : "Provisional"}</span><span>{stageLabels[student.crm_stage] ?? student.crm_stage}</span>{issues.length ? <span className={styles.issueBadge}>{issues.length} por revisar</span> : <span className={styles.okBadge}>Sin incidencias</span>}</div></div></div>
         <div className={styles.actions}><button onClick={schedule}><CalendarDays /> Programar</button><button onClick={addCredit}><WalletCards /> Bono</button><button className={styles.close} onClick={close} aria-label="Cerrar"><X /></button></div>
       </header>
+      <div className={styles.contextSlots} aria-label="Contexto de la sección">{contextualSlots.map((slot) => <div key={slot.label}><span>{slot.label}</span><strong>{slot.value}</strong></div>)}</div>
 
       <StudentDetailNavigation tab={tab} onTab={setTab} />
       <div className={styles.body}>

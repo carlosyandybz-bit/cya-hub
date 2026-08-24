@@ -35,13 +35,16 @@ export type MissionState =
 export type Mission = {
   id: number;
   rule_key: string | null;
-  mission_type: "main" | "daily" | "growth";
+  mission_type: "main" | "primary" | "daily" | "growth";
   state: MissionState;
   priority: "normal" | "priority" | "urgent";
   priority_score: number;
   title: string;
   description: string | null;
   action_target: string | null;
+  source_domain?: string | null;
+  source_id?: string | null;
+  origin?: Record<string, unknown> | null;
   due_at: string | null;
   estimated_duration_minutes: number;
   calendar_block: boolean;

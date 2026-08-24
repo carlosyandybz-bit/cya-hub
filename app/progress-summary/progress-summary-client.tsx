@@ -4,9 +4,10 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { ArrowLeft, Award, BookOpenCheck, CheckCircle2, CircleUserRound, Gauge, LockKeyhole, TrendingDown, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { staffPrimaryName } from "../staff-person-name";
 import styles from "./progress-summary.module.css";
 
-type Person={id:number;display_name:string;active:boolean};
+type Person={id:number;display_name:string;internal_alias:string|null;active:boolean};
 type StudentProfile={person_id:number;active:boolean};
 type Term={id:number;taxonomy:string;label:string;sort_order:number};
 type SessionRow={id:number;person_id:number;class_id:number|null;style_term_id:number;role_term_id:number;level_term_id:number;evaluation_kind:string;status:string;completed_at:string|null;created_at:string};
@@ -59,7 +60,7 @@ export default function ProgressSummaryClient(){
     if(!client)return;setBusy("base");setError("");
     const [profilesResult,peopleResult,termsResult,milestonesResult,recommendationResult]=await Promise.all([
       client.from("student_profiles").select("person_id,active").eq("active",true),
-      client.from("people").select("id,display_name,active").eq("active",true).order("display_name"),
+      client.from("people").select("id,display_name,internal_alias,active").eq("active",true).order("display_name"),
       client.from("catalog_terms").select("id,taxonomy,label,sort_order").in("taxonomy",["dance_style","dance_role","dance_level","aptitude"]).eq("active",true).order("sort_order"),
       client.from("evaluation_milestones").select("id,label,threshold_score"),
       client.from("teaching_content_evaluation_recommendations").select("id,content_id,style_term_id,role_term_id,level_term_id,aptitude_term_id,active").eq("active",true),
@@ -120,14 +121,14 @@ export default function ProgressSummaryClient(){
   const student=students.find((row)=>row.id===personId)??null;
 
   function choosePerson(id:number){setPersonId(id);setSelectedContext("");}
-  function summarySentence(){if(!metrics.length)return "Todavía no hay datos suficientes para interpretar el progreso.";const improvement=netImprovement===null?"sin referencia media":netImprovement>0?`ha mejorado ${netImprovement} puntos medios desde su línea base`:netImprovement<0?`está ${Math.abs(netImprovement)} puntos medios por debajo de su línea base`:"se mantiene en su línea base";const best=greatestImprovement&&greatestImprovement.delta>0?` La mayor mejora está en ${greatestImprovement.label} (+${greatestImprovement.delta}).`:"";const regressions=regressionEpisodes?` Se detectan ${regressionEpisodes} retroceso${regressionEpisodes===1?"":"s"} entre evaluaciones; el mayor fue de ${Math.abs(biggestDrop)} puntos.`:" No se detectan retrocesos entre evaluaciones comparables.";return `${student?.display_name??"El alumno"} ${improvement}.${best}${regressions}`;}
+  function summarySentence(){if(!metrics.length)return "Todavía no hay datos suficientes para interpretar el progreso.";const improvement=netImprovement===null?"sin referencia media":netImprovement>0?`ha mejorado ${netImprovement} puntos medios desde su línea base`:netImprovement<0?`está ${Math.abs(netImprovement)} puntos medios por debajo de su línea base`:"se mantiene en su línea base";const best=greatestImprovement&&greatestImprovement.delta>0?` La mayor mejora está en ${greatestImprovement.label} (+${greatestImprovement.delta}).`:"";const regressions=regressionEpisodes?` Se detectan ${regressionEpisodes} retroceso${regressionEpisodes===1?"":"s"} entre evaluaciones; el mayor fue de ${Math.abs(biggestDrop)} puntos.`:" No se detectan retrocesos entre evaluaciones comparables.";return `${student?staffPrimaryName(student):"El alumno"} ${improvement}.${best}${regressions}`;}
 
   if(authorized===null)return <main className={styles.center}><span className={styles.spinner}/><p>Comprobando permisos…</p></main>;
   if(!authorized)return <main className={styles.center}><LockKeyhole/><h1>Resumen real de progreso</h1><p>Esta vista está reservada al equipo docente.</p><Link href="/">Volver a CYA Hub</Link>{error?<small>{error}</small>:null}</main>;
 
   return <main className={styles.page}><header className={styles.top}><Link href="/" aria-label="Volver"><ArrowLeft/></Link><div><span>Alumnado · Progreso</span><h1>Resumen real de progreso</h1><p>Interpreta evolución, estabilidad y retrocesos. El valor de cada evaluación procede de la respuesta del profesor; el contenido solo recomienda qué revisar.</p></div><Link className={styles.historyLink} href={personId?`/evaluation-history?person=${personId}`:"/evaluation-history"}>Abrir histórico</Link></header>
 
-    <section className={styles.filters}><label><span>Alumno</span><select value={personId||""} onChange={(event)=>choosePerson(Number(event.target.value))}><option value="" disabled>Selecciona alumno</option>{students.map((person)=><option key={person.id} value={person.id}>{person.display_name}</option>)}</select></label><label><span>Contexto</span><select value={context?.key??""} onChange={(event)=>setSelectedContext(event.target.value)} disabled={!contexts.length}>{contexts.length?contexts.map((item)=><option key={item.key} value={item.key}>{termLabel(item.styleId)} · {termLabel(item.roleId)} · {termLabel(item.levelId)}</option>):<option value="">Sin datos</option>}</select></label><div className={styles.identity}><CircleUserRound/><div><span>Alumno</span><strong>{student?.display_name??"—"}</strong></div></div></section>
+    <section className={styles.filters}><label><span>Alumno</span><select value={personId||""} onChange={(event)=>choosePerson(Number(event.target.value))}><option value="" disabled>Selecciona alumno</option>{students.map((person)=><option key={person.id} value={person.id}>{staffPrimaryName(person)}</option>)}</select></label><label><span>Contexto</span><select value={context?.key??""} onChange={(event)=>setSelectedContext(event.target.value)} disabled={!contexts.length}>{contexts.length?contexts.map((item)=><option key={item.key} value={item.key}>{termLabel(item.styleId)} · {termLabel(item.roleId)} · {termLabel(item.levelId)}</option>):<option value="">Sin datos</option>}</select></label><div className={styles.identity}><CircleUserRound/><div><span>Alumno</span><strong>{student?staffPrimaryName(student):"—"}</strong></div></div></section>
     {error?<div className={styles.error}>{error}</div>:null}{busy?<div className={styles.loading}><span className={styles.spinner}/><p>Calculando progreso…</p></div>:null}
 
     {!busy&&context?<><section className={styles.hero}><div><span>Lectura automática</span><h2>{summarySentence()}</h2><p>La línea base es la primera evaluación completada disponible por aptitud. Desde el modelo actual, cada cambio nuevo queda respaldado por una respuesta explícita del profesor.</p></div><div className={styles.heroScore}><TrendingUp/><strong>{netImprovement===null?"—":`${netImprovement>0?"+":""}${netImprovement}`}</strong><span>mejora media</span></div></section>

@@ -106,6 +106,12 @@ async function resolveLocation(client: SupabaseClient, preference: ClassPreferen
 }
 
 async function resolveVisiblePeople(client: SupabaseClient, page: Element) {
+  const personIds = Array.from(page.querySelectorAll<HTMLElement>(".workflow-people [data-person-id]"))
+    .map((card) => Number(card.dataset.personId || 0)).filter((id) => id > 0);
+  if (personIds.length && new Set(personIds).size === personIds.length) {
+    const result = await client.from("people").select("id,display_name").in("id", personIds).eq("active", true);
+    if (!result.error && result.data?.length === personIds.length) return result.data as PersonLite[];
+  }
   const heading = text(page.querySelector(".workflow-head h1"));
   const visibleNames = heading.split(" + ").map((value) => value.trim()).filter(Boolean);
   if (!visibleNames.length || new Set(visibleNames).size !== visibleNames.length) return [] as PersonLite[];
@@ -149,7 +155,8 @@ async function hydrateSetupPage(client: SupabaseClient, page: Element) {
   for (const person of people) {
     const preference = preferences.find((item) => item.person_id === person.id);
     if (!preference?.default_role_term_id) continue;
-    const card = cards.find((item) => text(item.querySelector(".prepare-summary strong")) === person.display_name.trim());
+    const card = cards.find((item) => Number((item as HTMLElement).dataset.personId || 0) === person.id)
+      ?? cards.find((item) => text(item.querySelector(".prepare-summary strong")) === person.display_name.trim());
     if (!card) continue;
     const roleControl = labelControl(card, "Rol");
     if (roleControl instanceof HTMLSelectElement && Array.from(roleControl.options).some((option) => Number(option.value) === preference.default_role_term_id)) {

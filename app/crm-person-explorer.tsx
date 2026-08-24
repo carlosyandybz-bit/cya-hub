@@ -265,7 +265,7 @@ export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
 
   function renderValue(row: PersonRow, key: ColumnKey) {
     const classInterest = row.interest_states?.in_person_classes ?? "unknown";
-    if (key === "display_name") return <div className={styles.identity}><strong>{row.display_name}</strong></div>;
+    if (key === "display_name") return <div className={styles.identity}><strong>{row.internal_alias || row.display_name}</strong>{row.internal_alias ? <small>{row.display_name}</small> : null}</div>;
     if (key === "internal_alias") return row.internal_alias || "—";
     if (key === "phone") return row.phone || "—";
     if (key === "email") return row.email || "—";
@@ -317,8 +317,8 @@ export function CrmPersonExplorer({ db, refreshToken, notify }: Props) {
       <label className={styles.search}><Search /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nombre, alias, email o teléfono" /></label>
       <label><span>Reserva</span><select value={reservation} onChange={(event) => setReservation(event.target.value as typeof reservation)}><option value="all">Todas</option><option value="yes">Con reserva real</option><option value="no">Sin reserva real</option></select></label>
       <label><span>Interés en clases</span><select value={interest} onChange={(event) => setInterest(event.target.value as typeof interest)}><option value="all">Todos</option><option value="interested">Sí</option><option value="not_interested">No</option><option value="unknown">No sabemos</option></select></label>
-      <label><span>Edad mín.</span><input type="number" min="0" max="120" value={minAge} onChange={(event) => setMinAge(event.target.value)} /></label>
-      <label><span>Edad máx.</span><input type="number" min="0" max="120" value={maxAge} onChange={(event) => setMaxAge(event.target.value)} /></label>
+      <label><span>Edad mín.</span><input type="text" inputMode="numeric" pattern="[0-9]*" value={minAge} onChange={(event) => setMinAge(event.target.value.replace(/\D/g, "").slice(0, 3))} /></label>
+      <label><span>Edad máx.</span><input type="text" inputMode="numeric" pattern="[0-9]*" value={maxAge} onChange={(event) => setMaxAge(event.target.value.replace(/\D/g, "").slice(0, 3))} /></label>
       <label><span>Localidad / país</span><input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Málaga, FR…" /></label>
     </div>
 

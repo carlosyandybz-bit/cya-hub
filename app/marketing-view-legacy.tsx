@@ -8,15 +8,17 @@ import {
 } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import { CountrySelect } from "./country-field";
+import { staffPrimaryName, staffRealNameWhenAliased } from "./staff-person-name";
 
 export type DriveMedia = {
   id: number; media_type: "image" | "video"; provider: string; external_file_id: string; title: string | null;
 };
 
 export type CrmContact = {
-  id: number; auth_user_id: string | null; display_name: string; first_name: string | null; last_name: string | null;
+  id: number; auth_user_id: string | null; display_name: string; internal_alias: string | null; first_name: string | null; last_name: string | null;
   email: string | null; phone: string | null; country_code: string | null; crm_stage: string; source: string | null;
   notes: string | null; created_at: string;
+  canonical_reserved?: boolean;
   student_profiles: Array<{ person_id: number; active: boolean }>;
   crm_profiles: Array<{ contact_date: string; inquiry: string | null; reserved: boolean; rate_id: number | null; quoted_amount_cents: number | null; contact_permission: string }>;
 };
@@ -53,7 +55,7 @@ export type CommunicationRecipient = {
   id: number; campaign_id: number; person_id: number; channel: "whatsapp" | "email"; destination: string | null;
   message_snapshot: string; media_snapshot: DriveMedia[]; status: "ready" | "sent" | "skipped" | "failed";
   blocked_reason: string | null; prepared_at: string; sent_at: string | null; updated_at: string;
-  person: { display_name: string; country_code: string | null } | null;
+  person: { display_name: string; internal_alias: string | null; country_code: string | null } | null;
   campaign: { title: string } | null;
 };
 type DispatchValidation = {
@@ -164,7 +166,7 @@ function ContactEditor({ db, contact, rates, close, saved }: { db: SupabaseClien
       p_email: String(form.get("email") || "").trim() || null, p_phone: String(form.get("phone") || "").trim() || null,
       p_country_code: String(form.get("country_code") || "").trim() || null, p_crm_stage: String(form.get("crm_stage") || "new"),
       p_source: String(form.get("source") || "").trim() || null, p_contact_date: String(form.get("contact_date") || "") || null,
-      p_inquiry: String(form.get("inquiry") || "").trim() || null, p_reserved: String(form.get("reserved") || "no") === "yes",
+      p_inquiry: String(form.get("inquiry") || "").trim() || null, p_reserved: contact?.canonical_reserved ? Boolean(profile?.reserved) : String(form.get("reserved") || "no") === "yes",
       p_rate_id: Number(form.get("rate_id") || 0) || null, p_quoted_amount_cents: form.get("quoted_amount") === "" ? null : Math.round(decimalFormNumber(form.get("quoted_amount")) * 100),
       p_notes: String(form.get("notes") || "").trim() || null, p_contact_permission: String(form.get("contact_permission") || "unknown"),
     });
@@ -186,7 +188,7 @@ function ContactEditor({ db, contact, rates, close, saved }: { db: SupabaseClien
         <label className="field"><span>Estado</span><select name="crm_stage" defaultValue={contact?.crm_stage ?? "new"}>{Object.entries(stageLabels).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label className="field field-wide"><span>¿Cómo nos conoció?</span><input name="source" defaultValue={contact?.source ?? ""} placeholder="Instagram, recomendación, evento…" /></label>
         <label className="field field-wide"><span>¿Qué quería?</span><input name="inquiry" defaultValue={profile?.inquiry ?? ""} placeholder="Clase privada, pareja, evento…" /></label>
-        <label className="field"><span>¿Reservó?</span><select name="reserved" defaultValue={profile?.reserved ? "yes" : "no"}><option value="no">No</option><option value="yes">Sí</option></select></label>
+        {contact?.canonical_reserved ? <div className="field"><span>Reserva</span><strong>Confirmada por Classes</strong><small>Dato canónico; CRM no vuelve a preguntarlo.</small></div> : <label className="field"><span>Reserva manual CRM</span><select name="reserved" defaultValue={profile?.reserved ? "yes" : "no"}><option value="no">No consta</option><option value="yes">Sí, indicado manualmente</option></select></label>}
         <label className="field"><span>Tarifa</span><select name="rate_id" defaultValue={profile?.rate_id ?? ""}><option value="">Sin asignar</option>{rates.filter((rate) => rate.active || rate.id === profile?.rate_id).map((rate) => <option key={rate.id} value={rate.id}>{rate.name} · {euros(rate.price_cents)}</option>)}</select></label>
         <label className="field"><span>Importe (€)</span><input name="quoted_amount" type="text" inputMode="decimal" pattern="[0-9]*([,.][0-9]{0,2})?" defaultValue={profile?.quoted_amount_cents != null ? profile.quoted_amount_cents / 100 : ""} /></label>
         <label className="field"><span>Comunicaciones</span><select name="contact_permission" defaultValue={profile?.contact_permission ?? "unknown"}><option value="unknown">Sin indicar</option><option value="allowed">Permitidas</option><option value="blocked">No contactar</option></select></label>
@@ -201,7 +203,7 @@ function CrmView({ db, contacts, rates, refresh, notify }: { db: SupabaseClient;
   const [query,setQuery] = useState(""), [stage,setStage] = useState("all"), [editing,setEditing] = useState<CrmContact|null>(null), [creating,setCreating] = useState(false), [busyId,setBusyId] = useState<number|null>(null);
   const filtered = useMemo(() => contacts.filter((contact) => stage === "all" || contact.crm_stage === stage).filter((contact) => {
     const q = query.trim().toLocaleLowerCase("es"); if (!q) return true;
-    return [contact.display_name,contact.phone,contact.email,contact.source,contact.crm_profiles?.[0]?.inquiry].some((value) => String(value || "").toLocaleLowerCase("es").includes(q));
+    return [contact.internal_alias,contact.display_name,contact.phone,contact.email,contact.source,contact.crm_profiles?.[0]?.inquiry].some((value) => String(value || "").toLocaleLowerCase("es").includes(q));
   }), [contacts,query,stage]);
   async function enable(contact: CrmContact) {
     setBusyId(contact.id); const result = await db.rpc("enable_provisional_student", { p_person_id: contact.id });
@@ -212,9 +214,9 @@ function CrmView({ db, contacts, rates, refresh, notify }: { db: SupabaseClient;
   return <>
     <Header title="CRM" description="Potenciales, provisionales y registrados comparten una sola persona." action={<button className="btn" onClick={() => setCreating(true)}><Plus size={17} /> Nuevo contacto</button>} />
     <div className="crm-pipeline"><button className={stage === "all" ? "active" : ""} onClick={() => setStage("all")}><span>Todos</span><strong>{contacts.length}</strong></button>{Object.entries(stageLabels).map(([value,label]) => <button key={value} className={stage === value ? "active" : ""} onClick={() => setStage(value)}><span>{label}</span><strong>{contacts.filter((c) => c.crm_stage === value).length}</strong></button>)}</div>
-    <label className="search"><Search /><input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar nombre, teléfono, origen o interés" /></label>
+    <label className="search"><Search /><input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar alias, nombre, teléfono, origen o interés" /></label>
     {filtered.length ? <div className="crm-list">{filtered.map((contact) => { const profile = contact.crm_profiles?.[0], provisional = contact.student_profiles?.some((item) => item.active), lifecycle = provisional ? (contact.auth_user_id ? "Registrado" : "Provisional") : "Potencial"; return <article className="card crm-row" key={contact.id}>
-      <span className="avatar"><CircleUserRound /></span><div className="crm-row-main"><div><strong>{contact.display_name}</strong><span className={`badge stage-${contact.crm_stage}`}>{stageLabels[contact.crm_stage] ?? contact.crm_stage}</span><span className={`badge ${contact.auth_user_id ? "portal" : ""}`}>{lifecycle}</span></div><p>{contact.phone || contact.email || "Sin contacto"}{contact.source ? ` · ${contact.source}` : ""}</p>{profile?.inquiry ? <small>{profile.inquiry}</small> : null}</div>
+      <span className="avatar"><CircleUserRound /></span><div className="crm-row-main"><div><strong>{staffPrimaryName(contact)}</strong><span className={`badge stage-${contact.crm_stage}`}>{stageLabels[contact.crm_stage] ?? contact.crm_stage}</span><span className={`badge ${contact.auth_user_id ? "portal" : ""}`}>{lifecycle}</span></div><p>{staffRealNameWhenAliased(contact) ? `${contact.display_name} · ` : ""}{contact.phone || contact.email || "Sin contacto"}{contact.source ? ` · ${contact.source}` : ""}</p>{profile?.inquiry ? <small>{profile.inquiry}</small> : null}</div>
       <div className="crm-row-actions">{!provisional ? <button className="btn ghost" disabled={busyId === contact.id} onClick={() => enable(contact)}>{busyId === contact.id ? "Habilitando…" : "Habilitar provisional"}</button> : null}<button className="icon-btn" onClick={() => setEditing(contact)} aria-label={`Editar ${contact.display_name}`}><Pencil /></button></div>
     </article>; })}</div> : <Empty icon={UsersRound} title={contacts.length ? "No hay coincidencias" : "CRM vacío"} text={contacts.length ? "Prueba otro filtro o búsqueda." : "Añade el primer contacto. Solo pediremos lo imprescindible al principio."} action={!contacts.length ? <button className="btn" onClick={() => setCreating(true)}><Plus size={17} /> Nuevo contacto</button> : undefined} />}
     {creating ? <ContactEditor db={db} contact={null} rates={rates} close={() => setCreating(false)} saved={saved} /> : null}
@@ -327,7 +329,7 @@ function PrepareCampaignModal({db,campaign,contacts,close,saved}:{db:SupabaseCli
   return <div className="backdrop" onMouseDown={(event)=>event.target===event.currentTarget&&close()}><section className="modal communication-modal" role="dialog" aria-modal="true"><header className="modal-head"><div><p className="eyebrow">Comunicaciones</p><h2>Preparar destinatarios</h2></div><button className="icon-btn" onClick={close} aria-label="Cerrar"><X/></button></header><div className="modal-body">
     <div className="prepare-summary"><span className="marketing-icon">{campaign.channel==="whatsapp"?<MessageCircle/>:<Mail/>}</span><div><strong>{campaign.title}</strong><span>{channelLabels[campaign.channel]} · {scoped.length} en la audiencia</span></div></div>
     <div className="prepare-counts"><div><strong>{eligible.length}</strong><span>Listos</span></div><div><strong>{scoped.length-eligible.length}</strong><span>Revisar</span></div></div>
-    {campaign.audience_scope==="custom"?<div className="recipient-picker">{scoped.map((contact)=>{const problem=communicationProblem(contact,campaign.channel),checked=selected.includes(contact.id);return <label className={problem?"disabled":""} key={contact.id}><input type="checkbox" disabled={Boolean(problem)} checked={checked} onChange={(event)=>setSelected((current)=>event.target.checked?[...current,contact.id]:current.filter((id)=>id!==contact.id))}/><span><strong>{contact.display_name}</strong><small>{problem || (campaign.channel==="whatsapp"?contact.phone:contact.email)}</small></span></label>;})}</div>:<div className="permission-note"><ShieldCheck/><p><strong>La lista se prepara, no se envía todavía.</strong><span>CYA excluye automáticamente “No contactar”, permisos sin confirmar y contactos sin el dato necesario.</span></p></div>}
+    {campaign.audience_scope==="custom"?<div className="recipient-picker">{scoped.map((contact)=>{const problem=communicationProblem(contact,campaign.channel),checked=selected.includes(contact.id);return <label className={problem?"disabled":""} key={contact.id}><input type="checkbox" disabled={Boolean(problem)} checked={checked} onChange={(event)=>setSelected((current)=>event.target.checked?[...current,contact.id]:current.filter((id)=>id!==contact.id))}/><span><strong>{staffPrimaryName(contact)}</strong><small>{staffRealNameWhenAliased(contact) ? `${contact.display_name} · ` : ""}{problem || (campaign.channel==="whatsapp"?contact.phone:contact.email)}</small></span></label>;})}</div>:<div className="permission-note"><ShieldCheck/><p><strong>La lista se prepara, no se envía todavía.</strong><span>CYA excluye automáticamente “No contactar”, permisos sin confirmar y contactos sin el dato necesario.</span></p></div>}
     {error?<p className="error">{error}</p>:null}<div className="actions"><button type="button" className="btn ghost" onClick={close}>Cancelar</button><button type="button" className="btn" disabled={busy||!eligible.length} onClick={prepare}>{busy?"Preparando…":"Preparar lista"}</button></div>
   </div></section></div>;
 }
@@ -346,7 +348,7 @@ function CommunicationsView({db,contacts,campaigns,recipients,refresh,notify}:{d
   }
   async function markSent(recipient:CommunicationRecipient){
     setBusyId(recipient.id);const result=await db.rpc("mark_communication_sent",{p_recipient_id:recipient.id});
-    if(result.error) notify(result.error.message); else await saved(`${recipient.person?.display_name||"Contacto"}: mensaje registrado como enviado.`);
+    if(result.error) notify(result.error.message); else await saved(`${recipient.person?staffPrimaryName(recipient.person):"Contacto"}: mensaje registrado como enviado.`);
     setBusyId(null);
   }
   return <><Header title="Comunicaciones" description="Prepara mensajes personalizados y abre cada conversación desde CYA Hub." action={<a className="btn ghost" href={DRIVE_MARKETING_FOLDER_URL} target="_blank" rel="noreferrer"><FolderOpen/> Multimedia</a>}/>
@@ -354,7 +356,7 @@ function CommunicationsView({db,contacts,campaigns,recipients,refresh,notify}:{d
     {direct.length?<div className="communication-batches">{direct.map((campaign)=>{const own=recipients.filter((recipient)=>recipient.campaign_id===campaign.id),ready=own.filter((item)=>item.status==="ready").length,sent=own.filter((item)=>item.status==="sent").length,skipped=own.filter((item)=>item.status==="skipped").length;return <article className="card communication-batch" key={campaign.id}>
       <header className="communication-batch-head"><span className="marketing-icon">{campaign.channel==="whatsapp"?<MessageCircle/>:<Mail/>}</span><div><span>{channelLabels[campaign.channel]}</span><h3>{campaign.title}</h3></div><button className="btn ghost" onClick={()=>setPreparing(campaign)}><UsersRound/> {own.length?"Actualizar lista":"Preparar lista"}</button></header>
       <div className="communication-stats"><span><strong>{ready}</strong> listos</span><span><strong>{sent}</strong> enviados</span><span className={skipped?"attention":""}><strong>{skipped}</strong> revisar</span>{campaign.marketing_campaign_media.length?<span><strong>{campaign.marketing_campaign_media.length}</strong> adjuntos</span>:null}</div>
-      {own.length?<div className="communication-recipient-list">{[...own].sort((a,b)=>({ready:0,failed:1,skipped:2,sent:3}[a.status]-{ready:0,failed:1,skipped:2,sent:3}[b.status])).map((recipient)=><div className={`communication-recipient status-${recipient.status}`} key={recipient.id}><span className="avatar"><CircleUserRound/></span><div className="communication-recipient-main"><div><strong>{recipient.person?.display_name||"Contacto"}</strong><span className={`badge communication-${recipient.status}`}>{communicationStatusLabels[recipient.status]}</span></div><span>{recipient.destination||recipient.blocked_reason||"Sin destino"}</span><details><summary>Ver mensaje</summary><p>{recipient.message_snapshot}</p>{recipient.media_snapshot.length?<div className="communication-media"><span>Adjuntos de Drive</span><div>{recipient.media_snapshot.map((media)=><a key={`${recipient.id}-${media.id}`} href={driveFileUrl(media.external_file_id)} target="_blank" rel="noreferrer">{media.media_type==="video"?<Video/>:<ImageIcon/>}{media.title||"Abrir archivo"}<ExternalLink/></a>)}</div></div>:null}</details></div>
+      {own.length?<div className="communication-recipient-list">{[...own].sort((a,b)=>({ready:0,failed:1,skipped:2,sent:3}[a.status]-{ready:0,failed:1,skipped:2,sent:3}[b.status])).map((recipient)=><div className={`communication-recipient status-${recipient.status}`} key={recipient.id}><span className="avatar"><CircleUserRound/></span><div className="communication-recipient-main"><div><strong>{recipient.person?staffPrimaryName(recipient.person):"Contacto"}</strong><span className={`badge communication-${recipient.status}`}>{communicationStatusLabels[recipient.status]}</span></div><span>{recipient.destination||recipient.blocked_reason||"Sin destino"}</span><details><summary>Ver mensaje</summary><p>{recipient.message_snapshot}</p>{recipient.media_snapshot.length?<div className="communication-media"><span>Adjuntos de Drive</span><div>{recipient.media_snapshot.map((media)=><a key={`${recipient.id}-${media.id}`} href={driveFileUrl(media.external_file_id)} target="_blank" rel="noreferrer">{media.media_type==="video"?<Video/>:<ImageIcon/>}{media.title||"Abrir archivo"}<ExternalLink/></a>)}</div></div>:null}</details></div>
         <div className="communication-recipient-actions">{recipient.status==="ready"?<><button className="btn" disabled={busyId===recipient.id} onClick={()=>openMessage(recipient)}>{recipient.channel==="whatsapp"?<MessageCircle/>:<Mail/>} {busyId===recipient.id?"Comprobando…":`Abrir ${channelLabels[recipient.channel]}`}</button><button className="btn ghost" disabled={busyId===recipient.id} onClick={()=>markSent(recipient)}><CheckCircle2/> {busyId===recipient.id?"Guardando…":"Ya enviado"}</button></>:recipient.status==="sent"?<span className="sent-stamp"><CheckCircle2/> {recipient.sent_at?shortDate(recipient.sent_at):"Enviado"}</span>:<span className="recipient-problem">{recipient.blocked_reason||"Revisa este contacto"}</span>}</div>
       </div>)}</div>:<div className="communication-empty"><MessageCircle/><span>Prepara la lista para ver aquí a cada destinatario.</span></div>}
     </article>;})}</div>:<Empty icon={MessageCircle} title="No hay campañas de mensajes" text="Crea una campaña por WhatsApp o email y aparecerá aquí para preparar su envío."/>}
