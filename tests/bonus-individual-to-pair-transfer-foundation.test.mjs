@@ -26,6 +26,12 @@ test("ledger uses explicit transfer_out and transfer_in with conservation guards
   assert.match(sql, /credit_movements_transfer_out_uidx/i);
   assert.match(sql, /credit_movements_transfer_in_uidx/i);
   assert.match(sql, /TRANSFER_LEDGER_INVARIANT_VIOLATION/);
+  assert.match(sql, /credit_transfer_operations_balance_delta_check/);
+  assert.match(sql, /source_balance_after=source_balance_before-minutes/);
+  assert.match(sql, /destination_balance_after=destination_balance_before\+minutes/);
+  assert.match(sql, /TRANSFER_BALANCE_SNAPSHOT_INVARIANT_VIOLATION/);
+  assert.match(sql, /v_actual_source_balance<>v_source_balance_after/);
+  assert.match(sql, /v_actual_destination_balance<>v_destination_balance_after/);
   assert.match(sql, /v_out_count<>1/);
   assert.match(sql, /v_in_count<>1/);
   assert.match(sql, /v_out_sum<>-v_minutes/);
