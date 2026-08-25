@@ -11,34 +11,98 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
-  group: cya-qa-staging-shared-identities
+  group: ${{ github.event_name == 'pull_request' && format('cya-qa-pr-{0}', github.event.pull_request.number) || 'cya-qa-staging-shared-identities' }}
   cancel-in-progress: true
 
 jobs:
-  browser-qa:
-    name: Browser QA — Staging
+  premerge-contract:
+    name: QA Harness Contract — PR (non-mutating)
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
+    permissions:
+      contents: read
     env:
       CI: "true"
+      CYA_DEPLOY_ENV: staging
+      NEXT_PUBLIC_SUPABASE_URL: https://qlngfkzmncihtdzktcmd.supabase.co
+
+    steps:
+      - name: Refuse non-staging PR target
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${GITHUB_BASE_REF}" == "staging" ]] || { echo "QA pre-merge is restricted to PRs targeting staging." >&2; exit 1; }
+          [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]] || { echo "QA pre-merge must run only for pull_request." >&2; exit 1; }
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Refuse production Supabase in pre-merge build
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${NEXT_PUBLIC_SUPABASE_URL}" == "https://qlngfkzmncihtdzktcmd.supabase.co" ]] || { echo "QA pre-merge build must use only the dedicated staging project boundary." >&2; exit 1; }
+          [[ "${NEXT_PUBLIC_SUPABASE_URL}" != "https://ldvyeyhzrepaaouzavgs.supabase.co" ]] || { echo "QA must never target production Supabase." >&2; exit 1; }
+
+      - name: Install application dependencies
+        run: npm ci
+
+      - name: Validate canonical documentation sequence
+        run: node --test tests/documentation-consistency.test.mjs
+
+      - name: Run non-mutating QA harness contract gates
+        run: >-
+          node --test
+          qa/tests/fixture-readiness.test.mjs
+          qa/tests/bootstrap-student-fixtures.test.mjs
+          qa/tests/qa-workflow-boundary.test.mjs
+
+      - name: Build application without staging fixture mutation
+        run: npm run build
+
+      - name: Declare runtime QA deferred
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "RUNTIME QA = DEFERRED TO STAGING INTEGRATION"
+          echo "### CYA QA pre-merge" >> "${GITHUB_STEP_SUMMARY}"
+          echo "RUNTIME QA = DEFERRED TO STAGING INTEGRATION" >> "${GITHUB_STEP_SUMMARY}"
+          echo "No OIDC bootstrap, staging fixture mutation, Attendance runtime gate, authenticated visual gate, or Browser QA was executed from this pull_request context." >> "${GITHUB_STEP_SUMMARY}"
+
+  runtime-staging:
+    name: Browser QA — Staging runtime
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/staging' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      CI: "true"
+      CYA_DEPLOY_ENV: staging
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.CYA_QA_SUPABASE_URL || 'https://qlngfkzmncihtdzktcmd.supabase.co' }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.CYA_QA_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_9weuqXYkEgvbLDoBg1kk5Q_PBxV-haW' }}
       CYA_QA_BOOTSTRAP_URL: https://qlngfkzmncihtdzktcmd.supabase.co/functions/v1/cya-qa-bootstrap
 
     steps:
-      - name: Refuse non-staging branch
+      - name: Refuse non-staging runtime ref
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
-            [[ "${GITHUB_BASE_REF}" == "staging" ]] || { echo "Browser QA is restricted to PRs targeting staging." >&2; exit 1; }
-          elif [[ "${GITHUB_REF_NAME}" != "staging" ]]; then
-            echo "Browser QA is restricted to the staging branch." >&2
-            exit 1
-          fi
+          [[ "${GITHUB_REF}" == "refs/heads/staging" ]] || { echo "Privileged Browser QA runtime is restricted to refs/heads/staging." >&2; exit 1; }
+          case "${GITHUB_EVENT_NAME}" in
+            push|workflow_dispatch) ;;
+            *) echo "Privileged Browser QA runtime is not authorized for ${GITHUB_EVENT_NAME}." >&2; exit 1 ;;
+          esac
 
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -60,16 +124,58 @@ jobs:
       - name: Validate canonical documentation sequence
         run: node --test tests/documentation-consistency.test.mjs
 
+      - name: Run QA harness contract gates before privileged runtime
+        run: >-
+          node --test
+          qa/tests/fixture-readiness.test.mjs
+          qa/tests/bootstrap-student-fixtures.test.mjs
+          qa/tests/qa-workflow-boundary.test.mjs
+
+      - name: Confirm candidate Edge Function deployment dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "cya-qa-bootstrap candidate must already be deployed to the dedicated staging project before privileged runtime validation."
+          echo "This workflow does not deploy Edge Functions."
+
       - name: Bootstrap dedicated QA identities with GitHub OIDC
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p qa
           oidc_json="$(curl --fail --silent --show-error -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=cya-hub-qa")"
           oidc_token="$(jq -er '.value' <<<"${oidc_json}")"
-          bootstrap_json="$(curl --fail --silent --show-error -X POST -H "Authorization: Bearer ${oidc_token}" -H "Content-Type: application/json" "${CYA_QA_BOOTSTRAP_URL}")"
+          bootstrap_file="${RUNNER_TEMP}/cya-qa-bootstrap.json"
+          http_code="$(curl --silent --show-error -o "${bootstrap_file}" -w '%{http_code}' -X POST -H "Authorization: Bearer ${oidc_token}" -H "Content-Type: application/json" "${CYA_QA_BOOTSTRAP_URL}")"
+          if [[ "${http_code}" -lt 200 || "${http_code}" -ge 300 ]]; then
+            if jq -e . "${bootstrap_file}" >/dev/null 2>&1; then
+              jq '{kind:(.error_kind // "fixture_failure"),error:(.error // "QA bootstrap failed")}' "${bootstrap_file}" > qa/qa-bootstrap-diagnostic.json
+              error_message="$(jq -r '.error // "QA bootstrap failed"' "${bootstrap_file}")"
+            else
+              printf '%s\n' '{"kind":"fixture_failure","error":"QA bootstrap returned an unreadable response"}' > qa/qa-bootstrap-diagnostic.json
+              error_message="QA bootstrap returned an unreadable response"
+            fi
+            echo "::error::${error_message}"
+            exit 1
+          fi
+
+          bootstrap_json="$(cat "${bootstrap_file}")"
           jq -e --arg run_id "${GITHUB_RUN_ID}" '.ok == true and .run_id == $run_id' <<<"${bootstrap_json}" >/dev/null
           jq -e '.fixtures.studentName and .fixtures.projects["iphone-large-chromium"].classId and .fixtures.projects["desktop-chromium"].classId' <<<"${bootstrap_json}" >/dev/null
-          for role in teacher student admin; do
+          if ! jq -e '
+            .credentials.teacher.email and .credentials.teacher.password and
+            .credentials.student.email and .credentials.student.password and
+            .credentials.student_onboarding.email and .credentials.student_onboarding.password and
+            .credentials.admin.email and .credentials.admin.password and
+            .readiness.student and .readiness.student_onboarding
+          ' <<<"${bootstrap_json}" >/dev/null; then
+            printf '%s\n' '{"kind":"fixture_failure","error":"QA bootstrap response does not implement the student onboarding fixture contract"}' > qa/qa-bootstrap-diagnostic.json
+            echo "::error::QA bootstrap response does not implement the student onboarding fixture contract"
+            exit 1
+          fi
+
+          jq '{kind:"bootstrap_success",run_id,readiness}' <<<"${bootstrap_json}" > qa/qa-bootstrap-diagnostic.json
+          for role in teacher student student_onboarding admin; do
             upper_role="$(printf '%s' "${role}" | tr '[:lower:]' '[:upper:]')"
             email="$(jq -er ".credentials.${role}.email" <<<"${bootstrap_json}")"
             password="$(jq -er ".credentials.${role}.password" <<<"${bootstrap_json}")"
@@ -77,14 +183,25 @@ jobs:
             printf 'QA_%s_EMAIL=%s\n' "${upper_role}" "${email}" >> "${GITHUB_ENV}"
             printf 'QA_%s_PASSWORD=%s\n' "${upper_role}" "${password}" >> "${GITHUB_ENV}"
           done
+          printf 'QA_FIXTURE_READINESS_JSON=%s\n' "$(jq -c '.readiness' <<<"${bootstrap_json}")" >> "${GITHUB_ENV}"
           printf 'QA_FIXTURES_JSON=%s\n' "$(jq -c '.fixtures' <<<"${bootstrap_json}")" >> "${GITHUB_ENV}"
           printf 'QA_RUN_ID=%s\n' "${GITHUB_RUN_ID}" >> "${GITHUB_ENV}"
+
+      - name: Verify student fixture readiness before Playwright
+        shell: bash
+        run: |
+          set -euo pipefail
+          if node qa/assert-fixture-readiness.mjs 2>&1 | tee qa/qa-readiness.log; then
+            jq -n --argjson readiness "${QA_FIXTURE_READINESS_JSON}" '{kind:"readiness_pass",readiness:$readiness}' > qa/qa-readiness-diagnostic.json
+          else
+            jq -n --argjson readiness "${QA_FIXTURE_READINESS_JSON}" '{kind:"readiness_failure",readiness:$readiness}' > qa/qa-readiness-diagnostic.json
+            exit 1
+          fi
 
       - name: Install application dependencies
         run: npm ci
 
       - name: Run authenticated Attendance post-apply gate
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/staging' }}
         run: node qa/tests/class-attendance-auth-postapply.test.mjs
 
       - name: Install QA harness
@@ -154,5 +271,8 @@ jobs:
             qa/test-results/
             qa/lint.log
             qa/app-server.log
+            qa/qa-bootstrap-diagnostic.json
+            qa/qa-readiness-diagnostic.json
+            qa/qa-readiness.log
           if-no-files-found: warn
           retention-days: 14

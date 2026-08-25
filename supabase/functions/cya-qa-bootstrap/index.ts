@@ -13,6 +13,7 @@ const EXPECTED_WORKFLOW_REF = `${EXPECTED_REPOSITORY}/.github/workflows/cya-qa-e
 const GITHUB_JWKS_URL = "https://token.actions.githubusercontent.com/.well-known/jwks";
 const ALL_APP_ROLES = ["admin", "teacher_admin", "teacher", "student"] as const;
 const MANUAL_ROTATION_VERSION = 1;
+const REQUIRED_REGISTRATION_FIELDS = ["first_name", "last_name", "phone", "country_code"] as const;
 
 type GitHubClaims = {
   iss?: string;
@@ -31,13 +32,50 @@ type GitHubClaims = {
   run_id?: string;
 };
 
+type StudentProfileContract =
+  | {
+    name: "qa-student-onboarded";
+    expectedState: "PORTAL_READY";
+    firstName: string;
+    lastName: string;
+    phone: string;
+    countryCode: string;
+  }
+  | {
+    name: "qa-student-onboarding-required";
+    expectedState: "ONBOARDING_REQUIRED";
+  };
+
 type Fixture = {
   role: "teacher" | "student" | "admin";
+  credentialKey?: "teacher" | "student" | "student_onboarding" | "admin";
   email: string;
   displayName: string;
   primaryRole: "teacher" | "student" | "admin";
   roles: Array<"admin" | "teacher" | "student">;
   source: "qa_automation" | "staging_manual";
+  studentProfile?: StudentProfileContract;
+};
+
+type RegistrationProfileStatus = {
+  available?: boolean;
+  complete?: boolean;
+  person_id?: number | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
+  country_code?: string | null;
+  missing?: unknown;
+  merge_required?: boolean;
+};
+
+type FixtureReadiness = {
+  contract: StudentProfileContract["name"];
+  expectedState: StudentProfileContract["expectedState"];
+  state: "PORTAL_READY" | "ONBOARDING_REQUIRED";
+  portalReady: boolean;
+  missing: string[];
+  source: "public.registration_profile_status";
 };
 
 const fixtures: Fixture[] = [
@@ -51,11 +89,33 @@ const fixtures: Fixture[] = [
   },
   {
     role: "student",
+    credentialKey: "student",
     email: "carlosyandybz+qa-student@gmail.com",
     displayName: "QA · Alumno",
     primaryRole: "student",
     roles: ["student"],
     source: "qa_automation",
+    studentProfile: {
+      name: "qa-student-onboarded",
+      expectedState: "PORTAL_READY",
+      firstName: "QA",
+      lastName: "Alumno",
+      phone: "+34999999001",
+      countryCode: "ES",
+    },
+  },
+  {
+    role: "student",
+    credentialKey: "student_onboarding",
+    email: "carlosyandybz+qa-student-onboarding@gmail.com",
+    displayName: "QA · Alumno onboarding",
+    primaryRole: "student",
+    roles: ["student"],
+    source: "qa_automation",
+    studentProfile: {
+      name: "qa-student-onboarding-required",
+      expectedState: "ONBOARDING_REQUIRED",
+    },
   },
   {
     role: "admin",
@@ -291,6 +351,28 @@ async function persistFixture(sql: ReturnType<typeof postgres>, user: User, fixt
 
     if (!personId) throw new Error(`Unable to persist ${fixture.role} fixture person`);
 
+    if (fixture.studentProfile?.expectedState === "PORTAL_READY") {
+      await tx`
+        update public.people
+        set first_name = ${fixture.studentProfile.firstName},
+            last_name = ${fixture.studentProfile.lastName},
+            phone = ${fixture.studentProfile.phone},
+            country_code = ${fixture.studentProfile.countryCode},
+            updated_at = now()
+        where id = ${personId}::bigint
+      `;
+    } else if (fixture.studentProfile?.expectedState === "ONBOARDING_REQUIRED") {
+      await tx`
+        update public.people
+        set first_name = null,
+            last_name = null,
+            phone = null,
+            country_code = null,
+            updated_at = now()
+        where id = ${personId}::bigint
+      `;
+    }
+
     await tx`
       insert into public.student_profiles (person_id, active, created_by)
       values (${personId}::bigint, true, ${user.id}::uuid)
@@ -299,6 +381,54 @@ async function persistFixture(sql: ReturnType<typeof postgres>, user: User, fixt
           updated_at = now()
     `;
   });
+}
+
+async function registrationProfileStatusForUser(
+  sql: ReturnType<typeof postgres>,
+  userId: string,
+): Promise<RegistrationProfileStatus> {
+  return await sql.begin(async (tx) => {
+    await tx`select set_config('request.jwt.claim.sub', ${userId}, true)`;
+    await tx`select set_config('request.jwt.claim.role', 'authenticated', true)`;
+    const rows = await tx<{ status: RegistrationProfileStatus }[]>`
+      select public.registration_profile_status() as status
+    `;
+    const status = rows[0]?.status;
+    if (!status) throw new Error("QA readiness could not read registration_profile_status");
+    return status;
+  });
+}
+
+function readinessFor(fixture: Fixture, status: RegistrationProfileStatus): FixtureReadiness {
+  if (!fixture.studentProfile) throw new Error("QA readiness requested for a fixture without a student profile contract");
+  const missing = Array.isArray(status.missing)
+    ? status.missing.filter((value): value is string => typeof value === "string")
+    : [];
+  const portalReady = status.complete === true;
+  return {
+    contract: fixture.studentProfile.name,
+    expectedState: fixture.studentProfile.expectedState,
+    state: portalReady ? "PORTAL_READY" : "ONBOARDING_REQUIRED",
+    portalReady,
+    missing,
+    source: "public.registration_profile_status",
+  };
+}
+
+function assertReadinessContract(readiness: FixtureReadiness) {
+  if (readiness.expectedState === "PORTAL_READY" && !readiness.portalReady) {
+    const suffix = readiness.missing.length ? ` Missing: ${readiness.missing.join(", ")}.` : "";
+    throw new Error(`QA fixture expected portal-ready student but onboarding is required.${suffix}`);
+  }
+  if (readiness.expectedState === "ONBOARDING_REQUIRED" && readiness.portalReady) {
+    throw new Error("QA onboarding-required fixture unexpectedly became portal-ready.");
+  }
+  if (readiness.expectedState === "ONBOARDING_REQUIRED") {
+    const notReset = REQUIRED_REGISTRATION_FIELDS.filter((field) => !readiness.missing.includes(field));
+    if (notReset.length) {
+      throw new Error(`QA onboarding-required fixture did not reset required profile fields: ${notReset.join(", ")}.`);
+    }
+  }
 }
 
 async function ensureAutomationFixture(
@@ -333,7 +463,7 @@ async function ensureAutomationFixture(
   }
 
   await persistFixture(sql, user, fixture);
-  return { email: fixture.email, password };
+  return { email: fixture.email, password, userId: user.id };
 }
 
 async function ensureManualFixture(
@@ -409,8 +539,12 @@ Deno.serve(async (request) => {
     });
 
     const credentials: Record<string, { email: string; password: string }> = {};
+    const automationUserIds: Record<string, string> = {};
     for (const fixture of fixtures) {
-      credentials[fixture.role] = await ensureAutomationFixture(admin, sql, fixture);
+      const ensured = await ensureAutomationFixture(admin, sql, fixture);
+      const key = fixture.credentialKey ?? fixture.role;
+      credentials[key] = { email: ensured.email, password: ensured.password };
+      automationUserIds[key] = ensured.userId;
     }
 
     const manualAccounts: Record<string, { email: string; roles: Array<"admin" | "teacher" | "student">; rotated: boolean }> = {};
@@ -421,10 +555,23 @@ Deno.serve(async (request) => {
     const runId = claims.run_id ?? crypto.randomUUID();
     const functionalFixtures = await seedFunctionalQaFixtures(sql, runId);
 
+    const readiness: Record<string, FixtureReadiness> = {};
+    for (const fixture of fixtures) {
+      if (!fixture.studentProfile) continue;
+      const key = fixture.credentialKey ?? fixture.role;
+      const userId = automationUserIds[key];
+      if (!userId) throw new Error(`Missing QA fixture user id for ${key}`);
+      const status = await registrationProfileStatusForUser(sql, userId);
+      const contract = readinessFor(fixture, status);
+      assertReadinessContract(contract);
+      readiness[key] = contract;
+    }
+
     return json({
       ok: true,
       run_id: claims.run_id ?? null,
       credentials,
+      readiness,
       manual_accounts: manualAccounts,
       manual_rotation_version: MANUAL_ROTATION_VERSION,
       fixtures: functionalFixtures,
@@ -432,7 +579,8 @@ Deno.serve(async (request) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "QA bootstrap failed";
     const forbidden = message.toLowerCase().includes("oidc") || message.includes("repository") || message.includes("workflow");
-    return json({ error: message }, forbidden ? 403 : 500);
+    const readinessFailure = message.startsWith("QA fixture expected portal-ready") || message.startsWith("QA onboarding-required fixture") || message.startsWith("QA readiness");
+    return json({ error: message, error_kind: readinessFailure ? "readiness_failure" : forbidden ? "security_boundary_failure" : "fixture_failure" }, forbidden ? 403 : 500);
   } finally {
     if (sql) await sql.end({ timeout: 1 }).catch(() => undefined);
   }
